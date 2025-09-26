@@ -1,0 +1,66 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: reading-feedback-app
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/execution-environment: gen2
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/cpu-throttling: "false"
+    spec:
+      serviceAccountName: reading-feedback-sa@PROJECT_ID.iam.gserviceaccount.com
+      containers:
+      - image: gcr.io/PROJECT_ID/reading-feedback-app:latest
+        ports:
+        - containerPort: 8000
+        env:
+        # 应用配置
+        - name: ENVIRONMENT
+          value: "production"
+        - name: DEBUG
+          value: "false"
+        
+        # 数据库配置（生产环境）
+        - name: DATABASE_URL
+          value: "postgresql://username:password@host:5432/dbname"
+        
+        # 从 Secret Manager 获取密钥
+        - name: DEEPSEEK_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: projects/PROJECT_ID/secrets/deepseek-api-key/versions/latest
+              key: latest
+        
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: projects/PROJECT_ID/secrets/app-secret-key/versions/latest
+              key: latest
+        
+        resources:
+          limits:
+            cpu: "1"
+            memory: "512Mi"
+          requests:
+            cpu: "0.5"
+            memory: "256Mi"
+        
+        # 健康检查
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
