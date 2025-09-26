@@ -1,102 +1,89 @@
-# 📱 读书笔记实践反馈系统 - 部署指南
+# 🚀 Google Cloud Run 部署指南
 
-## 🚀 快速部署到 Railway（推荐）
+## 📋 部署步骤
 
-### 步骤 1: 准备代码
-1. 确保所有代码已提交到 Git 仓库
-2. 检查 `requirements.txt` 包含所有依赖
-3. 确认 `start_production.py` 存在
+### 1. 创建 Google Cloud 项目
 
-### 步骤 2: 部署到 Railway
-1. 访问 [Railway.app](https://railway.app)
-2. 使用 GitHub 账号登录
-3. 点击 "New Project" → "Deploy from GitHub repo"
-4. 选择您的仓库
-5. 等待自动部署
+1. 访问 [Google Cloud Console](https://console.cloud.google.com/)
+2. 创建新项目或选择现有项目
+3. 记录项目 ID
 
-### 步骤 3: 配置环境变量
-在 Railway 项目设置中添加：
+### 2. 启用必要的 API
+
+在 Google Cloud Console 中启用：
+- Cloud Run API
+- Cloud Build API
+- Container Registry API
+
+### 3. 创建服务账户
+
+1. 转到 IAM 和管理 → 服务账户
+2. 创建服务账户，角色选择：
+   - Cloud Run 管理员
+   - Cloud Build 编辑者
+   - 存储管理员
+3. 创建密钥（JSON 格式）并下载
+
+### 4. 配置 GitHub Secrets
+
+在 GitHub 仓库设置中添加以下 Secrets：
 
 ```
-DEEPSEEK_API_KEY=your-deepseek-api-key-here
-SECRET_KEY=your-random-secret-key-here
-ENVIRONMENT=production
+GCP_PROJECT_ID=你的项目ID
+GCP_SA_KEY=服务账户密钥JSON内容
+DEEPSEEK_API_KEY=你的DeepSeek API密钥
+SECRET_KEY=32位随机字符串
 ```
 
-### 步骤 4: 获取访问链接
-- Railway 会自动生成 HTTPS 链接
-- 格式：`https://your-app-name.railway.app`
-- 在手机浏览器中访问此链接
+### 5. 推送代码触发部署
 
----
-
-## 🌐 其他部署选项
-
-### Google Cloud Run
 ```bash
-# 1. 安装 gcloud CLI
-# 2. 构建镜像
-gcloud builds submit --tag gcr.io/PROJECT_ID/reading-feedback-app
-
-# 3. 部署
-gcloud run deploy --image gcr.io/PROJECT_ID/reading-feedback-app --platform managed
+git add .
+git commit -m "Add deployment workflow"
+git push origin main
 ```
 
-### Render
-1. 连接 GitHub 仓库
-2. 选择 "Web Service"
-3. 设置环境变量
-4. 部署
+### 6. 访问应用
 
----
+部署完成后，访问 Cloud Run 服务 URL：
+- 格式：`https://reading-feedback-app-xxx-uc.a.run.app`
+- 在手机浏览器中打开即可使用
 
-## 📱 手机访问优化
+## 🔧 手动部署（备选方案）
 
-### 响应式设计
-- ✅ 已支持移动端适配
-- ✅ 触摸友好的按钮
-- ✅ 自适应布局
+如果 GitHub Actions 失败，可以手动部署：
 
-### 性能优化
-- ✅ 静态文件缓存
-- ✅ 压缩传输
-- ✅ HTTPS 支持
+### 1. 使用 Google Cloud Console
 
----
+1. 转到 Cloud Run
+2. 点击"创建服务"
+3. 选择"从源代码构建"
+4. 连接 GitHub 仓库
+5. 配置环境变量
+6. 部署
 
-## 🔧 故障排除
+### 2. 使用 Cloud Shell
 
-### 常见问题
-1. **部署失败**: 检查环境变量是否正确设置
-2. **数据库错误**: 确保 PostgreSQL 连接正常
-3. **API 调用失败**: 验证 DeepSeek API Key
+1. 打开 [Cloud Shell](https://shell.cloud.google.com/)
+2. 克隆仓库
+3. 运行部署命令
 
-### 日志查看
-- Railway: 在项目页面查看日志
-- Cloud Run: 使用 `gcloud logs`
-- Render: 在 Dashboard 查看
+## 📱 移动端访问
 
----
+部署完成后，在手机浏览器中访问：
+- 应用会自动适配移动端
+- 支持触摸操作
+- 响应式设计
 
-## 📊 监控和维护
+## 🔒 安全配置
 
-### 健康检查
-- 端点：`/health`
-- 自动监控应用状态
+- API 密钥通过环境变量安全传递
+- 使用 HTTPS 加密传输
+- 支持 CORS 跨域请求
+- 自动健康检查
 
-### 数据备份
-- Railway: 自动备份 PostgreSQL
-- 定期导出重要数据
+## 💰 费用说明
 
----
-
-## 🎯 下一步优化
-
-1. **自定义域名**: 绑定自己的域名
-2. **CDN 加速**: 使用 Cloudflare 等
-3. **监控告警**: 设置性能监控
-4. **自动备份**: 定期数据备份
-
----
-
-**🎉 部署完成后，您就可以在任何设备的浏览器上访问您的读书笔记实践反馈系统了！**
+- Cloud Run：按使用量计费，有免费额度
+- Cloud Build：每月前 120 分钟免费
+- 预计月费用：< $5（轻量使用）

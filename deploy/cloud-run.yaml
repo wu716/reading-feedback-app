@@ -11,7 +11,7 @@ spec:
         run.googleapis.com/execution-environment: gen2
     spec:
       containers:
-      - image: gcr.io/PROJECT_ID/reading-feedback-app
+      - image: gcr.io/YOUR_PROJECT_ID/reading-feedback-app
         ports:
         - containerPort: 8000
         env:
