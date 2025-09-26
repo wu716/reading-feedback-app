@@ -6,7 +6,6 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   SERVICE_NAME: reading-feedback-app
   REGION: asia-east1
 
@@ -30,16 +29,22 @@ jobs:
 
     - name: Build and push Docker image
       run: |
-        docker build -t gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA .
-        docker push gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+        IMAGE_TAG="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:${GITHUB_SHA}"
+        echo "Building image: $IMAGE_TAG"
+        docker build -t "$IMAGE_TAG" .
+        docker push "$IMAGE_TAG"
 
     - name: Deploy to Cloud Run
       run: |
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+        IMAGE_TAG="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:${GITHUB_SHA}"
+        echo "Deploying image: $IMAGE_TAG"
         gcloud run deploy $SERVICE_NAME \
-          --image gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA \
+          --image "$IMAGE_TAG" \
           --platform managed \
           --region $REGION \
           --allow-unauthenticated \
-          --set-env-vars DEEPSEEK_API_KEY=${{ secrets.DEEPSEEK_API_KEY }} \
-          --set-env-vars SECRET_KEY=${{ secrets.SECRET_KEY }} \
+          --set-env-vars DEEPSEEK_API_KEY="${{ secrets.DEEPSEEK_API_KEY }}" \
+          --set-env-vars SECRET_KEY="${{ secrets.SECRET_KEY }}" \
           --set-env-vars ENVIRONMENT=production
