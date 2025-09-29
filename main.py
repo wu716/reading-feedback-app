@@ -74,14 +74,8 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """健康检查"""
-    import datetime
-    return {
-        "status": "healthy",
-        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
-        "environment": settings.environment,
-        "version": "1.0.0"
-    }
+    """健康检查 - 简化版本"""
+    return {"status": "ok"}
 
 
 # 全局异常处理

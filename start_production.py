@@ -65,6 +65,12 @@ def main():
         port = int(os.getenv('PORT', 8000))
         host = os.getenv('HOST', '0.0.0.0')
         
+        logger.info(f"🔧 环境配置:")
+        logger.info(f"   PORT: {port}")
+        logger.info(f"   HOST: {host}")
+        logger.info(f"   DATABASE_URL: {'已设置' if os.getenv('DATABASE_URL') else '未设置'}")
+        logger.info(f"   DEEPSEEK_API_KEY: {'已设置' if os.getenv('DEEPSEEK_API_KEY') else '未设置'}")
+        
         logger.info(f"📱 应用将在以下地址启动：")
         logger.info(f"   本地访问: http://localhost:{port}")
         logger.info(f"   外部访问: https://your-app.railway.app")
