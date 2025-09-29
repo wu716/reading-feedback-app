@@ -19,6 +19,31 @@ def main():
     """主函数"""
     logger.info("🚀 启动读书笔记应用 (最小化版本)")
     
+    # 检查环境变量
+    logger.info("🔍 检查环境变量...")
+    required_vars = ['DEEPSEEK_API_KEY', 'SECRET_KEY', 'ENVIRONMENT']
+    missing_vars = []
+    
+    for var in required_vars:
+        if not os.getenv(var):
+            missing_vars.append(var)
+    
+    if missing_vars:
+        logger.error("❌ 缺少必需的环境变量:")
+        for var in missing_vars:
+            logger.error(f"   - {var}")
+        logger.error("\n🔧 请在Railway项目设置中添加这些环境变量:")
+        logger.error("1. 登录 https://railway.app/")
+        logger.error("2. 选择您的项目")
+        logger.error("3. 进入 Settings > Variables")
+        logger.error("4. 添加以下变量:")
+        logger.error("   DEEPSEEK_API_KEY = sk-ea8257f565da4484b9f50a9e4bf10c00")
+        logger.error("   SECRET_KEY = K7mN2pQ9rS8tU3vW5xY1zA4bC6dE0fG")
+        logger.error("   ENVIRONMENT = production")
+        sys.exit(1)
+    
+    logger.info("✅ 环境变量检查通过")
+    
     # 设置环境变量
     os.environ['ENVIRONMENT'] = 'production'
     
