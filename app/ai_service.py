@@ -11,10 +11,12 @@ from app.schemas import ActionItem, Frequency
 logger = logging.getLogger(__name__)
 
 # 初始化 DeepSeek 客户端
-client = AsyncOpenAI(
-    api_key=settings.deepseek_api_key,
-    base_url=settings.deepseek_base_url
-)
+client = None
+if settings.deepseek_api_key:
+    client = AsyncOpenAI(
+        api_key=settings.deepseek_api_key,
+        base_url=settings.deepseek_base_url
+    )
 
 
 class AIExtractionError(Exception):
@@ -74,6 +76,9 @@ def create_extraction_prompt(notes: str, book_title: str = None) -> str:
 )
 async def call_deepseek_api(prompt: str) -> str:
     """调用 DeepSeek API"""
+    if not client:
+        raise AIExtractionError("AI 服务未配置：缺少 DEEPSEEK_API_KEY")
+    
     try:
         response = await client.chat.completions.create(
             model=settings.deepseek_model,
@@ -205,6 +210,10 @@ async def extract_actions_from_notes(notes: str, book_title: str = None) -> List
 
 async def test_ai_connection() -> bool:
     """测试 AI 连接"""
+    if not client:
+        logger.warning("AI 服务未配置：缺少 DEEPSEEK_API_KEY")
+        return False
+    
     try:
         test_prompt = "请回复：连接测试成功"
         response = await call_deepseek_api(test_prompt)

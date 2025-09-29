@@ -39,5 +39,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
 # 启动命令
-CMD ["python", "start_railway.py"]
+CMD ["python", "start_minimal.py"]
 
