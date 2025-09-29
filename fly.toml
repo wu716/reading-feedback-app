@@ -4,7 +4,7 @@ primary_region = "nrt"
 [build]
 
 [env]
-  DEEPSEEK_API_KEY = "sk-ea8257f565da4484b9f50a9e4bf10c00"
+  DEEPSEEK_API_KEY = "YOUR_DEEPSEEK_API_KEY_HERE"
   SECRET_KEY = "K7mN2pQ9rS8tU3vW5xY1zA4bC6dE0fG"
   ENVIRONMENT = "production"
 
