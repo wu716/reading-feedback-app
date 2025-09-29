@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: reading-feedback-app
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        value: sk-ea8257f565da4484b9f50a9e4bf10c00
+      - key: SECRET_KEY
+        value: K7mN2pQ9rS8tU3vW5xY1zA4bC6dE0fG
+      - key: ENVIRONMENT
+        value: production
+    healthCheckPath: /health
+
+

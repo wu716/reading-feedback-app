@@ -1,0 +1,24 @@
+app = "reading-feedback-app"
+primary_region = "nrt"
+
+[build]
+
+[env]
+  DEEPSEEK_API_KEY = "sk-ea8257f565da4484b9f50a9e4bf10c00"
+  SECRET_KEY = "K7mN2pQ9rS8tU3vW5xY1zA4bC6dE0fG"
+  ENVIRONMENT = "production"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256
+
+

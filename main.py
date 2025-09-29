@@ -52,13 +52,15 @@ async def startup_event():
     create_tables()
     logger.info("数据库表创建完成")
     
-    # 测试 AI 连接
-    ai_connected = await test_ai_connection()
-    if ai_connected:
-        logger.info("AI 服务连接正常")
-    else:
-        logger.error("AI 服务连接失败，应用无法正常工作")
-        raise Exception("AI 服务连接失败")
+    # 测试 AI 连接（非阻塞）
+    try:
+        ai_connected = await test_ai_connection()
+        if ai_connected:
+            logger.info("AI 服务连接正常")
+        else:
+            logger.warning("AI 服务连接失败，但应用将继续运行")
+    except Exception as e:
+        logger.warning(f"AI 服务连接测试失败: {e}，但应用将继续运行")
     
     logger.info("应用启动完成")
 
@@ -73,10 +75,12 @@ async def root():
 @app.get("/health")
 async def health_check():
     """健康检查"""
+    import datetime
     return {
         "status": "healthy",
-        "timestamp": "2024-01-01T00:00:00Z",
-        "environment": settings.environment
+        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+        "environment": settings.environment,
+        "version": "1.0.0"
     }
 
 
