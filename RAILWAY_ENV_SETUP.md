@@ -6,7 +6,7 @@
 
 ### 1. DEEPSEEK_API_KEY
 ```
-DEEPSEEK_API_KEY = YOUR_DEEPSEEK_API_KEY_HERE
+DEEPSEEK_API_KEY = sk-163b19ba581a46a69d2fa5afd454772e
 ```
 **说明**: DeepSeek AI服务的API密钥，用于智能分析读书笔记
 
@@ -45,7 +45,7 @@ railway login
 railway link
 
 # 设置环境变量
-railway variables set DEEPSEEK_API_KEY=YOUR_DEEPSEEK_API_KEY_HERE
+railway variables set DEEPSEEK_API_KEY=sk-163b19ba581a46a69d2fa5afd454772e
 railway variables set SECRET_KEY=K7mN2pQ9rS8tU3vW5xY1zA4bC6dE0fG
 railway variables set ENVIRONMENT=production
 ```

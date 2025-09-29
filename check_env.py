@@ -91,7 +91,7 @@ def main():
         logger.error("2. 选择您的项目")
         logger.error("3. 进入 Settings > Variables")
         logger.error("4. 添加以下变量:")
-        logger.error("   DEEPSEEK_API_KEY = YOUR_DEEPSEEK_API_KEY_HERE")
+        logger.error("   DEEPSEEK_API_KEY = sk-163b19ba581a46a69d2fa5afd454772e")
         logger.error("   SECRET_KEY = K7mN2pQ9rS8tU3vW5xY1zA4bC6dE0fG")
         logger.error("   ENVIRONMENT = production")
         
