@@ -44,6 +44,10 @@ def main():
     
     # 启动应用
     try:
+        # 确保环境变量在导入main之前设置
+        os.environ["DEEPSEEK_API_KEY"] = api_key
+        os.environ["DATABASE_URL"] = os.getenv("DATABASE_URL", "sqlite:///./app.db")
+        
         import uvicorn
         from main import app
         

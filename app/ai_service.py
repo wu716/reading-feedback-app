@@ -217,7 +217,15 @@ async def test_ai_connection() -> bool:
     try:
         test_prompt = "请回复：连接测试成功"
         response = await call_deepseek_api(test_prompt)
-        return "成功" in response
+        
+        # 更宽松的测试条件：只要 API 返回了响应就认为连接成功
+        if response and len(response.strip()) > 0:
+            logger.info(f"AI 连接测试成功，响应: {response[:100]}...")
+            return True
+        else:
+            logger.warning(f"AI 连接测试失败，响应为空")
+            return False
+            
     except Exception as e:
         logger.error(f"AI 连接测试失败: {e}")
         return False

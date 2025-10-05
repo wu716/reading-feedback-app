@@ -1,24 +1,34 @@
 # 🔑 Railway 环境变量配置指南
 
+## 🎯 问题解决
+
+**您的问题**: Railway线上部署需要配置AI密钥环境变量，同时确保软件能正常使用AI功能。
+
+**解决方案**: 按照本指南配置Railway环境变量，确保AI功能完全可用。
+
 ## 📋 必需的环境变量
 
 在Railway项目中，您需要设置以下环境变量：
 
-### 1. DEEPSEEK_API_KEY
+### 1. DEEPSEEK_API_KEY ⭐
 ```
-DEEPSEEK_API_KEY = YOUR_DEEPSEEK_API_KEY_HERE
+变量名: DEEPSEEK_API_KEY
+变量值: YOUR_DEEPSEEK_API_KEY_HERE
 ```
 **说明**: DeepSeek AI服务的API密钥，用于智能分析读书笔记
+**获取方式**: 访问 https://platform.deepseek.com/ 获取API密钥
 
 ### 2. SECRET_KEY
 ```
-SECRET_KEY = K7mN2pQ9rS8tU3vW5xY1zA4bC6dE0fG
+变量名: SECRET_KEY
+变量值: K7mN2pQ9rS8tU3vW5xY1zA4bC6dE0fG
 ```
 **说明**: 应用的安全密钥，用于JWT令牌加密
 
 ### 3. ENVIRONMENT
 ```
-ENVIRONMENT = production
+变量名: ENVIRONMENT
+变量值: production
 ```
 **说明**: 运行环境标识，设置为production
 

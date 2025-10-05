@@ -68,7 +68,11 @@ def verify_token(token: str, credentials_exception):
             raise credentials_exception
         token_data = TokenData(email=email)
         return token_data
-    except JWTError:
+    except JWTError as e:
+        # 记录具体的JWT错误类型
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"JWT验证失败: {e}")
         raise credentials_exception
 
 
@@ -93,18 +97,29 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    token = credentials.credentials
-    token_data = verify_token(token, credentials_exception)
-    
-    user = db.query(User).filter(
-        User.email == token_data.email,
-        User.deleted_at.is_(None)
-    ).first()
-    
-    if user is None:
+    try:
+        token = credentials.credentials
+        token_data = verify_token(token, credentials_exception)
+        
+        user = db.query(User).filter(
+            User.email == token_data.email,
+            User.deleted_at.is_(None)
+        ).first()
+        
+        if user is None:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"用户不存在或已被删除: {token_data.email}")
+            raise credentials_exception
+        
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"获取当前用户失败: {e}")
         raise credentials_exception
-    
-    return user
 
 
 def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:

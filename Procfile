@@ -1,4 +1,4 @@
-web: python start_production.py
+web: python start_minimal.py
 
 
 

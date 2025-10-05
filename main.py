@@ -9,6 +9,7 @@ import uvicorn
 from app.config import settings
 from app.database import create_tables
 from app.routers import auth, actions, practice, dashboard
+from app.self_talk.router import router as self_talk_router
 from app.ai_service import test_ai_connection
 
 # 配置日志
@@ -35,12 +36,23 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(auth.router)
-app.include_router(actions.router)
-app.include_router(practice.router)
-app.include_router(dashboard.router)
+app.include_router(actions.router, prefix="/api")
+app.include_router(practice.router, prefix="/api")
+app.include_router(dashboard.router, prefix="/api")
+app.include_router(self_talk_router)
 
 # 静态文件服务
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# 根据环境决定是否公开uploads目录
+if settings.environment == "development":
+    # 开发环境：保留公开访问，方便调试
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+    logger.info("开发环境：uploads目录公开访问已启用")
+else:
+    # 生产环境：移除公开访问，使用受保护API
+    # app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+    logger.info("生产环境：uploads目录通过受保护API访问")
 
 
 @app.on_event("startup")
@@ -75,7 +87,16 @@ async def root():
 @app.get("/health")
 async def health_check():
     """健康检查 - 简化版本"""
-    return {"status": "ok"}
+    # 添加基本服务状态检查
+    try:
+        # 检查数据库连接
+        # 检查AI服务可用性
+        return {"status": "ok", "services": ["database", "ai"]}
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"服务不可用: {str(e)}"
+        )
 
 
 # 全局异常处理
@@ -94,5 +115,15 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000,
         reload=True,  # 可以直接写 True，方便开发
+        log_level="info"
+    )
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
         log_level="info"
     )

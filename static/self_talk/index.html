@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-talk - 读书反馈应用</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+
+        .card h2 {
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .recording-section {
+            text-align: center;
+        }
+
+        .record-button {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .record-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.6);
+        }
+
+        .record-button.recording {
+            background: linear-gradient(135deg, #ff4757, #c44569);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .upload-section {
+            margin-top: 20px;
+        }
+
+        .file-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            background: #f7fafc;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .file-input:hover {
+            border-color: #667eea;
+            background: #edf2f7;
+        }
+
+        .upload-button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .history-section {
+            grid-column: 1 / -1;
+        }
+
+        .self-talk-item {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .self-talk-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+
+        .self-talk-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .self-talk-date {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .self-talk-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .play-button {
+            background: #48bb78;
+            color: white;
+        }
+
+        .play-button:hover {
+            background: #38a169;
+        }
+
+        .delete-button {
+            background: #f56565;
+            color: white;
+        }
+
+        .delete-button:hover {
+            background: #e53e3e;
+        }
+
+        .transcript {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            line-height: 1.6;
+            color: #4a5568;
+        }
+
+        .no-transcript {
+            color: #a0aec0;
+            font-style: italic;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="back-button" onclick="goBack()">← 返回</button>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🎤 Self-talk</h1>
+            <p>记录你的内心对话，让思考更有力量</p>
+        </div>
+
+        <div class="main-content">
+            <!-- 录音区域 -->
+            <div class="card recording-section">
+                <h2>开始录音</h2>
+                <button id="recordButton" class="record-button" onclick="toggleRecording()">
+                    🎤 开始录音
+                </button>
+                <div id="recordingStatus" class="status" style="display: none;"></div>
+                
+                <div class="upload-section">
+                    <h3>或上传音频文件</h3>
+                    <input type="file" id="audioFile" class="file-input" accept="audio/*">
+                    <button id="uploadButton" class="upload-button" onclick="uploadAudio()">
+                        上传音频
+                    </button>
+                    <div id="uploadStatus" class="status" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- 历史记录区域 -->
+            <div class="card">
+                <h2>历史记录</h2>
+                <div id="historyList">
+                    <div class="loading"></div>
+                    <p style="text-align: center; margin-top: 10px;">加载中...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 历史记录详情 -->
+        <div class="card history-section">
+            <h2>所有 Self-talk 记录</h2>
+            <div id="allHistoryList">
+                <div class="loading"></div>
+                <p style="text-align: center; margin-top: 10px;">加载中...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        let audioBlob = null;
+
+        // 检查浏览器支持
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('您的浏览器不支持录音功能，请使用现代浏览器');
+        }
+
+        // 返回按钮
+        function goBack() {
+            // 确保认证状态正确传递
+            const authToken = localStorage.getItem('authToken');
+            if (authToken) {
+                window.location.href = '/static/index.html';
+            } else {
+                alert('请先登录');
+                window.location.href = '/static/index.html';
+            }
+        }
+
+        // 切换录音状态
+        async function toggleRecording() {
+            if (!isRecording) {
+                await startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+
+        // 开始录音
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+                
+                // 尝试使用 WAV 格式，如果不支持则回退到其他格式
+                let mimeType = 'audio/wav';
+                if (!MediaRecorder.isTypeSupported('audio/wav')) {
+                    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                        mimeType = 'audio/webm;codecs=opus';
+                    } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+                        mimeType = 'audio/webm';
+                    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                        mimeType = 'audio/mp4';
+                    } else {
+                        mimeType = 'audio/webm'; // 默认回退
+                    }
+                }
+                
+                console.log('使用录音格式:', mimeType);
+                
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: mimeType
+                });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    audioBlob = new Blob(audioChunks, { type: mimeType });
+                    showStatus('recordingStatus', '录音完成！可以上传了', 'success');
+                    
+                    // 自动上传录音
+                    uploadRecording();
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                
+                document.getElementById('recordButton').textContent = '⏹️ 停止录音';
+                document.getElementById('recordButton').classList.add('recording');
+                showStatus('recordingStatus', '正在录音...', 'info');
+                
+            } catch (error) {
+                console.error('录音失败:', error);
+                showStatus('recordingStatus', '录音失败，请检查麦克风权限', 'error');
+            }
+        }
+
+        // 停止录音
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                
+                isRecording = false;
+                document.getElementById('recordButton').textContent = '🎤 开始录音';
+                document.getElementById('recordButton').classList.remove('recording');
+            }
+        }
+
+        // 上传录音
+        async function uploadRecording() {
+            // 首先检查认证令牌
+            if (!checkAuthToken()) {
+                return;
+            }
+
+            if (!audioBlob) {
+                showStatus('recordingStatus', '没有录音数据', 'error');
+                return;
+            }
+
+            // 根据实际格式确定文件扩展名
+            let filename = 'recording';
+            if (audioBlob.type.includes('wav')) {
+                filename += '.wav';
+            } else if (audioBlob.type.includes('webm')) {
+                filename += '.webm';
+            } else if (audioBlob.type.includes('mp4')) {
+                filename += '.mp4';
+            } else {
+                filename += '.webm'; // 默认
+            }
+
+            const formData = new FormData();
+            formData.append('file', audioBlob, filename);
+
+            try {
+                showStatus('recordingStatus', '正在上传和识别...', 'info');
+                
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/api/self_talks/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showStatus('recordingStatus', '上传成功！', 'success');
+                    loadHistory(); // 刷新历史记录
+                } else if (response.status === 401) {
+                    // 处理认证失败
+                    alert('登录已过期，请重新登录');
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/static/index.html';
+                } else {
+                    const error = await response.json().catch(() => ({ detail: '未知错误' }));
+                    showStatus('recordingStatus', `上传失败: ${error.detail || '请重试'}`, 'error');
+                }
+            } catch (error) {
+                console.error('上传失败:', error);
+                showStatus('recordingStatus', '上传失败，请检查网络连接后重试', 'error');
+            }
+        }
+
+        // 上传音频文件
+        async function uploadAudio() {
+            // 首先检查认证令牌
+            if (!checkAuthToken()) {
+                return;
+            }
+
+            const fileInput = document.getElementById('audioFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showStatus('uploadStatus', '请选择音频文件', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                showStatus('uploadStatus', '正在上传和识别...', 'info');
+                
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/api/self_talks/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showStatus('uploadStatus', '上传成功！', 'success');
+                    fileInput.value = ''; // 清空文件选择
+                    loadHistory(); // 刷新历史记录
+                } else if (response.status === 401) {
+                    // 处理认证失败
+                    alert('登录已过期，请重新登录');
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/static/index.html';
+                } else {
+                    const error = await response.json().catch(() => ({ detail: '未知错误' }));
+                    showStatus('uploadStatus', `上传失败: ${error.detail || '请重试'}`, 'error');
+                }
+            } catch (error) {
+                console.error('上传失败:', error);
+                showStatus('uploadStatus', '上传失败，请检查网络连接后重试', 'error');
+            }
+        }
+
+        // 显示状态信息
+        function showStatus(elementId, message, type) {
+            const statusElement = document.getElementById(elementId);
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+            statusElement.style.display = 'block';
+            
+            // 3秒后自动隐藏成功信息
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusElement.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // 加载历史记录
+        async function loadHistory() {
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/api/self_talks/', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    displayHistory(data.self_talks.slice(0, 3), 'historyList'); // 显示最近3条
+                    displayHistory(data.self_talks, 'allHistoryList'); // 显示所有记录
+                } else if (response.status === 401) {
+                    // 处理认证失败
+                    console.warn('认证失败，跳转到登录页面');
+                    alert('登录已过期，请重新登录');
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/static/index.html';
+                } else {
+                    console.error('加载历史记录失败');
+                }
+            } catch (error) {
+                console.error('加载历史记录失败:', error);
+            }
+        }
+
+        // 显示历史记录
+        function displayHistory(selfTalks, containerId) {
+            const container = document.getElementById(containerId);
+            
+            if (selfTalks.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #a0aec0;">暂无 Self-talk 记录</p>';
+                return;
+            }
+
+            container.innerHTML = selfTalks.map(selfTalk => `
+                <div class="self-talk-item">
+                    <div class="self-talk-header">
+                        <span class="self-talk-date">${new Date(selfTalk.created_at).toLocaleString('zh-CN')}</span>
+                        <div class="self-talk-actions">
+                            <button class="action-button play-button" onclick="playAudio(${selfTalk.id})">
+                                ▶️ 播放
+                            </button>
+                            <button class="action-button delete-button" onclick="deleteSelfTalk(${selfTalk.id})">
+                                🗑️ 删除
+                            </button>
+                        </div>
+                    </div>
+                    <div class="transcript">
+                        ${selfTalk.transcript ? selfTalk.transcript : '<span class="no-transcript">暂无转写文字</span>'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 播放音频
+        function playAudio(selfTalkId) {
+            try {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    alert('请先登录');
+                    return;
+                }
+                
+                // 使用受保护的API接口
+                const audioUrl = `/api/self_talks/${selfTalkId}/audio`;
+                
+                console.log('=== 音频播放调试 ===');
+                console.log('Self-talk ID:', selfTalkId);
+                console.log('API URL:', audioUrl);
+                
+                // 创建带认证头的请求
+                fetch(audioUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            alert('登录已过期，请重新登录');
+                            localStorage.removeItem('authToken');
+                            window.location.href = '/static/index.html';
+                        } else {
+                            throw new Error('播放失败');
+                        }
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    console.log('音频Blob大小:', blob.size);
+                    const audio = new Audio(URL.createObjectURL(blob));
+                    
+                    audio.onerror = function(e) {
+                        console.error('音频加载失败:', e);
+                        alert('播放失败，请检查音频文件');
+                    };
+                    
+                    audio.onloadeddata = function() {
+                        console.log('音频数据加载完成');
+                    };
+                    
+                    audio.oncanplay = function() {
+                        console.log('音频可以播放');
+                    };
+                    
+                    return audio.play();
+                })
+                .then(() => {
+                    console.log('音频播放开始');
+                })
+                .catch(error => {
+                    console.error('获取音频失败:', error);
+                    alert('获取音频失败，请重试');
+                });
+            } catch (error) {
+                console.error('播放异常:', error);
+                alert('播放失败: ' + error.message);
+            }
+        }
+
+        // 检查认证令牌是否有效
+        function checkAuthToken() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                alert('请先登录');
+                window.location.href = '/static/index.html';
+                return false;
+            }
+            
+            try {
+                // 简单的令牌格式检查
+                const parts = token.split('.');
+                if (parts.length !== 3) {
+                    throw new Error('令牌格式错误');
+                }
+                
+                // 检查令牌是否过期
+                const payload = JSON.parse(atob(parts[1]));
+                const currentTime = Math.floor(Date.now() / 1000);
+                if (payload.exp && payload.exp < currentTime) {
+                    throw new Error('令牌已过期');
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('令牌验证失败:', error);
+                alert('登录已过期，请重新登录');
+                localStorage.removeItem('authToken');
+                window.location.href = '/static/index.html';
+                return false;
+            }
+        }
+
+        // 删除 Self-talk
+        async function deleteSelfTalk(id) {
+            // 首先检查认证令牌
+            if (!checkAuthToken()) {
+                return;
+            }
+
+            if (!confirm('确定要删除这条 Self-talk 记录吗？')) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch(`/api/self_talks/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    showStatus('recordingStatus', '删除成功！', 'success');
+                    loadHistory(); // 刷新历史记录
+                } else if (response.status === 401) {
+                    // 处理认证失败
+                    alert('登录已过期，请重新登录');
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/static/index.html';
+                } else {
+                    const errorData = await response.json().catch(() => ({ detail: '未知错误' }));
+                    alert(`删除失败: ${errorData.detail || '请重试'}`);
+                }
+            } catch (error) {
+                console.error('删除失败:', error);
+                alert('删除失败，请检查网络连接后重试');
+            }
+        }
+
+        // 页面加载时获取历史记录
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查登录状态
+            const authToken = localStorage.getItem('authToken');
+            if (!authToken) {
+                alert('请先登录');
+                window.location.href = '/static/index.html';
+                return;
+            }
+            
+            loadHistory();
+        });
+    </script>
+</body>
+</html>
