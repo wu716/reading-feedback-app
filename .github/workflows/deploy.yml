@@ -5,6 +5,13 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# 注意：此工作流需要以下secrets在GitHub仓库中配置：
+# 请在GitHub仓库的Settings > Secrets and variables > Actions中添加：
+# - GCP_SA_KEY: Google Cloud服务账号的JSON密钥
+# - GCP_PROJECT_ID: Google Cloud项目ID  
+# - DEEPSEEK_API_KEY: DeepSeek API密钥
+# - SECRET_KEY: 应用程序的密钥
+
 env:
   SERVICE_NAME: reading-feedback-app
   REGION: asia-east1
@@ -20,7 +27,7 @@ jobs:
     - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v2
       with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        credentials_json: ${{ secrets.GCP_SA_KEY || '' }}
 
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
@@ -28,34 +35,78 @@ jobs:
     - name: Configure Docker
       run: gcloud auth configure-docker
 
-    - name: Debug environment variables
+    - name: Validate secrets and environment variables
       run: |
-        echo "PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}"
+        echo "🔍 Validating required secrets..."
+        echo "PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'NOT_SET' }}"
         echo "SERVICE_NAME: ${{ env.SERVICE_NAME }}"
         echo "GITHUB_SHA: ${{ github.sha }}"
-        if [ -z "${{ secrets.GCP_PROJECT_ID }}" ]; then
-          echo "ERROR: GCP_PROJECT_ID is empty!"
+        
+        # Validate required secrets
+        MISSING_SECRETS=()
+        
+        if [ -z "${{ secrets.GCP_PROJECT_ID || '' }}" ]; then
+          echo "❌ ERROR: GCP_PROJECT_ID secret is not set!"
+          MISSING_SECRETS+=("GCP_PROJECT_ID")
+        else
+          echo "✅ GCP_PROJECT_ID: configured"
+        fi
+        
+        if [ -z "${{ secrets.GCP_SA_KEY || '' }}" ]; then
+          echo "❌ ERROR: GCP_SA_KEY secret is not set!"
+          MISSING_SECRETS+=("GCP_SA_KEY")
+        else
+          echo "✅ GCP_SA_KEY: configured"
+        fi
+        
+        if [ -z "${{ secrets.DEEPSEEK_API_KEY || '' }}" ]; then
+          echo "❌ ERROR: DEEPSEEK_API_KEY secret is not set!"
+          MISSING_SECRETS+=("DEEPSEEK_API_KEY")
+        else
+          echo "✅ DEEPSEEK_API_KEY: configured"
+        fi
+        
+        if [ -z "${{ secrets.SECRET_KEY || '' }}" ]; then
+          echo "❌ ERROR: SECRET_KEY secret is not set!"
+          MISSING_SECRETS+=("SECRET_KEY")
+        else
+          echo "✅ SECRET_KEY: configured"
+        fi
+        
+        if [ ${#MISSING_SECRETS[@]} -eq 0 ]; then
+          echo "🎉 All required secrets are configured."
+        else
+          echo ""
+          echo "❌ Missing secrets: ${MISSING_SECRETS[*]}"
+          echo ""
+          echo "🔧 To fix this, go to:"
+          echo "   GitHub Repository > Settings > Secrets and variables > Actions"
+          echo "   Add the following repository secrets:"
+          echo "   - GCP_PROJECT_ID: Your Google Cloud Project ID"
+          echo "   - GCP_SA_KEY: Your Google Cloud Service Account JSON key"
+          echo "   - DEEPSEEK_API_KEY: Your DeepSeek API key"
+          echo "   - SECRET_KEY: Your application secret key"
           exit 1
         fi
 
     - name: Build and push Docker image
       run: |
-        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
-        IMAGE_TAG="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:${GITHUB_SHA}"
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID || 'your-project-id' }}"
+        IMAGE_TAG="gcr.io/${PROJECT_ID}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
         echo "Building image: $IMAGE_TAG"
         docker build -t "$IMAGE_TAG" .
         docker push "$IMAGE_TAG"
 
     - name: Deploy to Cloud Run
       run: |
-        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
-        IMAGE_TAG="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:${GITHUB_SHA}"
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID || 'your-project-id' }}"
+        IMAGE_TAG="gcr.io/${PROJECT_ID}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
         echo "Deploying image: $IMAGE_TAG"
-        gcloud run deploy $SERVICE_NAME \
+        gcloud run deploy ${{ env.SERVICE_NAME }} \
           --image "$IMAGE_TAG" \
           --platform managed \
-          --region $REGION \
+          --region ${{ env.REGION }} \
           --allow-unauthenticated \
-          --set-env-vars DEEPSEEK_API_KEY="${{ secrets.DEEPSEEK_API_KEY }}" \
-          --set-env-vars SECRET_KEY="${{ secrets.SECRET_KEY }}" \
+          --set-env-vars DEEPSEEK_API_KEY="${{ secrets.DEEPSEEK_API_KEY || '' }}" \
+          --set-env-vars SECRET_KEY="${{ secrets.SECRET_KEY || '' }}" \
           --set-env-vars ENVIRONMENT=production

@@ -193,7 +193,8 @@ async def delete_practice_log(
         )
     
     # 软删除
-    log.deleted_at = db.query(PracticeLog).filter(PracticeLog.id == log_id).first().created_at
+    from datetime import datetime
+    log.deleted_at = datetime.utcnow()
     db.commit()
     
     return None

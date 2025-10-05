@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>读书笔记实践反馈系统</title>
+    <title>Self-talk 内心对话系统</title>
     <style>
         * {
             margin: 0;
@@ -574,6 +574,52 @@
             margin-bottom: 20px;
         }
         
+        /* 时间管理设置样式 */
+        .time-management-settings {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .form-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .form-col {
+            flex: 1;
+        }
+        
+        .form-col label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .form-col input,
+        .form-col select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-col input:focus,
+        .form-col select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
         @media (max-width: 768px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -582,14 +628,19 @@
             .header h1 {
                 font-size: 2rem;
             }
+            
+            .form-row {
+                flex-direction: column;
+                gap: 10px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>📚 读书笔记实践反馈系统</h1>
-            <p>从学习到行动的完整闭环</p>
+            <h1>🎤 Self-talk 内心对话系统</h1>
+            <p>记录内心对话，让思考更有力量</p>
             <div class="user-info" id="userInfo">
                 <div class="user-email" id="userEmail"></div>
                 <button class="logout-btn" onclick="logout()">退出登录</button>
@@ -599,6 +650,15 @@
         <div id="message"></div>
         
         <div class="main-content">
+            <!-- Self-talk 主要功能 -->
+            <div class="card" style="grid-column: 1 / -1; margin-bottom: 30px;">
+                <h2>🎤 Self-talk 内心对话</h2>
+                <p style="margin-bottom: 20px; color: #666;">记录你的内心对话，让思考更有力量。支持语音录制和文字转写。</p>
+                <button class="btn" onclick="goToSelfTalk()" style="width: auto; padding: 12px 30px; font-size: 1.1rem;">
+                    🎤 开始 Self-talk
+                </button>
+            </div>
+            
             <!-- 上传笔记卡片 -->
             <div class="card">
                 <h2>📝 上传读书笔记</h2>
@@ -611,13 +671,19 @@
                         <label for="notesContent">笔记内容</label>
                         <textarea id="notesContent" placeholder="请输入你的读书笔记内容..."></textarea>
                     </div>
+                    
                     <button type="submit" class="btn" id="uploadBtn">🚀 抽取行动项</button>
                 </form>
             </div>
             
             <!-- 行动项列表 -->
             <div class="card">
-                <h2>🎯 我的行动项</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>🎯 我的行动项</h2>
+                    <button class="btn-small" onclick="showBatchTimeManagementModal()" style="background: #17a2b8; color: white;">
+                        ⏰ 批量设置时间
+                    </button>
+                </div>
                 <div id="actionsList" class="actions-list">
                     <div class="loading">点击"抽取行动项"开始...</div>
                 </div>
@@ -644,6 +710,35 @@
                     <div class="stat-number" id="successRate">-</div>
                     <div class="stat-label">成功率</div>
                 </div>
+            </div>
+            
+            <!-- 时间维度分析 -->
+            <div style="margin-top: 30px;">
+                <h3>⏰ 时间维度分析</h3>
+                <div class="stats-grid" id="durationStatsGrid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="shortTermActions">-</div>
+                        <div class="stat-label">短期行动项</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="longTermActions">-</div>
+                        <div class="stat-label">长期行动项</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="lifetimeActions">-</div>
+                        <div class="stat-label">终身行动项</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="currentStreak">-</div>
+                        <div class="stat-label">当前连续天数</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 坚持度分析 -->
+            <div style="margin-top: 30px;" id="streakAnalysis" style="display: none;">
+                <h3>🔥 坚持度分析</h3>
+                <div id="streakDetails"></div>
             </div>
         </div>
     </div>
@@ -695,6 +790,113 @@
         </div>
     </div>
     
+    <!-- 批量时间管理设置模态框 -->
+    <div class="practice-modal hidden" id="batchTimeManagementModal">
+        <div class="practice-container">
+            <button class="close-modal" onclick="closeBatchTimeManagementModal()">&times;</button>
+            <div class="practice-header">
+                <h3>⏰ 批量设置时间管理</h3>
+                <p style="color: #666; font-size: 14px; margin-top: 5px;">此设置将应用到所有未完成的行动项</p>
+            </div>
+            
+            <form id="batchTimeManagementForm">
+                <div class="form-group">
+                    <label for="btmDurationType">类型</label>
+                    <select id="btmDurationType" onchange="toggleBTMDurationSettings()">
+                        <option value="short_term">短期目标</option>
+                        <option value="long_term">长期目标</option>
+                        <option value="lifetime">终身习惯</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="btmDurationDaysGroup">
+                    <label for="btmTargetDurationDays">坚持天数</label>
+                    <input type="number" id="btmTargetDurationDays" min="1" max="3650" placeholder="天数">
+                </div>
+                
+                <div class="form-group">
+                    <label for="btmTargetFrequency">频率</label>
+                    <select id="btmTargetFrequency" onchange="toggleBTMCustomFrequency()">
+                        <option value="daily">每日</option>
+                        <option value="weekly">每周</option>
+                        <option value="monthly">每月</option>
+                        <option value="custom">自定义</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="btmCustomFrequencyGroup" style="display: none;">
+                    <label for="btmCustomFrequencyDays">每几天一次</label>
+                    <input type="number" id="btmCustomFrequencyDays" min="1" max="365" placeholder="天数">
+                </div>
+                
+                <div class="form-group">
+                    <label for="btmStartDate">开始日期</label>
+                    <input type="date" id="btmStartDate">
+                </div>
+                
+                <div class="form-group" id="btmEndDateGroup">
+                    <label for="btmEndDate">结束日期</label>
+                    <input type="date" id="btmEndDate">
+                </div>
+                
+                <button type="submit" class="btn">💾 批量应用设置</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 时间管理设置模态框 -->
+    <div class="practice-modal hidden" id="timeManagementModal">
+        <div class="practice-container">
+            <button class="close-modal" onclick="closeTimeManagementModal()">&times;</button>
+            <div class="practice-header">
+                <h3>⏰ 设置时间管理</h3>
+            </div>
+            
+            <form id="timeManagementForm">
+                <div class="form-group">
+                    <label for="tmDurationType">类型</label>
+                    <select id="tmDurationType" onchange="toggleTMDurationSettings()">
+                        <option value="short_term">短期目标</option>
+                        <option value="long_term">长期目标</option>
+                        <option value="lifetime">终身习惯</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="tmDurationDaysGroup">
+                    <label for="tmTargetDurationDays">坚持天数</label>
+                    <input type="number" id="tmTargetDurationDays" min="1" max="3650" placeholder="天数">
+                </div>
+                
+                <div class="form-group">
+                    <label for="tmTargetFrequency">频率</label>
+                    <select id="tmTargetFrequency" onchange="toggleTMCustomFrequency()">
+                        <option value="daily">每日</option>
+                        <option value="weekly">每周</option>
+                        <option value="monthly">每月</option>
+                        <option value="custom">自定义</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="tmCustomFrequencyGroup" style="display: none;">
+                    <label for="tmCustomFrequencyDays">每几天一次</label>
+                    <input type="number" id="tmCustomFrequencyDays" min="1" max="365" placeholder="天数">
+                </div>
+                
+                <div class="form-group">
+                    <label for="tmStartDate">开始日期</label>
+                    <input type="date" id="tmStartDate">
+                </div>
+                
+                <div class="form-group" id="tmEndDateGroup">
+                    <label for="tmEndDate">结束日期</label>
+                    <input type="date" id="tmEndDate">
+                </div>
+                
+                <button type="submit" class="btn">💾 保存设置</button>
+            </form>
+        </div>
+    </div>
+    
     <!-- 实践记录模态框 -->
     <div class="practice-modal hidden" id="practiceModal">
         <div class="practice-container">
@@ -715,7 +917,7 @@
                         <option value="">请选择结果</option>
                         <option value="success">✅ 成功完成</option>
                         <option value="partial">⚠️ 部分完成</option>
-                        <option value="failed">❌ 未完成</option>
+                        <option value="fail">❌ 未完成</option>
                     </select>
                 </div>
                 
@@ -767,18 +969,36 @@
                 ...options
             };
             
-            if (authToken) {
-                config.headers['Authorization'] = `Bearer ${authToken}`;
+            // 每次请求前重新获取最新的 authToken
+            const currentToken = localStorage.getItem('authToken');
+            if (currentToken) {
+                config.headers['Authorization'] = `Bearer ${currentToken}`;
             }
             
             try {
                 const response = await fetch(url, config);
                 if (!response.ok) {
+                    // 只有认证错误才触发登录弹窗
+                    if (response.status === 401 || response.status === 403) {
+                        authToken = null;
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('userEmail');
+                        showAuthModal();
+                    }
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 return await response.json();
             } catch (error) {
                 console.error('API 请求失败:', error);
+                
+                // 处理网络错误
+                if (error.message.includes('Failed to fetch')) {
+                    showMessage('网络连接错误，请检查网络', 'error');
+                } else if (!error.message.includes('认证失效')) {
+                    // 非认证错误不显示具体错误信息，避免用户困惑
+                    console.log('请求失败详情:', error.message);
+                }
+                
                 throw error;
             }
         }
@@ -875,12 +1095,49 @@
         
         // 检查认证状态
         async function checkAuth() {
+            // 重新获取最新的 authToken
+            authToken = localStorage.getItem('authToken');
             if (authToken) {
                 const email = localStorage.getItem('userEmail');
-                updateUserInfo(email);
-                loadActions();
-                loadDashboard();
-                return true;
+                if (email) {
+                    // 如果本地有用户信息，直接使用，不强制验证
+                    updateUserInfo(email);
+                    loadActions();
+                    loadDashboard();
+                    closeAuthModal();
+                    return true;
+                } else {
+                    // 没有用户信息时，才进行认证验证
+                    try {
+                        const response = await fetch(`${API_BASE}/auth/me`, {
+                            headers: {
+                                'Authorization': `Bearer ${authToken}`
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const userData = await response.json();
+                            localStorage.setItem('userEmail', userData.email);
+                            updateUserInfo(userData.email);
+                            loadActions();
+                            loadDashboard();
+                            closeAuthModal();
+                            return true;
+                        } else {
+                            // Token 无效，清除本地存储
+                            authToken = null;
+                            localStorage.removeItem('authToken');
+                            localStorage.removeItem('userEmail');
+                            showAuthModal();
+                            return false;
+                        }
+                    } catch (error) {
+                        console.error('认证检查失败:', error);
+                        // 网络错误时显示登录界面
+                        showAuthModal();
+                        return false;
+                    }
+                }
             } else {
                 showAuthModal();
                 return false;
@@ -902,7 +1159,7 @@
             uploadBtn.textContent = '🔄 正在抽取...';
             
             try {
-                const response = await apiRequest('/actions/upload-notes', {
+                const response = await apiRequest('/api/actions/upload-notes', {
                     method: 'POST',
                     body: JSON.stringify({
                         content: notesContent,
@@ -928,7 +1185,7 @@
         // 加载行动项列表
         async function loadActions() {
             try {
-                const response = await apiRequest('/actions/');
+                const response = await apiRequest('/api/actions/');
                 const actionsList = document.getElementById('actionsList');
                 
                 if (response.items.length === 0) {
@@ -943,15 +1200,14 @@
                         </h3>
                         <p><strong>📖 来源:</strong> ${action.book_title}</p>
                         <p><strong>📝 原文:</strong> ${action.source_excerpt}</p>
+                        <p><strong>⏰ 时间管理:</strong> ${getDurationInfo(action)}</p>
                         <div class="action-tags">
                             ${action.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
                         </div>
                         <div class="action-buttons">
-                            ${action.status !== 'done' ? `
-                                <button class="btn-small btn-complete" onclick="markComplete(${action.id})">
-                                    ✅ 标记完成
-                                </button>
-                            ` : ''}
+                            <button class="btn-small btn-time-management" onclick="showTimeManagementModal(${action.id})" style="background: #28a745; color: white;">
+                                ⏰ 设置时间
+                            </button>
                             <button class="btn-small btn-log" onclick="showPracticeModal(${action.id})">
                                 📝 记录实践
                             </button>
@@ -967,14 +1223,67 @@
         // 加载仪表盘数据
         async function loadDashboard() {
             try {
-                const response = await apiRequest('/dashboard/stats');
+                const response = await apiRequest('/api/dashboard/stats');
                 
                 document.getElementById('totalActions').textContent = response.total_actions;
                 document.getElementById('completedActions').textContent = response.completed_actions;
                 document.getElementById('completionRate').textContent = response.completion_rate + '%';
                 document.getElementById('successRate').textContent = response.success_rate + '%';
+                
+                // 加载时间维度分析
+                await loadDurationAnalytics();
+                
+                // 加载坚持度分析
+                await loadStreakAnalytics();
             } catch (error) {
                 console.error('加载仪表盘失败:', error);
+            }
+        }
+        
+        // 加载时间维度分析
+        async function loadDurationAnalytics() {
+            try {
+                const response = await apiRequest('/api/dashboard/duration-analytics');
+                
+                document.getElementById('shortTermActions').textContent = response.short_term_actions;
+                document.getElementById('longTermActions').textContent = response.long_term_actions;
+                document.getElementById('lifetimeActions').textContent = response.lifetime_actions;
+            } catch (error) {
+                console.error('加载时间维度分析失败:', error);
+            }
+        }
+        
+        // 加载坚持度分析
+        async function loadStreakAnalytics() {
+            try {
+                const response = await apiRequest('/api/dashboard/streak-analytics');
+                
+                document.getElementById('currentStreak').textContent = response.current_streak_days;
+                
+                // 显示坚持度详情
+                if (response.streak_actions.length > 0) {
+                    const streakAnalysis = document.getElementById('streakAnalysis');
+                    const streakDetails = document.getElementById('streakDetails');
+                    
+                    streakAnalysis.style.display = 'block';
+                    
+                    streakDetails.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 20px;">
+                            ${response.streak_actions.slice(0, 6).map(action => `
+                                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                                    <h4 style="margin-bottom: 8px; color: #333;">${action.action_text}</h4>
+                                    <div style="font-size: 14px; color: #666;">
+                                        <div>🔥 当前连续: ${action.current_streak} 天</div>
+                                        <div>🏆 最长连续: ${action.longest_streak} 天</div>
+                                        <div>📊 总实践: ${action.total_practices} 次</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('加载坚持度分析失败:', error);
             }
         }
         
@@ -988,21 +1297,44 @@
             return statusMap[status] || status;
         }
         
-        // 标记行动项为完成
-        async function markComplete(actionId) {
-            try {
-                await apiRequest(`/actions/${actionId}/status`, {
-                    method: 'PUT',
-                    body: JSON.stringify({ new_status: 'done' })
-                });
-                
-                showMessage('行动项已标记为完成！', 'success');
-                loadActions();
-                loadDashboard();
-            } catch (error) {
-                showMessage('标记失败: ' + error.message, 'error');
+        // 获取时间管理信息
+        function getDurationInfo(action) {
+            const durationTypeMap = {
+                'short_term': '短期',
+                'long_term': '长期',
+                'lifetime': '终身'
+            };
+            
+            const frequencyMap = {
+                'daily': '每天',
+                'weekly': '每周',
+                'monthly': '每月',
+                'custom': '自定义'
+            };
+            
+            let info = durationTypeMap[action.duration_type] || '短期';
+            
+            if (action.target_duration_days) {
+                info += ` (${action.target_duration_days}天)`;
             }
+            
+            if (action.target_frequency) {
+                const freq = frequencyMap[action.target_frequency] || action.target_frequency;
+                if (action.target_frequency === 'custom' && action.custom_frequency_days) {
+                    info += ` | 每${action.custom_frequency_days}天`;
+                } else {
+                    info += ` | ${freq}`;
+                }
+            }
+            
+            if (action.start_date) {
+                info += ` | 开始: ${new Date(action.start_date).toLocaleDateString()}`;
+            }
+            
+            return info;
         }
+        
+        // 编辑行动项（占位函数）
         
         // 显示实践记录模态框
         let currentActionId = null;
@@ -1057,7 +1389,6 @@
             event.preventDefault();
             
             const formData = {
-                action_id: currentActionId,
                 date: document.getElementById('practiceDate').value,
                 result: document.getElementById('practiceResult').value,
                 notes: document.getElementById('practiceNotes').value || null,
@@ -1065,7 +1396,7 @@
             };
             
             try {
-                await apiRequest(`/actions/${currentActionId}/practice`, {
+                await apiRequest(`/api/actions/${currentActionId}/practice`, {
                     method: 'POST',
                     body: JSON.stringify(formData)
                 });
@@ -1133,13 +1464,300 @@
             btn.textContent = '注册';
         });
         
+        // 跳转到 Self-talk 页面
+        function goToSelfTalk() {
+            if (!authToken) {
+                showMessage('请先登录', 'error');
+                showAuthModal();
+                return;
+            }
+            window.location.href = '/static/self_talk/index.html';
+        }
+        
+        // 时间管理设置相关函数
+        let currentActionForTM = null;
+        
+        // 显示时间管理模态框
+        async function showTimeManagementModal(actionId) {
+            console.log('打开时间管理模态框，行动项ID:', actionId);
+            currentActionForTM = actionId;
+            document.getElementById('timeManagementModal').classList.remove('hidden');
+            
+            try {
+                // 获取当前行动项数据
+                const response = await apiRequest('/api/actions/');
+                const action = response.items.find(a => a.id === actionId);
+                
+                if (action) {
+                    // 填充现有数据
+                    document.getElementById('tmDurationType').value = action.duration_type || 'short_term';
+                    document.getElementById('tmTargetDurationDays').value = action.target_duration_days || '';
+                    document.getElementById('tmTargetFrequency').value = action.target_frequency || 'daily';
+                    document.getElementById('tmCustomFrequencyDays').value = action.custom_frequency_days || '';
+                    document.getElementById('tmStartDate').value = action.start_date || new Date().toISOString().split('T')[0];
+                    document.getElementById('tmEndDate').value = action.end_date || '';
+                } else {
+                    // 设置默认值
+                    const today = new Date().toISOString().split('T')[0];
+                    document.getElementById('tmStartDate').value = today;
+                    document.getElementById('tmDurationType').value = 'short_term';
+                    document.getElementById('tmTargetDurationDays').value = 30;
+                    document.getElementById('tmTargetFrequency').value = 'daily';
+                }
+                
+                // 初始化设置
+                toggleTMDurationSettings();
+                toggleTMCustomFrequency();
+            } catch (error) {
+                console.error('加载行动项数据失败:', error);
+                // 设置默认值
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('tmStartDate').value = today;
+                document.getElementById('tmDurationType').value = 'short_term';
+                document.getElementById('tmTargetDurationDays').value = 30;
+                document.getElementById('tmTargetFrequency').value = 'daily';
+                toggleTMDurationSettings();
+                toggleTMCustomFrequency();
+            }
+        }
+        
+        // 关闭时间管理模态框
+        function closeTimeManagementModal() {
+            document.getElementById('timeManagementModal').classList.add('hidden');
+            currentActionForTM = null;
+        }
+        
+        function toggleTMDurationSettings() {
+            const durationType = document.getElementById('tmDurationType').value;
+            const durationDaysGroup = document.getElementById('tmDurationDaysGroup');
+            const endDateGroup = document.getElementById('tmEndDateGroup');
+            const endDate = document.getElementById('tmEndDate');
+            
+            if (durationType === 'lifetime') {
+                // 终身习惯：隐藏天数设置和结束日期
+                durationDaysGroup.style.display = 'none';
+                endDateGroup.style.display = 'none';
+                endDate.value = '';
+            } else {
+                // 短期/长期目标：显示天数设置和结束日期
+                durationDaysGroup.style.display = 'block';
+                endDateGroup.style.display = 'block';
+                
+                // 根据类型设置默认天数
+                if (durationType === 'short_term') {
+                    document.getElementById('tmTargetDurationDays').value = 30;
+                } else if (durationType === 'long_term') {
+                    document.getElementById('tmTargetDurationDays').value = 365;
+                }
+                
+                // 设置结束日期
+                const days = document.getElementById('tmTargetDurationDays').value || 30;
+                const startDate = new Date(document.getElementById('tmStartDate').value || new Date());
+                const endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + parseInt(days));
+                document.getElementById('tmEndDate').value = endDate.toISOString().split('T')[0];
+            }
+        }
+        
+        function toggleTMCustomFrequency() {
+            const frequency = document.getElementById('tmTargetFrequency').value;
+            const customFrequencyGroup = document.getElementById('tmCustomFrequencyGroup');
+            
+            if (frequency === 'custom') {
+                customFrequencyGroup.style.display = 'block';
+            } else {
+                customFrequencyGroup.style.display = 'none';
+            }
+        }
+        
+        // 批量时间管理设置相关函数
+        function showBatchTimeManagementModal() {
+            document.getElementById('batchTimeManagementModal').classList.remove('hidden');
+            
+            // 设置默认日期
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('btmStartDate').value = today;
+            
+            // 初始化设置
+            toggleBTMDurationSettings();
+        }
+        
+        function closeBatchTimeManagementModal() {
+            document.getElementById('batchTimeManagementModal').classList.add('hidden');
+        }
+        
+        function toggleBTMDurationSettings() {
+            const durationType = document.getElementById('btmDurationType').value;
+            const durationDaysGroup = document.getElementById('btmDurationDaysGroup');
+            const endDateGroup = document.getElementById('btmEndDateGroup');
+            const endDate = document.getElementById('btmEndDate');
+            
+            if (durationType === 'lifetime') {
+                // 终身习惯：隐藏天数设置和结束日期
+                durationDaysGroup.style.display = 'none';
+                endDateGroup.style.display = 'none';
+                endDate.value = '';
+            } else {
+                // 短期/长期目标：显示天数设置和结束日期
+                durationDaysGroup.style.display = 'block';
+                endDateGroup.style.display = 'block';
+                
+                // 根据类型设置默认天数
+                if (durationType === 'short_term') {
+                    document.getElementById('btmTargetDurationDays').value = 30;
+                } else if (durationType === 'long_term') {
+                    document.getElementById('btmTargetDurationDays').value = 365;
+                }
+                
+                // 设置结束日期
+                const days = document.getElementById('btmTargetDurationDays').value || 30;
+                const startDate = new Date(document.getElementById('btmStartDate').value || new Date());
+                const endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + parseInt(days));
+                document.getElementById('btmEndDate').value = endDate.toISOString().split('T')[0];
+            }
+        }
+        
+        function toggleBTMCustomFrequency() {
+            const frequency = document.getElementById('btmTargetFrequency').value;
+            const customFrequencyGroup = document.getElementById('btmCustomFrequencyGroup');
+            
+            if (frequency === 'custom') {
+                customFrequencyGroup.style.display = 'block';
+            } else {
+                customFrequencyGroup.style.display = 'none';
+            }
+        }
+        
+        // 提交时间管理设置
+        async function submitTimeManagement(event) {
+            event.preventDefault();
+            console.log('开始提交时间管理设置，行动项ID:', currentActionForTM);
+            
+            if (!currentActionForTM) {
+                showMessage('未选择行动项', 'error');
+                return;
+            }
+            
+            const durationType = document.getElementById('tmDurationType').value;
+            const targetDurationDays = document.getElementById('tmTargetDurationDays').value ? parseInt(document.getElementById('tmTargetDurationDays').value) : null;
+            const targetFrequency = document.getElementById('tmTargetFrequency').value;
+            const customFrequencyDays = document.getElementById('tmCustomFrequencyDays').value ? parseInt(document.getElementById('tmCustomFrequencyDays').value) : null;
+            const startDate = document.getElementById('tmStartDate').value || null;
+            const endDate = document.getElementById('tmEndDate').value || null;
+            
+            // 验证设置
+            if (durationType === 'lifetime' && endDate) {
+                showMessage('终身习惯不需要设置结束日期', 'error');
+                return;
+            }
+            
+            if (targetFrequency === 'custom' && !customFrequencyDays) {
+                showMessage('自定义频率需要指定天数', 'error');
+                return;
+            }
+            
+            const requestData = {
+                duration_type: durationType,
+                target_duration_days: targetDurationDays,
+                target_frequency: targetFrequency,
+                custom_frequency_days: customFrequencyDays,
+                start_date: startDate,
+                end_date: endDate
+            };
+            
+            console.log('提交的数据:', requestData);
+            console.log('请求URL:', `/api/actions/${currentActionForTM}`);
+            
+            try {
+                const response = await apiRequest(`/api/actions/${currentActionForTM}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(requestData)
+                });
+                
+                console.log('保存成功，响应:', response);
+                
+                showMessage('时间管理设置已保存', 'success');
+                closeTimeManagementModal();
+                
+                // 刷新行动项列表
+                loadActions();
+                loadDashboard();
+            } catch (error) {
+                showMessage('保存失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 提交批量时间管理设置
+        async function submitBatchTimeManagement(event) {
+            event.preventDefault();
+            
+            const durationType = document.getElementById('btmDurationType').value;
+            const targetDurationDays = document.getElementById('btmTargetDurationDays').value ? parseInt(document.getElementById('btmTargetDurationDays').value) : null;
+            const targetFrequency = document.getElementById('btmTargetFrequency').value;
+            const customFrequencyDays = document.getElementById('btmCustomFrequencyDays').value ? parseInt(document.getElementById('btmCustomFrequencyDays').value) : null;
+            const startDate = document.getElementById('btmStartDate').value || null;
+            const endDate = document.getElementById('btmEndDate').value || null;
+            
+            // 验证设置
+            if (durationType === 'lifetime' && endDate) {
+                showMessage('终身习惯不需要设置结束日期', 'error');
+                return;
+            }
+            
+            if (targetFrequency === 'custom' && !customFrequencyDays) {
+                showMessage('自定义频率需要指定天数', 'error');
+                return;
+            }
+            
+            try {
+                // 获取所有未完成的行动项
+                const response = await apiRequest('/api/actions/');
+                const incompleteActions = response.items.filter(action => action.status !== 'done');
+                
+                if (incompleteActions.length === 0) {
+                    showMessage('没有未完成的行动项需要设置', 'info');
+                    closeBatchTimeManagementModal();
+                    return;
+                }
+                
+                // 批量更新所有未完成的行动项
+                const updatePromises = incompleteActions.map(action => 
+                    apiRequest(`/api/actions/${action.id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            duration_type: durationType,
+                            target_duration_days: targetDurationDays,
+                            target_frequency: targetFrequency,
+                            custom_frequency_days: customFrequencyDays,
+                            start_date: startDate,
+                            end_date: endDate
+                        })
+                    })
+                );
+                
+                await Promise.all(updatePromises);
+                
+                showMessage(`已为 ${incompleteActions.length} 个行动项应用时间管理设置`, 'success');
+                closeBatchTimeManagementModal();
+                
+                // 刷新行动项列表
+                loadActions();
+                loadDashboard();
+            } catch (error) {
+                showMessage('批量设置失败: ' + error.message, 'error');
+            }
+        }
+        
         // 页面加载时初始化
         window.addEventListener('load', async () => {
             await checkAuth();
             initRating();
             
-            // 实践记录表单事件
+            // 表单事件
             document.getElementById('practiceForm').addEventListener('submit', submitPracticeLog);
+            document.getElementById('timeManagementForm').addEventListener('submit', submitTimeManagement);
+            document.getElementById('batchTimeManagementForm').addEventListener('submit', submitBatchTimeManagement);
         });
     </script>
 </body>

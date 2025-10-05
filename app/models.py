@@ -37,6 +37,15 @@ class Action(Base):
     tags = Column(Text, default="[]")  # JSON 字符串存储标签
     frequency = Column(String(50), default="daily")  # daily, weekly, monthly
     status = Column(String(20), default="todo")  # todo, in_progress, done
+    
+    # 新增时间管理字段（可选，用于向后兼容）
+    duration_type = Column(String(20), nullable=True, default="short_term")  # "short_term", "long_term", "lifetime"
+    target_duration_days = Column(Integer, nullable=True)  # 目标持续天数（短期/长期）
+    target_frequency = Column(String(50), nullable=True)   # "daily", "weekly", "monthly", "custom"
+    custom_frequency_days = Column(Integer, nullable=True) # 自定义频率（每X天一次）
+    start_date = Column(Date, nullable=True)               # 行动开始日期
+    end_date = Column(Date, nullable=True)                 # 行动结束日期（如果有）
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)  # 软删除
@@ -44,6 +53,7 @@ class Action(Base):
     # 关系
     user = relationship("User", back_populates="actions")
     practice_logs = relationship("PracticeLog", back_populates="action", cascade="all, delete-orphan")
+    self_talks = relationship("SelfTalk", back_populates="action")
 
 
 class PracticeLog(Base):
@@ -91,3 +101,21 @@ class AnonymizedData(Base):
     anonymized_data = Column(Text, nullable=False)  # JSON 格式的匿名化数据
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     anonymized_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class SelfTalk(Base):
+    """Self-talk 模块数据表"""
+    __tablename__ = "self_talks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    action_id = Column(Integer, ForeignKey("actions.id"), nullable=True)  # 可选，关联读书行动项
+    audio_path = Column(Text, nullable=False)  # 本地音频文件路径
+    transcript = Column(Text, nullable=True)  # 转写文字
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)  # 软删除
+    
+    # 关系
+    user = relationship("User")
+    action = relationship("Action")

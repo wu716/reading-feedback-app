@@ -2,11 +2,11 @@ from typing import List, Dict, Any
 from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, func, desc
+from sqlalchemy import and_, or_, func, desc
 
 from app.database import get_db
 from app.models import User, Action, PracticeLog
-from app.schemas import DashboardStats, ActionResponse
+from app.schemas import DashboardStats, ActionResponse, DurationAnalytics, StreakAnalytics, TimeTrendAnalytics
 from app.auth import get_current_active_user
 
 router = APIRouter(prefix="/dashboard", tags=["仪表盘"])
@@ -169,8 +169,15 @@ async def get_insights(
     
     tag_counts = {}
     for action in all_actions:
-        for tag in action.tags:
-            tag_counts[tag] = tag_counts.get(tag, 0) + 1
+        try:
+            # 解析 JSON 格式的标签
+            import json
+            tags = json.loads(action.tags) if isinstance(action.tags, str) else action.tags
+            if isinstance(tags, list):
+                for tag in tags:
+                    tag_counts[tag] = tag_counts.get(tag, 0) + 1
+        except (json.JSONDecodeError, TypeError):
+            continue
     
     if tag_counts:
         top_tag = max(tag_counts, key=tag_counts.get)
@@ -238,10 +245,17 @@ async def get_goals(
     # 按标签分组
     tag_groups = {}
     for action in actions:
-        for tag in action.tags:
-            if tag not in tag_groups:
-                tag_groups[tag] = []
-            tag_groups[tag].append(action)
+        try:
+            # 解析 JSON 格式的标签
+            import json
+            tags = json.loads(action.tags) if isinstance(action.tags, str) else action.tags
+            if isinstance(tags, list):
+                for tag in tags:
+                    if tag not in tag_groups:
+                        tag_groups[tag] = []
+                    tag_groups[tag].append(action)
+        except (json.JSONDecodeError, TypeError):
+            continue
     
     return {
         "status_breakdown": {
@@ -295,3 +309,217 @@ def generate_recommendations(actions: List[Action], tag_groups: Dict[str, List[A
             })
     
     return recommendations
+
+
+@router.get("/duration-analytics", response_model=DurationAnalytics)
+async def get_duration_analytics(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """获取时间维度分析数据"""
+    # 统计各类型行动项数量（向后兼容）
+    short_term_actions = db.query(Action).filter(
+        Action.user_id == current_user.id,
+        or_(Action.duration_type == "short_term", Action.duration_type.is_(None)),
+        Action.deleted_at.is_(None)
+    ).count()
+    
+    long_term_actions = db.query(Action).filter(
+        Action.user_id == current_user.id,
+        Action.duration_type == "long_term",
+        Action.deleted_at.is_(None)
+    ).count()
+    
+    lifetime_actions = db.query(Action).filter(
+        Action.user_id == current_user.id,
+        Action.duration_type == "lifetime",
+        Action.deleted_at.is_(None)
+    ).count()
+    
+    # 计算各类型完成率
+    def calculate_completion_rate(duration_type: str) -> float:
+        total = db.query(Action).filter(
+            Action.user_id == current_user.id,
+            Action.duration_type == duration_type,
+            Action.deleted_at.is_(None)
+        ).count()
+        
+        if total == 0:
+            return 0.0
+        
+        completed = db.query(Action).filter(
+            Action.user_id == current_user.id,
+            Action.duration_type == duration_type,
+            Action.status == "done",
+            Action.deleted_at.is_(None)
+        ).count()
+        
+        return (completed / total) * 100
+    
+    return DurationAnalytics(
+        short_term_actions=short_term_actions,
+        long_term_actions=long_term_actions,
+        lifetime_actions=lifetime_actions,
+        short_term_completion_rate=calculate_completion_rate("short_term"),
+        long_term_completion_rate=calculate_completion_rate("long_term"),
+        lifetime_completion_rate=calculate_completion_rate("lifetime")
+    )
+
+
+@router.get("/streak-analytics", response_model=StreakAnalytics)
+async def get_streak_analytics(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """获取坚持度分析数据"""
+    # 获取所有行动项及其实践记录
+    actions = db.query(Action).filter(
+        Action.user_id == current_user.id,
+        Action.deleted_at.is_(None)
+    ).all()
+    
+    # 计算每个行动项的坚持度
+    streak_actions = []
+    current_streak_days = 0
+    longest_streak_days = 0
+    total_streak_days = 0
+    
+    for action in actions:
+        # 获取该行动项的所有成功实践记录，按日期排序
+        practice_logs = db.query(PracticeLog).filter(
+            PracticeLog.action_id == action.id,
+            PracticeLog.result == "success",
+            PracticeLog.deleted_at.is_(None)
+        ).order_by(PracticeLog.date).all()
+        
+        if not practice_logs:
+            continue
+        
+        # 计算连续天数
+        consecutive_days = 0
+        max_consecutive = 0
+        last_date = None
+        
+        for log in practice_logs:
+            log_date = log.date
+            
+            if last_date is None:
+                consecutive_days = 1
+            elif (log_date - last_date).days == 1:
+                consecutive_days += 1
+            else:
+                max_consecutive = max(max_consecutive, consecutive_days)
+                consecutive_days = 1
+            
+            last_date = log_date
+        
+        max_consecutive = max(max_consecutive, consecutive_days)
+        
+        # 计算当前连续天数（从最后一天开始）
+        current_consecutive = 0
+        if practice_logs:
+            last_log_date = practice_logs[-1].date
+            today = date.today()
+            
+            # 如果最后一天是今天或昨天，计算连续天数
+            if (today - last_log_date).days <= 1:
+                current_consecutive = consecutive_days
+        
+        streak_actions.append({
+            "action_id": action.id,
+            "action_text": action.action_text,
+            "current_streak": current_consecutive,
+            "longest_streak": max_consecutive,
+            "total_practices": len(practice_logs)
+        })
+        
+        current_streak_days = max(current_streak_days, current_consecutive)
+        longest_streak_days = max(longest_streak_days, max_consecutive)
+        total_streak_days += len(practice_logs)
+    
+    return StreakAnalytics(
+        current_streak_days=current_streak_days,
+        longest_streak_days=longest_streak_days,
+        total_streak_days=total_streak_days,
+        streak_actions=streak_actions
+    )
+
+
+@router.get("/time-trends", response_model=TimeTrendAnalytics)
+async def get_time_trend_analytics(
+    days: int = Query(30, ge=7, le=365, description="分析天数"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """获取时间趋势分析数据"""
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days)
+    
+    # 每日完成率
+    daily_stats = db.query(
+        PracticeLog.date,
+        func.count(PracticeLog.id).label('total'),
+        func.sum(func.case([(PracticeLog.result == 'success', 1)], else_=0)).label('success')
+    ).filter(
+        PracticeLog.user_id == current_user.id,
+        PracticeLog.date >= start_date,
+        PracticeLog.date <= end_date,
+        PracticeLog.deleted_at.is_(None)
+    ).group_by(PracticeLog.date).order_by(PracticeLog.date).all()
+    
+    daily_completion_rate = []
+    for stat in daily_stats:
+        completion_rate = (stat.success / stat.total * 100) if stat.total > 0 else 0
+        daily_completion_rate.append({
+            "date": stat.date.isoformat(),
+            "total": stat.total,
+            "success": stat.success,
+            "completion_rate": round(completion_rate, 2)
+        })
+    
+    # 每周完成率
+    weekly_stats = db.query(
+        func.strftime('%Y-%W', PracticeLog.date).label('week'),
+        func.count(PracticeLog.id).label('total'),
+        func.sum(func.case([(PracticeLog.result == 'success', 1)], else_=0)).label('success')
+    ).filter(
+        PracticeLog.user_id == current_user.id,
+        PracticeLog.date >= start_date,
+        PracticeLog.date <= end_date,
+        PracticeLog.deleted_at.is_(None)
+    ).group_by('week').order_by('week').all()
+    
+    weekly_completion_rate = []
+    for stat in weekly_stats:
+        completion_rate = (stat.success / stat.total * 100) if stat.total > 0 else 0
+        weekly_completion_rate.append({
+            "week": stat.week,
+            "total": stat.total,
+            "success": stat.success,
+            "completion_rate": round(completion_rate, 2)
+        })
+    
+    # 不同频率的成功率
+    frequency_stats = db.query(
+        Action.target_frequency,
+        func.count(PracticeLog.id).label('total'),
+        func.sum(func.case([(PracticeLog.result == 'success', 1)], else_=0)).label('success')
+    ).join(PracticeLog, Action.id == PracticeLog.action_id).filter(
+        PracticeLog.user_id == current_user.id,
+        PracticeLog.date >= start_date,
+        PracticeLog.date <= end_date,
+        PracticeLog.deleted_at.is_(None),
+        Action.deleted_at.is_(None)
+    ).group_by(Action.target_frequency).all()
+    
+    frequency_success_rate = {}
+    for stat in frequency_stats:
+        success_rate = (stat.success / stat.total * 100) if stat.total > 0 else 0
+        frequency_success_rate[stat.target_frequency or 'unknown'] = round(success_rate, 2)
+    
+    return TimeTrendAnalytics(
+        daily_completion_rate=daily_completion_rate,
+        weekly_completion_rate=weekly_completion_rate,
+        monthly_completion_rate=[],  # 可以后续实现
+        frequency_success_rate=frequency_success_rate
+    )

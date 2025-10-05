@@ -84,3 +84,7 @@ deploy/*.pem
 # 系统文件
 .DS_Store
 Thumbs.db
+
+# 用户上传的音频文件
+uploads/
+uploads/**

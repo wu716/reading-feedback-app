@@ -83,7 +83,8 @@ async def delete_current_user(
     anonymize_user_data_on_deletion(db, current_user.id)
     
     # 软删除用户
-    current_user.deleted_at = db.query(User).filter(User.id == current_user.id).first().created_at
+    from datetime import datetime
+    current_user.deleted_at = datetime.utcnow()
     current_user.is_active = False
     db.commit()
     
