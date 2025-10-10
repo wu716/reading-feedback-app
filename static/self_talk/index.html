@@ -28,6 +28,7 @@
             text-align: center;
             margin-bottom: 40px;
             color: white;
+            position: relative;
         }
 
         .header h1 {
@@ -304,6 +305,9 @@
         <div class="header">
             <h1>🎤 Self-talk</h1>
             <p>记录你的内心对话，让思考更有力量</p>
+            <button class="settings-button" onclick="goToReminderSettings()" style="position: absolute; top: 30px; right: 30px; background: rgba(255,255,255,0.9); color: #667eea; border: 2px solid #667eea; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; transition: all 0.3s;">
+                🔔 提醒设置
+            </button>
         </div>
 
         <div class="main-content">
@@ -366,6 +370,10 @@
                 alert('请先登录');
                 window.location.href = '/static/index.html';
             }
+        }
+
+        function goToReminderSettings() {
+            window.location.href = '/static/user_center.html';
         }
 
         // 切换录音状态

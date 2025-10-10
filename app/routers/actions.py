@@ -6,7 +6,7 @@ import json
 from datetime import date, datetime, timedelta
 
 from app.database import get_db
-from app.models import User, Action, PracticeLog
+from app.models import User, Action, PracticeLog, SelfTalkReminderSetting, SelfTalkReminderLog
 from app.schemas import (
     ActionCreate, ActionUpdate, ActionResponse, 
     PaginationParams, PaginatedResponse, ActionStatus,
@@ -15,6 +15,7 @@ from app.schemas import (
     DurationAnalytics, StreakAnalytics, TimeTrendAnalytics, ActionMilestone
 )
 from app.auth import get_current_active_user
+from app.config import settings
 from app.ai_service import extract_actions_from_notes, AIExtractionError, AIValidationError
 
 router = APIRouter(prefix="/actions", tags=["行动项管理"])
@@ -61,11 +62,15 @@ async def upload_notes(
             saved_actions.append(db_action)
         
         db.commit()
-        
+
         # 刷新获取 ID
         for action in saved_actions:
             db.refresh(action)
-        
+
+        # 如果创建了新的行动项，触发新行动提醒
+        if saved_actions:
+            await trigger_after_new_action_reminder(current_user, db)
+
         return NotesUploadResponse(
             message=f"成功抽取 {len(saved_actions)} 个行动项",
             actions=[ActionResponse.from_orm(action) for action in saved_actions],
@@ -90,6 +95,7 @@ async def get_actions(
     size: int = Query(20, ge=1, le=100, description="每页数量"),
     search: Optional[str] = Query(None, description="搜索关键词"),
     status_filter: Optional[ActionStatus] = Query(None, alias="status", description="状态筛选"),
+    action_type: Optional[str] = Query(None, description="行动类型筛选"),
     tags: Optional[str] = Query(None, description="标签筛选，多个用逗号分隔"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -114,6 +120,10 @@ async def get_actions(
     # 状态过滤
     if status_filter:
         query = query.filter(Action.status == status_filter.value)
+    
+    # 行动类型过滤
+    if action_type:
+        query = query.filter(Action.action_type == action_type)
     
     # 标签过滤
     if tags:
@@ -179,17 +189,24 @@ async def update_action_status(
         Action.user_id == current_user.id,
         Action.deleted_at.is_(None)
     ).first()
-    
+
     if not action:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="行动项不存在"
         )
-    
+
+    # 记录原始状态，用于检查是否变为完成状态
+    previous_status = action.status
+
     action.status = new_status.value
     db.commit()
     db.refresh(action)
-    
+
+    # 如果行动项变为完成状态，触发行动完成提醒
+    if new_status.value == "done" and previous_status != "done":
+        await trigger_after_action_reminder(action_id, current_user, db)
+
     return ActionResponse.from_orm(action).dict()
 
 
@@ -272,6 +289,10 @@ async def update_action(
     
     # 更新字段 - 确保正确处理所有时间管理字段
     update_data = action_update.dict(exclude_unset=True)
+    
+    # 特殊处理tags字段：列表转JSON字符串
+    if 'tags' in update_data and isinstance(update_data['tags'], list):
+        update_data['tags'] = json.dumps(update_data['tags'], ensure_ascii=False)
     
     # 明确更新每个字段
     for field, value in update_data.items():
@@ -681,3 +702,122 @@ async def get_action_milestones(
     # 按日期排序
     milestones.sort(key=lambda x: x.achieved_date, reverse=True)
     return milestones[:20]  # 返回最近的20个里程碑
+
+
+@router.get("/{action_id}/practice-logs", response_model=List[PracticeLogResponse])
+async def get_action_practice_logs(
+    action_id: int,
+    size: int = Query(1000, ge=1, le=10000, description="返回记录数"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """获取指定行动项的实践记录"""
+    # 验证行动项存在且属于当前用户
+    action = db.query(Action).filter(
+        Action.id == action_id,
+        Action.user_id == current_user.id,
+        Action.deleted_at.is_(None)
+    ).first()
+    
+    if not action:
+        raise HTTPException(status_code=404, detail="行动项不存在")
+    
+    # 获取实践记录
+    practice_logs = db.query(PracticeLog).filter(
+        PracticeLog.action_id == action_id,
+        PracticeLog.user_id == current_user.id,
+        PracticeLog.deleted_at.is_(None)
+    ).order_by(desc(PracticeLog.date)).limit(size).all()
+    
+    return [PracticeLogResponse.from_orm(log) for log in practice_logs]
+
+
+# ============= 提醒触发函数 =============
+
+async def trigger_after_action_reminder(action_id: int, current_user: User, db: Session):
+    """触发行动完成提醒"""
+    try:
+        # 获取用户提醒设置
+        setting = db.query(SelfTalkReminderSetting).filter(
+            SelfTalkReminderSetting.user_id == current_user.id
+        ).first()
+
+        if not setting or not setting.is_enabled or not setting.after_action_reminder:
+            return  # 未启用提醒
+
+        # 检查3小时内是否已经发送过行动提醒（避免过于频繁）
+        three_hours_ago = datetime.now() - timedelta(hours=3)
+        recent_reminder = db.query(SelfTalkReminderLog).filter(
+            and_(
+                SelfTalkReminderLog.user_id == current_user.id,
+                SelfTalkReminderLog.reminder_type.in_(["after_action", "after_new_action"]),
+                SelfTalkReminderLog.triggered_at >= three_hours_ago
+            )
+        ).first()
+
+        if recent_reminder:
+            return  # 3小时内已发送过提醒
+
+        # 记录提醒日志
+        method = "both" if (setting.browser_notification and setting.email_notification) else \
+                "browser" if setting.browser_notification else "email"
+
+        log = SelfTalkReminderLog(
+            user_id=current_user.id,
+            reminder_type="after_action",
+            notification_method=method
+        )
+        db.add(log)
+        db.commit()
+        db.refresh(log)
+
+        # 这里可以添加实际的提醒发送逻辑（浏览器通知、邮件等）
+        # 暂时只记录日志，实际发送可以由前端轮询或WebSocket实现
+
+    except Exception as e:
+        # 提醒失败不影响主业务流程
+        print(f"触发行动完成提醒失败: {e}")
+
+
+async def trigger_after_new_action_reminder(current_user: User, db: Session):
+    """触发新行动添加提醒"""
+    try:
+        # 获取用户提醒设置
+        setting = db.query(SelfTalkReminderSetting).filter(
+            SelfTalkReminderSetting.user_id == current_user.id
+        ).first()
+
+        if not setting or not setting.is_enabled or not setting.after_new_action_reminder:
+            return  # 未启用提醒
+
+        # 检查3小时内是否已经发送过行动提醒
+        three_hours_ago = datetime.now() - timedelta(hours=3)
+        recent_reminder = db.query(SelfTalkReminderLog).filter(
+            and_(
+                SelfTalkReminderLog.user_id == current_user.id,
+                SelfTalkReminderLog.reminder_type.in_(["after_action", "after_new_action"]),
+                SelfTalkReminderLog.triggered_at >= three_hours_ago
+            )
+        ).first()
+
+        if recent_reminder:
+            return  # 3小时内已发送过提醒
+
+        # 记录提醒日志
+        method = "both" if (setting.browser_notification and setting.email_notification) else \
+                "browser" if setting.browser_notification else "email"
+
+        log = SelfTalkReminderLog(
+            user_id=current_user.id,
+            reminder_type="after_new_action",
+            notification_method=method
+        )
+        db.add(log)
+        db.commit()
+        db.refresh(log)
+
+        # 这里可以添加实际的提醒发送逻辑
+
+    except Exception as e:
+        # 提醒失败不影响主业务流程
+        print(f"触发新行动提醒失败: {e}")

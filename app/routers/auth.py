@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import User, Subscription
-from app.schemas import UserCreate, UserLogin, UserResponse, Token
+from app.schemas import UserCreate, UserLogin, UserResponse, Token, UserUpdate
 from app.auth import authenticate_user, create_access_token, get_password_hash, get_current_active_user
 from app.config import settings
 
@@ -89,3 +89,33 @@ async def delete_current_user(
     db.commit()
     
     return None
+
+
+@router.put("/profile", response_model=UserResponse)
+async def update_user_profile(
+    user_update: UserUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """更新用户个人信息"""
+    # 检查昵称是否重复（如果提供了新昵称）
+    if user_update.name is not None:
+        existing_user = db.query(User).filter(
+            User.name == user_update.name,
+            User.id != current_user.id,
+            User.deleted_at.is_(None)
+        ).first()
+        
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="该昵称已被使用"
+            )
+        
+        # 更新昵称
+        current_user.name = user_update.name
+    
+    db.commit()
+    db.refresh(current_user)
+    
+    return current_user

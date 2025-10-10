@@ -7,9 +7,10 @@ import logging
 import uvicorn
 
 from app.config import settings
-from app.database import create_tables
-from app.routers import auth, actions, practice, dashboard
+from app.database import create_tables, get_db
+from app.routers import auth, actions, practice, dashboard, ai_advice
 from app.self_talk.router import router as self_talk_router
+from app.routers.self_talk_reminders import router as self_talk_reminders_router
 from app.ai_service import test_ai_connection
 
 # 配置日志
@@ -39,7 +40,9 @@ app.include_router(auth.router)
 app.include_router(actions.router, prefix="/api")
 app.include_router(practice.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
+app.include_router(ai_advice.router)  # AI建议路由（已有前缀 /api/ai-advice）
 app.include_router(self_talk_router)
+app.include_router(self_talk_reminders_router)  # Self-talk 提醒路由
 
 # 静态文件服务
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -74,7 +77,53 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"AI 服务连接测试失败: {e}，但应用将继续运行")
     
+    # 启动定时任务调度器
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from app.self_talk.reminder_service import check_daily_reminders, check_inactive_reminders
+        
+        scheduler = BackgroundScheduler()
+        
+        # 每5分钟检查一次每日提醒（实际会判断是否到达设定时间）
+        scheduler.add_job(
+            lambda: check_daily_reminders(next(get_db())),
+            'interval',
+            minutes=5,
+            id='check_daily_reminders'
+        )
+        
+        # 每小时检查一次非活跃用户
+        scheduler.add_job(
+            lambda: check_inactive_reminders(next(get_db())),
+            'interval',
+            hours=1,
+            id='check_inactive_reminders'
+        )
+        
+        scheduler.start()
+        app.state.scheduler = scheduler
+        logger.info("定时任务调度器启动成功")
+        
+    except Exception as e:
+        logger.error(f"定时任务调度器启动失败: {e}")
+    
     logger.info("应用启动完成")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """应用关闭时执行"""
+    logger.info("正在关闭应用...")
+    
+    # 关闭定时任务调度器
+    if hasattr(app.state, 'scheduler'):
+        try:
+            app.state.scheduler.shutdown()
+            logger.info("定时任务调度器已关闭")
+        except Exception as e:
+            logger.error(f"关闭定时任务调度器失败: {e}")
+    
+    logger.info("应用已关闭")
 
 
 @app.get("/")
@@ -110,16 +159,6 @@ async def global_exception_handler(request, exc):
 
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,  # 可以直接写 True，方便开发
-        log_level="info"
-    )
-
-if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(
         "main:app",
         host="0.0.0.0",

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, validator, ConfigDict
 from typing import List, Optional
 from datetime import datetime, date
 from enum import Enum
@@ -64,8 +64,19 @@ class UserResponse(UserBase):
     created_at: datetime
     plan: str
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=6)
+    
+    @validator('name')
+    def validate_name(cls, v):
+        if v is not None:
+            import re
+            if not re.match(r'^[\u4e00-\u9fa5a-zA-Z0-9]+$', v):
+                raise ValueError('昵称只能包含中文、英文、数字')
+        return v
 
 
 # 行动项相关模型
@@ -110,6 +121,7 @@ class ActionCreate(BaseModel):
 
 class ActionUpdate(BaseModel):
     action_text: Optional[str] = Field(None, min_length=5)
+    action_type: Optional[str] = Field(None, description="行动类型：trigger 或 habit")
     tags: Optional[List[str]] = None
     frequency: Optional[Frequency] = None
     status: Optional[ActionStatus] = None
@@ -128,6 +140,7 @@ class ActionResponse(BaseModel):
     book_title: str
     source_excerpt: str
     action_text: str
+    action_type: str  # 添加行动类型字段
     tags: List[str]
     frequency: str
     status: str
@@ -152,8 +165,7 @@ class ActionResponse(BaseModel):
                 return []
         return v
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # 实践反馈相关模型
@@ -185,8 +197,7 @@ class PracticeLogResponse(BaseModel):
     rating: Optional[int]
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # 笔记上传模型
@@ -273,3 +284,72 @@ class PaginatedResponse(BaseModel):
     page: int
     size: int
     pages: int
+
+
+# AI建议相关模型
+class AIModelType(str, Enum):
+    """AI模型类型"""
+    DEEPSEEK_CHAT = "deepseek-chat"
+    DEEPSEEK_REASONER = "deepseek-reasoner"
+
+
+class MessageRole(str, Enum):
+    """消息角色"""
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
+
+
+class AIAdviceSessionCreate(BaseModel):
+    """创建AI建议会话请求"""
+    action_id: int
+    model_type: AIModelType = AIModelType.DEEPSEEK_CHAT
+    web_search_enabled: bool = False
+
+
+class AIAdviceSessionResponse(BaseModel):
+    """AI建议会话响应"""
+    id: int
+    session_id: str
+    user_id: int
+    action_id: int
+    model_type: str
+    web_search_enabled: bool
+    is_active: bool
+    last_message_at: Optional[datetime]
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AIAdviceMessageCreate(BaseModel):
+    """创建AI建议消息请求"""
+    content: str = Field(..., min_length=1, max_length=5000)
+
+
+class AIAdviceMessageResponse(BaseModel):
+    """AI建议消息响应"""
+    id: int
+    session_id: int
+    role: str
+    content: str
+    thinking_process: Optional[str]
+    web_search_results: Optional[str]
+    token_count: Optional[int]
+    model_used: Optional[str]
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AIAdviceChatRequest(BaseModel):
+    """AI建议聊天请求"""
+    session_id: str
+    message: str = Field(..., min_length=1, max_length=5000)
+
+
+class AIAdviceChatResponse(BaseModel):
+    """AI建议聊天响应"""
+    session_id: str
+    message: AIAdviceMessageResponse
+    context: Optional[dict] = None
