@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI行动建议助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .chat-container {
+            display: flex;
+            height: 100vh;
+            background: white;
+            border-radius: 0;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            background: white;
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .action-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .action-title {
+            font-weight: 600;
+            color: #1976d2;
+            margin-bottom: 8px;
+        }
+
+        .action-details {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .model-selector {
+            margin-bottom: 20px;
+        }
+
+        .model-selector label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .model-options {
+            display: flex;
+            gap: 10px;
+        }
+
+        .model-option {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .model-option.active {
+            border-color: #1976d2;
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .web-search-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .web-search-toggle input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        .web-search-toggle label {
+            font-size: 14px;
+            color: #333;
+            cursor: pointer;
+        }
+
+        .session-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .session-item {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            border: 1px solid #e9ecef;
+        }
+
+        .session-item:hover {
+            background: #f8f9fa;
+        }
+
+        .session-item.active {
+            background: #e3f2fd;
+            border-color: #1976d2;
+        }
+
+        .session-time {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .session-preview {
+            font-size: 14px;
+            color: #333;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* 主聊天区域 */
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            background: white;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+
+        .chat-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .thinking-indicator {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: #fff3cd;
+            border-bottom: 1px solid #ffeaa7;
+            font-size: 14px;
+            color: #856404;
+        }
+
+        .thinking-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .thinking-dot {
+            width: 6px;
+            height: 6px;
+            background: #856404;
+            border-radius: 50%;
+            animation: thinking 1.4s infinite ease-in-out;
+        }
+
+        .thinking-dot:nth-child(1) { animation-delay: -0.32s; }
+        .thinking-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes thinking {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        .thinking-process {
+            display: none;
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .thinking-process.active {
+            display: block;
+        }
+
+        .thinking-content {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #495057;
+            white-space: pre-wrap;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .message.user .message-avatar {
+            background: #1976d2;
+            color: white;
+        }
+
+        .message.assistant .message-avatar {
+            background: #28a745;
+            color: white;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .message.user .message-content {
+            background: #1976d2;
+            color: white;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e9ecef;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .message.user .message-time {
+            text-align: right;
+        }
+
+        .input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 24px;
+            font-size: 14px;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+            font-family: inherit;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #1976d2;
+        }
+
+        .send-button {
+            padding: 12px 20px;
+            background: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .send-button:hover:not(:disabled) {
+            background: #1565c0;
+        }
+
+        .send-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 20px;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .chat-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 200px;
+            }
+            
+            .chat-main {
+                height: calc(100vh - 200px);
+            }
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <!-- 侧边栏 -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">AI行动建议助手</div>
+                
+                <div class="action-info" id="actionInfo">
+                    <div class="action-title">加载中...</div>
+                    <div class="action-details">正在获取行动项信息...</div>
+                </div>
+
+                <div class="model-selector">
+                    <label>选择AI模型</label>
+                    <div class="model-options">
+                        <div class="model-option active" data-model="deepseek-chat">
+                            <div>💬 标准模式</div>
+                            <div style="font-size: 12px; color: #666;">快速响应</div>
+                        </div>
+                        <div class="model-option" data-model="deepseek-reasoner">
+                            <div>🧠 深度思考</div>
+                            <div style="font-size: 12px; color: #666;">详细分析</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="web-search-toggle">
+                    <input type="checkbox" id="webSearchToggle">
+                    <label for="webSearchToggle">启用联网搜索</label>
+                </div>
+            </div>
+
+            <div class="session-history" id="sessionHistory">
+                <div class="loading">正在加载历史会话...</div>
+            </div>
+        </div>
+
+        <!-- 主聊天区域 -->
+        <div class="chat-main">
+            <div class="chat-header">
+                <div class="chat-title">与AI助手对话</div>
+            </div>
+
+            <div class="thinking-indicator" id="thinkingIndicator">
+                <div>AI正在思考中</div>
+                <div class="thinking-dots">
+                    <div class="thinking-dot"></div>
+                    <div class="thinking-dot"></div>
+                    <div class="thinking-dot"></div>
+                </div>
+            </div>
+
+            <div class="thinking-process" id="thinkingProcess">
+                <div class="thinking-content" id="thinkingContent"></div>
+            </div>
+
+            <div class="messages-container" id="messagesContainer">
+                <div class="loading">正在加载对话历史...</div>
+            </div>
+
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        class="message-input" 
+                        id="messageInput" 
+                        placeholder="输入你的问题或想法..."
+                        rows="1"
+                    ></textarea>
+                    <button class="send-button" id="sendButton">发送</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AIAdviceChat {
+            constructor() {
+                this.actionId = this.getActionIdFromUrl();
+                this.sessionId = null;
+                this.currentModel = 'deepseek-chat';
+                this.webSearchEnabled = false;
+                this.isLoading = false;
+                this.authToken = localStorage.getItem('authToken');
+                
+                this.init();
+            }
+
+            getActionIdFromUrl() {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get('action_id');
+            }
+
+            // 通用的fetch函数，自动添加认证头
+            async authenticatedFetch(url, options = {}) {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.authToken}`,
+                    ...options.headers
+                };
+
+                return fetch(url, {
+                    ...options,
+                    headers
+                });
+            }
+
+            async init() {
+                if (!this.actionId) {
+                    this.showError('缺少行动项ID参数');
+                    return;
+                }
+
+                if (!this.authToken) {
+                    this.showError('请先登录');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                    return;
+                }
+
+                await this.loadActionInfo();
+                await this.loadSessionHistory();
+                this.setupEventListeners();
+                this.createNewSession();
+            }
+
+            async loadActionInfo() {
+                try {
+                    const response = await this.authenticatedFetch(`/api/actions/${this.actionId}`);
+                    if (!response.ok) throw new Error('获取行动项信息失败');
+                    
+                    const action = await response.json();
+                    
+                    document.getElementById('actionInfo').innerHTML = `
+                        <div class="action-title">${action.action_text}</div>
+                        <div class="action-details">
+                            类型：${action.action_type === 'habit' ? '习惯养成型' : '情境触发型'}<br>
+                            频率：${action.frequency}<br>
+                            来源：${action.book_title}
+                        </div>
+                    `;
+                } catch (error) {
+                    console.error('加载行动项信息失败:', error);
+                    this.showError('加载行动项信息失败');
+                }
+            }
+
+            async loadSessionHistory() {
+                try {
+                    const response = await this.authenticatedFetch(`/api/ai-advice/sessions/${this.actionId}`);
+                    if (!response.ok) throw new Error('获取会话历史失败');
+                    
+                    const sessions = await response.json();
+                    
+                    const historyContainer = document.getElementById('sessionHistory');
+                    if (sessions.length === 0) {
+                        historyContainer.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">暂无历史会话</div>';
+                        return;
+                    }
+
+                    historyContainer.innerHTML = sessions.map(session => `
+                        <div class="session-item" data-session-id="${session.session_id}">
+                            <div class="session-time">${new Date(session.created_at).toLocaleString()}</div>
+                            <div class="session-preview">${session.model_type === 'deepseek-chat' ? '标准模式' : '深度思考'} - ${session.web_search_enabled ? '联网搜索' : '本地分析'}</div>
+                        </div>
+                    `).join('');
+
+                    // 绑定点击事件
+                    historyContainer.querySelectorAll('.session-item').forEach(item => {
+                        item.addEventListener('click', () => {
+                            this.loadSession(item.dataset.sessionId);
+                        });
+                    });
+
+                } catch (error) {
+                    console.error('加载会话历史失败:', error);
+                    document.getElementById('sessionHistory').innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">加载历史会话失败</div>';
+                }
+            }
+
+            async createNewSession() {
+                try {
+                    const response = await this.authenticatedFetch('/api/ai-advice/sessions', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            action_id: parseInt(this.actionId),
+                            model_type: this.currentModel,
+                            web_search_enabled: this.webSearchEnabled
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('创建会话失败');
+                    
+                    const session = await response.json();
+                    this.sessionId = session.session_id;
+                    
+                    // 发送欢迎消息
+                    this.sendWelcomeMessage();
+                    
+                } catch (error) {
+                    console.error('创建会话失败:', error);
+                    this.showError('创建会话失败');
+                }
+            }
+
+            async sendWelcomeMessage() {
+                const welcomeMessage = `你好！我是你的AI行动建议助手。我看到你的行动项是"${document.querySelector('.action-title').textContent}"。
+
+我可以帮助你：
+• 分析行动进展和遇到的问题
+• 提供个性化的改进建议
+• 解答实践中的疑问
+• 制定具体的行动计划
+
+请告诉我，你希望我如何帮助你？`;
+
+                this.addMessage('assistant', welcomeMessage);
+            }
+
+            async loadSession(sessionId) {
+                try {
+                    this.sessionId = sessionId;
+                    
+                    // 更新UI状态
+                    document.querySelectorAll('.session-item').forEach(item => {
+                        item.classList.remove('active');
+                        if (item.dataset.sessionId === sessionId) {
+                            item.classList.add('active');
+                        }
+                    });
+
+                    // 加载消息
+                    const response = await this.authenticatedFetch(`/api/ai-advice/sessions/${sessionId}/messages`);
+                    if (!response.ok) throw new Error('加载消息失败');
+                    
+                    const messages = await response.json();
+                    
+                    // 清空消息容器
+                    const messagesContainer = document.getElementById('messagesContainer');
+                    messagesContainer.innerHTML = '';
+                    
+                    // 显示消息
+                    messages.forEach(message => {
+                        this.addMessage(message.role, message.content, false);
+                    });
+
+                    // 滚动到底部
+                    this.scrollToBottom();
+
+                } catch (error) {
+                    console.error('加载会话失败:', error);
+                    this.showError('加载会话失败');
+                }
+            }
+
+            setupEventListeners() {
+                // 模型选择
+                document.querySelectorAll('.model-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        document.querySelectorAll('.model-option').forEach(opt => opt.classList.remove('active'));
+                        option.classList.add('active');
+                        this.currentModel = option.dataset.model;
+                    });
+                });
+
+                // 联网搜索切换
+                document.getElementById('webSearchToggle').addEventListener('change', (e) => {
+                    this.webSearchEnabled = e.target.checked;
+                });
+
+                // 发送按钮
+                document.getElementById('sendButton').addEventListener('click', () => {
+                    this.sendMessage();
+                });
+
+                // 输入框回车发送
+                document.getElementById('messageInput').addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // 自动调整输入框高度
+                document.getElementById('messageInput').addEventListener('input', (e) => {
+                    e.target.style.height = 'auto';
+                    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                });
+            }
+
+            async sendMessage() {
+                const input = document.getElementById('messageInput');
+                const message = input.value.trim();
+                
+                if (!message || this.isLoading) return;
+
+                // 清空输入框
+                input.value = '';
+                input.style.height = 'auto';
+
+                // 添加用户消息
+                this.addMessage('user', message);
+
+                // 显示加载状态
+                this.setLoading(true);
+
+                try {
+                    // 发送消息到AI
+                    const response = await this.authenticatedFetch(`/api/ai-advice/sessions/${this.sessionId}/chat`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            message: message,
+                            model_type: this.currentModel,
+                            web_search_enabled: this.webSearchEnabled
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('发送消息失败');
+                    
+                    const result = await response.json();
+                    
+                    // 添加AI回复
+                    this.addMessage('assistant', result.message.content);
+                    
+                    // 如果有思考过程，显示
+                    if (result.thinking_process) {
+                        this.showThinkingProcess(result.thinking_process);
+                    }
+
+                } catch (error) {
+                    console.error('发送消息失败:', error);
+                    this.addMessage('assistant', '抱歉，我遇到了一些问题，请稍后再试。');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            addMessage(role, content, scroll = true) {
+                const messagesContainer = document.getElementById('messagesContainer');
+                
+                // 移除加载提示
+                const loading = messagesContainer.querySelector('.loading');
+                if (loading) loading.remove();
+
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${role}`;
+                
+                const avatar = role === 'user' ? '我' : 'AI';
+                const time = new Date().toLocaleTimeString();
+                
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">${avatar}</div>
+                    <div class="message-content">${content}</div>
+                    <div class="message-time">${time}</div>
+                `;
+                
+                messagesContainer.appendChild(messageDiv);
+                
+                if (scroll) {
+                    this.scrollToBottom();
+                }
+            }
+
+            showThinkingProcess(content) {
+                const thinkingProcess = document.getElementById('thinkingProcess');
+                const thinkingContent = document.getElementById('thinkingContent');
+                
+                thinkingContent.textContent = content;
+                thinkingProcess.classList.add('active');
+                
+                // 3秒后自动隐藏
+                setTimeout(() => {
+                    thinkingProcess.classList.remove('active');
+                }, 3000);
+            }
+
+            setLoading(loading) {
+                this.isLoading = loading;
+                const sendButton = document.getElementById('sendButton');
+                const thinkingIndicator = document.getElementById('thinkingIndicator');
+                
+                sendButton.disabled = loading;
+                sendButton.textContent = loading ? '发送中...' : '发送';
+                
+                if (loading) {
+                    thinkingIndicator.style.display = 'flex';
+                } else {
+                    thinkingIndicator.style.display = 'none';
+                }
+            }
+
+            scrollToBottom() {
+                const messagesContainer = document.getElementById('messagesContainer');
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            showError(message) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.textContent = message;
+                
+                document.body.insertBefore(errorDiv, document.body.firstChild);
+                
+                // 5秒后自动移除
+                setTimeout(() => {
+                    errorDiv.remove();
+                }, 5000);
+            }
+        }
+
+        // 初始化聊天应用
+        document.addEventListener('DOMContentLoaded', () => {
+            new AIAdviceChat();
+        });
+    </script>
+</body>
+</html>

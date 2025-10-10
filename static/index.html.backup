@@ -1,0 +1,2310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-talk 内心对话系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .user-info {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+        
+        .user-info.show {
+            display: block;
+        }
+        
+        .user-info .user-email {
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        /* 登录模态框样式 */
+        .auth-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .auth-modal.hidden {
+            display: none;
+        }
+        
+        .auth-container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            width: 400px;
+            max-width: 90vw;
+            position: relative;
+        }
+        
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .auth-header h2 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+        }
+        
+        .auth-header p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .auth-tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1rem;
+            color: #666;
+            transition: all 0.3s;
+        }
+        
+        .auth-tab.active {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            font-weight: 600;
+        }
+        
+        .auth-form {
+            display: none;
+        }
+        
+        .auth-form.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .password-hint {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        .auth-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .auth-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .auth-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        /* 行动项样式 */
+        .action-item {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #667eea;
+        }
+        
+        .action-item h3 {
+            margin-bottom: 10px;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .status-todo {
+            background: #ffeaa7;
+            color: #d63031;
+        }
+        
+        .status-in_progress {
+            background: #74b9ff;
+            color: white;
+        }
+        
+        .status-done {
+            background: #00b894;
+            color: white;
+        }
+        
+        .action-tags {
+            margin-top: 10px;
+        }
+        
+        .tag {
+            display: inline-block;
+            background: #f8f9fa;
+            color: #495057;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-right: 8px;
+            margin-bottom: 4px;
+        }
+        
+        .action-buttons {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-complete {
+            background: #00b894;
+            color: white;
+        }
+        
+        .btn-complete:hover {
+            background: #00a085;
+        }
+        
+        .btn-complete:disabled {
+            background: #ddd;
+            cursor: not-allowed;
+        }
+        
+        .btn-log {
+            background: #74b9ff;
+            color: white;
+        }
+        
+        .btn-log:hover {
+            background: #0984e3;
+        }
+        
+        /* 行动类型筛选按钮样式 */
+        .action-type-filter {
+            padding: 8px 16px;
+            border: 2px solid #e1e5e9;
+            background: white;
+            color: #666;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .action-type-filter:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        
+        .action-type-filter.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+        
+        /* 实践记录模态框 */
+        .practice-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1001;
+            backdrop-filter: blur(5px);
+        }
+        
+        .practice-modal.hidden {
+            display: none;
+        }
+        
+        .practice-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            width: 500px;
+            max-width: 90vw;
+            position: relative;
+        }
+        
+        .practice-header h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+        }
+        
+        .rating-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .rating-stars {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .star {
+            font-size: 1.5rem;
+            color: #ddd;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .star.active {
+            color: #ffd700;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .actions-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .action-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .action-item h3 {
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .action-item p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .action-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .tag {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .status-todo {
+            background: #ffeaa7;
+            color: #d63031;
+        }
+        
+        .status-in-progress {
+            background: #74b9ff;
+            color: white;
+        }
+        
+        .status-done {
+            background: #00b894;
+            color: white;
+        }
+        
+        .dashboard {
+            grid-column: 1 / -1;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .error {
+            background: #ff6b6b;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .success {
+            background: #51cf66;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        /* 时间管理设置样式 */
+        .time-management-settings {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .form-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .form-col {
+            flex: 1;
+        }
+        
+        .form-col label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .form-col input,
+        .form-col select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-col input:focus,
+        .form-col select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .form-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎤 Self-talk 内心对话系统</h1>
+            <p>记录内心对话，让思考更有力量</p>
+            <div class="user-info" id="userInfo">
+                <div class="user-email" id="userEmail"></div>
+                <button class="logout-btn" onclick="logout()">退出登录</button>
+            </div>
+        </div>
+        
+        <div id="message"></div>
+        
+        <div class="main-content">
+            <!-- 快捷入口 -->
+            <div style="grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <!-- Self-talk 入口 -->
+                <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; cursor: pointer;" onclick="goToSelfTalk()">
+                    <h2 style="color: white;">🎤 Self-talk 内心对话</h2>
+                    <p style="margin-bottom: 20px; opacity: 0.9;">记录你的内心对话，让思考更有力量</p>
+                    <button class="btn" style="background: white; color: #667eea; width: auto; padding: 12px 30px; font-size: 1.1rem;">
+                        开始 Self-talk →
+                    </button>
+                </div>
+                
+                <!-- 数据可视化入口 -->
+                <div class="card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; cursor: pointer;" onclick="goToDashboard()">
+                    <h2 style="color: white;">📊 数据可视化</h2>
+                    <p style="margin-bottom: 20px; opacity: 0.9;">深入分析你的行为数据，发现成长规律</p>
+                    <button class="btn" style="background: white; color: #f5576c; width: auto; padding: 12px 30px; font-size: 1.1rem;">
+                        查看仪表盘 →
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 上传笔记卡片 -->
+            <div class="card">
+                <h2>📝 上传读书笔记</h2>
+                <form id="uploadForm">
+                    <div class="form-group">
+                        <label for="bookTitle">书籍名称</label>
+                        <input type="text" id="bookTitle" placeholder="请输入书籍名称">
+                    </div>
+                    <div class="form-group">
+                        <label for="notesContent">笔记内容</label>
+                        <textarea id="notesContent" placeholder="请输入你的读书笔记内容..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn" id="uploadBtn">🚀 抽取行动项</button>
+                </form>
+            </div>
+            
+            <!-- 行动项列表 -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>🎯 我的行动项</h2>
+                    <button class="btn-small" id="batchTimeBtn" onclick="showBatchTimeManagementModal()" style="background: #17a2b8; color: white; display: none;">
+                        ⏰ 批量设置时间
+                    </button>
+                </div>
+                
+                <!-- 行动类型筛选 -->
+                <div style="margin-bottom: 20px;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <button class="action-type-filter active" data-type="all" onclick="filterActionsByType('all')">
+                            📋 全部
+                        </button>
+                        <button class="action-type-filter" data-type="trigger" onclick="filterActionsByType('trigger')">
+                            🎯 情境触发型
+                        </button>
+                        <button class="action-type-filter" data-type="habit" onclick="filterActionsByType('habit')">
+                            🔄 习惯养成型
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="actionsList" class="actions-list">
+                    <div class="loading">点击"抽取行动项"开始...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 仪表盘 -->
+        <div class="card dashboard">
+            <h2>📊 实践统计</h2>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalActions">-</div>
+                    <div class="stat-label">总行动项</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="completedActions">-</div>
+                    <div class="stat-label">已完成</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="completionRate">-</div>
+                    <div class="stat-label">完成率</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="successRate">-</div>
+                    <div class="stat-label">成功率</div>
+                </div>
+            </div>
+            
+            <!-- 时间维度分析 -->
+            <div style="margin-top: 30px;">
+                <h3>⏰ 时间维度分析</h3>
+                <div class="stats-grid" id="durationStatsGrid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="shortTermActions">-</div>
+                        <div class="stat-label">短期行动项</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="longTermActions">-</div>
+                        <div class="stat-label">长期行动项</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="lifetimeActions">-</div>
+                        <div class="stat-label">终身行动项</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="currentStreak">-</div>
+                        <div class="stat-label">当前连续天数</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 坚持度分析 -->
+            <div style="margin-top: 30px;" id="streakAnalysis" style="display: none;">
+                <h3>🔥 坚持度分析</h3>
+                <div id="streakDetails"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 登录/注册模态框 -->
+    <div class="auth-modal" id="authModal">
+        <div class="auth-container">
+            <button class="close-modal" onclick="closeAuthModal()">&times;</button>
+            <div class="auth-header">
+                <h2>欢迎使用读书笔记系统</h2>
+                <p>请选择登录或注册新账户</p>
+            </div>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchTab('login')">登录</button>
+                <button class="auth-tab" onclick="switchTab('register')">注册</button>
+            </div>
+            
+            <!-- 登录表单 -->
+            <form class="auth-form active" id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">邮箱地址</label>
+                    <input type="email" id="loginEmail" required placeholder="请输入您的邮箱">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">密码</label>
+                    <input type="password" id="loginPassword" required placeholder="请输入密码">
+                </div>
+                <button type="submit" class="auth-btn">登录</button>
+            </form>
+            
+            <!-- 注册表单 -->
+            <form class="auth-form" id="registerForm">
+                <div class="form-group">
+                    <label for="registerEmail">邮箱地址</label>
+                    <input type="email" id="registerEmail" required placeholder="请输入您的邮箱">
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">密码</label>
+                    <input type="password" id="registerPassword" required placeholder="请输入密码">
+                    <div class="password-hint">密码至少6位，建议包含字母和数字</div>
+                </div>
+                <div class="form-group">
+                    <label for="registerName">姓名（可选）</label>
+                    <input type="text" id="registerName" placeholder="请输入您的姓名">
+                </div>
+                <button type="submit" class="auth-btn">注册</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 批量时间管理设置模态框 -->
+    <div class="practice-modal hidden" id="batchTimeManagementModal">
+        <div class="practice-container">
+            <button class="close-modal" onclick="closeBatchTimeManagementModal()">&times;</button>
+            <div class="practice-header">
+                <h3>⏰ 批量设置时间管理</h3>
+                <p style="color: #666; font-size: 14px; margin-top: 5px;">此设置将应用到所有未完成的行动项</p>
+            </div>
+            
+            <form id="batchTimeManagementForm">
+                <div class="form-group">
+                    <label for="btmDurationType">类型</label>
+                    <select id="btmDurationType" onchange="toggleBTMDurationSettings()">
+                        <option value="short_term">短期目标</option>
+                        <option value="long_term">长期目标</option>
+                        <option value="lifetime">终身习惯</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="btmDurationDaysGroup">
+                    <label for="btmTargetDurationDays">坚持天数</label>
+                    <input type="number" id="btmTargetDurationDays" min="1" max="3650" placeholder="天数">
+                </div>
+                
+                <div class="form-group">
+                    <label for="btmTargetFrequency">频率</label>
+                    <select id="btmTargetFrequency" onchange="toggleBTMCustomFrequency()">
+                        <option value="daily">每日</option>
+                        <option value="weekly">每周</option>
+                        <option value="monthly">每月</option>
+                        <option value="custom">自定义</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="btmCustomFrequencyGroup" style="display: none;">
+                    <label for="btmCustomFrequencyDays">每几天一次</label>
+                    <input type="number" id="btmCustomFrequencyDays" min="1" max="365" placeholder="天数">
+                </div>
+                
+                <div class="form-group">
+                    <label for="btmStartDate">开始日期</label>
+                    <input type="date" id="btmStartDate">
+                </div>
+                
+                <div class="form-group" id="btmEndDateGroup">
+                    <label for="btmEndDate">结束日期</label>
+                    <input type="date" id="btmEndDate">
+                </div>
+                
+                <button type="submit" class="btn">💾 批量应用设置</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 时间管理设置模态框（习惯型） -->
+    <div class="practice-modal hidden" id="timeManagementModal">
+        <div class="practice-container">
+            <button class="close-modal" onclick="closeTimeManagementModal()">&times;</button>
+            <div class="practice-header">
+                <h3>⏰ 设置时间管理</h3>
+            </div>
+            
+            <form id="timeManagementForm">
+                <div class="form-group">
+                    <label for="tmDurationType">类型</label>
+                    <select id="tmDurationType" onchange="toggleTMDurationSettings()">
+                        <option value="short_term">短期目标</option>
+                        <option value="long_term">长期目标</option>
+                        <option value="lifetime">终身习惯</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="tmDurationDaysGroup">
+                    <label for="tmTargetDurationDays">坚持天数</label>
+                    <input type="number" id="tmTargetDurationDays" min="1" max="3650" placeholder="天数">
+                </div>
+                
+                <div class="form-group">
+                    <label for="tmTargetFrequency">频率</label>
+                    <select id="tmTargetFrequency" onchange="toggleTMCustomFrequency()">
+                        <option value="daily">每日</option>
+                        <option value="weekly">每周</option>
+                        <option value="monthly">每月</option>
+                        <option value="custom">自定义</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="tmCustomFrequencyGroup" style="display: none;">
+                    <label for="tmCustomFrequencyDays">每几天一次</label>
+                    <input type="number" id="tmCustomFrequencyDays" min="1" max="365" placeholder="天数">
+                </div>
+                
+                <div class="form-group">
+                    <label for="tmStartDate">开始日期</label>
+                    <input type="date" id="tmStartDate">
+                </div>
+                
+                <div class="form-group" id="tmEndDateGroup">
+                    <label for="tmEndDate">结束日期</label>
+                    <input type="date" id="tmEndDate">
+                </div>
+                
+                <button type="submit" class="btn">💾 保存设置</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 次数和天数设置模态框（情境型） -->
+    <div class="practice-modal hidden" id="countAndDaysModal">
+        <div class="practice-container">
+            <button class="close-modal" onclick="closeCountAndDaysModal()">&times;</button>
+            <div class="practice-header">
+                <h3>📊 设置次数和天数</h3>
+            </div>
+            
+            <form id="countAndDaysForm">
+                <div class="form-group">
+                    <label for="cdTargetCount">目标次数</label>
+                    <input type="number" id="cdTargetCount" min="1" max="1000" placeholder="期望完成的次数">
+                </div>
+                
+                <div class="form-group">
+                    <label for="cdTargetDays">完成天数</label>
+                    <input type="number" id="cdTargetDays" min="1" max="365" placeholder="期望在多少天内完成">
+                </div>
+                
+                <div class="form-group">
+                    <label for="cdStartDate">开始日期</label>
+                    <input type="date" id="cdStartDate">
+                </div>
+                
+                <div class="form-group" id="cdEndDateGroup">
+                    <label for="cdEndDate">结束日期</label>
+                    <input type="date" id="cdEndDate">
+                </div>
+                
+                <button type="submit" class="btn">💾 保存设置</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 实践记录模态框 -->
+    <div class="practice-modal hidden" id="practiceModal">
+        <div class="practice-container">
+            <button class="close-modal" onclick="closePracticeModal()">&times;</button>
+            <div class="practice-header">
+                <h3>📝 记录实践反馈</h3>
+            </div>
+            
+            <form id="practiceForm">
+                <div class="form-group">
+                    <label for="practiceDate">实践日期</label>
+                    <input type="date" id="practiceDate" required>
+                </div>
+                
+                <!-- 情境型行动显示次数输入 -->
+                <div class="form-group" id="practiceCountGroup" style="display: none;">
+                    <label for="practiceCount">第几次行动</label>
+                    <input type="number" id="practiceCount" min="1" placeholder="这是第几次执行此行动">
+                </div>
+                
+                <div class="form-group">
+                    <label for="practiceResult">实践结果</label>
+                    <select id="practiceResult" required>
+                        <option value="">请选择结果</option>
+                        <option value="success">✅ 成功完成</option>
+                        <option value="partial">⚠️ 部分完成</option>
+                        <option value="fail">❌ 未完成</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="practiceNotes">实践反馈（可选）</label>
+                    <textarea id="practiceNotes" placeholder="记录你的实践过程和感受..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>满意度评分</label>
+                    <div class="rating-group">
+                        <div class="rating-stars" id="ratingStars">
+                            <span class="star" data-rating="1">★</span>
+                            <span class="star" data-rating="2">★</span>
+                            <span class="star" data-rating="3">★</span>
+                            <span class="star" data-rating="4">★</span>
+                            <span class="star" data-rating="5">★</span>
+                        </div>
+                        <span id="ratingText">未评分</span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="auth-btn">保存实践记录</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 实践记录查看模态框 -->
+    <div class="practice-modal hidden" id="practiceLogsModal">
+        <div class="practice-container" style="width: 800px; max-height: 80vh; overflow-y: auto;">
+            <button class="close-modal" onclick="closePracticeLogsModal()">&times;</button>
+            <div class="practice-header">
+                <h3>📋 实践记录</h3>
+                <p style="color: #666; font-size: 14px; margin-top: 5px;" id="practiceLogsSubtitle">查看所有实践反馈记录</p>
+            </div>
+            
+            <div id="practiceLogsList">
+                <div class="loading">正在加载记录...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 编辑行动项模态框 -->
+    <div class="practice-modal hidden" id="editActionModal">
+        <div class="practice-container">
+            <button class="close-modal" onclick="closeEditActionModal()">&times;</button>
+            <div class="practice-header">
+                <h3>✏️ 编辑行动项</h3>
+            </div>
+            
+            <form id="editActionForm">
+                <div class="form-group">
+                    <label for="editActionText">行动内容</label>
+                    <textarea id="editActionText" required minlength="5" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editActionType">行动类型</label>
+                    <select id="editActionType">
+                        <option value="trigger">🎯 情境触发型</option>
+                        <option value="habit">🔄 习惯养成型</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editActionTags">标签（逗号分隔）</label>
+                    <input type="text" id="editActionTags" placeholder="例如: 阅读, 成长, 健康">
+                </div>
+                
+                <button type="submit" class="auth-btn">💾 保存修改</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // API 基础配置
+        const API_BASE = 'http://localhost:8000';
+        let authToken = localStorage.getItem('authToken');
+        let allActions = []; // 存储所有行动项
+        let currentFilterType = 'all'; // 当前筛选类型
+        
+        // 显示消息
+        function showMessage(message, type = 'info') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `<div class="${type}">${message}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 5000);
+        }
+        
+        // API 请求封装
+        async function apiRequest(endpoint, options = {}) {
+            const url = `${API_BASE}${endpoint}`;
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                ...options
+            };
+            
+            // 每次请求前重新获取最新的 authToken
+            const currentToken = localStorage.getItem('authToken');
+            if (currentToken) {
+                config.headers['Authorization'] = `Bearer ${currentToken}`;
+            }
+            
+            try {
+                const response = await fetch(url, config);
+                if (!response.ok) {
+                    // 只有认证错误才触发登录弹窗
+                    if (response.status === 401 || response.status === 403) {
+                        authToken = null;
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('userEmail');
+                        showAuthModal();
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('API 请求失败:', error);
+                
+                // 处理网络错误
+                if (error.message.includes('Failed to fetch')) {
+                    showMessage('网络连接错误，请检查网络', 'error');
+                } else if (!error.message.includes('认证失效')) {
+                    // 非认证错误不显示具体错误信息，避免用户困惑
+                    console.log('请求失败详情:', error.message);
+                }
+                
+                throw error;
+            }
+        }
+        
+        // 显示认证模态框
+        function showAuthModal() {
+            document.getElementById('authModal').classList.remove('hidden');
+        }
+        
+        // 关闭认证模态框
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.add('hidden');
+        }
+        
+        // 切换登录/注册标签
+        function switchTab(tab) {
+            // 更新标签状态
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+            
+            // 更新表单显示
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+            document.getElementById(tab + 'Form').classList.add('active');
+        }
+        
+        // 用户登录
+        async function login(email, password) {
+            try {
+                const response = await apiRequest('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password })
+                });
+                
+                authToken = response.access_token;
+                localStorage.setItem('authToken', authToken);
+                localStorage.setItem('userEmail', email);
+                
+                showMessage('登录成功！', 'success');
+                closeAuthModal();
+                updateUserInfo(email);
+                loadActions();
+                loadDashboard();
+                return true;
+            } catch (error) {
+                showMessage('登录失败: ' + error.message, 'error');
+                return false;
+            }
+        }
+        
+        // 用户注册
+        async function register(email, password, name) {
+            try {
+                await apiRequest('/auth/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        email, 
+                        password, 
+                        name: name || email.split('@')[0] 
+                    })
+                });
+                
+                showMessage('注册成功！正在自动登录...', 'success');
+                
+                // 注册成功后自动登录
+                return await login(email, password);
+            } catch (error) {
+                showMessage('注册失败: ' + error.message, 'error');
+                return false;
+            }
+        }
+        
+        // 更新用户信息显示
+        function updateUserInfo(email) {
+            const userInfo = document.getElementById('userInfo');
+            const userEmail = document.getElementById('userEmail');
+            
+            if (email) {
+                userEmail.textContent = email;
+                userInfo.classList.add('show');
+            } else {
+                userInfo.classList.remove('show');
+            }
+        }
+        
+        // 退出登录
+        function logout() {
+            authToken = null;
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userEmail');
+            updateUserInfo(null);
+            showMessage('已退出登录', 'info');
+            showAuthModal();
+        }
+        
+        // 检查认证状态
+        async function checkAuth() {
+            // 重新获取最新的 authToken
+            authToken = localStorage.getItem('authToken');
+            if (authToken) {
+                const email = localStorage.getItem('userEmail');
+                if (email) {
+                    // 如果本地有用户信息，直接使用，不强制验证
+                    updateUserInfo(email);
+                    loadActions();
+                    loadDashboard();
+                    closeAuthModal();
+                    return true;
+                } else {
+                    // 没有用户信息时，才进行认证验证
+                    try {
+                        const response = await fetch(`${API_BASE}/auth/me`, {
+                            headers: {
+                                'Authorization': `Bearer ${authToken}`
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const userData = await response.json();
+                            localStorage.setItem('userEmail', userData.email);
+                            updateUserInfo(userData.email);
+                            loadActions();
+                            loadDashboard();
+                            closeAuthModal();
+                            return true;
+                        } else {
+                            // Token 无效，清除本地存储
+                            authToken = null;
+                            localStorage.removeItem('authToken');
+                            localStorage.removeItem('userEmail');
+                            showAuthModal();
+                            return false;
+                        }
+                    } catch (error) {
+                        console.error('认证检查失败:', error);
+                        // 网络错误时显示登录界面
+                        showAuthModal();
+                        return false;
+                    }
+                }
+            } else {
+                showAuthModal();
+                return false;
+            }
+        }
+        
+        // 上传笔记并抽取行动项
+        async function uploadNotes() {
+            const bookTitle = document.getElementById('bookTitle').value.trim();
+            const notesContent = document.getElementById('notesContent').value.trim();
+            
+            if (!notesContent) {
+                showMessage('请输入笔记内容', 'error');
+                return;
+            }
+            
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '🔄 正在抽取...';
+            
+            try {
+                const response = await apiRequest('/api/actions/upload-notes', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        content: notesContent,
+                        book_title: bookTitle || undefined
+                    })
+                });
+                
+                showMessage(response.message, 'success');
+                document.getElementById('bookTitle').value = '';
+                document.getElementById('notesContent').value = '';
+                
+                // 刷新行动项列表
+                loadActions();
+                loadDashboard();
+            } catch (error) {
+                showMessage('抽取失败: ' + error.message, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '🚀 抽取行动项';
+            }
+        }
+        
+        // 加载行动项列表
+        async function loadActions() {
+            try {
+                const response = await apiRequest('/api/actions/');
+                allActions = response.items; // 存储所有行动项
+                renderActions(); // 渲染行动项
+            } catch (error) {
+                document.getElementById('actionsList').innerHTML = 
+                    '<div class="error">加载失败: ' + error.message + '</div>';
+            }
+        }
+        
+        // 渲染行动项列表
+        function renderActions() {
+            const actionsList = document.getElementById('actionsList');
+            
+            if (allActions.length === 0) {
+                actionsList.innerHTML = '<div class="loading">暂无行动项</div>';
+                return;
+            }
+            
+            // 根据当前筛选类型过滤行动项
+            let filteredActions = allActions;
+            if (currentFilterType !== 'all') {
+                filteredActions = allActions.filter(action => action.action_type === currentFilterType);
+            }
+            
+            if (filteredActions.length === 0) {
+                actionsList.innerHTML = `<div class="loading">暂无${getActionTypeText(currentFilterType)}行动项</div>`;
+                return;
+            }
+            
+            actionsList.innerHTML = filteredActions.map(action => {
+                const actionType = action.action_type || 'trigger';
+                const isHabit = actionType === 'habit';
+                
+                return `
+                <div class="action-item">
+                    <h3>${action.action_text} 
+                        <span class="status-badge status-${action.status}">${getStatusText(action.status)}</span>
+                    </h3>
+                    <p><strong>📖 来源:</strong> ${action.book_title}</p>
+                    <p><strong>📝 原文:</strong> ${action.source_excerpt}</p>
+                    <p><strong>🎯 类型:</strong> ${getActionTypeText(actionType)}</p>
+                    <p><strong>⏰ 时间管理:</strong> ${getDurationInfo(action)}</p>
+                    <div class="action-tags">
+                        ${action.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                    <div class="action-buttons">
+                        ${isHabit ? 
+                            `<button class="btn-small btn-time-management" onclick="showTimeManagementModal(${action.id})" style="background: #28a745; color: white;">
+                                ⏰ 设置时间
+                            </button>` :
+                            `<button class="btn-small btn-time-management" onclick="showCountAndDaysModal(${action.id})" style="background: #28a745; color: white;">
+                                📊 设置次数和天数
+                            </button>`
+                        }
+                        <button class="btn-small btn-log" onclick="showPracticeModal(${action.id})">
+                            📝 记录实践反馈
+                        </button>
+                        <button class="btn-small" onclick="showPracticeLogsModal(${action.id})" style="background: #6c757d; color: white;">
+                            📋 查看记录
+                        </button>
+                        <button class="btn-small" onclick="openAIAdvice(${action.id})" style="background: #9c27b0; color: white;">
+                            🤖 AI建议
+                        </button>
+                        <button class="btn-small" onclick="showEditActionModal(${action.id})" style="background: #17a2b8; color: white;">
+                            ✏️ 编辑
+                        </button>
+                        <button class="btn-small" onclick="deleteAction(${action.id})" style="background: #dc3545; color: white;">
+                            🗑️ 删除
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+        
+        // 按类型筛选行动项
+        function filterActionsByType(type) {
+            currentFilterType = type;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.action-type-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-type="${type}"]`).classList.add('active');
+            
+            // 控制批量设置按钮显示
+            const batchTimeBtn = document.getElementById('batchTimeBtn');
+            if (type === 'all' || type === 'habit') {
+                // 检查是否有习惯型行动项
+                const hasHabitActions = allActions.some(action => action.action_type === 'habit');
+                batchTimeBtn.style.display = hasHabitActions ? 'block' : 'none';
+            } else {
+                batchTimeBtn.style.display = 'none';
+            }
+            
+            // 重新渲染
+            renderActions();
+        }
+        
+        // 获取行动类型文本
+        function getActionTypeText(type) {
+            const typeMap = {
+                'trigger': '情境触发型',
+                'habit': '习惯养成型',
+                'all': '全部'
+            };
+            return typeMap[type] || '情境触发型';
+        }
+        
+        // 加载仪表盘数据
+        async function loadDashboard() {
+            try {
+                const response = await apiRequest('/api/dashboard/stats');
+                
+                document.getElementById('totalActions').textContent = response.total_actions;
+                document.getElementById('completedActions').textContent = response.completed_actions;
+                document.getElementById('completionRate').textContent = response.completion_rate + '%';
+                document.getElementById('successRate').textContent = response.success_rate + '%';
+                
+                // 加载时间维度分析
+                await loadDurationAnalytics();
+                
+                // 加载坚持度分析
+                await loadStreakAnalytics();
+            } catch (error) {
+                console.error('加载仪表盘失败:', error);
+            }
+        }
+        
+        // 加载时间维度分析
+        async function loadDurationAnalytics() {
+            try {
+                const response = await apiRequest('/api/dashboard/duration-analytics');
+                
+                document.getElementById('shortTermActions').textContent = response.short_term_actions;
+                document.getElementById('longTermActions').textContent = response.long_term_actions;
+                document.getElementById('lifetimeActions').textContent = response.lifetime_actions;
+            } catch (error) {
+                console.error('加载时间维度分析失败:', error);
+            }
+        }
+        
+        // 加载坚持度分析
+        async function loadStreakAnalytics() {
+            try {
+                const response = await apiRequest('/api/dashboard/streak-analytics');
+                
+                document.getElementById('currentStreak').textContent = response.current_streak_days;
+                
+                // 显示坚持度详情
+                if (response.streak_actions.length > 0) {
+                    const streakAnalysis = document.getElementById('streakAnalysis');
+                    const streakDetails = document.getElementById('streakDetails');
+                    
+                    streakAnalysis.style.display = 'block';
+                    
+                    streakDetails.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 20px;">
+                            ${response.streak_actions.slice(0, 6).map(action => `
+                                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                                    <h4 style="margin-bottom: 8px; color: #333;">${action.action_text}</h4>
+                                    <div style="font-size: 14px; color: #666;">
+                                        <div>🔥 当前连续: ${action.current_streak} 天</div>
+                                        <div>🏆 最长连续: ${action.longest_streak} 天</div>
+                                        <div>📊 总实践: ${action.total_practices} 次</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('加载坚持度分析失败:', error);
+            }
+        }
+        
+        // 获取状态文本
+        function getStatusText(status) {
+            const statusMap = {
+                'todo': '待办',
+                'in_progress': '进行中',
+                'done': '已完成'
+            };
+            return statusMap[status] || status;
+        }
+        
+        // 获取时间管理信息
+        function getDurationInfo(action) {
+            const actionType = action.action_type || 'trigger';
+            
+            if (actionType === 'habit') {
+                // 习惯型：显示传统的时间管理信息
+                const durationTypeMap = {
+                    'short_term': '短期',
+                    'long_term': '长期',
+                    'lifetime': '终身'
+                };
+                
+                const frequencyMap = {
+                    'daily': '每天',
+                    'weekly': '每周',
+                    'monthly': '每月',
+                    'custom': '自定义'
+                };
+                
+                let info = durationTypeMap[action.duration_type] || '短期';
+                
+                if (action.target_duration_days) {
+                    info += ` (${action.target_duration_days}天)`;
+                }
+                
+                if (action.target_frequency) {
+                    const freq = frequencyMap[action.target_frequency] || action.target_frequency;
+                    if (action.target_frequency === 'custom' && action.custom_frequency_days) {
+                        info += ` | 每${action.custom_frequency_days}天`;
+                    } else {
+                        info += ` | ${freq}`;
+                    }
+                }
+                
+                if (action.start_date) {
+                    info += ` | 开始: ${new Date(action.start_date).toLocaleDateString()}`;
+                }
+                
+                return info;
+            } else {
+                // 情境型：显示次数和天数信息
+                let info = '目标完成';
+                
+                if (action.target_duration_days) {
+                    info += ` ${action.target_duration_days}次`;
+                }
+                
+                if (action.custom_frequency_days) {
+                    info += ` | ${action.custom_frequency_days}天内`;
+                }
+                
+                if (action.start_date) {
+                    info += ` | 开始: ${new Date(action.start_date).toLocaleDateString()}`;
+                }
+                
+                if (action.end_date) {
+                    info += ` | 结束: ${new Date(action.end_date).toLocaleDateString()}`;
+                }
+                
+                return info;
+            }
+        }
+        
+        // 编辑行动项（占位函数）
+        
+        // 显示实践记录模态框
+        let currentActionId = null;
+        
+        async function showPracticeModal(actionId) {
+            currentActionId = actionId;
+            document.getElementById('practiceModal').classList.remove('hidden');
+            
+            // 设置默认日期为今天
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('practiceDate').value = today;
+            
+            // 重置表单
+            document.getElementById('practiceForm').reset();
+            document.getElementById('practiceDate').value = today;
+            resetRating();
+            
+            // 获取行动项信息，判断是否为情境型
+            try {
+                const response = await apiRequest('/api/actions/');
+                const action = response.items.find(a => a.id === actionId);
+                
+                if (action && action.action_type === 'trigger') {
+                    // 情境型：显示次数输入
+                    document.getElementById('practiceCountGroup').style.display = 'block';
+                    
+                    // 自动填充建议的次数（基于已有记录的最大attempt_number+1）
+                    const existingLogs = await getExistingPracticeLogs(actionId);
+                    const maxAttempt = Math.max(0, ...existingLogs.map(log => log.attempt_number || 0));
+                    const suggestedCount = maxAttempt + 1;
+                    document.getElementById('practiceCount').value = suggestedCount;
+                } else {
+                    // 习惯型：隐藏次数输入
+                    document.getElementById('practiceCountGroup').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('获取行动项信息失败:', error);
+                // 默认隐藏次数输入
+                document.getElementById('practiceCountGroup').style.display = 'none';
+            }
+        }
+        
+        // 获取现有实践记录（用于情境型建议次数）
+        async function getExistingPracticeLogs(actionId) {
+            try {
+                const response = await apiRequest(`/api/actions/${actionId}/practice-logs?size=1000`);
+                return response.items || [];
+            } catch (error) {
+                console.error('获取实践记录失败:', error);
+                return [];
+            }
+        }
+        
+        // 显示实践记录查看模态框
+        let currentActionForLogs = null;
+        
+        async function showPracticeLogsModal(actionId) {
+            currentActionForLogs = actionId;
+            document.getElementById('practiceLogsModal').classList.remove('hidden');
+            
+            // 获取行动项信息
+            try {
+                const response = await apiRequest('/api/actions/');
+                const action = response.items.find(a => a.id === actionId);
+                
+                if (action) {
+                    document.getElementById('practiceLogsSubtitle').textContent = 
+                        `查看"${action.action_text}"的所有实践反馈记录`;
+                }
+            } catch (error) {
+                console.error('获取行动项信息失败:', error);
+            }
+            
+            // 加载实践记录
+            await loadPracticeLogs(actionId);
+        }
+        
+        function closePracticeLogsModal() {
+            document.getElementById('practiceLogsModal').classList.add('hidden');
+            currentActionForLogs = null;
+        }
+        
+        async function loadPracticeLogs(actionId) {
+            try {
+                // 获取所有实践记录（设置较大的size确保获取所有记录）
+                const response = await apiRequest(`/api/actions/${actionId}/practice-logs?size=1000`);
+                const logsList = document.getElementById('practiceLogsList');
+                
+                if (response.items.length === 0) {
+                    logsList.innerHTML = '<div class="loading">暂无实践记录</div>';
+                    return;
+                }
+                
+                // 获取行动项类型
+                const actionsResponse = await apiRequest('/api/actions/');
+                const action = actionsResponse.items.find(a => a.id === actionId);
+                const isTrigger = action && action.action_type === 'trigger';
+                
+                logsList.innerHTML = response.items.map(log => {
+                    const resultIcon = {
+                        'success': '✅',
+                        'partial': '⚠️',
+                        'fail': '❌'
+                    }[log.result] || '❓';
+                    
+                    const ratingStars = log.rating ? '★'.repeat(log.rating) + '☆'.repeat(5 - log.rating) : '未评分';
+                    
+                    return `
+                        <div class="practice-log-item" style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 15px; border-left: 4px solid #667eea;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                                <div>
+                                    <h4 style="margin: 0; color: #333;">
+                                        ${resultIcon} ${log.result === 'success' ? '成功完成' : log.result === 'partial' ? '部分完成' : '未完成'}
+                                        ${isTrigger && log.attempt_number ? ` - 第${log.attempt_number}次` : ''}
+                                    </h4>
+                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">
+                                        ${new Date(log.date).toLocaleDateString()} ${new Date(log.created_at).toLocaleTimeString()}
+                                    </p>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="color: #ffd700; font-size: 16px;">${ratingStars}</div>
+                                    ${log.success_score ? `<div style="font-size: 12px; color: #666;">成功分数: ${log.success_score.toFixed(2)}</div>` : ''}
+                                </div>
+                            </div>
+                            ${log.notes ? `<p style="margin: 10px 0 0 0; color: #555; font-style: italic;">"${log.notes}"</p>` : ''}
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                document.getElementById('practiceLogsList').innerHTML = 
+                    '<div class="error">加载记录失败: ' + error.message + '</div>';
+            }
+        }
+        
+        // 关闭实践记录模态框
+        function closePracticeModal() {
+            document.getElementById('practiceModal').classList.add('hidden');
+            currentActionId = null;
+        }
+        
+        // 评分功能
+        function resetRating() {
+            document.querySelectorAll('.star').forEach(star => {
+                star.classList.remove('active');
+            });
+            document.getElementById('ratingText').textContent = '未评分';
+        }
+        
+        // 初始化评分功能
+        function initRating() {
+            document.querySelectorAll('.star').forEach(star => {
+                star.addEventListener('click', function() {
+                    const rating = parseInt(this.dataset.rating);
+                    document.querySelectorAll('.star').forEach((s, index) => {
+                        if (index < rating) {
+                            s.classList.add('active');
+                        } else {
+                            s.classList.remove('active');
+                        }
+                    });
+                    document.getElementById('ratingText').textContent = `${rating}星`;
+                });
+            });
+        }
+        
+        // 提交实践记录
+        async function submitPracticeLog(event) {
+            event.preventDefault();
+            
+            const formData = {
+                date: document.getElementById('practiceDate').value,
+                result: document.getElementById('practiceResult').value,
+                notes: document.getElementById('practiceNotes').value || null,
+                rating: document.querySelectorAll('.star.active').length || null
+            };
+            
+            // 对于情境型，添加attempt_number字段
+            const practiceCount = document.getElementById('practiceCount').value;
+            if (practiceCount && document.getElementById('practiceCountGroup').style.display !== 'none') {
+                formData.attempt_number = parseInt(practiceCount);
+            }
+            
+            try {
+                await apiRequest(`/api/actions/${currentActionId}/practice`, {
+                    method: 'POST',
+                    body: JSON.stringify(formData)
+                });
+                
+                showMessage('实践记录已保存！', 'success');
+                closePracticeModal();
+                loadActions();
+                loadDashboard();
+            } catch (error) {
+                showMessage('保存失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 编辑行动项相关函数
+        let currentEditActionId = null;
+        
+        async function showEditActionModal(actionId) {
+            currentEditActionId = actionId;
+            
+            // 获取行动项详情
+            try {
+                const response = await apiRequest('/api/actions/');
+                const action = response.items.find(a => a.id === actionId);
+                
+                if (!action) {
+                    showMessage('行动项不存在', 'error');
+                    return;
+                }
+                
+                // 填充表单
+                document.getElementById('editActionText').value = action.action_text;
+                document.getElementById('editActionType').value = action.action_type || 'trigger';
+                document.getElementById('editActionTags').value = action.tags.join(', ');
+                
+                // 显示模态框
+                document.getElementById('editActionModal').classList.remove('hidden');
+            } catch (error) {
+                showMessage('获取行动项详情失败: ' + error.message, 'error');
+            }
+        }
+        
+        function closeEditActionModal() {
+            document.getElementById('editActionModal').classList.add('hidden');
+            currentEditActionId = null;
+        }
+        
+        async function submitEditAction(event) {
+            event.preventDefault();
+            
+            const actionText = document.getElementById('editActionText').value.trim();
+            const actionType = document.getElementById('editActionType').value;
+            const tagsText = document.getElementById('editActionTags').value.trim();
+            const tags = tagsText ? tagsText.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+            
+            try {
+                await apiRequest(`/api/actions/${currentEditActionId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        action_text: actionText,
+                        action_type: actionType,
+                        tags: tags
+                    })
+                });
+                
+                showMessage('行动项已更新！', 'success');
+                closeEditActionModal();
+                loadActions();
+            } catch (error) {
+                showMessage('更新失败: ' + error.message, 'error');
+            }
+        }
+        
+        async function deleteAction(actionId) {
+            if (!confirm('确定要删除这个行动项吗？删除后将无法恢复。')) {
+                return;
+            }
+            
+            try {
+                await apiRequest(`/api/actions/${actionId}`, {
+                    method: 'DELETE'
+                });
+                
+                showMessage('行动项已删除', 'success');
+                loadActions();
+                loadDashboard();
+            } catch (error) {
+                showMessage('删除失败: ' + error.message, 'error');
+            }
+        }
+
+        function openAIAdvice(actionId) {
+            // 打开新标签页，跳转到AI建议页面
+            const url = `/static/ai_advice.html?action_id=${actionId}`;
+            window.open(url, '_blank');
+        }
+        
+        // 事件监听
+        document.getElementById('uploadForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            uploadNotes();
+        });
+        
+        document.getElementById('editActionForm').addEventListener('submit', submitEditAction);
+        
+        // 登录表单事件
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!email || !password) {
+                showMessage('请填写完整信息', 'error');
+                return;
+            }
+            
+            const btn = e.target.querySelector('.auth-btn');
+            btn.disabled = true;
+            btn.textContent = '登录中...';
+            
+            await login(email, password);
+            
+            btn.disabled = false;
+            btn.textContent = '登录';
+        });
+        
+        // 注册表单事件
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const name = document.getElementById('registerName').value;
+            
+            if (!email || !password) {
+                showMessage('请填写邮箱和密码', 'error');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showMessage('密码至少需要6位', 'error');
+                return;
+            }
+            
+            const btn = e.target.querySelector('.auth-btn');
+            btn.disabled = true;
+            btn.textContent = '注册中...';
+            
+            await register(email, password, name);
+            
+            btn.disabled = false;
+            btn.textContent = '注册';
+        });
+        
+        // 跳转到 Self-talk 页面
+        function goToSelfTalk() {
+            if (!authToken) {
+                showMessage('请先登录', 'error');
+                showAuthModal();
+                return;
+            }
+            window.location.href = '/static/self_talk/index.html';
+        }
+        
+        // 跳转到数据可视化仪表盘
+        function goToDashboard() {
+            if (!authToken) {
+                showMessage('请先登录', 'error');
+                showAuthModal();
+                return;
+            }
+            window.location.href = '/static/dashboard.html';
+        }
+        
+        // 时间管理设置相关函数
+        let currentActionForTM = null;
+        
+        // 显示时间管理模态框
+        async function showTimeManagementModal(actionId) {
+            console.log('打开时间管理模态框，行动项ID:', actionId);
+            currentActionForTM = actionId;
+            document.getElementById('timeManagementModal').classList.remove('hidden');
+            
+            try {
+                // 获取当前行动项数据
+                const response = await apiRequest('/api/actions/');
+                const action = response.items.find(a => a.id === actionId);
+                
+                if (action) {
+                    // 填充现有数据
+                    document.getElementById('tmDurationType').value = action.duration_type || 'short_term';
+                    document.getElementById('tmTargetDurationDays').value = action.target_duration_days || '';
+                    document.getElementById('tmTargetFrequency').value = action.target_frequency || 'daily';
+                    document.getElementById('tmCustomFrequencyDays').value = action.custom_frequency_days || '';
+                    document.getElementById('tmStartDate').value = action.start_date || new Date().toISOString().split('T')[0];
+                    document.getElementById('tmEndDate').value = action.end_date || '';
+                } else {
+                    // 设置默认值
+                    const today = new Date().toISOString().split('T')[0];
+                    document.getElementById('tmStartDate').value = today;
+                    document.getElementById('tmDurationType').value = 'short_term';
+                    document.getElementById('tmTargetDurationDays').value = 30;
+                    document.getElementById('tmTargetFrequency').value = 'daily';
+                }
+                
+                // 初始化设置
+                toggleTMDurationSettings();
+                toggleTMCustomFrequency();
+            } catch (error) {
+                console.error('加载行动项数据失败:', error);
+                // 设置默认值
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('tmStartDate').value = today;
+                document.getElementById('tmDurationType').value = 'short_term';
+                document.getElementById('tmTargetDurationDays').value = 30;
+                document.getElementById('tmTargetFrequency').value = 'daily';
+                toggleTMDurationSettings();
+                toggleTMCustomFrequency();
+            }
+        }
+        
+        // 关闭时间管理模态框
+        function closeTimeManagementModal() {
+            document.getElementById('timeManagementModal').classList.add('hidden');
+            currentActionForTM = null;
+        }
+        
+        function toggleTMDurationSettings() {
+            const durationType = document.getElementById('tmDurationType').value;
+            const durationDaysGroup = document.getElementById('tmDurationDaysGroup');
+            const endDateGroup = document.getElementById('tmEndDateGroup');
+            const endDate = document.getElementById('tmEndDate');
+            
+            if (durationType === 'lifetime') {
+                // 终身习惯：隐藏天数设置和结束日期
+                durationDaysGroup.style.display = 'none';
+                endDateGroup.style.display = 'none';
+                endDate.value = '';
+            } else {
+                // 短期/长期目标：显示天数设置和结束日期
+                durationDaysGroup.style.display = 'block';
+                endDateGroup.style.display = 'block';
+                
+                // 根据类型设置默认天数
+                if (durationType === 'short_term') {
+                    document.getElementById('tmTargetDurationDays').value = 30;
+                } else if (durationType === 'long_term') {
+                    document.getElementById('tmTargetDurationDays').value = 365;
+                }
+                
+                // 设置结束日期
+                const days = document.getElementById('tmTargetDurationDays').value || 30;
+                const startDate = new Date(document.getElementById('tmStartDate').value || new Date());
+                const endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + parseInt(days));
+                document.getElementById('tmEndDate').value = endDate.toISOString().split('T')[0];
+            }
+        }
+        
+        function toggleTMCustomFrequency() {
+            const frequency = document.getElementById('tmTargetFrequency').value;
+            const customFrequencyGroup = document.getElementById('tmCustomFrequencyGroup');
+            
+            if (frequency === 'custom') {
+                customFrequencyGroup.style.display = 'block';
+            } else {
+                customFrequencyGroup.style.display = 'none';
+            }
+        }
+        
+        // 情境型次数和天数设置相关函数
+        let currentActionForCD = null;
+        
+        function showCountAndDaysModal(actionId) {
+            currentActionForCD = actionId;
+            document.getElementById('countAndDaysModal').classList.remove('hidden');
+            
+            // 设置默认日期
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('cdStartDate').value = today;
+            
+            // 加载现有数据
+            loadCountAndDaysData(actionId);
+        }
+        
+        function closeCountAndDaysModal() {
+            document.getElementById('countAndDaysModal').classList.add('hidden');
+            currentActionForCD = null;
+        }
+        
+        async function loadCountAndDaysData(actionId) {
+            try {
+                const response = await apiRequest('/api/actions/');
+                const action = response.items.find(a => a.id === actionId);
+                
+                if (action) {
+                    // 对于情境型，使用target_duration_days作为目标次数，custom_frequency_days作为完成天数
+                    document.getElementById('cdTargetCount').value = action.target_duration_days || '';
+                    document.getElementById('cdTargetDays').value = action.custom_frequency_days || '';
+                    document.getElementById('cdStartDate').value = action.start_date || new Date().toISOString().split('T')[0];
+                    document.getElementById('cdEndDate').value = action.end_date || '';
+                }
+            } catch (error) {
+                console.error('加载次数和天数数据失败:', error);
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('cdStartDate').value = today;
+            }
+        }
+        
+        async function submitCountAndDays(event) {
+            event.preventDefault();
+            
+            if (!currentActionForCD) {
+                showMessage('未选择行动项', 'error');
+                return;
+            }
+            
+            const targetCount = document.getElementById('cdTargetCount').value ? parseInt(document.getElementById('cdTargetCount').value) : null;
+            const targetDays = document.getElementById('cdTargetDays').value ? parseInt(document.getElementById('cdTargetDays').value) : null;
+            const startDate = document.getElementById('cdStartDate').value || null;
+            const endDate = document.getElementById('cdEndDate').value || null;
+            
+            // 验证设置
+            if (!targetCount || !targetDays) {
+                showMessage('请填写目标次数和完成天数', 'error');
+                return;
+            }
+            
+            const requestData = {
+                duration_type: "short_term",  // 情境型固定为短期
+                target_duration_days: targetCount,  // 存储目标次数
+                target_frequency: "custom",
+                custom_frequency_days: targetDays,  // 存储完成天数
+                start_date: startDate,
+                end_date: endDate
+            };
+            
+            try {
+                const response = await apiRequest(`/api/actions/${currentActionForCD}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(requestData)
+                });
+                
+                showMessage('次数和天数设置已保存', 'success');
+                closeCountAndDaysModal();
+                
+                // 刷新行动项列表
+                loadActions();
+                loadDashboard();
+            } catch (error) {
+                showMessage('保存失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 批量时间管理设置相关函数
+        function showBatchTimeManagementModal() {
+            document.getElementById('batchTimeManagementModal').classList.remove('hidden');
+            
+            // 设置默认日期
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('btmStartDate').value = today;
+            
+            // 初始化设置
+            toggleBTMDurationSettings();
+        }
+        
+        function closeBatchTimeManagementModal() {
+            document.getElementById('batchTimeManagementModal').classList.add('hidden');
+        }
+        
+        function toggleBTMDurationSettings() {
+            const durationType = document.getElementById('btmDurationType').value;
+            const durationDaysGroup = document.getElementById('btmDurationDaysGroup');
+            const endDateGroup = document.getElementById('btmEndDateGroup');
+            const endDate = document.getElementById('btmEndDate');
+            
+            if (durationType === 'lifetime') {
+                // 终身习惯：隐藏天数设置和结束日期
+                durationDaysGroup.style.display = 'none';
+                endDateGroup.style.display = 'none';
+                endDate.value = '';
+            } else {
+                // 短期/长期目标：显示天数设置和结束日期
+                durationDaysGroup.style.display = 'block';
+                endDateGroup.style.display = 'block';
+                
+                // 根据类型设置默认天数
+                if (durationType === 'short_term') {
+                    document.getElementById('btmTargetDurationDays').value = 30;
+                } else if (durationType === 'long_term') {
+                    document.getElementById('btmTargetDurationDays').value = 365;
+                }
+                
+                // 设置结束日期
+                const days = document.getElementById('btmTargetDurationDays').value || 30;
+                const startDate = new Date(document.getElementById('btmStartDate').value || new Date());
+                const endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + parseInt(days));
+                document.getElementById('btmEndDate').value = endDate.toISOString().split('T')[0];
+            }
+        }
+        
+        function toggleBTMCustomFrequency() {
+            const frequency = document.getElementById('btmTargetFrequency').value;
+            const customFrequencyGroup = document.getElementById('btmCustomFrequencyGroup');
+            
+            if (frequency === 'custom') {
+                customFrequencyGroup.style.display = 'block';
+            } else {
+                customFrequencyGroup.style.display = 'none';
+            }
+        }
+        
+        // 提交时间管理设置
+        async function submitTimeManagement(event) {
+            event.preventDefault();
+            console.log('开始提交时间管理设置，行动项ID:', currentActionForTM);
+            
+            if (!currentActionForTM) {
+                showMessage('未选择行动项', 'error');
+                return;
+            }
+            
+            const durationType = document.getElementById('tmDurationType').value;
+            const targetDurationDays = document.getElementById('tmTargetDurationDays').value ? parseInt(document.getElementById('tmTargetDurationDays').value) : null;
+            const targetFrequency = document.getElementById('tmTargetFrequency').value;
+            const customFrequencyDays = document.getElementById('tmCustomFrequencyDays').value ? parseInt(document.getElementById('tmCustomFrequencyDays').value) : null;
+            const startDate = document.getElementById('tmStartDate').value || null;
+            const endDate = document.getElementById('tmEndDate').value || null;
+            
+            // 验证设置
+            if (durationType === 'lifetime' && endDate) {
+                showMessage('终身习惯不需要设置结束日期', 'error');
+                return;
+            }
+            
+            if (targetFrequency === 'custom' && !customFrequencyDays) {
+                showMessage('自定义频率需要指定天数', 'error');
+                return;
+            }
+            
+            const requestData = {
+                duration_type: durationType,
+                target_duration_days: targetDurationDays,
+                target_frequency: targetFrequency,
+                custom_frequency_days: customFrequencyDays,
+                start_date: startDate,
+                end_date: endDate
+            };
+            
+            console.log('提交的数据:', requestData);
+            console.log('请求URL:', `/api/actions/${currentActionForTM}`);
+            
+            try {
+                const response = await apiRequest(`/api/actions/${currentActionForTM}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(requestData)
+                });
+                
+                console.log('保存成功，响应:', response);
+                
+                showMessage('时间管理设置已保存', 'success');
+                closeTimeManagementModal();
+                
+                // 刷新行动项列表
+                loadActions();
+                loadDashboard();
+            } catch (error) {
+                showMessage('保存失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 提交批量时间管理设置（仅对习惯型）
+        async function submitBatchTimeManagement(event) {
+            event.preventDefault();
+            
+            const durationType = document.getElementById('btmDurationType').value;
+            const targetDurationDays = document.getElementById('btmTargetDurationDays').value ? parseInt(document.getElementById('btmTargetDurationDays').value) : null;
+            const targetFrequency = document.getElementById('btmTargetFrequency').value;
+            const customFrequencyDays = document.getElementById('btmCustomFrequencyDays').value ? parseInt(document.getElementById('btmCustomFrequencyDays').value) : null;
+            const startDate = document.getElementById('btmStartDate').value || null;
+            const endDate = document.getElementById('btmEndDate').value || null;
+            
+            // 验证设置
+            if (durationType === 'lifetime' && endDate) {
+                showMessage('终身习惯不需要设置结束日期', 'error');
+                return;
+            }
+            
+            if (targetFrequency === 'custom' && !customFrequencyDays) {
+                showMessage('自定义频率需要指定天数', 'error');
+                return;
+            }
+            
+            try {
+                // 获取所有未完成的习惯型行动项
+                const response = await apiRequest('/api/actions/');
+                const incompleteHabitActions = response.items.filter(action => 
+                    action.status !== 'done' && action.action_type === 'habit'
+                );
+                
+                if (incompleteHabitActions.length === 0) {
+                    showMessage('没有未完成的习惯型行动项需要设置', 'info');
+                    closeBatchTimeManagementModal();
+                    return;
+                }
+                
+                // 批量更新所有未完成的习惯型行动项
+                const updatePromises = incompleteHabitActions.map(action => 
+                    apiRequest(`/api/actions/${action.id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            duration_type: durationType,
+                            target_duration_days: targetDurationDays,
+                            target_frequency: targetFrequency,
+                            custom_frequency_days: customFrequencyDays,
+                            start_date: startDate,
+                            end_date: endDate
+                        })
+                    })
+                );
+                
+                await Promise.all(updatePromises);
+                
+                showMessage(`已为 ${incompleteHabitActions.length} 个习惯型行动项应用时间管理设置`, 'success');
+                closeBatchTimeManagementModal();
+                
+                // 刷新行动项列表
+                loadActions();
+                loadDashboard();
+            } catch (error) {
+                showMessage('批量设置失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 页面加载时初始化
+        window.addEventListener('load', async () => {
+            await checkAuth();
+            initRating();
+            
+            // 表单事件
+            document.getElementById('practiceForm').addEventListener('submit', submitPracticeLog);
+            document.getElementById('timeManagementForm').addEventListener('submit', submitTimeManagement);
+            document.getElementById('countAndDaysForm').addEventListener('submit', submitCountAndDays);
+            document.getElementById('batchTimeManagementForm').addEventListener('submit', submitBatchTimeManagement);
+        });
+    </script>
+</body>
+</html>

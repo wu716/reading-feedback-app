@@ -229,3 +229,40 @@ async def test_ai_connection() -> bool:
     except Exception as e:
         logger.error(f"AI 连接测试失败: {e}")
         return False
+
+
+async def generate_action_advice(action_text: str, context: str = "") -> str:
+    """
+    为行动项生成AI建议
+    
+    Args:
+        action_text: 行动项文本
+        context: 上下文信息（可选）
+    
+    Returns:
+        str: AI生成的建议
+    """
+    if not client:
+        raise AIExtractionError("AI 服务未配置：缺少 DEEPSEEK_API_KEY")
+    
+    try:
+        prompt = f"""你是一个专业的行为改变教练。请为以下行动项提供具体、可执行的建议：
+
+行动项：{action_text}
+
+{f'背景信息：{context}' if context else ''}
+
+请提供以下方面的建议：
+1. 具体执行步骤
+2. 可能遇到的障碍和应对方法
+3. 保持动力的技巧
+4. 追踪进度的方法
+
+请用简洁、实用的语言回答，每条建议都要具体可执行。"""
+        
+        response = await call_deepseek_api(prompt)
+        return response
+    
+    except Exception as e:
+        logger.error(f"生成行动建议失败: {e}")
+        raise AIExtractionError(f"生成建议失败: {str(e)}")

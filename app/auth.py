@@ -127,3 +127,32 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+def get_current_user_optional(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), db: Session = Depends(get_db)) -> Optional[User]:
+    """获取当前用户（可选）- 如果认证关闭则返回None"""
+    if not settings.REQUIRE_AUTH:
+        # 认证关闭时，返回默认用户或None
+        return None
+    
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="需要认证",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return get_current_user(credentials, db)
+
+
+def get_current_active_user_optional(current_user: Optional[User] = Depends(get_current_user_optional)) -> Optional[User]:
+    """获取当前活跃用户（可选）"""
+    if current_user is None:
+        return None
+    
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="用户账户已被禁用"
+        )
+    return current_user

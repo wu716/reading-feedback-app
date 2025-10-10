@@ -15,3 +15,4 @@ cryptography==41.0.7  # 用于加密功能
 requests==2.31.0  # 用于 HTTP 请求
 vosk==0.3.45  # 离线语音识别
 pydub==0.25.1  # 音频格式转换
+APScheduler==3.10.4  # 定时任务调度器

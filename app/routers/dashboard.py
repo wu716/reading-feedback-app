@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models import User, Action, PracticeLog
 from app.schemas import DashboardStats, ActionResponse, DurationAnalytics, StreakAnalytics, TimeTrendAnalytics
 from app.auth import get_current_active_user
+from app.config import settings
 
 router = APIRouter(prefix="/dashboard", tags=["仪表盘"])
 
@@ -313,46 +314,81 @@ def generate_recommendations(actions: List[Action], tag_groups: Dict[str, List[A
 
 @router.get("/duration-analytics", response_model=DurationAnalytics)
 async def get_duration_analytics(
-    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """获取时间维度分析数据"""
+    # 根据认证配置确定用户ID
+    if settings.REQUIRE_AUTH:
+        # 认证开启时，需要获取当前用户
+        # 这里需要从请求中获取用户信息，暂时返回空数据
+        return DurationAnalytics(
+            short_term_actions=0,
+            long_term_actions=0,
+            lifetime_actions=0,
+            short_term_completion_rate=0.0,
+            long_term_completion_rate=0.0,
+            lifetime_completion_rate=0.0
+        )
+    else:
+        # 认证关闭时，查询所有用户的数据
+        user_id_filter = None
+    
     # 统计各类型行动项数量（向后兼容）
-    short_term_actions = db.query(Action).filter(
-        Action.user_id == current_user.id,
+    short_term_query = db.query(Action).filter(
         or_(Action.duration_type == "short_term", Action.duration_type.is_(None)),
         Action.deleted_at.is_(None)
-    ).count()
+    )
     
-    long_term_actions = db.query(Action).filter(
-        Action.user_id == current_user.id,
+    if user_id_filter is not None:
+        short_term_query = short_term_query.filter(Action.user_id == user_id_filter)
+    
+    short_term_actions = short_term_query.count()
+    
+    long_term_query = db.query(Action).filter(
         Action.duration_type == "long_term",
         Action.deleted_at.is_(None)
-    ).count()
+    )
     
-    lifetime_actions = db.query(Action).filter(
-        Action.user_id == current_user.id,
+    if user_id_filter is not None:
+        long_term_query = long_term_query.filter(Action.user_id == user_id_filter)
+    
+    long_term_actions = long_term_query.count()
+    
+    lifetime_query = db.query(Action).filter(
         Action.duration_type == "lifetime",
         Action.deleted_at.is_(None)
-    ).count()
+    )
+    
+    if user_id_filter is not None:
+        lifetime_query = lifetime_query.filter(Action.user_id == user_id_filter)
+    
+    lifetime_actions = lifetime_query.count()
     
     # 计算各类型完成率
     def calculate_completion_rate(duration_type: str) -> float:
-        total = db.query(Action).filter(
-            Action.user_id == current_user.id,
+        total_query = db.query(Action).filter(
             Action.duration_type == duration_type,
             Action.deleted_at.is_(None)
-        ).count()
+        )
+        
+        if user_id_filter is not None:
+            total_query = total_query.filter(Action.user_id == user_id_filter)
+        
+        total = total_query.count()
         
         if total == 0:
             return 0.0
         
-        completed = db.query(Action).filter(
-            Action.user_id == current_user.id,
+        completed_query = db.query(Action).filter(
             Action.duration_type == duration_type,
             Action.status == "done",
             Action.deleted_at.is_(None)
-        ).count()
+        )
+        
+        if user_id_filter is not None:
+            completed_query = completed_query.filter(Action.user_id == user_id_filter)
+        
+        completed = completed_query.count()
         
         return (completed / total) * 100
     
@@ -368,15 +404,32 @@ async def get_duration_analytics(
 
 @router.get("/streak-analytics", response_model=StreakAnalytics)
 async def get_streak_analytics(
-    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """获取坚持度分析数据"""
+    # 根据认证配置确定用户ID
+    if settings.REQUIRE_AUTH:
+        # 认证开启时，需要获取当前用户
+        # 这里需要从请求中获取用户信息，暂时返回空数据
+        return StreakAnalytics(
+            current_streak_days=0,
+            longest_streak_days=0,
+            total_streak_days=0,
+            streak_actions=[]
+        )
+    else:
+        # 认证关闭时，查询所有用户的数据
+        user_id_filter = None
+    
     # 获取所有行动项及其实践记录
-    actions = db.query(Action).filter(
-        Action.user_id == current_user.id,
+    actions_query = db.query(Action).filter(
         Action.deleted_at.is_(None)
-    ).all()
+    )
+    
+    if user_id_filter is not None:
+        actions_query = actions_query.filter(Action.user_id == user_id_filter)
+    
+    actions = actions_query.all()
     
     # 计算每个行动项的坚持度
     streak_actions = []
@@ -523,3 +576,413 @@ async def get_time_trend_analytics(
         monthly_completion_rate=[],  # 可以后续实现
         frequency_success_rate=frequency_success_rate
     )
+
+
+@router.get("/stats/comprehensive")
+async def get_comprehensive_stats(
+    days: int = Query(30, ge=1, le=365, description="统计天数"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """获取综合统计数据"""
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days)
+    
+    # 情境触发型统计
+    trigger_logs = db.query(PracticeLog).join(Action).filter(
+        PracticeLog.user_id == current_user.id,
+        Action.action_type == "trigger",
+        PracticeLog.date >= start_date,
+        PracticeLog.date <= end_date,
+        PracticeLog.deleted_at.is_(None),
+        Action.deleted_at.is_(None)
+    ).all()
+    
+    trigger_success_logs = [log for log in trigger_logs if log.result == "success"]
+    trigger_total_attempts = len(trigger_logs)
+    trigger_success_rate = round((len(trigger_success_logs) / trigger_total_attempts * 100) if trigger_total_attempts > 0 else 0, 2)
+    
+    # 习惯养成型统计
+    habit_actions = db.query(Action).filter(
+        Action.user_id == current_user.id,
+        Action.action_type == "habit",
+        Action.deleted_at.is_(None)
+    ).all()
+    
+    habit_logs = db.query(PracticeLog).join(Action).filter(
+        PracticeLog.user_id == current_user.id,
+        Action.action_type == "habit",
+        PracticeLog.date >= start_date,
+        PracticeLog.date <= end_date,
+        PracticeLog.deleted_at.is_(None),
+        Action.deleted_at.is_(None)
+    ).all()
+    
+    # 计算习惯完成天数
+    habit_days_count = len(set([log.date for log in habit_logs if log.result == "success"]))
+    habit_completion_rate = round((habit_days_count / days * 100) if days > 0 else 0, 2)
+    
+    # 计算最长连续天数
+    longest_streak = 0
+    for action in habit_actions:
+        action_logs = db.query(PracticeLog).filter(
+            PracticeLog.action_id == action.id,
+            PracticeLog.result == "success",
+            PracticeLog.deleted_at.is_(None)
+        ).order_by(PracticeLog.date).all()
+        
+        if action_logs:
+            current_streak = 1
+            max_streak = 1
+            for i in range(1, len(action_logs)):
+                if (action_logs[i].date - action_logs[i-1].date).days == 1:
+                    current_streak += 1
+                    max_streak = max(max_streak, current_streak)
+                else:
+                    current_streak = 1
+            longest_streak = max(longest_streak, max_streak)
+    
+    # 趋势数据（按周）
+    trend_data = []
+    num_weeks = max(days // 7, 1)
+    for i in range(num_weeks):
+        week_start = start_date + timedelta(days=i*7)
+        week_end = min(week_start + timedelta(days=6), end_date)
+        
+        week_logs = [log for log in trigger_logs + habit_logs 
+                    if week_start <= log.date <= week_end]
+        week_success = [log for log in week_logs if log.result == "success"]
+        
+        trend_data.append({
+            "date": week_start.strftime("%m/%d"),
+            "trigger_rate": round((len([l for l in week_success if l.action.action_type == "trigger"]) / 
+                                 len([l for l in week_logs if l.action.action_type == "trigger"]) * 100) 
+                                if len([l for l in week_logs if l.action.action_type == "trigger"]) > 0 else 0, 1),
+            "habit_rate": round((len([l for l in week_success if l.action.action_type == "habit"]) / 
+                               len([l for l in week_logs if l.action.action_type == "habit"]) * 100) 
+                              if len([l for l in week_logs if l.action.action_type == "habit"]) > 0 else 0, 1)
+        })
+    
+    # 按标签统计触发型行动项的分类
+    import json
+    trigger_actions = db.query(Action).filter(
+        Action.user_id == current_user.id,
+        Action.action_type == "trigger",
+        Action.deleted_at.is_(None)
+    ).all()
+    
+    category_distribution = {}
+    for action in trigger_actions:
+        try:
+            tags = json.loads(action.tags) if isinstance(action.tags, str) else action.tags
+            if isinstance(tags, list) and tags:
+                tag = tags[0]  # 使用第一个标签作为分类
+                if tag not in category_distribution:
+                    category_distribution[tag] = 0
+                category_distribution[tag] += 1
+        except (json.JSONDecodeError, TypeError):
+            continue
+    
+    # 转换为数组格式
+    category_list = [
+        {"category": cat, "count": count}
+        for cat, count in category_distribution.items()
+    ]
+    
+    # 计算总行动项数量
+    total_actions_count = len(trigger_actions) + len(habit_actions)
+    
+    # 调试日志
+    print(f"=== 综合统计调试信息 ===")
+    print(f"触发型行动项数量: {len(trigger_actions)}")
+    print(f"习惯型行动项数量: {len(habit_actions)}")
+    print(f"总行动项数量: {total_actions_count}")
+    print(f"触发型实践记录数: {trigger_total_attempts}")
+    print(f"习惯型完成天数: {habit_days_count}")
+    
+    return {
+        "trigger": {
+            "overall_success_rate": trigger_success_rate,
+            "total_attempts": trigger_total_attempts,
+            "success_count": len(trigger_success_logs),
+            "category_distribution": category_list,  # 返回数组格式
+            "total_trigger_actions": len(trigger_actions)  # 添加触发型行动项总数
+        },
+        "habit": {
+            "overall_completion_rate": habit_completion_rate,
+            "completed_days": habit_days_count,
+            "longest_streak": longest_streak,
+            "total_habits": len(habit_actions)
+        },
+        "trend_data": trend_data,
+        "total_actions": total_actions_count,  # 添加总行动项数量
+        "period_days": days
+    }
+
+
+@router.get("/stats/trigger-detailed")
+async def get_trigger_detailed_stats(
+    days: int = Query(30, ge=1, le=365, description="统计天数"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """获取情境触发型行动项详细统计"""
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days)
+    
+    # 情境触发型行动项统计
+    trigger_actions = db.query(Action).filter(
+        Action.user_id == current_user.id,
+        Action.action_type == "trigger",
+        Action.deleted_at.is_(None)
+    ).all()
+    
+    # 实践记录统计
+    trigger_practice_logs = db.query(PracticeLog).join(Action).filter(
+        PracticeLog.user_id == current_user.id,
+        Action.action_type == "trigger",
+        PracticeLog.date >= start_date,
+        PracticeLog.date <= end_date,
+        PracticeLog.deleted_at.is_(None),
+        Action.deleted_at.is_(None)
+    ).all()
+    
+    trigger_success_logs = [log for log in trigger_practice_logs if log.result == "success"]
+    total_attempts = len(trigger_practice_logs)
+    success_count = len(trigger_success_logs)
+    overall_success_rate = round((success_count / total_attempts * 100) if total_attempts > 0 else 0, 2)
+    
+    # 趋势数据（按日）
+    trend_data = []
+    current_date = start_date
+    while current_date <= end_date:
+        day_logs = [log for log in trigger_practice_logs if log.date == current_date]
+        day_success = [log for log in day_logs if log.result == "success"]
+        
+        trend_data.append({
+            "date": current_date.strftime("%m/%d"),
+            "success_rate": round((len(day_success) / len(day_logs) * 100) if day_logs else 0, 1),
+            "total": len(day_logs),
+            "success": len(day_success)
+        })
+        current_date += timedelta(days=1)
+    
+    # 按标签分类统计
+    import json
+    category_distribution = {}
+    for action in trigger_actions:
+        try:
+            tags = json.loads(action.tags) if isinstance(action.tags, str) else action.tags
+            if isinstance(tags, list) and tags:
+                tag = tags[0]  # 使用第一个标签作为分类
+                if tag not in category_distribution:
+                    category_distribution[tag] = {"total": 0, "success": 0}
+                
+                action_logs = [log for log in trigger_practice_logs if log.action_id == action.id]
+                action_success = [log for log in action_logs if log.result == "success"]
+                
+                category_distribution[tag]["total"] += len(action_logs)
+                category_distribution[tag]["success"] += len(action_success)
+        except (json.JSONDecodeError, TypeError):
+            continue
+    
+    # 转换为前端需要的格式
+    category_list = [
+        {
+            "category": cat,
+            "count": data["total"],
+            "success_rate": round((data["success"] / data["total"] * 100) if data["total"] > 0 else 0, 1)
+        }
+        for cat, data in category_distribution.items()
+    ]
+    
+    # Top场景（按成功次数排序）
+    top_scenarios = []
+    for action in trigger_actions:
+        action_logs = [log for log in trigger_practice_logs if log.action_id == action.id]
+        action_success = [log for log in action_logs if log.result == "success"]
+        
+        if action_logs:
+            top_scenarios.append({
+                "action_text": action.action_text[:30] + "..." if len(action.action_text) > 30 else action.action_text,
+                "attempts": len(action_logs),  # 修正字段名
+                "success_count": len(action_success),
+                "success_rate": round((len(action_success) / len(action_logs) * 100), 1)
+            })
+    
+    top_scenarios.sort(key=lambda x: x["success_count"], reverse=True)
+    top_scenarios = top_scenarios[:5]  # 只取前5个
+    
+    # 热力图数据（按星期几统计）
+    daily_heatmap = [
+        {"day": "周一", "hour": i, "value": 0} for i in range(24)
+    ] + [
+        {"day": "周二", "hour": i, "value": 0} for i in range(24)
+    ] + [
+        {"day": "周三", "hour": i, "value": 0} for i in range(24)
+    ] + [
+        {"day": "周四", "hour": i, "value": 0} for i in range(24)
+    ] + [
+        {"day": "周五", "hour": i, "value": 0} for i in range(24)
+    ] + [
+        {"day": "周六", "hour": i, "value": 0} for i in range(24)
+    ] + [
+        {"day": "周日", "hour": i, "value": 0} for i in range(24)
+    ]
+    
+    return {
+        "overall_success_rate": overall_success_rate,
+        "total_attempts": total_attempts,
+        "success_count": success_count,
+        "trend_data": trend_data,
+        "category_distribution": category_list,
+        "top_scenarios": top_scenarios,
+        "daily_heatmap": daily_heatmap,
+        "period_days": days
+    }
+
+
+@router.get("/stats/habit-detailed")
+async def get_habit_detailed_stats(
+    days: int = Query(30, ge=1, le=365, description="统计天数"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """获取习惯养成型行动项详细统计"""
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days)
+    
+    # 习惯养成型行动项统计
+    habit_actions = db.query(Action).filter(
+        Action.user_id == current_user.id,
+        Action.action_type == "habit",
+        Action.deleted_at.is_(None)
+    ).all()
+    
+    # 实践记录统计
+    habit_practice_logs = db.query(PracticeLog).join(Action).filter(
+        PracticeLog.user_id == current_user.id,
+        Action.action_type == "habit",
+        PracticeLog.date >= start_date,
+        PracticeLog.date <= end_date,
+        PracticeLog.deleted_at.is_(None),
+        Action.deleted_at.is_(None)
+    ).all()
+    
+    habit_success_logs = [log for log in habit_practice_logs if log.result == "success"]
+    
+    # 计算完成天数（成功打卡的天数）
+    completed_days = len(set([log.date for log in habit_success_logs]))
+    overall_completion_rate = round((completed_days / days * 100) if days > 0 else 0, 2)
+    
+    # 坚持度统计（连续天数）
+    streaks = []
+    longest_streak = 0
+    
+    for action in habit_actions:
+        action_logs = db.query(PracticeLog).filter(
+            PracticeLog.action_id == action.id,
+            PracticeLog.result == "success",
+            PracticeLog.deleted_at.is_(None)
+        ).order_by(PracticeLog.date).all()
+        
+        if action_logs:
+            # 计算当前连续天数
+            current_streak = 1
+            max_streak = 1
+            
+            for i in range(1, len(action_logs)):
+                if (action_logs[i].date - action_logs[i-1].date).days == 1:
+                    current_streak += 1
+                    max_streak = max(max_streak, current_streak)
+                else:
+                    current_streak = 1
+            
+            longest_streak = max(longest_streak, max_streak)
+            
+            streaks.append({
+                "habit": action.action_text[:20] + "..." if len(action.action_text) > 20 else action.action_text,
+                "current_streak": current_streak,
+                "longest_streak": max_streak
+            })
+    
+    # 日历热力图数据
+    calendar_data = []
+    current_date = start_date
+    while current_date <= end_date:
+        day_logs = [log for log in habit_practice_logs if log.date == current_date]
+        day_success = [log for log in day_logs if log.result == "success"]
+        
+        calendar_data.append({
+            "date": current_date.strftime("%Y-%m-%d"),
+            "value": len(day_success)  # 修正为value字段
+        })
+        current_date += timedelta(days=1)
+    
+    # 习惯排名（按完成率）
+    habit_rankings = []
+    for action in habit_actions:
+        action_logs = [log for log in habit_practice_logs if log.action_id == action.id]
+        action_success = [log for log in action_logs if log.result == "success"]
+        
+        if action_logs:
+            habit_rankings.append({
+                "habit": action.action_text[:30] + "..." if len(action.action_text) > 30 else action.action_text,
+                "completion_rate": round((len(action_success) / len(action_logs) * 100), 1),
+                "total_days": len(action_logs),
+                "completed_days": len(action_success)
+            })
+    
+    habit_rankings.sort(key=lambda x: x["completion_rate"], reverse=True)
+    
+    # 趋势数据（按周）
+    trend_data = []
+    num_weeks = max(days // 7, 1)
+    for i in range(num_weeks):
+        week_start = start_date + timedelta(days=i*7)
+        week_end = min(week_start + timedelta(days=6), end_date)
+        
+        week_logs = [log for log in habit_practice_logs 
+                    if week_start <= log.date <= week_end]
+        week_success = [log for log in week_logs if log.result == "success"]
+        
+        # 计算该周成功打卡的天数
+        week_success_days = len(set([log.date for log in week_success]))
+        week_total_days = (week_end - week_start).days + 1
+        
+        trend_data.append({
+            "week": f"{week_start.strftime('%m/%d')}-{week_end.strftime('%m/%d')}",
+            "completion_rate": round((week_success_days / week_total_days * 100), 1),
+            "completed_days": week_success_days
+        })
+    
+    # 习惯进度数据（为前端兼容性添加）
+    habit_progress = []
+    for action in habit_actions:
+        action_logs = [log for log in habit_practice_logs if log.action_id == action.id]
+        action_success = [log for log in action_logs if log.result == "success"]
+        
+        if action_logs:
+            habit_progress.append({
+                "action_text": action.action_text,
+                "completed_days": len(action_success),
+                "completion_rate": round((len(action_success) / len(action_logs) * 100), 1)
+            })
+    
+    # 周统计数据（为前端兼容性添加）
+    weekly_stats = trend_data  # 复用趋势数据
+    
+    return {
+        "overall_completion_rate": overall_completion_rate,
+        "completed_days": completed_days,
+        "total_days": days,
+        "longest_streak": longest_streak,
+        "active_habits": len(habit_actions),
+        "streaks": streaks,
+        "calendar_heatmap": calendar_data,  # 修正字段名
+        "habit_rankings": habit_rankings,
+        "trend_data": trend_data,
+        "habit_progress": habit_progress,  # 添加习惯进度数据
+        "weekly_stats": weekly_stats,      # 添加周统计数据
+        "period_days": days
+    }
