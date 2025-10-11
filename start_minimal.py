@@ -126,9 +126,9 @@ def main():
     logger.info(f"   DATABASE_URL: {'已设置' if os.getenv('DATABASE_URL') else '未设置'}")
     logger.info(f"   DEEPSEEK_API_KEY: {'已设置' if os.getenv('DEEPSEEK_API_KEY') else '未设置'}")
     
-    # 添加应用就绪检查
+    # 减少启动等待时间
     logger.info("⏳ 等待应用初始化完成...")
-    time.sleep(5)   
+    time.sleep(2)   
     
     try:
         import uvicorn
