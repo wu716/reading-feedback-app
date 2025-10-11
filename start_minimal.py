@@ -126,15 +126,14 @@ def main():
     logger.info(f"   DATABASE_URL: {'已设置' if os.getenv('DATABASE_URL') else '未设置'}")
     logger.info(f"   DEEPSEEK_API_KEY: {'已设置' if os.getenv('DEEPSEEK_API_KEY') else '未设置'}")
     
-    # 减少启动等待时间
-    logger.info("⏳ 等待应用初始化完成...")
-    time.sleep(1)
+    # 移除 sleep
+    # time.sleep(1)
     
+    logger.info("🚀 开始启动 Uvicorn...")
     try:
         import uvicorn
         from main import app
         
-        # 启动应用
         uvicorn.run(
             app,
             host=host,
@@ -142,7 +141,7 @@ def main():
             log_level="info",
             access_log=True
         )
-        
+        logger.info("✅ Uvicorn 启动成功")
     except Exception as e:
         logger.error(f"❌ 启动失败: {e}")
         import traceback

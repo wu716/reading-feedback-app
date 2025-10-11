@@ -64,51 +64,41 @@ async def startup_event():
     """应用启动时执行"""
     logger.info("正在启动应用...")
     
-    # 创建数据库表
-    create_tables()
-    logger.info("数据库表创建完成")
+    # 临时注释数据库和调度器
+    # create_tables()
+    # logger.info("数据库表创建完成")
     
-    # 测试 AI 连接（非阻塞）
-    try:
-        ai_connected = await test_ai_connection()
-        if ai_connected:
-            logger.info("AI 服务连接正常")
-        else:
-            logger.warning("AI 服务连接失败，但应用将继续运行")
-    except Exception as e:
-        logger.warning(f"AI 服务连接测试失败: {e}，但应用将继续运行")
+    # 注释调度器
+    # try:
+    #     from apscheduler.schedulers.background import BackgroundScheduler
+    #     from app.self_talk.reminder_service import check_daily_reminders, check_inactive_reminders
+        
+    #     scheduler = BackgroundScheduler()
+        
+    #     # 每5分钟检查一次每日提醒（实际会判断是否到达设定时间）
+    #     scheduler.add_job(
+    #         lambda: check_daily_reminders(next(get_db())),
+    #         'interval',
+    #         minutes=5,
+    #         id='check_daily_reminders'
+    #     )
+        
+    #     # 每小时检查一次非活跃用户
+    #     scheduler.add_job(
+    #         lambda: check_inactive_reminders(next(get_db())),
+    #         'interval',
+    #         hours=1,
+    #         id='check_inactive_reminders'
+    #     )
+        
+    #     scheduler.start()
+    #     app.state.scheduler = scheduler
+    #     logger.info("定时任务调度器启动成功")
+        
+    # except Exception as e:
+    #     logger.error(f"定时任务调度器启动失败: {e}")
     
-    # 启动定时任务调度器
-    try:
-        from apscheduler.schedulers.background import BackgroundScheduler
-        from app.self_talk.reminder_service import check_daily_reminders, check_inactive_reminders
-        
-        scheduler = BackgroundScheduler()
-        
-        # 每5分钟检查一次每日提醒（实际会判断是否到达设定时间）
-        scheduler.add_job(
-            lambda: check_daily_reminders(next(get_db())),
-            'interval',
-            minutes=5,
-            id='check_daily_reminders'
-        )
-        
-        # 每小时检查一次非活跃用户
-        scheduler.add_job(
-            lambda: check_inactive_reminders(next(get_db())),
-            'interval',
-            hours=1,
-            id='check_inactive_reminders'
-        )
-        
-        scheduler.start()
-        app.state.scheduler = scheduler
-        logger.info("定时任务调度器启动成功")
-        
-    except Exception as e:
-        logger.error(f"定时任务调度器启动失败: {e}")
-    
-    logger.info("应用启动完成")
+    logger.info("应用启动完成 - 简化模式")
 
 
 @app.on_event("shutdown")
@@ -136,24 +126,8 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """健康检查 - Railway优化版本"""
-    try:
-        # 基本状态检查，不依赖外部服务
-        return {
-            "status": "healthy",
-            "message": "服务正常运行",
-            "timestamp": time.time(),
-            "services": {
-                "app": "ok",
-                "database": "ok"
-            }
-        }
-    except Exception as e:
-        logger.error(f"健康检查失败: {e}")
-        raise HTTPException(
-            status_code=503,
-            detail=f"服务不可用: {str(e)}"
-        )
+    logger.info("健康检查被调用")
+    return {"status": "healthy", "message": "服务就绪"}
 
 
 # 全局异常处理
