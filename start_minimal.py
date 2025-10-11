@@ -72,39 +72,39 @@ def main():
     logger.info(f"✅ 环境变量检查通过 ({len(present_vars)}/3)")
     
     # 测试AI连接
-    if 'DEEPSEEK_API_KEY' in present_vars:
-        logger.info("🤖 测试AI服务连接...")
-        try:
-            import requests
-            
-            api_key = os.getenv('DEEPSEEK_API_KEY')
-            headers = {
-                'Authorization': f'Bearer {api_key}',
-                'Content-Type': 'application/json'
-            }
-            
-            data = {
-                "model": "deepseek-chat",
-                "messages": [{"role": "user", "content": "Hello"}],
-                "max_tokens": 5
-            }
-            
-            response = requests.post(
-                'https://api.deepseek.com/v1/chat/completions',
-                headers=headers,
-                json=data,
-                timeout=10
-            )
-            
-            if response.status_code == 200:
-                logger.info("✅ AI服务连接正常")
-            else:
-                logger.warning(f"⚠️  AI服务连接失败: {response.status_code}")
-                logger.warning("应用将继续运行，但AI功能可能不可用")
-                
-        except Exception as e:
-            logger.warning(f"⚠️  AI连接测试失败: {e}")
-            logger.warning("应用将继续运行，但AI功能可能不可用")
+    # if 'DEEPSEEK_API_KEY' in present_vars:
+    #     logger.info("🤖 测试AI服务连接...")
+    #     try:
+    #         import requests
+    #         
+    #         api_key = os.getenv('DEEPSEEK_API_KEY')
+    #         headers = {
+    #             'Authorization': f'Bearer {api_key}',
+    #             'Content-Type': 'application/json'
+    #         }
+    #         
+    #         data = {
+    #             "model": "deepseek-chat",
+    #             "messages": [{"role": "user", "content": "Hello"}],
+    #             "max_tokens": 5
+    #         }
+    #         
+    #         response = requests.post(
+    #             'https://api.deepseek.com/v1/chat/completions',
+    #             headers=headers,
+    #             json=data,
+    #             timeout=10
+    #         )
+    #         
+    #         if response.status_code == 200:
+    #             logger.info("✅ AI服务连接正常")
+    #         else:
+    #             logger.warning(f"⚠️  AI服务连接失败: {response.status_code}")
+    #             logger.warning("应用将继续运行，但AI功能可能不可用")
+    #             
+    #     except Exception as e:
+    #         logger.warning(f"⚠️  AI连接测试失败: {e}")
+    #         logger.warning("应用将继续运行，但AI功能可能不可用")
     
     # 设置环境变量
     os.environ['ENVIRONMENT'] = 'production'
@@ -128,7 +128,7 @@ def main():
     
     # 减少启动等待时间
     logger.info("⏳ 等待应用初始化完成...")
-    time.sleep(2)   
+    time.sleep(1)
     
     try:
         import uvicorn
