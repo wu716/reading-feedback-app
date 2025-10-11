@@ -278,6 +278,10 @@
             backdrop-filter: blur(5px);
         }
         
+        .auth-modal:not(.hidden) {
+            display: flex !important;
+        }
+        
         .auth-modal.hidden {
             display: none;
         }
@@ -2915,7 +2919,7 @@
         });
         
         // 页面加载时根据hash显示对应区域
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
             const hash = location.hash.slice(1);
             if (hash && document.getElementById(hash)) {
                 navigateTo(hash);
@@ -2932,6 +2936,42 @@
             
             // 添加天气切换演示（可选功能）
             addWeatherDemoFeature();
+            
+            // 先检查认证状态，再决定是否加载数据
+            await checkAuthAndLoadData();
+            
+            // 绑定登录表单事件
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const email = document.getElementById('loginEmail').value;
+                    const password = document.getElementById('loginPassword').value;
+                    
+                    if (!email || !password) {
+                        showMessage('请填写完整信息', 'error');
+                        return;
+                    }
+                    
+                    const btn = e.target.querySelector('.auth-btn');
+                    btn.disabled = true;
+                    btn.textContent = '登录中...';
+                    
+                    try {
+                        const success = await login(email, password);
+                        if (success) {
+                            // 登录成功后清空表单
+                            document.getElementById('loginEmail').value = '';
+                            document.getElementById('loginPassword').value = '';
+                        }
+                    } catch (error) {
+                        console.error('登录错误:', error);
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = '登录';
+                    }
+                });
+            }
         });
         // ============= 导航切换功能结束 =============
         
@@ -3531,12 +3571,33 @@
             if (document.readyState === 'loading') {
                 return;
             }
-            document.getElementById('authModal').classList.remove('hidden');
+            
+            const modal = document.getElementById('authModal');
+            if (modal) {
+                // 确保模态框可见并居中
+                modal.style.display = 'flex';
+                modal.style.justifyContent = 'center';
+                modal.style.alignItems = 'center';
+                modal.classList.remove('hidden');
+                
+                // 防止登录框被立即隐藏
+                setTimeout(() => {
+                    if (modal && !authToken) {
+                        modal.style.display = 'flex';
+                        modal.classList.remove('hidden');
+                    }
+                }, 100);
+            }
         }
         
         // 关闭认证模态框
         function closeAuthModal() {
-            document.getElementById('authModal').classList.add('hidden');
+            const modal = document.getElementById('authModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+                console.log('登录模态框已关闭');
+            }
         }
         
         // 切换登录/注册标签
@@ -3553,25 +3614,44 @@
         // 用户登录
         async function login(email, password) {
             try {
+                console.log('开始登录...', email);
                 const response = await apiRequest('/auth/login', {
                     method: 'POST',
                     body: JSON.stringify({ email, password })
                 });
                 
-                authToken = response.access_token;
-                localStorage.setItem('authToken', authToken);
-                localStorage.setItem('userEmail', email);
+                console.log('登录响应:', response);
                 
-                showMessage('登录成功！', 'success');
-                closeAuthModal();
-                updateUserInfo(email);
-                loadActions();
-                // 如果当前在仪表盘页面，刷新仪表盘数据
-                if (typeof loadCurrentViewData === 'function') {
-                    loadCurrentViewData();
+                if (response && response.access_token) {
+                    authToken = response.access_token;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('userEmail', email);
+                    
+                    console.log('登录成功，token已保存');
+                    
+                    showMessage('登录成功！', 'success');
+                    closeAuthModal();
+                    updateUserInfo(email);
+                    
+                    // 延迟加载数据，确保状态更新完成
+                    setTimeout(async () => {
+                        // 强制刷新认证状态
+                        await refreshAuthState();
+                        loadActions();
+                        // 如果当前在仪表盘页面，刷新仪表盘数据
+                        if (typeof loadCurrentViewData === 'function') {
+                            loadCurrentViewData();
+                        }
+                    }, 100);
+                    
+                    return true;
+                } else {
+                    console.error('登录响应格式错误:', response);
+                    showMessage('登录失败：响应格式错误', 'error');
+                    return false;
                 }
-                return true;
             } catch (error) {
+                console.error('登录错误:', error);
                 showMessage('登录失败: ' + error.message, 'error');
                 return false;
             }
@@ -3599,6 +3679,32 @@
             }
         }
         
+        // 强制刷新认证状态
+        async function refreshAuthState() {
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                authToken = token;
+                try {
+                    const response = await fetch(`${API_BASE}/auth/me`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const userData = await response.json();
+                        localStorage.setItem('userEmail', userData.email);
+                        updateUserInfo(userData.email);
+                        console.log('认证状态已刷新');
+                        return true;
+                    }
+                } catch (error) {
+                    console.error('刷新认证状态失败:', error);
+                }
+            }
+            return false;
+        }
+
         // 更新用户信息显示
         function updateUserInfo(email) {
             const userInfo = document.getElementById('userInfo');
@@ -3607,8 +3713,10 @@
             if (email) {
                 userEmail.textContent = email;
                 userInfo.classList.add('show');
+                console.log('用户信息已更新:', email);
             } else {
                 userInfo.classList.remove('show');
+                console.log('用户信息已清除');
             }
         }
         
@@ -3617,13 +3725,18 @@
             authToken = null;
             localStorage.removeItem('authToken');
             localStorage.removeItem('userEmail');
+            localStorage.removeItem('token'); // 清理可能存在的旧token
             updateUserInfo(null);
             showMessage('已退出登录', 'info');
-            showAuthModal();
+            
+            // 确保显示登录模态框
+            setTimeout(() => {
+                showAuthModal();
+            }, 100);
         }
         
-        // 检查认证状态
-        async function checkAuth() {
+        // 检查认证状态并加载数据
+        async function checkAuthAndLoadData() {
             // 重新获取最新的 authToken
             authToken = localStorage.getItem('authToken');
             if (authToken) {
@@ -3646,6 +3759,8 @@
                         const userData = await response.json();
                         localStorage.setItem('userEmail', userData.email);
                         updateUserInfo(userData.email);
+                        
+                        // 只有在认证成功后才加载数据
                         loadActions();
                         // 如果当前在仪表盘页面，刷新仪表盘数据
                         if (typeof loadCurrentViewData === 'function') {
@@ -3664,9 +3779,10 @@
                     }
                 } catch (error) {
                     console.error('认证检查失败:', error);
-                    // 网络错误时，如果本地有email，保持登录状态
+                    // 网络错误时，如果本地有email，保持登录状态但不加载数据
                     if (email) {
-                        console.log('网络错误，保持本地登录状态');
+                        console.log('网络错误，保持本地登录状态但不加载数据');
+                        updateUserInfo(email);
                         return true;
                     } else {
                         showAuthModal();
@@ -3674,9 +3790,15 @@
                     }
                 }
             } else {
+                // 没有token，显示登录弹窗，不加载任何数据
                 showAuthModal();
                 return false;
             }
+        }
+
+        // 检查认证状态（保留原函数用于其他地方的调用）
+        async function checkAuth() {
+            return await checkAuthAndLoadData();
         }
         
         // 上传笔记并抽取行动项
@@ -4257,26 +4379,7 @@
         
         document.getElementById('editActionForm').addEventListener('submit', submitEditAction);
         
-        // 登录表单事件
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            
-            if (!email || !password) {
-                showMessage('请填写完整信息', 'error');
-                return;
-            }
-            
-            const btn = e.target.querySelector('.auth-btn');
-            btn.disabled = true;
-            btn.textContent = '登录中...';
-            
-            await login(email, password);
-            
-            btn.disabled = false;
-            btn.textContent = '登录';
-        });
+        // 登录表单事件（将在DOMContentLoaded中绑定）
         
         // 注册表单事件
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
@@ -4550,6 +4653,7 @@
         function performLogout() {
             // 清除本地存储
             localStorage.removeItem('authToken');
+            localStorage.removeItem('userEmail');
             localStorage.removeItem('token');
             
             // 关闭所有模态框
@@ -4558,9 +4662,12 @@
             
             // 重置认证状态
             authToken = null;
+            updateUserInfo(null);
             
-            // 显示登录模态框
-            showAuthModal();
+            // 确保显示登录模态框
+            setTimeout(() => {
+                showAuthModal();
+            }, 100);
             
             showMessage('已退出登录', 'success');
         }
@@ -5003,18 +5110,22 @@
         
         // 页面加载时初始化
         window.addEventListener('load', async () => {
-            // 显示加载状态，避免登录框闪烁
+            // 确保登录模态框可以正常显示
             const authModal = document.getElementById('authModal');
             if (authModal) {
-                authModal.style.display = 'none';
+                authModal.style.display = 'block';
+                authModal.classList.add('hidden'); // 初始状态隐藏
             }
             
-            await checkAuth();
-            initRating();
-            
-            // 加载仪表盘数据
-            await loadDurationAnalytics();
-            await loadStreakAnalytics();
+            // 先检查认证状态，只有在已登录时才加载数据
+            const isAuthenticated = await checkAuth();
+            if (isAuthenticated) {
+                initRating();
+                
+                // 加载仪表盘数据
+                await loadDurationAnalytics();
+                await loadStreakAnalytics();
+            }
             
             // 表单事件
             document.getElementById('practiceForm').addEventListener('submit', submitPracticeLog);
