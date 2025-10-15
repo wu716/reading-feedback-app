@@ -1,28 +1,38 @@
-# 统一换行符设置
-* text=auto
+# 设置文件编码和行尾符
+# 批处理文件使用 CRLF（Windows）
+*.bat text eol=crlf
+*.cmd text eol=crlf
 
-# 确保这些文件类型使用 LF
+# Shell 脚本使用 LF（Linux/Mac）
+*.sh text eol=lf
+
+# 代码文件统一使用 LF
 *.py text eol=lf
 *.js text eol=lf
+*.ts text eol=lf
 *.html text eol=lf
 *.css text eol=lf
+
+# 配置文件统一使用 LF
 *.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+Procfile text eol=lf
+Dockerfile text eol=lf
+*.dockerignore text eol=lf
+
+# 文档文件统一使用 LF
 *.md text eol=lf
 *.txt text eol=lf
-*.yaml text eol=lf
-*.yml text eol=lf
+*.rst text eol=lf
 
 # 二进制文件
-*.png binary
+*.db binary
+*.sqlite binary
 *.jpg binary
-*.jpeg binary
+*.png binary
 *.gif binary
 *.ico binary
 *.pdf binary
-*.zip binary
-*.tar.gz binary
-
-# 数据库文件
-*.db binary
-*.sqlite binary
-*.sqlite3 binary
+*.exe binary

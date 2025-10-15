@@ -5,12 +5,11 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "python start_minimal.py",
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 60,
+    "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3,
-    "healthcheckInterval": 30,  
-    "healthcheckStartPeriod": 120  
+    "healthcheckInterval": 20,
+    "healthcheckStartPeriod": 300
   }
 }

@@ -1,0 +1,104 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# 数据库
+*.db
+*.db-journal
+*.db.bak
+
+# 日志
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# 文档
+*.md
+docs/
+
+# 测试
+test_*.py
+check_*.py
+verify_*.py
+quick_test.py
+simple_test.py
+
+# 部署相关（本地）
+.env
+.env.local
+encrypted_api_key.txt
+
+# 临时文件
+*.tmp
+*.bak
+*.backup
+
+# 上传文件（可选）
+uploads/
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# macOS
+.DS_Store
+
+# 安装脚本
+install_*.py
+download_*.py
+fix_*.py
+setup_*.py
+set_*.py
+manage_*.py
+generate_*.py
+recover_*.py
+
+# 启动脚本（除了Railway用的）
+start_app*.py
+start_app*.bat
+start_app*.cmd
+start_app*.sh
+start_simple.py
+start_minimal.py
+start_secure.py
+start_production.py
+start_final.py
+start_with_env.py
+*.bat
+*.cmd
+*.sh
+
+# 迁移脚本
+migrate_*.py
+simple_migrate.py
+run_migration.bat
+
+# 部署配置（其他平台）
+fly.toml
+render.yaml
+deploy/
+GoogleCloudSDKInstaller.exe
+
+# 清理脚本
+clear_*.py
+
+# 其他
+*.exe
+

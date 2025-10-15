@@ -1,4 +1,1 @@
-web: python start_minimal.py
-
-
-
+web: python start_railway.py
