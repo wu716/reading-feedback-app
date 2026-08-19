@@ -91,8 +91,8 @@ class ActionItem(BaseModel):
 
 class ActionCreate(BaseModel):
     book_title: str = Field(..., min_length=1, max_length=255)
-    source_excerpt: str = Field(..., min_length=10)
-    action_text: str = Field(..., min_length=5)
+    source_excerpt: str = Field(default="", min_length=0, max_length=10000)
+    action_text: str = Field(..., min_length=1, max_length=2000)
     tags: List[str] = []
     frequency: Frequency = Frequency.DAILY
     
@@ -202,7 +202,7 @@ class PracticeLogResponse(BaseModel):
 
 # 笔记上传模型
 class NotesUpload(BaseModel):
-    content: str = Field(..., min_length=50, max_length=10000)
+    content: str = Field(..., min_length=10, max_length=10000, description="笔记内容，至少10个字符")
     book_title: Optional[str] = Field(None, max_length=255)
 
 
@@ -216,6 +216,7 @@ class NotesUploadResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    expires_in: int  # 秒
 
 
 class TokenData(BaseModel):
@@ -344,12 +345,15 @@ class AIAdviceMessageResponse(BaseModel):
 
 class AIAdviceChatRequest(BaseModel):
     """AI建议聊天请求"""
-    session_id: str
     message: str = Field(..., min_length=1, max_length=5000)
+    model_type: Optional[AIModelType] = None
+    web_search_enabled: Optional[bool] = None
 
 
 class AIAdviceChatResponse(BaseModel):
     """AI建议聊天响应"""
     session_id: str
     message: AIAdviceMessageResponse
+    thinking_process: Optional[str] = None
+    web_search_results: Optional[str] = None
     context: Optional[dict] = None

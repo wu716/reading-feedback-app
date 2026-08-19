@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Self-talk 内心对话系统</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+    <link rel="icon" href="/static/icons/app-icon-1024.png">
+    <link rel="apple-touch-icon" href="/static/icons/app-icon-1024.png">
     <style>
         * {
             margin: 0;
@@ -271,19 +272,15 @@
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.8);
-            display: flex;
+            display: none;
             justify-content: center;
             align-items: center;
             z-index: 1000;
             backdrop-filter: blur(5px);
         }
         
-        .auth-modal:not(.hidden) {
-            display: flex !important;
-        }
-        
-        .auth-modal.hidden {
-            display: none;
+        .auth-modal.is-open {
+            display: flex;
         }
         
         .auth-container {
@@ -1203,6 +1200,141 @@
             transform: scale(1.1);
         }
 
+        .todo-item.completed .todo-text {
+            text-decoration: line-through;
+            opacity: 0.65;
+        }
+
+        .todo-item.editing .todo-text {
+            display: none;
+        }
+
+        .todo-edit-input {
+            flex: 1;
+            padding: 6px 8px;
+            border: 1px solid #667eea;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .todo-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .todo-btn {
+            border: none;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            background: #e9ecef;
+            color: #333;
+        }
+
+        .todo-btn.edit { background: #edf2f7; }
+        .todo-btn.delete { background: #fee; color: #c53030; }
+
+        .todo-add-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .todo-add-input {
+            flex: 1;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .todo-add-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .stat-item.clickable {
+            cursor: pointer;
+        }
+
+        .stat-item.clickable.expanded {
+            background: #eef2ff;
+        }
+
+        .overview-panel {
+            margin: -5px 0 10px 65px;
+            padding: 12px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .overview-panel.hidden {
+            display: none;
+        }
+
+        .overview-panel-item {
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.85rem;
+        }
+
+        .overview-panel-item:last-child {
+            border-bottom: none;
+        }
+
+        .overview-panel-item h5 {
+            margin: 0 0 6px;
+            color: #667eea;
+            font-size: 0.9rem;
+        }
+
+        .overview-panel-item p {
+            margin: 4px 0;
+            color: #555;
+            white-space: pre-wrap;
+        }
+
+        .reading-duration-hint {
+            font-size: 0.75rem;
+            color: #a0aec0;
+            margin-top: 4px;
+        }
+
+        .upload-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .upload-tab {
+            padding: 8px 14px;
+            border: 1px solid #ddd;
+            background: #f8f9fa;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .upload-tab.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .upload-panel.hidden {
+            display: none;
+        }
+
         /* 今日概览样式 */
         .overview-stats {
             display: flex;
@@ -2063,6 +2195,7 @@
                                 <div class="clock-center"></div>
                             </div>
                             <div class="date-display" id="beijingDate" style="color: #666; font-size: 1rem;"></div>
+                            <div id="clockSyncStatus" style="color: #a0aec0; font-size: 0.75rem; margin-top: 4px;"></div>
                         </div>
                         
                         <!-- 扩展天气信息 -->
@@ -2109,19 +2242,10 @@
                         <!-- 今日待办 -->
                         <div class="today-todos" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
                             <h4 style="color: #667eea; margin-bottom: 10px; font-size: 1rem;">📋 今日待办</h4>
-                            <div id="todayTodosList" class="todos-list">
-                                <div class="todo-item">
-                                    <span class="todo-text">📖 阅读《深度工作》30分钟</span>
-                                    <button class="todo-check">✓</button>
-                                </div>
-                                <div class="todo-item">
-                                    <span class="todo-text">💭 记录今日反思</span>
-                                    <button class="todo-check">✓</button>
-                                </div>
-                                <div class="todo-item">
-                                    <span class="todo-text">🎯 完成行动项回顾</span>
-                                    <button class="todo-check">✓</button>
-                                </div>
+                            <div id="todayTodosList" class="todos-list"></div>
+                            <div class="todo-add-row">
+                                <input type="text" id="newTodoInput" class="todo-add-input" placeholder="添加今日待办…" maxlength="500">
+                                <button type="button" class="todo-add-btn" onclick="addDailyTodo()">＋ 添加</button>
                             </div>
                         </div>
                     </div>
@@ -2132,38 +2256,47 @@
                     <!-- 今日概览 -->
                     <div class="widget-card">
                         <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.2rem;">📊 今日概览</h3>
-                        <div class="overview-stats">
-                            <div class="stat-item">
+                        <div class="overview-stats" id="todayOverviewStats">
+                            <div class="stat-item clickable" id="readingStatItem" onclick="toggleOverviewPanel('reading')">
                                 <div class="stat-icon">📚</div>
                                 <div class="stat-content">
-                                    <div class="stat-value" id="todayReadingTime">2小时30分</div>
+                                    <div class="stat-value" id="todayReadingTime">--</div>
                                     <div class="stat-label">今日阅读时长</div>
-                                    <div class="stat-progress">
-                                        <div class="progress-bar" style="width: 75%;"></div>
-                                    </div>
+                                    <div class="reading-duration-hint">滚轮可调时长 · 点击展开阅读内容与笔记</div>
+                                    <div class="stat-progress"><div class="progress-bar" id="readingProgressBar" style="width: 0%;"></div></div>
                                 </div>
                             </div>
-                            <div class="stat-item">
+                            <div class="overview-panel hidden" id="readingPanel"></div>
+                            <div class="stat-item clickable" id="actionsStatItem" onclick="toggleOverviewPanel('actions')">
                                 <div class="stat-icon">✅</div>
                                 <div class="stat-content">
-                                    <div class="stat-value" id="completedActions">3/5</div>
-                                    <div class="stat-label">完成行动项</div>
-                                    <div class="stat-progress">
-                                        <div class="progress-bar" style="width: 60%;"></div>
-                                    </div>
+                                    <div class="stat-value" id="completedActions">--</div>
+                                    <div class="stat-label">今日实践行动项</div>
+                                    <div class="stat-progress"><div class="progress-bar" id="actionsProgressBar" style="width: 0%;"></div></div>
                                 </div>
                             </div>
-                            <div class="stat-item">
+                            <div class="overview-panel hidden" id="actionsPanel"></div>
+                            <div class="stat-item clickable" id="practiceStatItem" onclick="toggleOverviewPanel('practice')">
                                 <div class="stat-icon">🎯</div>
                                 <div class="stat-content">
-                                    <div class="stat-value" id="practiceCount">7次</div>
-                                    <div class="stat-label">今日实践</div>
-                                    <div class="stat-progress">
-                                        <div class="progress-bar" style="width: 85%;"></div>
-                                    </div>
+                                    <div class="stat-value" id="practiceCount">--</div>
+                                    <div class="stat-label">今日实践记录</div>
+                                    <div class="stat-progress"><div class="progress-bar" id="practiceProgressBar" style="width: 0%;"></div></div>
                                 </div>
                             </div>
+                            <div class="overview-panel hidden" id="practicePanel"></div>
+                            <div class="stat-item clickable" id="selfTalkStatItem" onclick="toggleOverviewPanel('selftalk')">
+                                <div class="stat-icon">💭</div>
+                                <div class="stat-content">
+                                    <div class="stat-value" id="selfTalkPlaySummary">--</div>
+                                    <div class="stat-label">Self-talk 播放</div>
+                                    <div class="stat-hint" style="font-size:0.75rem;color:#a0aec0;margin-bottom:4px;">播放次数 · 总时长 · 点击展开</div>
+                                    <div class="stat-progress"><div class="progress-bar" id="selfTalkProgressBar" style="width: 0%;"></div></div>
+                                </div>
+                            </div>
+                            <div class="overview-panel hidden" id="selfTalkPanel"></div>
                         </div>
+                        <p id="todayOverviewHint" style="font-size:0.8rem;color:#a0aec0;margin-top:8px;">登录后自动加载今日数据</p>
                     </div>
                     
                     <!-- 快速操作 -->
@@ -2264,19 +2397,65 @@
             </div>
             
             <div class="card">
-                <h2>📝 上传读书笔记</h2>
-                <form id="uploadForm">
+                <div class="upload-tabs">
+                    <button type="button" class="upload-tab active" data-tab="ai" onclick="switchUploadTab('ai')">🤖 AI 抽取行动项</button>
+                    <button type="button" class="upload-tab" data-tab="manual" onclick="switchUploadTab('manual')">✍️ 手动添加行动项</button>
+                    <button type="button" class="upload-tab" data-tab="reading" onclick="switchUploadTab('reading')">📖 阅读内容与笔记</button>
+                </div>
+
+                <div class="upload-panel" data-panel="ai">
+                    <h2>📝 上传读书笔记（AI 抽取）</h2>
+                    <form id="uploadForm">
+                        <div class="form-group">
+                            <label for="bookTitle">书籍名称</label>
+                            <input type="text" id="bookTitle" placeholder="请输入书籍名称">
+                        </div>
+                        <div class="form-group">
+                            <label for="notesContent">笔记内容</label>
+                            <textarea id="notesContent" placeholder="请输入你的读书笔记内容..."></textarea>
+                        </div>
+                        <button type="submit" class="btn" id="uploadBtn">🚀 抽取行动项</button>
+                    </form>
+                </div>
+
+                <div class="upload-panel hidden" data-panel="manual">
+                    <h2>✍️ 手动添加行动项（无需 AI）</h2>
                     <div class="form-group">
-                        <label for="bookTitle">书籍名称</label>
-                        <input type="text" id="bookTitle" placeholder="请输入书籍名称">
+                        <label for="manualBookTitle">书籍名称</label>
+                        <input type="text" id="manualBookTitle" placeholder="书名">
                     </div>
                     <div class="form-group">
-                        <label for="notesContent">笔记内容</label>
-                        <textarea id="notesContent" placeholder="请输入你的读书笔记内容..."></textarea>
+                        <label for="manualActionText">行动内容</label>
+                        <textarea id="manualActionText" placeholder="你要执行的具体行动…"></textarea>
                     </div>
-                    
-                    <button type="submit" class="btn" id="uploadBtn">🚀 抽取行动项</button>
-                </form>
+                    <div class="form-group">
+                        <label for="manualSourceExcerpt">摘录/备注（可选）</label>
+                        <textarea id="manualSourceExcerpt" placeholder="相关原文或说明…"></textarea>
+                    </div>
+                    <button type="button" class="btn" onclick="createManualAction()">💾 保存行动项</button>
+                </div>
+
+                <div class="upload-panel hidden" data-panel="reading">
+                    <h2>📖 阅读内容与笔记</h2>
+                    <input type="hidden" id="readingEntryId" value="">
+                    <div class="form-group">
+                        <label for="readingBookTitle">书籍名称</label>
+                        <input type="text" id="readingBookTitle" placeholder="书名">
+                    </div>
+                    <div class="form-group">
+                        <label for="readingDuration">阅读时长（分钟）</label>
+                        <input type="number" id="readingDuration" min="0" max="1440" value="30">
+                    </div>
+                    <div class="form-group">
+                        <label for="readingContent">阅读内容</label>
+                        <textarea id="readingContent" placeholder="今天读了什么…"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="readingReflection">笔记 / 感悟</label>
+                        <textarea id="readingReflection" placeholder="读后感、摘录、思考…"></textarea>
+                    </div>
+                    <button type="button" class="btn" onclick="saveReadingEntry()">💾 保存阅读记录</button>
+                </div>
             </div>
         </section>
         
@@ -2529,7 +2708,7 @@
     </main>
     
     <!-- 登录/注册模态框 -->
-    <div class="auth-modal" id="authModal">
+    <div class="auth-modal hidden" id="authModal" aria-hidden="true">
         <div class="auth-container">
             <button class="close-modal" onclick="closeAuthModal()">&times;</button>
             <div class="auth-header">
@@ -2870,6 +3049,10 @@
         // API 基础配置
         const API_BASE = 'http://localhost:8000';
         let authToken = localStorage.getItem('authToken');
+        let authCheckInProgress = false;
+        let authCheckSettled = false;
+        window.authCheckSettled = false;
+        let showAuthModalTimer = null;
         let allActions = []; // 存储所有行动项
         let currentFilterType = 'all'; // 当前筛选类型
         
@@ -2931,7 +3114,6 @@
             
             // 初始化新增组件
             initializeWeather();
-            initializeTodayStats();
             initializePersonalStats();
             
             // 添加天气切换演示（可选功能）
@@ -2976,12 +3158,120 @@
         // ============= 导航切换功能结束 =============
         
         // ============= 时钟和日历功能开始 =============
+
+        const CLOCK_OFFSET_KEY = 'clockOffsetMs';
+        const BEIJING_TZ = 'Asia/Shanghai';
+        let clockOffsetMs = 0;
+
+        function loadStoredClockOffset() {
+            const stored = localStorage.getItem(CLOCK_OFFSET_KEY);
+            if (stored !== null && !Number.isNaN(Number(stored))) {
+                clockOffsetMs = Number(stored);
+            }
+        }
+
+        function getSyncedNow() {
+            return new Date(Date.now() + clockOffsetMs);
+        }
+
+        function getBeijingParts(date = getSyncedNow()) {
+            const parts = {};
+            new Intl.DateTimeFormat('en-US', {
+                timeZone: BEIJING_TZ,
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: 'numeric',
+                second: 'numeric',
+                weekday: 'long',
+                hour12: false,
+            }).formatToParts(date).forEach(({ type, value }) => {
+                if (type === 'literal') return;
+                parts[type] = type === 'weekday' ? value : parseInt(value, 10);
+            });
+            return parts;
+        }
+
+        function getBeijingDateString(date = getSyncedNow()) {
+            const p = getBeijingParts(date);
+            const m = String(p.month).padStart(2, '0');
+            const d = String(p.day).padStart(2, '0');
+            return `${p.year}-${m}-${d}`;
+        }
+
+        function setClockSyncStatus(message, isError = false) {
+            const el = document.getElementById('clockSyncStatus');
+            if (el) {
+                el.textContent = message;
+                el.style.color = isError ? '#e53e3e' : '#a0aec0';
+            }
+        }
+
+        async function syncNetworkTime() {
+            if (!navigator.onLine) {
+                setClockSyncStatus(clockOffsetMs ? '已使用上次校准时间（离线）' : '离线：使用本机时间');
+                return false;
+            }
+
+            setClockSyncStatus('正在联网校准时间…');
+
+            const bases = [];
+            if (typeof API_BASE === 'string' && API_BASE) bases.push(API_BASE.replace(/\/$/, ''));
+            bases.push(window.location.origin);
+
+            for (const base of [...new Set(bases)]) {
+                try {
+                    const res = await fetch(`${base}/api/time`, { cache: 'no-store' });
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    if (typeof data.timestamp_ms !== 'number') continue;
+
+                    clockOffsetMs = data.timestamp_ms - Date.now();
+                    localStorage.setItem(CLOCK_OFFSET_KEY, String(clockOffsetMs));
+                    setClockSyncStatus(`已联网校准 · ${data.beijing_formatted || ''}`);
+                    updateClock();
+                    if (typeof renderCalendar === 'function') renderCalendar();
+                    return true;
+                } catch (e) {
+                    console.warn('时间同步失败:', base, e);
+                }
+            }
+
+            try {
+                const base = (typeof API_BASE === 'string' && API_BASE) ? API_BASE : window.location.origin;
+                const res = await fetch(`${base.replace(/\/$/, '')}/health`, { cache: 'no-store' });
+                const dateHeader = res.headers.get('Date');
+                if (dateHeader) {
+                    clockOffsetMs = new Date(dateHeader).getTime() - Date.now();
+                    localStorage.setItem(CLOCK_OFFSET_KEY, String(clockOffsetMs));
+                    setClockSyncStatus('已联网校准（备用）');
+                    updateClock();
+                    if (typeof renderCalendar === 'function') renderCalendar();
+                    return true;
+                }
+            } catch (e) {
+                console.warn('备用时间同步失败:', e);
+            }
+
+            setClockSyncStatus(clockOffsetMs ? '校准失败，使用上次时间' : '校准失败，使用本机时间', true);
+            return false;
+        }
         
         // 逼真时钟功能
         function initializeClock() {
+            loadStoredClockOffset();
             createClockMarks();
             updateClock();
             setInterval(updateClock, 100);
+
+            syncNetworkTime();
+            window.addEventListener('online', () => syncNetworkTime());
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible' && navigator.onLine) {
+                    syncNetworkTime();
+                }
+            });
         }
 
         function createClockMarks() {
@@ -3008,13 +3298,13 @@
         }
 
         function updateClock() {
-            const now = new Date();
-            const beijingTime = new Date(now.getTime() + (8 * 60 * 60 * 1000)); // UTC+8
-            
-            const hours = beijingTime.getHours();
-            const minutes = beijingTime.getMinutes();
-            const seconds = beijingTime.getSeconds();
-            const milliseconds = beijingTime.getMilliseconds();
+            const now = getSyncedNow();
+            const bp = getBeijingParts(now);
+
+            const hours = bp.hour;
+            const minutes = bp.minute;
+            const seconds = bp.second;
+            const milliseconds = now.getMilliseconds();
             
             // 计算指针角度（更精确的计算）
             const secondAngle = seconds * 6 + milliseconds * 0.006; // 每秒6度 + 毫秒影响
@@ -3036,24 +3326,22 @@
                 secondHand.style.transform = `rotate(${secondAngle}deg)`;
             }
             
-            // 更新日期显示（每秒更新一次）
-            if (seconds === 0) {
-                const dateStr = beijingTime.toLocaleDateString('zh-CN', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    weekday: 'long'
-                });
-                
-                const dateDisplay = document.getElementById('beijingDate');
-                if (dateDisplay) {
-                    dateDisplay.textContent = dateStr;
-                }
+            const dateStr = now.toLocaleDateString('zh-CN', {
+                timeZone: BEIJING_TZ,
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long',
+            });
+
+            const dateDisplay = document.getElementById('beijingDate');
+            if (dateDisplay) {
+                dateDisplay.textContent = dateStr;
             }
         }
 
         // 日历功能
-        let currentDate = new Date();
+        let currentDate = getSyncedNow();
         const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
         
         // 模拟事件数据（实际项目中应该从后端获取）
@@ -3129,9 +3417,9 @@
                 
                 const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 
-                // 标记今天
-                const today = new Date();
-                if (year === today.getFullYear() && month === today.getMonth() && day === today.getDate()) {
+                // 标记今天（北京时间，已联网校准）
+                const todayParts = getBeijingParts();
+                if (year === todayParts.year && month === todayParts.month - 1 && day === todayParts.day) {
                     dayElement.classList.add('today');
                 }
                 
@@ -3284,8 +3572,8 @@
             // 添加新的天气类
             dynamicBackground.classList.add(weatherType);
             
-            // 根据时间调整动画
-            const hour = new Date().getHours();
+            // 根据北京时间调整动画
+            const hour = getBeijingParts().hour;
             adjustAnimationByTime(hour);
         }
 
@@ -3399,33 +3687,6 @@
             }, 2000);
         }
 
-        // 今日统计功能
-        function initializeTodayStats() {
-            // 模拟今日数据（实际项目中应该从后端API获取）
-            const todayStats = {
-                readingTime: '2小时30分',
-                completedActions: '3/5',
-                practiceCount: '7次'
-            };
-            
-            updateTodayStats(todayStats);
-            
-            // 每分钟更新一次（实际项目中可以设置更合适的更新频率）
-            setInterval(() => {
-                updateTodayStats(todayStats);
-            }, 60000);
-        }
-
-        function updateTodayStats(stats) {
-            const readingTime = document.getElementById('todayReadingTime');
-            const completedActions = document.getElementById('completedActions');
-            const practiceCount = document.getElementById('practiceCount');
-            
-            if (readingTime) readingTime.textContent = stats.readingTime;
-            if (completedActions) completedActions.textContent = stats.completedActions;
-            if (practiceCount) practiceCount.textContent = stats.practiceCount;
-        }
-
         // 个人统计功能
         function initializePersonalStats() {
             // 模拟个人统计数据
@@ -3521,14 +3782,49 @@
             }, 5000);
         }
         
+        function saveAuthSession(token, email, expiresInSeconds) {
+            authToken = token;
+            localStorage.setItem('authToken', token);
+            if (email) localStorage.setItem('userEmail', email);
+            if (expiresInSeconds) {
+                const expiresAt = Date.now() + expiresInSeconds * 1000;
+                localStorage.setItem('authTokenExpiresAt', String(expiresAt));
+            }
+        }
+
+        function clearAuthSession() {
+            authToken = null;
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userEmail');
+            localStorage.removeItem('authTokenExpiresAt');
+        }
+
+        function isAuthSessionExpired() {
+            const expiresAt = parseInt(localStorage.getItem('authTokenExpiresAt') || '0', 10);
+            if (!expiresAt) return false;
+            return Date.now() >= expiresAt - 60000;
+        }
+
+        async function refreshAppData() {
+            const token = localStorage.getItem('authToken');
+            if (!token || isAuthSessionExpired()) return;
+            authToken = token;
+            const tasks = [];
+            if (typeof loadActions === 'function') tasks.push(loadActions());
+            if (typeof loadTodayDashboard === 'function') tasks.push(loadTodayDashboard());
+            if (typeof loadCurrentViewData === 'function') tasks.push(loadCurrentViewData());
+            await Promise.allSettled(tasks);
+        }
+
         // API 请求封装
         async function apiRequest(endpoint, options = {}) {
             const url = `${API_BASE}${endpoint}`;
+            const { skipAuthRedirect, ...fetchOptions } = options;
             const config = {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                ...options
+                ...fetchOptions
             };
             
             // 每次请求前重新获取最新的 authToken
@@ -3540,14 +3836,33 @@
             try {
                 const response = await fetch(url, config);
                 if (!response.ok) {
-                    // 只有认证错误才触发登录弹窗
-                    if (response.status === 401 || response.status === 403) {
-                        authToken = null;
-                        localStorage.removeItem('authToken');
-                        localStorage.removeItem('userEmail');
-                        showAuthModal();
+                    // 仅真正的登录失效(401)才清除会话；403 可能是权限不足
+                    if (response.status === 401 && !skipAuthRedirect) {
+                        clearAuthSession();
+                        if (!authCheckInProgress) showAuthModal();
                     }
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    
+                    // 尝试解析错误响应体
+                    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    try {
+                        const errorData = await response.json();
+                        if (errorData.detail) {
+                            // 如果是字符串，直接使用
+                            if (typeof errorData.detail === 'string') {
+                                errorMessage = errorData.detail;
+                            } else if (Array.isArray(errorData.detail)) {
+                                // 如果是数组，提取错误信息
+                                errorMessage = errorData.detail.map(e => e.msg || JSON.stringify(e)).join('; ');
+                            }
+                        }
+                    } catch (e) {
+                        // 如果解析失败，使用默认错误消息
+                        console.warn('无法解析错误响应:', e);
+                    }
+                    
+                    const error = new Error(errorMessage);
+                    error.status = response.status;
+                    throw error;
                 }
                 return await response.json();
             } catch (error) {
@@ -3557,7 +3872,7 @@
                 if (error.message.includes('Failed to fetch')) {
                     showMessage('网络连接错误，请检查网络', 'error');
                 } else if (!error.message.includes('认证失效')) {
-                    // 非认证错误不显示具体错误信息，避免用户困惑
+                    // 非认证错误显示具体错误信息
                     console.log('请求失败详情:', error.message);
                 }
                 
@@ -3565,38 +3880,39 @@
             }
         }
         
-        // 显示认证模态框
-        function showAuthModal() {
-            // 避免在页面加载时显示登录框
-            if (document.readyState === 'loading') {
-                return;
-            }
-            
+        function revealAuthModal() {
             const modal = document.getElementById('authModal');
-            if (modal) {
-                // 确保模态框可见并居中
-                modal.style.display = 'flex';
-                modal.style.justifyContent = 'center';
-                modal.style.alignItems = 'center';
-                modal.classList.remove('hidden');
-                
-                // 防止登录框被立即隐藏
-                setTimeout(() => {
-                    if (modal && !authToken) {
-                        modal.style.display = 'flex';
-                        modal.classList.remove('hidden');
-                    }
-                }, 100);
-            }
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        // 显示认证模态框（延迟显示，避免从其他页面返回时闪现）
+        function showAuthModal(immediate) {
+            if (document.readyState === 'loading') return;
+            if (authCheckInProgress && !immediate) return;
+
+            clearTimeout(showAuthModalTimer);
+            const delay = immediate ? 0 : 450;
+            showAuthModalTimer = setTimeout(() => {
+                if (localStorage.getItem('authToken') && !isAuthSessionExpired()) return;
+                revealAuthModal();
+            }, delay);
+        }
+
+        function cancelPendingAuthModal() {
+            clearTimeout(showAuthModalTimer);
         }
         
         // 关闭认证模态框
         function closeAuthModal() {
+            cancelPendingAuthModal();
             const modal = document.getElementById('authModal');
             if (modal) {
                 modal.classList.add('hidden');
-                modal.style.display = 'none';
-                console.log('登录模态框已关闭');
+                modal.classList.remove('is-open');
+                modal.setAttribute('aria-hidden', 'true');
             }
         }
         
@@ -3617,15 +3933,18 @@
                 console.log('开始登录...', email);
                 const response = await apiRequest('/auth/login', {
                     method: 'POST',
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({ email, password }),
+                    skipAuthRedirect: true,
                 });
                 
                 console.log('登录响应:', response);
                 
                 if (response && response.access_token) {
-                    authToken = response.access_token;
-                    localStorage.setItem('authToken', authToken);
-                    localStorage.setItem('userEmail', email);
+                    saveAuthSession(
+                        response.access_token,
+                        email,
+                        response.expires_in || 14 * 24 * 60 * 60
+                    );
                     
                     console.log('登录成功，token已保存');
                     
@@ -3633,16 +3952,8 @@
                     closeAuthModal();
                     updateUserInfo(email);
                     
-                    // 延迟加载数据，确保状态更新完成
-                    setTimeout(async () => {
-                        // 强制刷新认证状态
-                        await refreshAuthState();
-                        loadActions();
-                        // 如果当前在仪表盘页面，刷新仪表盘数据
-                        if (typeof loadCurrentViewData === 'function') {
-                            loadCurrentViewData();
-                        }
-                    }, 100);
+                    await refreshAuthState();
+                    await refreshAppData();
                     
                     return true;
                 } else {
@@ -3693,7 +4004,7 @@
                     
                     if (response.ok) {
                         const userData = await response.json();
-                        localStorage.setItem('userEmail', userData.email);
+                        saveAuthSession(token, userData.email);
                         updateUserInfo(userData.email);
                         console.log('认证状态已刷新');
                         return true;
@@ -3704,6 +4015,8 @@
             }
             return false;
         }
+
+        window.refreshAppData = refreshAppData;
 
         // 更新用户信息显示
         function updateUserInfo(email) {
@@ -3722,75 +4035,99 @@
         
         // 退出登录
         function logout() {
-            authToken = null;
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('userEmail');
+            clearAuthSession();
             localStorage.removeItem('token'); // 清理可能存在的旧token
             updateUserInfo(null);
             showMessage('已退出登录', 'info');
             
             // 确保显示登录模态框
-            setTimeout(() => {
-                showAuthModal();
-            }, 100);
+            showAuthModal(true);
         }
         
         // 检查认证状态并加载数据
         async function checkAuthAndLoadData() {
-            // 重新获取最新的 authToken
+            authCheckInProgress = true;
+            cancelPendingAuthModal();
+            closeAuthModal();
+
             authToken = localStorage.getItem('authToken');
-            if (authToken) {
-                const email = localStorage.getItem('userEmail');
-                
-                // 如果有token和email，先更新用户信息，避免显示登录框
+            if (!authToken) {
+                authCheckInProgress = false;
+                authCheckSettled = true;
+                window.authCheckSettled = true;
+                window.dispatchEvent(new Event('auth-check-settled'));
+                showAuthModal();
+                return false;
+            }
+
+            const email = localStorage.getItem('userEmail');
+            if (email) updateUserInfo(email);
+
+            if (isAuthSessionExpired()) {
+                clearAuthSession();
+                updateUserInfo(null);
+                authCheckInProgress = false;
+                authCheckSettled = true;
+                window.authCheckSettled = true;
+                window.dispatchEvent(new Event('auth-check-settled'));
+                showAuthModal();
+                return false;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    saveAuthSession(authToken, userData.email);
+                    updateUserInfo(userData.email);
+                    closeAuthModal();
+                    await refreshAppData();
+                    authCheckInProgress = false;
+                    authCheckSettled = true;
+                    window.authCheckSettled = true;
+                    window.dispatchEvent(new Event('auth-check-settled'));
+                    return true;
+                }
+
+                if (response.status === 401) {
+                    clearAuthSession();
+                    updateUserInfo(null);
+                    authCheckInProgress = false;
+                    authCheckSettled = true;
+                    window.authCheckSettled = true;
+                    window.dispatchEvent(new Event('auth-check-settled'));
+                    showAuthModal();
+                    return false;
+                }
+
+                console.warn('认证检查异常状态:', response.status);
                 if (email) {
                     updateUserInfo(email);
+                    await refreshAppData();
                 }
-                
-                // 总是验证token有效性，确保token未过期
-                try {
-                    const response = await fetch(`${API_BASE}/auth/me`, {
-                        headers: {
-                            'Authorization': `Bearer ${authToken}`
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const userData = await response.json();
-                        localStorage.setItem('userEmail', userData.email);
-                        updateUserInfo(userData.email);
-                        
-                        // 只有在认证成功后才加载数据
-                        loadActions();
-                        // 如果当前在仪表盘页面，刷新仪表盘数据
-                        if (typeof loadCurrentViewData === 'function') {
-                            loadCurrentViewData();
-                        }
-                        closeAuthModal();
-                        return true;
-                    } else {
-                        // Token 无效，清除本地存储
-                        authToken = null;
-                        localStorage.removeItem('authToken');
-                        localStorage.removeItem('userEmail');
-                        updateUserInfo(null);
-                        showAuthModal();
-                        return false;
-                    }
-                } catch (error) {
-                    console.error('认证检查失败:', error);
-                    // 网络错误时，如果本地有email，保持登录状态但不加载数据
-                    if (email) {
-                        console.log('网络错误，保持本地登录状态但不加载数据');
-                        updateUserInfo(email);
-                        return true;
-                    } else {
-                        showAuthModal();
-                        return false;
-                    }
+                authCheckInProgress = false;
+                authCheckSettled = true;
+                window.authCheckSettled = true;
+                window.dispatchEvent(new Event('auth-check-settled'));
+                return !!email;
+            } catch (error) {
+                console.error('认证检查失败:', error);
+                if (email) {
+                    updateUserInfo(email);
+                    await refreshAppData();
+                    authCheckInProgress = false;
+                    authCheckSettled = true;
+                    window.authCheckSettled = true;
+                    window.dispatchEvent(new Event('auth-check-settled'));
+                    return true;
                 }
-            } else {
-                // 没有token，显示登录弹窗，不加载任何数据
+                authCheckInProgress = false;
+                authCheckSettled = true;
+                window.authCheckSettled = true;
+                window.dispatchEvent(new Event('auth-check-settled'));
                 showAuthModal();
                 return false;
             }
@@ -3806,8 +4143,19 @@
             const bookTitle = document.getElementById('bookTitle').value.trim();
             const notesContent = document.getElementById('notesContent').value.trim();
             
+            // 前端验证
             if (!notesContent) {
                 showMessage('请输入笔记内容', 'error');
+                return;
+            }
+            
+            if (notesContent.length < 10) {
+                showMessage('笔记内容至少需要10个字符，请提供更详细的笔记内容', 'error');
+                return;
+            }
+            
+            if (notesContent.length > 10000) {
+                showMessage('笔记内容过长，请控制在10000个字符以内', 'error');
                 return;
             }
             
@@ -3835,7 +4183,28 @@
                     loadCurrentViewData();
                 }
             } catch (error) {
-                showMessage('抽取失败: ' + error.message, 'error');
+                // 改进错误提示，显示更详细的信息
+                let errorMessage = '抽取失败: ';
+                
+                // 检查错误状态码
+                if (error.status === 422) {
+                    // 422 验证错误，使用服务器返回的详细错误信息
+                    if (error.message && !error.message.includes('HTTP 422')) {
+                        errorMessage += error.message;
+                    } else {
+                        errorMessage += '笔记内容格式不正确，请确保内容至少10个字符';
+                    }
+                } else if (error.message && error.message.includes('AI')) {
+                    // AI 抽取错误
+                    errorMessage += error.message.replace('AI 抽取失败: ', '');
+                } else if (error.message) {
+                    // 其他错误，直接显示错误消息
+                    errorMessage += error.message;
+                } else {
+                    errorMessage += '未知错误，请稍后重试';
+                }
+                
+                showMessage(errorMessage, 'error');
             } finally {
                 uploadBtn.disabled = false;
                 uploadBtn.textContent = '🚀 抽取行动项';
@@ -4087,7 +4456,7 @@
             document.getElementById('practiceModal').classList.remove('hidden');
             
             // 设置默认日期为今天
-            const today = new Date().toISOString().split('T')[0];
+            const today = getBeijingDateString();
             document.getElementById('practiceDate').value = today;
             
             // 重置表单
@@ -4651,9 +5020,7 @@
         
         // 执行退出登录
         function performLogout() {
-            // 清除本地存储
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('userEmail');
+            clearAuthSession();
             localStorage.removeItem('token');
             
             // 关闭所有模态框
@@ -4758,11 +5125,11 @@
                     document.getElementById('tmTargetDurationDays').value = action.target_duration_days || '';
                     document.getElementById('tmTargetFrequency').value = action.target_frequency || 'daily';
                     document.getElementById('tmCustomFrequencyDays').value = action.custom_frequency_days || '';
-                    document.getElementById('tmStartDate').value = action.start_date || new Date().toISOString().split('T')[0];
+                    document.getElementById('tmStartDate').value = action.start_date || getBeijingDateString();
                     document.getElementById('tmEndDate').value = action.end_date || '';
                 } else {
                     // 设置默认值
-                    const today = new Date().toISOString().split('T')[0];
+                    const today = getBeijingDateString();
                     document.getElementById('tmStartDate').value = today;
                     document.getElementById('tmDurationType').value = 'short_term';
                     document.getElementById('tmTargetDurationDays').value = 30;
@@ -4775,7 +5142,7 @@
             } catch (error) {
                 console.error('加载行动项数据失败:', error);
                 // 设置默认值
-                const today = new Date().toISOString().split('T')[0];
+                const today = getBeijingDateString();
                 document.getElementById('tmStartDate').value = today;
                 document.getElementById('tmDurationType').value = 'short_term';
                 document.getElementById('tmTargetDurationDays').value = 30;
@@ -4842,7 +5209,7 @@
             document.getElementById('countAndDaysModal').classList.remove('hidden');
             
             // 设置默认日期
-            const today = new Date().toISOString().split('T')[0];
+            const today = getBeijingDateString();
             document.getElementById('cdStartDate').value = today;
             
             // 加载现有数据
@@ -4863,12 +5230,12 @@
                     // 对于情境型，使用target_duration_days作为目标次数，custom_frequency_days作为完成天数
                     document.getElementById('cdTargetCount').value = action.target_duration_days || '';
                     document.getElementById('cdTargetDays').value = action.custom_frequency_days || '';
-                    document.getElementById('cdStartDate').value = action.start_date || new Date().toISOString().split('T')[0];
+                    document.getElementById('cdStartDate').value = action.start_date || getBeijingDateString();
                     document.getElementById('cdEndDate').value = action.end_date || '';
                 }
             } catch (error) {
                 console.error('加载次数和天数数据失败:', error);
-                const today = new Date().toISOString().split('T')[0];
+                const today = getBeijingDateString();
                 document.getElementById('cdStartDate').value = today;
             }
         }
@@ -4926,7 +5293,7 @@
             document.getElementById('batchTimeManagementModal').classList.remove('hidden');
             
             // 设置默认日期
-            const today = new Date().toISOString().split('T')[0];
+            const today = getBeijingDateString();
             document.getElementById('btmStartDate').value = today;
             
             // 初始化设置
@@ -5108,21 +5475,13 @@
             }
         }
         
-        // 页面加载时初始化
+        // 页面加载时初始化（认证检查由 DOMContentLoaded 统一处理，避免重复弹窗）
         window.addEventListener('load', async () => {
-            // 确保登录模态框可以正常显示
-            const authModal = document.getElementById('authModal');
-            if (authModal) {
-                authModal.style.display = 'block';
-                authModal.classList.add('hidden'); // 初始状态隐藏
+            if (!authCheckSettled) {
+                await checkAuth();
             }
-            
-            // 先检查认证状态，只有在已登录时才加载数据
-            const isAuthenticated = await checkAuth();
-            if (isAuthenticated) {
+            if (localStorage.getItem('authToken')) {
                 initRating();
-                
-                // 加载仪表盘数据
                 await loadDurationAnalytics();
                 await loadStreakAnalytics();
             }
@@ -5137,5 +5496,6 @@
     
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/reminder_notification.js"></script>
+    <script src="/static/js/today-dashboard.js"></script>
 </body>
 </html>

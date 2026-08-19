@@ -1,0 +1,56 @@
+# 阿里云 ECS 单机部署示例（应用 + PostgreSQL）
+# 用法：复制 env.production.example 为 .env 并填写后执行
+#   docker compose -f deploy/aliyun/docker-compose.yml up -d --build
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-reading_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请设置 POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-reading_feedback}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-reading_app}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      ENVIRONMENT: production
+      PORT: "8000"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-reading_app}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-reading_feedback}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?请设置 DEEPSEEK_API_KEY}
+      SECRET_KEY: ${SECRET_KEY:?请设置 SECRET_KEY}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    volumes:
+      - uploads_data:/app/uploads
+    command: ["python", "start_aliyun.py"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  pg_data:
+  uploads_data:

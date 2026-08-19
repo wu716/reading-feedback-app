@@ -31,6 +31,7 @@ secrets/
 *.db
 *.sqlite
 *.sqlite3
+scripts/account_backup.json
 
 # Python
 __pycache__/
@@ -88,3 +89,4 @@ Thumbs.db
 # 用户上传的音频文件
 uploads/
 uploads/**
+scripts/app.db.backup

@@ -81,9 +81,6 @@ start_secure.py
 start_production.py
 start_final.py
 start_with_env.py
-*.bat
-*.cmd
-*.sh
 
 # 迁移脚本
 migrate_*.py
@@ -93,7 +90,8 @@ run_migration.bat
 # 部署配置（其他平台）
 fly.toml
 render.yaml
-deploy/
+deploy/cloud-run*.yaml
+deploy/setup-secrets.sh
 GoogleCloudSDKInstaller.exe
 
 # 清理脚本
