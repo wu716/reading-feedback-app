@@ -1,5 +1,5 @@
 // API 配置
-const API_BASE = 'http://localhost:8000';
+const API_BASE = window.location.origin;
 let authToken = localStorage.getItem('authToken');
 let currentDays = 30;
 let currentView = 'comprehensive';

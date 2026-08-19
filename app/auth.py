@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -11,39 +11,38 @@ from app.database import get_db
 from app.models import User
 from app.schemas import TokenData
 
-# 密码加密
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 # JWT 配置
 security = HTTPBearer()
 
 
+def _truncate_password_bytes(password: str) -> bytes:
+    """bcrypt 限制密码不超过 72 字节"""
+    password_bytes = password.encode("utf-8")
+    if len(password_bytes) <= 72:
+        return password_bytes
+    truncated = password_bytes[:72]
+    while truncated and truncated[-1] & 0x80 and not (truncated[-1] & 0x40):
+        truncated = truncated[:-1]
+    return truncated
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """验证密码"""
-    # bcrypt 限制密码长度不超过72字节
-    password_bytes = plain_password.encode('utf-8')
-    if len(password_bytes) > 72:
-        # 截断到72字节，但要确保是有效的UTF-8
-        truncated_bytes = password_bytes[:72]
-        # 找到最后一个完整的UTF-8字符边界
-        while truncated_bytes and truncated_bytes[-1] & 0x80 and not (truncated_bytes[-1] & 0x40):
-            truncated_bytes = truncated_bytes[:-1]
-        plain_password = truncated_bytes.decode('utf-8', errors='ignore')
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(
+            _truncate_password_bytes(plain_password),
+            hashed_password.encode("utf-8"),
+        )
+    except Exception:
+        return False
 
 
 def get_password_hash(password: str) -> str:
     """生成密码哈希"""
-    # bcrypt 限制密码长度不超过72字节
-    password_bytes = password.encode('utf-8')
-    if len(password_bytes) > 72:
-        # 截断到72字节，但要确保是有效的UTF-8
-        truncated_bytes = password_bytes[:72]
-        # 找到最后一个完整的UTF-8字符边界
-        while truncated_bytes and truncated_bytes[-1] & 0x80 and not (truncated_bytes[-1] & 0x40):
-            truncated_bytes = truncated_bytes[:-1]
-        password = truncated_bytes.decode('utf-8', errors='ignore')
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(
+        _truncate_password_bytes(password),
+        bcrypt.gensalt(),
+    ).decode("utf-8")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
