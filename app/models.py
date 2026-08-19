@@ -25,6 +25,11 @@ class User(Base):
     practice_logs = relationship("PracticeLog", back_populates="user", cascade="all, delete-orphan")
     subscription = relationship("Subscription", back_populates="user", uselist=False, cascade="all, delete-orphan")
     ai_advice_sessions = relationship("AIAdviceSession", back_populates="user", cascade="all, delete-orphan")
+    daily_todos = relationship("DailyTodo", back_populates="user", cascade="all, delete-orphan")
+    reading_entries = relationship("ReadingEntry", back_populates="user", cascade="all, delete-orphan")
+    self_talk_playback_logs = relationship(
+        "SelfTalkPlaybackLog", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Action(Base):
@@ -108,6 +113,58 @@ class AnonymizedData(Base):
     anonymized_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class DailyTodo(Base):
+    """用户每日待办"""
+    __tablename__ = "daily_todos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    text = Column(Text, nullable=False)
+    completed = Column(Boolean, default=False)
+    todo_date = Column(Date, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="daily_todos")
+
+
+class ReadingEntry(Base):
+    """阅读记录（内容、笔记、时长）"""
+    __tablename__ = "reading_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    book_title = Column(String(255), nullable=True)
+    content = Column(Text, nullable=False)
+    reflection = Column(Text, nullable=True)
+    duration_minutes = Column(Integer, default=0)
+    entry_date = Column(Date, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="reading_entries")
+
+
+class SelfTalkPlaybackLog(Base):
+    """Self-talk 播放记录"""
+    __tablename__ = "self_talk_playback_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    self_talk_id = Column(Integer, ForeignKey("self_talks.id", ondelete="CASCADE"), nullable=False)
+    play_date = Column(Date, nullable=False, index=True)
+    duration_seconds = Column(Integer, default=0)
+    loops_completed = Column(Integer, default=1)
+    loop_mode = Column(String(20), default="once")
+    loop_target = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="self_talk_playback_logs")
+    self_talk = relationship("SelfTalk", back_populates="playback_logs")
+
+
 class SelfTalk(Base):
     """Self-talk 模块数据表"""
     __tablename__ = "self_talks"
@@ -124,6 +181,7 @@ class SelfTalk(Base):
     # 关系
     user = relationship("User")
     action = relationship("Action")
+    playback_logs = relationship("SelfTalkPlaybackLog", back_populates="self_talk")
 
 
 class AIAdviceSession(Base):

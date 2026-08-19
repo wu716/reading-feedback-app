@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
-from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 import logging
-import time
 import uvicorn
 
 from app.config import settings
 from app.database import create_tables, get_db
-from app.routers import auth, actions, practice, dashboard, ai_advice
+from app.scheduler import start_scheduler
+from app.routers import auth, actions, practice, dashboard, ai_advice, today
 from app.self_talk.router import router as self_talk_router
 from app.routers.self_talk_reminders import router as self_talk_reminders_router
 from app.ai_service import test_ai_connection
@@ -18,19 +21,41 @@ from app.ai_service import test_ai_connection
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期：启动 / 关闭"""
+    logger.info("正在启动应用...")
+    create_tables()
+    logger.info("数据库表创建完成")
+    start_scheduler(app)
+    logger.info("应用启动完成")
+    try:
+        yield
+    finally:
+        logger.info("正在关闭应用...")
+        if hasattr(app.state, "scheduler"):
+            try:
+                app.state.scheduler.shutdown(wait=False)
+                logger.info("定时任务调度器已关闭")
+            except Exception as e:
+                logger.error(f"关闭定时任务调度器失败: {e}")
+        logger.info("应用已关闭")
+
+
 # 创建 FastAPI 应用
 app = FastAPI(
     title=settings.app_name,
     description="读书笔记实践反馈系统 - 从学习到行动的完整闭环",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # 配置 CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境应该限制具体域名
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -44,6 +69,7 @@ app.include_router(dashboard.router, prefix="/api")
 app.include_router(ai_advice.router)  # AI建议路由（已有前缀 /api/ai-advice）
 app.include_router(self_talk_router)
 app.include_router(self_talk_reminders_router)  # Self-talk 提醒路由
+app.include_router(today.router, prefix="/api")
 
 # 静态文件服务
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -59,64 +85,6 @@ else:
     logger.info("生产环境：uploads目录通过受保护API访问")
 
 
-@app.on_event("startup")
-async def startup_event():
-    """应用启动时执行"""
-    logger.info("正在启动应用...")
-    
-    # 临时注释数据库和调度器
-    # create_tables()
-    # logger.info("数据库表创建完成")
-    
-    # 注释调度器
-    # try:
-    #     from apscheduler.schedulers.background import BackgroundScheduler
-    #     from app.self_talk.reminder_service import check_daily_reminders, check_inactive_reminders
-        
-    #     scheduler = BackgroundScheduler()
-        
-    #     # 每5分钟检查一次每日提醒（实际会判断是否到达设定时间）
-    #     scheduler.add_job(
-    #         lambda: check_daily_reminders(next(get_db())),
-    #         'interval',
-    #         minutes=5,
-    #         id='check_daily_reminders'
-    #     )
-        
-    #     # 每小时检查一次非活跃用户
-    #     scheduler.add_job(
-    #         lambda: check_inactive_reminders(next(get_db())),
-    #         'interval',
-    #         hours=1,
-    #         id='check_inactive_reminders'
-    #     )
-        
-    #     scheduler.start()
-    #     app.state.scheduler = scheduler
-    #     logger.info("定时任务调度器启动成功")
-        
-    # except Exception as e:
-    #     logger.error(f"定时任务调度器启动失败: {e}")
-    
-    logger.info("应用启动完成 - 简化模式")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """应用关闭时执行"""
-    logger.info("正在关闭应用...")
-    
-    # 关闭定时任务调度器
-    if hasattr(app.state, 'scheduler'):
-        try:
-            app.state.scheduler.shutdown()
-            logger.info("定时任务调度器已关闭")
-        except Exception as e:
-            logger.error(f"关闭定时任务调度器失败: {e}")
-    
-    logger.info("应用已关闭")
-
-
 @app.get("/")
 async def root():
     """根路径 - 重定向到前端页面"""
@@ -130,10 +98,67 @@ async def health_check():
     return {"status": "healthy", "message": "服务就绪"}
 
 
+@app.get("/api/time")
+async def get_server_time():
+    """返回服务器当前时间，供前端联网校准时钟（北京时间）"""
+    from datetime import datetime, timezone
+    from zoneinfo import ZoneInfo
+
+    now_utc = datetime.now(timezone.utc)
+    beijing = now_utc.astimezone(ZoneInfo("Asia/Shanghai"))
+    return {
+        "timestamp_ms": int(now_utc.timestamp() * 1000),
+        "utc_iso": now_utc.isoformat(),
+        "beijing_iso": beijing.isoformat(),
+        "beijing_formatted": beijing.strftime("%Y-%m-%d %H:%M:%S"),
+        "timezone": "Asia/Shanghai",
+    }
+
+
+# 请求验证错误处理
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """处理请求验证错误，返回友好的错误信息"""
+    errors = exc.errors()
+    error_messages = []
+    
+    for error in errors:
+        field = ".".join(str(loc) for loc in error["loc"])
+        error_type = error["type"]
+        error_msg = error.get("msg", "")
+        
+        # 翻译错误信息
+        if error_type == "value_error.missing":
+            error_messages.append(f"缺少必填字段: {field}")
+        elif error_type == "value_error.any_str.min_length":
+            # 提取最小长度要求
+            if "min_length" in str(error_msg):
+                error_messages.append(f"{field} 长度不足：{error_msg}")
+            else:
+                error_messages.append(f"{field} 长度不符合要求")
+        elif error_type == "value_error.any_str.max_length":
+            error_messages.append(f"{field} 长度过长：{error_msg}")
+        elif error_type == "type_error.str":
+            error_messages.append(f"{field} 必须是字符串类型")
+        else:
+            error_messages.append(f"{field}: {error_msg}")
+    
+    detail_message = "；".join(error_messages) if error_messages else "请求数据验证失败"
+    
+    logger.warning(f"请求验证失败: {detail_message}")
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "detail": detail_message,
+            "errors": errors
+        }
+    )
+
+
 # 全局异常处理
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    logger.error(f"全局异常: {exc}")
+    logger.error(f"全局异常: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
         content={"detail": "服务器内部错误"}
@@ -141,10 +166,11 @@ async def global_exception_handler(request, exc):
 
 
 if __name__ == "__main__":
+    # reload=True 时 Ctrl+C 可能出现 asyncio.CancelledError 日志，属正常停止行为
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=8000,
         reload=True,
-        log_level="info"
+        log_level="info",
     )

@@ -224,7 +224,7 @@
 
 - 项目地址：[GitHub仓库链接]
 - 问题反馈：[GitHub Issues链接]
-- 邮件：[联系邮箱]
+- 邮件：[wulalaminka@gmail.com]
 
 ---
 

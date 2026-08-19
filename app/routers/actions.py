@@ -17,6 +17,7 @@ from app.schemas import (
 from app.auth import get_current_active_user
 from app.config import settings
 from app.ai_service import extract_actions_from_notes, AIExtractionError, AIValidationError
+from app.self_talk.reminder_service import ReminderService
 
 router = APIRouter(prefix="/actions", tags=["行动项管理"])
 
@@ -87,6 +88,38 @@ async def upload_notes(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"服务器错误: {str(e)}"
         )
+
+
+@router.post("/", response_model=ActionResponse, status_code=status.HTTP_201_CREATED)
+async def create_action(
+    action_data: ActionCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """手动创建行动项（无需 AI 抽取）"""
+    excerpt = (action_data.source_excerpt or "").strip()
+    if not excerpt:
+        excerpt = action_data.action_text[:200]
+
+    db_action = Action(
+        user_id=current_user.id,
+        book_title=action_data.book_title.strip(),
+        source_excerpt=excerpt,
+        action_text=action_data.action_text.strip(),
+        tags=json.dumps(action_data.tags or [], ensure_ascii=False),
+        frequency=action_data.frequency.value,
+        duration_type=action_data.duration_type.value,
+        target_duration_days=action_data.target_duration_days,
+        target_frequency=action_data.target_frequency.value if action_data.target_frequency else None,
+        custom_frequency_days=action_data.custom_frequency_days,
+        start_date=action_data.start_date or date.today(),
+        end_date=action_data.end_date,
+    )
+    db.add(db_action)
+    db.commit()
+    db.refresh(db_action)
+    await trigger_after_new_action_reminder(current_user, db)
+    return ActionResponse.model_validate(db_action)
 
 
 @router.get("/", response_model=PaginatedResponse)
@@ -758,21 +791,10 @@ async def trigger_after_action_reminder(action_id: int, current_user: User, db: 
         if recent_reminder:
             return  # 3小时内已发送过提醒
 
-        # 记录提醒日志
-        method = "both" if (setting.browser_notification and setting.email_notification) else \
-                "browser" if setting.browser_notification else "email"
-
-        log = SelfTalkReminderLog(
-            user_id=current_user.id,
-            reminder_type="after_action",
-            notification_method=method
+        title, message = ReminderService.get_reminder_message("after_action", current_user.name)
+        ReminderService.dispatch_notifications(
+            db, current_user.id, setting, "after_action", title, message
         )
-        db.add(log)
-        db.commit()
-        db.refresh(log)
-
-        # 这里可以添加实际的提醒发送逻辑（浏览器通知、邮件等）
-        # 暂时只记录日志，实际发送可以由前端轮询或WebSocket实现
 
     except Exception as e:
         # 提醒失败不影响主业务流程
@@ -803,20 +825,10 @@ async def trigger_after_new_action_reminder(current_user: User, db: Session):
         if recent_reminder:
             return  # 3小时内已发送过提醒
 
-        # 记录提醒日志
-        method = "both" if (setting.browser_notification and setting.email_notification) else \
-                "browser" if setting.browser_notification else "email"
-
-        log = SelfTalkReminderLog(
-            user_id=current_user.id,
-            reminder_type="after_new_action",
-            notification_method=method
+        title, message = ReminderService.get_reminder_message("after_new_action", current_user.name)
+        ReminderService.dispatch_notifications(
+            db, current_user.id, setting, "after_new_action", title, message
         )
-        db.add(log)
-        db.commit()
-        db.refresh(log)
-
-        # 这里可以添加实际的提醒发送逻辑
 
     except Exception as e:
         # 提醒失败不影响主业务流程

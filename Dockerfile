@@ -38,7 +38,8 @@ RUN pip install --no-cache-dir --timeout=300 --retries=5 \
     email-validator>=2.2.0 \
     cryptography==41.0.7 \
     requests==2.31.0 \
-    APScheduler==3.10.4
+    APScheduler==3.10.4 \
+    psycopg2-binary==2.9.9
 
 # 单独安装 vosk 和 pydub（可能较大）
 RUN pip install --no-cache-dir --timeout=600 --retries=10 \

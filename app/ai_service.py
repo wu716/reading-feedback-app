@@ -2,7 +2,7 @@ import json
 import asyncio
 from typing import List, Dict, Any
 from openai import AsyncOpenAI
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
 import logging
 
 from app.config import settings
@@ -74,15 +74,37 @@ def create_extraction_prompt(notes: str, book_title: str = None) -> str:
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=4, max=10)
 )
-async def call_deepseek_api(prompt: str) -> str:
-    """调用 DeepSeek API"""
+async def call_deepseek_api(
+    prompt: str = None,
+    messages: List[Dict[str, str]] = None,
+    task_type: str = "default",
+    temperature: float = 0.7,
+    max_tokens: int = 2000,
+    web_search_enabled: bool = False
+) -> str:
+    """
+    调用 DeepSeek API
+    
+    Args:
+        prompt: 单个提示词字符串（向后兼容旧代码）
+        messages: 消息列表（新方式，优先使用）
+        task_type: 任务类型（"default" 或 "analysis"）
+        temperature: 温度参数
+        max_tokens: 最大token数
+        web_search_enabled: 是否启用联网搜索
+    
+    Returns:
+        str: AI响应内容
+    """
     if not client:
         raise AIExtractionError("AI 服务未配置：缺少 DEEPSEEK_API_KEY")
     
     try:
-        response = await client.chat.completions.create(
-            model=settings.deepseek_model,
-            messages=[
+        # 如果提供了 messages，直接使用；否则从 prompt 构建 messages
+        if messages is not None:
+            api_messages = messages
+        elif prompt is not None:
+            api_messages = [
                 {
                     "role": "system",
                     "content": "你是一个专业的读书笔记行动项抽取助手，严格按照 JSON 格式输出结果。"
@@ -91,16 +113,79 @@ async def call_deepseek_api(prompt: str) -> str:
                     "role": "user",
                     "content": prompt
                 }
-            ],
-            temperature=0.3,  # 降低随机性，提高一致性
-            max_tokens=2000
-        )
+            ]
+        else:
+            raise ValueError("必须提供 prompt 或 messages 参数")
+        
+        # 构建 API 请求参数
+        api_params = {
+            "model": settings.deepseek_model,
+            "messages": api_messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }
+        
+        # 如果启用联网搜索，添加相应参数（DeepSeek API 可能需要额外参数）
+        # 注意：实际的 DeepSeek API 可能不支持 web_search_enabled 参数
+        # 这里先保留参数，但实际使用时可能需要根据 API 文档调整
+        if web_search_enabled:
+            # DeepSeek API 可能不支持此参数，暂时忽略
+            logger.warning("web_search_enabled 参数当前未实现")
+        
+        # 如果是分析任务且使用 deepseek-reasoner 模型，可能需要特殊处理
+        if task_type == "analysis" and "reasoner" in settings.deepseek_model:
+            # 可能需要添加特殊参数，根据实际 API 文档调整
+            pass
+        
+        response = await client.chat.completions.create(**api_params)
         
         return response.choices[0].message.content.strip()
     
+    except RetryError as e:
+        # 当所有重试都失败时，RetryError 包含最后一次尝试的异常
+        # RetryError.last_attempt 是一个 Outcome 对象
+        last_attempt = getattr(e, 'last_attempt', None)
+        if last_attempt is not None:
+            try:
+                # 尝试获取原始异常
+                original_error = last_attempt.exception()
+                if original_error:
+                    logger.error(f"DeepSeek API 调用失败（重试3次后）: {original_error}")
+                    error_msg = str(original_error)
+                else:
+                    error_msg = str(e)
+                    logger.error(f"DeepSeek API 调用失败（重试3次后）: {e}")
+            except Exception:
+                # 如果无法获取原始异常，使用 RetryError 本身
+                error_msg = str(e)
+                logger.error(f"DeepSeek API 调用失败（重试3次后）: {e}")
+        else:
+            error_msg = str(e)
+            logger.error(f"DeepSeek API 调用失败（重试3次后）: {e}")
+        
+        # 检查是否是认证错误
+        if "401" in error_msg or "unauthorized" in error_msg.lower() or ("api" in error_msg.lower() and "key" in error_msg.lower()):
+            raise AIExtractionError("AI 服务认证失败：请检查 API Key 是否正确")
+        # 检查是否是网络错误
+        elif "connection" in error_msg.lower() or "timeout" in error_msg.lower():
+            raise AIExtractionError("AI 服务连接失败：请检查网络连接")
+        else:
+            raise AIExtractionError(f"AI 服务调用失败: {error_msg}")
+    
     except Exception as e:
         logger.error(f"DeepSeek API 调用失败: {e}")
-        raise AIExtractionError(f"AI 服务调用失败: {str(e)}")
+        # 记录更详细的错误信息
+        import traceback
+        logger.error(f"错误详情: {traceback.format_exc()}")
+        error_msg = str(e)
+        # 检查是否是认证错误
+        if "401" in error_msg or "unauthorized" in error_msg.lower() or ("api" in error_msg.lower() and "key" in error_msg.lower()):
+            raise AIExtractionError("AI 服务认证失败：请检查 API Key 是否正确")
+        # 检查是否是网络错误
+        elif "connection" in error_msg.lower() or "timeout" in error_msg.lower():
+            raise AIExtractionError("AI 服务连接失败：请检查网络连接")
+        else:
+            raise AIExtractionError(f"AI 服务调用失败: {error_msg}")
 
 
 def validate_ai_response(response: str) -> List[Dict[str, Any]]:

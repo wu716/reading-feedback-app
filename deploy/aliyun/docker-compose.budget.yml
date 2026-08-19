@@ -1,0 +1,39 @@
+# 最低成本：单机 SQLite（无 PostgreSQL 容器）
+# 轻量服务器年付约 ¥68-99/年
+# 用法：cp env.budget.example .env && docker compose -f docker-compose.budget.yml up -d --build
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      ENVIRONMENT: production
+      PORT: "8000"
+      DATABASE_URL: sqlite:////data/app.db
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?请设置 DEEPSEEK_API_KEY}
+      SECRET_KEY: ${SECRET_KEY:?请设置 SECRET_KEY}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    volumes:
+      - sqlite_data:/data
+      - uploads_data:/app/uploads
+    command: ["python", "start_aliyun.py"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  sqlite_data:
+  uploads_data:

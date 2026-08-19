@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Self-talk - 读书反馈应用</title>
+    <link rel="stylesheet" href="/static/css/self-talk-player.css">
     <style>
         * {
             margin: 0;
@@ -233,13 +237,88 @@
             background: #e53e3e;
         }
 
-        .transcript {
-            background: #f7fafc;
-            padding: 15px;
-            border-radius: 8px;
+        .transcript-block {
             margin-top: 15px;
+        }
+
+        .transcript-label {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 6px;
+        }
+
+        .transcript-preview {
+            background: #f7fafc;
+            padding: 12px 14px;
+            border-radius: 8px;
             line-height: 1.6;
             color: #4a5568;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .edit-hint {
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: #a0aec0;
+        }
+
+        .transcript-editor {
+            width: 100%;
+            min-height: 88px;
+            padding: 12px 14px;
+            border: 2px solid #cbd5e0;
+            border-radius: 8px;
+            background: #fff;
+            line-height: 1.6;
+            color: #2d3748;
+            font-family: inherit;
+            font-size: 0.95rem;
+            resize: vertical;
+            cursor: text;
+        }
+
+        .transcript-editor:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+        }
+
+        .transcript-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .save-transcript-button {
+            background: #667eea;
+            color: white;
+        }
+
+        .save-transcript-button:hover {
+            background: #5a67d8;
+        }
+
+        .save-transcript-button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .transcript-sync-status {
+            margin-top: 6px;
+            font-size: 0.8rem;
+            color: #48bb78;
+            min-height: 1.2em;
+        }
+
+        .transcript-sync-status.pending {
+            color: #718096;
+        }
+
+        .transcript-sync-status.error {
+            color: #e53e3e;
         }
 
         .no-transcript {
@@ -590,8 +669,8 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    displayHistory(data.self_talks.slice(0, 3), 'historyList'); // 显示最近3条
-                    displayHistory(data.self_talks, 'allHistoryList'); // 显示所有记录
+                    displayHistory(data.self_talks.slice(0, 3), 'historyList', false); // 最近3条：只读预览
+                    displayHistory(data.self_talks, 'allHistoryList', true); // 全部记录：可编辑
                 } else if (response.status === 401) {
                     // 处理认证失败
                     console.warn('认证失败，跳转到登录页面');
@@ -606,8 +685,8 @@
             }
         }
 
-        // 显示历史记录
-        function displayHistory(selfTalks, containerId) {
+        // 显示历史记录（editable=false 为只读预览，避免重复 id）
+        function displayHistory(selfTalks, containerId, editable = true) {
             const container = document.getElementById(containerId);
             
             if (selfTalks.length === 0) {
@@ -615,89 +694,193 @@
                 return;
             }
 
-            container.innerHTML = selfTalks.map(selfTalk => `
-                <div class="self-talk-item">
+            container.innerHTML = selfTalks.map(st => renderSelfTalkItem(st, editable)).join('');
+            if (editable) {
+                container.querySelectorAll('.transcript-editor').forEach(ta => {
+                    ta.dataset.savedTranscript = ta.value;
+                });
+            }
+        }
+
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function escapeForTextarea(text) {
+            return escapeHtml(text);
+        }
+
+        function renderSelfTalkItem(selfTalk, editable = true) {
+            const transcriptText = selfTalk.transcript || '';
+            const header = `
                     <div class="self-talk-header">
                         <span class="self-talk-date">${new Date(selfTalk.created_at).toLocaleString('zh-CN')}</span>
                         <div class="self-talk-actions">
-                            <button class="action-button play-button" onclick="playAudio(${selfTalk.id})">
+                            <button type="button" class="action-button play-button" onclick="playAudio(${selfTalk.id})">
                                 ▶️ 播放
                             </button>
-                            <button class="action-button delete-button" onclick="deleteSelfTalk(${selfTalk.id})">
+                            <button type="button" class="action-button delete-button" onclick="deleteSelfTalk(${selfTalk.id})">
                                 🗑️ 删除
                             </button>
                         </div>
                     </div>
-                    <div class="transcript">
-                        ${selfTalk.transcript ? selfTalk.transcript : '<span class="no-transcript">暂无转写文字</span>'}
+            `;
+
+            if (!editable) {
+                const preview = transcriptText
+                    ? escapeHtml(transcriptText.length > 120 ? transcriptText.slice(0, 120) + '…' : transcriptText)
+                    : '<span class="no-transcript">暂无转写文字</span>';
+                return `
+                <div class="self-talk-item" data-id="${selfTalk.id}">
+                    ${header}
+                    <div class="transcript-block">
+                        <div class="transcript-preview">${preview}</div>
+                        <p class="edit-hint">↓ 在下方「所有 Self-talk 记录」中点击文本框编辑并保存</p>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }
+
+            const placeholderAttr = transcriptText
+                ? ''
+                : 'placeholder="在此修改识别文字、添加标点符号"';
+            return `
+                <div class="self-talk-item self-talk-item-editable" data-id="${selfTalk.id}">
+                    ${header}
+                    <div class="transcript-block">
+                        <div class="transcript-label">转写文字（点击输入框直接修改，改完点保存）</div>
+                        <textarea
+                            class="transcript-editor"
+                            rows="4"
+                            onblur="saveTranscriptOnBlur(this)"
+                            ${placeholderAttr}
+                        >${escapeForTextarea(transcriptText)}</textarea>
+                        <div class="transcript-sync-status" data-sync-status></div>
+                        <div class="transcript-actions">
+                            <button
+                                type="button"
+                                class="action-button save-transcript-button"
+                                onclick="saveTranscript(this)"
+                            >
+                                💾 保存到服务器
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
-        // 播放音频
-        function playAudio(selfTalkId) {
+        function setSyncStatus(item, message, type = 'ok') {
+            const el = item.querySelector('[data-sync-status]');
+            if (!el) return;
+            el.textContent = message;
+            el.className = 'transcript-sync-status' + (type === 'pending' ? ' pending' : type === 'error' ? ' error' : '');
+        }
+
+        function formatServerTime(isoString) {
+            if (!isoString) return '';
+            try {
+                return new Date(isoString).toLocaleString('zh-CN');
+            } catch {
+                return '';
+            }
+        }
+
+        function applySavedTranscript(item, data) {
+            const textarea = item.querySelector('.transcript-editor');
+            if (textarea && data.transcript != null) {
+                textarea.value = data.transcript;
+                textarea.dataset.savedTranscript = data.transcript;
+            }
+            const when = formatServerTime(data.updated_at || data.created_at);
+            setSyncStatus(item, when ? `✓ 已同步到服务器（${when}）` : '✓ 已同步到服务器');
+        }
+
+        async function saveTranscriptOnBlur(textarea) {
+            const item = textarea.closest('.self-talk-item');
+            if (!item || !item.classList.contains('self-talk-item-editable')) return;
+
+            const current = textarea.value.trim();
+            const saved = (textarea.dataset.savedTranscript || '').trim();
+            if (current === saved) return;
+            if (!current) return;
+
+            await persistTranscript(item, textarea, null);
+        }
+
+        async function saveTranscript(saveBtn) {
+            const item = saveBtn.closest('.self-talk-item');
+            const textarea = item ? item.querySelector('.transcript-editor') : null;
+            if (!item || !textarea) {
+                alert('请在下方的「所有 Self-talk 记录」区域编辑并保存');
+                return;
+            }
+            await persistTranscript(item, textarea, saveBtn);
+        }
+
+        async function persistTranscript(item, textarea, saveBtn) {
+            if (!checkAuthToken()) {
+                return;
+            }
+
+            const selfTalkId = item.dataset.id;
+            const transcript = textarea.value.trim();
+
+            if (!transcript) {
+                alert('转写文字不能为空');
+                return;
+            }
+
+            const originalLabel = saveBtn ? saveBtn.textContent : '';
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = '保存中...';
+            }
+            setSyncStatus(item, '正在保存到服务器…', 'pending');
+
             try {
                 const token = localStorage.getItem('authToken');
-                if (!token) {
-                    alert('请先登录');
-                    return;
-                }
-                
-                // 使用受保护的API接口
-                const audioUrl = `/api/self_talks/${selfTalkId}/audio`;
-                
-                console.log('=== 音频播放调试 ===');
-                console.log('Self-talk ID:', selfTalkId);
-                console.log('API URL:', audioUrl);
-                
-                // 创建带认证头的请求
-                fetch(audioUrl, {
+                const response = await fetch(`/api/self_talks/${selfTalkId}`, {
+                    method: 'PATCH',
                     headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        if (response.status === 401) {
-                            alert('登录已过期，请重新登录');
-                            localStorage.removeItem('authToken');
-                            window.location.href = '/static/index.html';
-                        } else {
-                            throw new Error('播放失败');
-                        }
-                    }
-                    return response.blob();
-                })
-                .then(blob => {
-                    console.log('音频Blob大小:', blob.size);
-                    const audio = new Audio(URL.createObjectURL(blob));
-                    
-                    audio.onerror = function(e) {
-                        console.error('音频加载失败:', e);
-                        alert('播放失败，请检查音频文件');
-                    };
-                    
-                    audio.onloadeddata = function() {
-                        console.log('音频数据加载完成');
-                    };
-                    
-                    audio.oncanplay = function() {
-                        console.log('音频可以播放');
-                    };
-                    
-                    return audio.play();
-                })
-                .then(() => {
-                    console.log('音频播放开始');
-                })
-                .catch(error => {
-                    console.error('获取音频失败:', error);
-                    alert('获取音频失败，请重试');
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ transcript })
                 });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    applySavedTranscript(item, data);
+                    showStatus('recordingStatus', '转写文字已保存到数据库', 'success');
+                    // 同步刷新上方预览区
+                    loadHistory();
+                } else if (response.status === 401) {
+                    setSyncStatus(item, '保存失败：请重新登录', 'error');
+                    alert('登录已过期，请重新登录');
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/static/index.html';
+                } else if (response.status === 404 || response.status === 405) {
+                    setSyncStatus(item, '保存失败：后端接口未就绪', 'error');
+                    alert('保存失败：请重启后端后再试（需要 PATCH /api/self_talks/{id}）');
+                } else {
+                    const errorData = await response.json().catch(() => ({ detail: '保存失败' }));
+                    setSyncStatus(item, `保存失败：${errorData.detail || '请重试'}`, 'error');
+                    alert(`保存失败: ${errorData.detail || '请重试'}`);
+                }
             } catch (error) {
-                console.error('播放异常:', error);
-                alert('播放失败: ' + error.message);
+                console.error('保存转写失败:', error);
+                setSyncStatus(item, '保存失败：网络错误', 'error');
+                alert('保存失败，请检查网络连接后重试');
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = originalLabel;
+                }
             }
         }
 
@@ -705,33 +888,20 @@
         function checkAuthToken() {
             const token = localStorage.getItem('authToken');
             if (!token) {
-                alert('请先登录');
-                window.location.href = '/static/index.html';
                 return false;
             }
-            
-            try {
-                // 简单的令牌格式检查
-                const parts = token.split('.');
-                if (parts.length !== 3) {
-                    throw new Error('令牌格式错误');
-                }
-                
-                // 检查令牌是否过期
-                const payload = JSON.parse(atob(parts[1]));
-                const currentTime = Math.floor(Date.now() / 1000);
-                if (payload.exp && payload.exp < currentTime) {
-                    throw new Error('令牌已过期');
-                }
-                
-                return true;
-            } catch (error) {
-                console.error('令牌验证失败:', error);
-                alert('登录已过期，请重新登录');
+            const expiresAt = parseInt(localStorage.getItem('authTokenExpiresAt') || '0', 10);
+            if (expiresAt && Date.now() >= expiresAt) {
                 localStorage.removeItem('authToken');
-                window.location.href = '/static/index.html';
+                localStorage.removeItem('authTokenExpiresAt');
                 return false;
             }
+            return true;
+        }
+
+        function redirectToLogin(message) {
+            if (message) alert(message);
+            window.location.href = '/static/index.html';
         }
 
         // 删除 Self-talk
@@ -774,17 +944,30 @@
         }
 
         // 页面加载时获取历史记录
-        document.addEventListener('DOMContentLoaded', function() {
-            // 检查登录状态
-            const authToken = localStorage.getItem('authToken');
-            if (!authToken) {
-                alert('请先登录');
-                window.location.href = '/static/index.html';
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (!checkAuthToken()) {
+                redirectToLogin('请先登录');
                 return;
             }
-            
-            loadHistory();
+            try {
+                const res = await fetch('/auth/me', {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+                });
+                if (!res.ok) {
+                    if (res.status === 401) {
+                        localStorage.removeItem('authToken');
+                        redirectToLogin('登录已过期，请重新登录');
+                    }
+                    return;
+                }
+                loadHistory();
+            } catch (e) {
+                console.warn('认证检查失败，仍尝试加载本地数据', e);
+                loadHistory();
+            }
         });
     </script>
+    <script src="/static/js/wheel-picker.js"></script>
+    <script src="/static/js/self-talk-player.js"></script>
 </body>
 </html>

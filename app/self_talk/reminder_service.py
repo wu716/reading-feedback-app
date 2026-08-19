@@ -5,7 +5,10 @@ Self-talk 提醒服务
 """
 import json
 import logging
-from datetime import datetime, timedelta, time
+import smtplib
+from datetime import datetime, timedelta, date
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
@@ -132,67 +135,82 @@ class ReminderService:
         }
     
     @staticmethod
-    async def send_email_notification(
-        db: Session, 
-        user_id: int, 
-        subject: str, 
-        content: str
+    def send_email_notification(
+        db: Session,
+        user_id: int,
+        subject: str,
+        content: str,
     ) -> bool:
-        """发送邮件通知"""
+        """发送邮件通知（同步，供定时任务与 API 共用）"""
         try:
             from app.config import settings
-            
-            # 获取用户信息
+
             user = db.query(User).filter(User.id == user_id).first()
             if not user or not user.email:
                 logger.warning(f"用户 {user_id} 没有邮箱地址")
                 return False
-            
-            # 检查是否配置了邮件服务
-            if not hasattr(settings, 'SMTP_HOST') or not settings.SMTP_HOST:
-                logger.warning("邮件服务未配置")
+
+            if not settings.SMTP_HOST:
+                logger.warning("邮件服务未配置（SMTP_HOST 为空）")
                 return False
-            
-            # 导入邮件发送模块
-            import smtplib
-            from email.mime.text import MIMEText
-            from email.mime.multipart import MIMEMultipart
-            
-            # 创建邮件
+
             msg = MIMEMultipart()
-            msg['From'] = settings.SMTP_FROM_EMAIL
-            msg['To'] = user.email
-            msg['Subject'] = subject
-            
-            # 邮件正文
+            msg["From"] = settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME
+            msg["To"] = user.email
+            msg["Subject"] = subject
+
             html_content = f"""
             <html>
             <body style="font-family: Arial, sans-serif; padding: 20px;">
-                <h2 style="color: #667eea;">📚 Self-talk 提醒</h2>
+                <h2 style="color: #667eea;">📚 读书反馈提醒</h2>
                 <p>{content}</p>
                 <hr>
                 <p style="color: #666; font-size: 12px;">
-                    这是来自读书反馈应用的自动提醒邮件。
+                    这是来自读书反馈应用的自动提醒邮件。请登录应用记录你的践行。
                 </p>
             </body>
             </html>
             """
-            msg.attach(MIMEText(html_content, 'html'))
-            
-            # 发送邮件
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+            msg.attach(MIMEText(html_content, "html"))
+
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
                 if settings.SMTP_USE_TLS:
                     server.starttls()
                 if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
                     server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
                 server.send_message(msg)
-            
+
             logger.info(f"邮件发送成功: {user.email}")
             return True
-            
+
         except Exception as e:
             logger.error(f"发送邮件失败: {e}")
             return False
+
+    @staticmethod
+    def dispatch_notifications(
+        db: Session,
+        user_id: int,
+        setting: SelfTalkReminderSetting,
+        reminder_type: str,
+        title: str,
+        message: str,
+    ) -> None:
+        """根据用户设置发送浏览器日志 + 邮件"""
+        method = "both"
+        if setting.browser_notification and setting.email_notification:
+            method = "both"
+        elif setting.browser_notification:
+            method = "browser"
+        elif setting.email_notification:
+            method = "email"
+        else:
+            return
+
+        ReminderService.log_reminder(db, user_id, reminder_type, method)
+
+        if setting.email_notification and method in ("email", "both"):
+            ReminderService.send_email_notification(db, user_id, title, message)
     
     @staticmethod
     def get_reminder_message(reminder_type: str, user_name: str = "用户") -> tuple:
@@ -213,9 +231,31 @@ class ReminderService:
             "inactive": (
                 "长期未记录提醒",
                 f"{user_name}，已经好几天没做 Self-talk 了！快来记录下最近的思考吧~"
-            )
+            ),
+            "action_practice": (
+                "行动践行提醒",
+                f"{user_name}，你有行动项尚未按频率践行，请登录应用完成今日/本期践行记录。"
+            ),
         }
         return messages.get(reminder_type, ("提醒", "该做 Self-talk 了！"))
+
+    @staticmethod
+    def _action_is_overdue(action: Action, last_practice: Optional[date], today: date) -> bool:
+        """判断行动是否逾期未践行"""
+        freq = action.target_frequency or action.frequency or "daily"
+        if last_practice is None:
+            return True
+
+        days_since = (today - last_practice).days
+        if freq == "daily":
+            return days_since >= 1
+        if freq == "weekly":
+            return days_since >= 7
+        if freq == "monthly":
+            return days_since >= 30
+        if freq == "custom" and action.custom_frequency_days:
+            return days_since >= action.custom_frequency_days
+        return days_since >= 1
 
 
 # 定时任务函数
@@ -273,16 +313,12 @@ def check_daily_reminders(db: Session):
                 ).first()
                 
                 if not existing_log:
-                    # 发送提醒
                     user = db.query(User).filter(User.id == setting.user_id).first()
                     if user:
                         title, message = ReminderService.get_reminder_message("daily", user.name)
-                        
-                        # 记录日志
-                        method = "both" if (setting.browser_notification and setting.email_notification) else \
-                                "browser" if setting.browser_notification else "email"
-                        ReminderService.log_reminder(db, setting.user_id, "daily", method)
-                        
+                        ReminderService.dispatch_notifications(
+                            db, setting.user_id, setting, "daily", title, message
+                        )
                         reminded_count += 1
                         logger.info(f"已为用户 {user.name} 发送每日提醒")
         
@@ -309,18 +345,82 @@ def check_inactive_reminders(db: Session):
             
             if user and setting:
                 title, message = ReminderService.get_reminder_message("inactive", user.name)
-                
-                # 记录日志
-                method = "both" if (setting.browser_notification and setting.email_notification) else \
-                        "browser" if setting.browser_notification else "email"
-                ReminderService.log_reminder(db, user_id, "inactive", method)
-                
+                ReminderService.dispatch_notifications(
+                    db, user_id, setting, "inactive", title, message
+                )
                 logger.info(f"已为非活跃用户 {user.name} 发送提醒")
         
         logger.info(f"非活跃用户检查完成，共发送 {len(inactive_user_ids)} 条提醒")
         
     except Exception as e:
         logger.error(f"检查非活跃用户时出错: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+def check_action_practice_reminders(db: Session):
+    """检查逾期未践行的行动项，发送提醒（邮件 + 浏览器轮询）"""
+    logger.info("开始检查行动践行提醒...")
+    today = datetime.now().date()
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    reminded_users = set()
+
+    try:
+        active_actions = db.query(Action).filter(
+            Action.deleted_at.is_(None),
+            Action.status.in_(["todo", "in_progress"]),
+        ).all()
+
+        for action in active_actions:
+            setting = db.query(SelfTalkReminderSetting).filter(
+                SelfTalkReminderSetting.user_id == action.user_id,
+                SelfTalkReminderSetting.is_enabled == True,
+            ).first()
+            if not setting:
+                continue
+
+            last_log = (
+                db.query(PracticeLog)
+                .filter(
+                    PracticeLog.action_id == action.id,
+                    PracticeLog.deleted_at.is_(None),
+                )
+                .order_by(PracticeLog.date.desc())
+                .first()
+            )
+            last_date = last_log.date if last_log else None
+
+            if not ReminderService._action_is_overdue(action, last_date, today):
+                continue
+
+            existing = db.query(SelfTalkReminderLog).filter(
+                SelfTalkReminderLog.user_id == action.user_id,
+                SelfTalkReminderLog.reminder_type == "action_practice",
+                SelfTalkReminderLog.triggered_at >= today_start,
+            ).first()
+            if existing or action.user_id in reminded_users:
+                continue
+
+            user = db.query(User).filter(User.id == action.user_id).first()
+            if not user or not user.is_active:
+                continue
+
+            title, base_message = ReminderService.get_reminder_message("action_practice", user.name)
+            message = (
+                f"{base_message}<br><br>"
+                f"待践行行动：<strong>{action.action_text[:80]}</strong>"
+                f"{'…' if len(action.action_text) > 80 else ''}"
+            )
+            ReminderService.dispatch_notifications(
+                db, user.id, setting, "action_practice", title, message
+            )
+            reminded_users.add(user.id)
+            logger.info(f"已为用户 {user.name} 发送行动践行提醒（行动 ID {action.id}）")
+
+        logger.info(f"行动践行提醒检查完成，共提醒 {len(reminded_users)} 位用户")
+
+    except Exception as e:
+        logger.error(f"检查行动践行提醒时出错: {e}")
         import traceback
         traceback.print_exc()
 

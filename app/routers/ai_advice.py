@@ -217,6 +217,7 @@ async def chat_with_ai(
         db.refresh(ai_message)
         
         return AIAdviceChatResponse(
+            session_id=session.session_id,
             message=ai_message,
             thinking_process=ai_response.get("thinking_process"),
             web_search_results=ai_response.get("web_search_results")
@@ -234,7 +235,10 @@ async def chat_with_ai(
         db.commit()
         db.refresh(error_message)
         
-        return AIAdviceChatResponse(message=error_message)
+        return AIAdviceChatResponse(
+            session_id=session.session_id,
+            message=error_message
+        )
 
 
 @router.post("/sessions/{session_id}/chat/stream")

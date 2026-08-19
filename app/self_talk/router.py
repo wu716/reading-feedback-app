@@ -9,12 +9,20 @@ from typing import Optional
 import os
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, date
+from zoneinfo import ZoneInfo
 
 from app.database import get_db
 from app.auth import get_current_user
-from app.models import User, SelfTalk
-from app.self_talk.schemas import SelfTalkCreate, SelfTalkResponse, SelfTalkListResponse
+from app.models import User, SelfTalk, SelfTalkPlaybackLog
+from app.self_talk.schemas import (
+    SelfTalkCreate,
+    SelfTalkResponse,
+    SelfTalkListResponse,
+    SelfTalkTranscriptUpdate,
+    PlaybackLogCreate,
+    PlaybackLogResponse,
+)
 from app.config import settings
 from app.self_talk.speech_recognition import transcribe_audio_file, is_speech_recognition_available, is_valid_wav_file
 
@@ -35,6 +43,38 @@ def ensure_upload_dir():
 def is_allowed_file(filename: str) -> bool:
     """检查文件扩展名是否允许"""
     return any(filename.lower().endswith(ext) for ext in ALLOWED_EXTENSIONS)
+
+
+def get_audio_full_path(audio_path: str) -> str:
+    """根据存储文件名构建完整路径"""
+    return os.path.join(UPLOAD_DIR, os.path.basename(audio_path))
+
+
+def to_self_talk_response(self_talk: SelfTalk) -> SelfTalkResponse:
+    """ORM 转 API 响应（含最新 transcript）"""
+    return SelfTalkResponse(
+        id=self_talk.id,
+        user_id=self_talk.user_id,
+        action_id=self_talk.action_id,
+        audio_path=self_talk.audio_path,
+        transcript=self_talk.transcript,
+        created_at=self_talk.created_at,
+        updated_at=self_talk.updated_at,
+    )
+
+
+def delete_audio_file(audio_path: str) -> bool:
+    """删除磁盘上的音频文件，成功或文件不存在时返回 True"""
+    full_path = get_audio_full_path(audio_path)
+    if not os.path.isfile(full_path):
+        return True
+    try:
+        os.remove(full_path)
+        logger.info(f"已删除音频文件: {full_path}")
+        return True
+    except OSError as e:
+        logger.error(f"删除音频文件失败 {full_path}: {e}")
+        return False
 
 
 def save_audio_file(file: UploadFile, user_id: int) -> str:
@@ -150,14 +190,7 @@ async def upload_self_talk(
         
         logger.info(f"Self-talk 创建成功: ID={self_talk.id}")
         
-        return SelfTalkResponse(
-            id=self_talk.id,
-            user_id=self_talk.user_id,
-            action_id=self_talk.action_id,
-            audio_path=self_talk.audio_path,
-            transcript=self_talk.transcript,
-            created_at=self_talk.created_at
-        )
+        return to_self_talk_response(self_talk)
         
     except HTTPException:
         raise
@@ -201,14 +234,7 @@ async def get_self_talks(
         # 转换为响应格式
         self_talk_responses = []
         for self_talk in self_talks:
-            self_talk_responses.append(SelfTalkResponse(
-                id=self_talk.id,
-                user_id=self_talk.user_id,
-                action_id=self_talk.action_id,
-                audio_path=self_talk.audio_path,
-                transcript=self_talk.transcript,
-                created_at=self_talk.created_at
-            ))
+            self_talk_responses.append(to_self_talk_response(self_talk))
         
         return SelfTalkListResponse(
             self_talks=self_talk_responses,
@@ -247,14 +273,7 @@ async def get_self_talk(
         if not self_talk:
             raise HTTPException(status_code=404, detail="Self-talk 记录不存在")
         
-        return SelfTalkResponse(
-            id=self_talk.id,
-            user_id=self_talk.user_id,
-            action_id=self_talk.action_id,
-            audio_path=self_talk.audio_path,
-            transcript=self_talk.transcript,
-            created_at=self_talk.created_at
-        )
+        return to_self_talk_response(self_talk)
         
     except HTTPException:
         raise
@@ -290,9 +309,10 @@ async def delete_self_talk(
         if not self_talk:
             raise HTTPException(status_code=404, detail="Self-talk 记录不存在")
         
-        # 软删除
+        # 软删除并移除磁盘文件
         self_talk.deleted_at = datetime.utcnow()
         db.commit()
+        delete_audio_file(self_talk.audio_path)
         
         logger.info(f"Self-talk 删除成功: ID={self_talk_id}")
         
@@ -302,6 +322,48 @@ async def delete_self_talk(
         raise
     except Exception as e:
         logger.error(f"删除 Self-talk 失败: {e}")
+        raise HTTPException(status_code=500, detail="服务器内部错误")
+
+
+@router.patch("/{self_talk_id}", response_model=SelfTalkResponse)
+async def update_self_talk_transcript(
+    self_talk_id: int,
+    body: SelfTalkTranscriptUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """更新 Self-talk 转写文字（支持修改识别结果、添加标点）"""
+    try:
+        self_talk = db.query(SelfTalk).filter(
+            SelfTalk.id == self_talk_id,
+            SelfTalk.user_id == current_user.id,
+            SelfTalk.deleted_at.is_(None),
+        ).first()
+
+        if not self_talk:
+            raise HTTPException(status_code=404, detail="Self-talk 记录不存在")
+
+        transcript = body.transcript.strip()
+        if not transcript:
+            raise HTTPException(status_code=400, detail="转写文字不能为空")
+
+        self_talk.transcript = transcript
+        self_talk.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(self_talk)
+
+        logger.info(
+            "Self-talk 转写已保存到数据库: id=%s user_id=%s transcript=%s",
+            self_talk_id,
+            current_user.id,
+            transcript[:200] + ("…" if len(transcript) > 200 else ""),
+        )
+
+        return to_self_talk_response(self_talk)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"更新 Self-talk 转写失败: {e}")
         raise HTTPException(status_code=500, detail="服务器内部错误")
 
 
@@ -326,7 +388,7 @@ async def get_audio_file(
             raise HTTPException(status_code=404, detail="Self-talk 记录不存在")
         
         # 构建实际文件路径
-        actual_file_path = os.path.join(UPLOAD_DIR, self_talk.audio_path)
+        actual_file_path = get_audio_full_path(self_talk.audio_path)
         
         if not os.path.exists(actual_file_path):
             raise HTTPException(status_code=404, detail="音频文件不存在")
@@ -361,6 +423,47 @@ async def get_audio_file(
     except Exception as e:
         logger.error(f"获取音频文件失败: {e}")
         raise HTTPException(status_code=500, detail="服务器内部错误")
+
+
+def beijing_today() -> date:
+    return datetime.now(ZoneInfo("Asia/Shanghai")).date()
+
+
+@router.post("/playback-log", response_model=PlaybackLogResponse, status_code=201)
+async def log_playback(
+    body: PlaybackLogCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """记录 Self-talk 播放（用于今日概况统计）"""
+    self_talk = db.query(SelfTalk).filter(
+        SelfTalk.id == body.self_talk_id,
+        SelfTalk.user_id == current_user.id,
+        SelfTalk.deleted_at.is_(None),
+    ).first()
+    if not self_talk:
+        raise HTTPException(status_code=404, detail="Self-talk 记录不存在")
+
+    row = SelfTalkPlaybackLog(
+        user_id=current_user.id,
+        self_talk_id=body.self_talk_id,
+        play_date=beijing_today(),
+        duration_seconds=body.duration_seconds,
+        loops_completed=body.loops_completed,
+        loop_mode=body.loop_mode,
+        loop_target=body.loop_target,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    logger.info(
+        "Self-talk 播放记录: user=%s talk=%s duration=%ss loops=%s",
+        current_user.id,
+        body.self_talk_id,
+        body.duration_seconds,
+        body.loops_completed,
+    )
+    return row
 
 
 @router.get("/health/recognition")
