@@ -3047,7 +3047,7 @@
 
     <script>
         // API 基础配置
-        const API_BASE = 'http://localhost:8000';
+        const API_BASE = window.location.origin;
         let authToken = localStorage.getItem('authToken');
         let authCheckInProgress = false;
         let authCheckSettled = false;
