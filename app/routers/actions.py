@@ -17,6 +17,7 @@ from app.schemas import (
 from app.auth import get_current_active_user
 from app.config import settings
 from app.ai_service import extract_actions_from_notes, AIExtractionError, AIValidationError
+from app.ai_quota import enforce_ai_quota
 from app.self_talk.reminder_service import ReminderService
 
 router = APIRouter(prefix="/actions", tags=["行动项管理"])
@@ -29,6 +30,7 @@ async def upload_notes(
     db: Session = Depends(get_db)
 ):
     """上传读书笔记并抽取行动项"""
+    enforce_ai_quota(db, current_user, kind="upload-notes")
     try:
         # 调用 AI 抽取行动项
         extracted_actions = await extract_actions_from_notes(

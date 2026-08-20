@@ -288,6 +288,44 @@
             background: white;
             color: #333;
             border: 1px solid #e9ecef;
+            line-height: 1.7;
+        }
+
+        .message.assistant .message-content strong {
+            font-weight: 700;
+            color: #1a237e;
+        }
+
+        .message.assistant .message-content h3,
+        .message.assistant .message-content h4 {
+            margin: 10px 0 6px;
+            font-size: 15px;
+            color: #1565c0;
+        }
+
+        .message.assistant .message-content ul,
+        .message.assistant .message-content ol {
+            margin: 8px 0;
+            padding-left: 1.3em;
+        }
+
+        .message.assistant .message-content li {
+            margin: 4px 0;
+        }
+
+        .message.assistant .message-content p {
+            margin: 0 0 8px;
+        }
+
+        .message.assistant .message-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message.assistant .message-content code {
+            background: #f3f4f6;
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-size: 0.9em;
         }
 
         .message-time {
@@ -477,6 +515,32 @@
     </div>
 
     <script>
+        function escapeHtml(text) {
+            return String(text ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function formatAdviceMarkdown(text) {
+            let html = escapeHtml(text || '').replace(/\r\n/g, '\n');
+            html = html.replace(/^### (.+)$/gm, '<h4>$1</h4>');
+            html = html.replace(/^## (.+)$/gm, '<h3>$1</h3>');
+            html = html.replace(/^# (.+)$/gm, '<h3>$1</h3>');
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            html = html.replace(/^(?:[-*]|\d+\.) (.+)$/gm, '<li>$1</li>');
+            html = html.replace(/(?:<li>[\s\S]*?<\/li>\n?)+/g, (block) => {
+                const ordered = /^\s*\d+\./m.test(text);
+                const tag = ordered ? 'ol' : 'ul';
+                return `<${tag}>${block.replace(/\n/g, '')}</${tag}>`;
+            });
+            html = html.replace(/\n{2,}/g, '</p><p>');
+            html = html.replace(/\n/g, '<br>');
+            return `<p>${html}</p>`;
+        }
+
         class AIAdviceChat {
             constructor() {
                 this.actionId = this.getActionIdFromUrl();
@@ -751,10 +815,13 @@
                 
                 const avatar = role === 'user' ? '我' : 'AI';
                 const time = new Date().toLocaleTimeString();
+                const body = role === 'assistant'
+                    ? formatAdviceMarkdown(content)
+                    : escapeHtml(content).replace(/\n/g, '<br>');
                 
                 messageDiv.innerHTML = `
                     <div class="message-avatar">${avatar}</div>
-                    <div class="message-content">${content}</div>
+                    <div class="message-content">${body}</div>
                     <div class="message-time">${time}</div>
                 `;
                 

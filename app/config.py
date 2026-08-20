@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     deepseek_api_key: str = ""
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
+    ai_daily_limit: int = 10
+
+    # 注册控制（生产默认关闭公开注册，见 ProductionSettings）
+    registration_open: bool = True
+    invite_code: str = ""
 
     # 邮件（国内推荐阿里云 DirectMail / 腾讯企业邮）
     SMTP_HOST: str = ""
@@ -66,6 +71,12 @@ class Settings(BaseSettings):
             return ["*"]
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
+    @property
+    def is_registration_allowed(self) -> bool:
+        if (self.invite_code or "").strip():
+            return True
+        return self.registration_open
+
 
 def get_settings() -> Settings:
     if _is_production():
@@ -83,6 +94,8 @@ class ProductionSettings(Settings):
     DEBUG: bool = False
     REQUIRE_AUTH: bool = True
     environment: str = "production"
+    registration_open: bool = False
+    ai_daily_limit: int = 10
 
 
 settings = get_settings()

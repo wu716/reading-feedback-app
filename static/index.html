@@ -3212,6 +3212,10 @@
                         <label for="registerName">姓名（可选）</label>
                         <input type="text" id="registerName" placeholder="怎么称呼你">
                     </div>
+                    <div class="form-group" id="inviteCodeGroup">
+                        <label for="registerInvite">邀请码</label>
+                        <input type="text" id="registerInvite" placeholder="请输入邀请码">
+                    </div>
                     <button type="submit" class="auth-btn">注册</button>
                 </form>
             </div>
@@ -4411,6 +4415,30 @@
             modal.classList.remove('hidden');
             modal.classList.add('is-open');
             modal.setAttribute('aria-hidden', 'false');
+            applyRegisterConfig();
+        }
+
+        async function applyRegisterConfig() {
+            try {
+                const cfg = await apiRequest('/auth/register-config');
+                const registerTab = document.querySelector(".auth-tab[onclick*=\"register\"]");
+                const inviteGroup = document.getElementById('inviteCodeGroup');
+                const inviteInput = document.getElementById('registerInvite');
+                if (!cfg.open) {
+                    if (registerTab) registerTab.style.display = 'none';
+                    switchTab('login');
+                } else if (registerTab) {
+                    registerTab.style.display = '';
+                }
+                if (inviteGroup) {
+                    inviteGroup.style.display = cfg.invite_required || cfg.open ? '' : 'none';
+                }
+                if (inviteInput) {
+                    inviteInput.required = !!cfg.invite_required;
+                }
+            } catch (e) {
+                console.warn('无法读取注册配置', e);
+            }
         }
 
         // 显示认证模态框（延迟显示，避免从其他页面返回时闪现）
@@ -4504,14 +4532,15 @@
         }
         
         // 用户注册
-        async function register(email, password, name) {
+        async function register(email, password, name, inviteCode) {
             try {
                 await apiRequest('/auth/register', {
                     method: 'POST',
                     body: JSON.stringify({ 
                         email, 
                         password, 
-                        name: name || email.split('@')[0] 
+                        name: name || email.split('@')[0],
+                        invite_code: inviteCode || undefined
                     })
                 });
                 
@@ -5291,6 +5320,7 @@
             const email = document.getElementById('registerEmail').value;
             const password = document.getElementById('registerPassword').value;
             const name = document.getElementById('registerName').value;
+            const inviteCode = document.getElementById('registerInvite').value;
             
             if (!email || !password) {
                 showMessage('请填写邮箱和密码', 'error');
@@ -5306,7 +5336,7 @@
             btn.disabled = true;
             btn.textContent = '注册中...';
             
-            await register(email, password, name);
+            await register(email, password, name, inviteCode);
             
             btn.disabled = false;
             btn.textContent = '注册';

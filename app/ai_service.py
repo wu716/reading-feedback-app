@@ -1,8 +1,8 @@
 import json
 import asyncio
 from typing import List, Dict, Any
-from openai import AsyncOpenAI
-from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
+from openai import AsyncOpenAI, APIStatusError, AuthenticationError, PermissionDeniedError
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential, RetryError
 import logging
 
 from app.config import settings
@@ -70,9 +70,24 @@ def create_extraction_prompt(notes: str, book_title: str = None) -> str:
     return prompt
 
 
+def _should_retry_ai_call(exc: BaseException) -> bool:
+    """余额不足、鉴权失败等不应重试，避免放大消耗。"""
+    if isinstance(exc, (AuthenticationError, PermissionDeniedError, AIExtractionError)):
+        return False
+    if isinstance(exc, APIStatusError):
+        if exc.status_code in (400, 401, 402, 403, 404, 422):
+            return False
+        text = str(exc).lower()
+        if "insufficient" in text or "balance" in text or "quota" in text:
+            return False
+    return True
+
+
 @retry(
     stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=4, max=10)
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+    retry=retry_if_exception(_should_retry_ai_call),
+    reraise=True,
 )
 async def call_deepseek_api(
     prompt: str = None,
@@ -171,6 +186,14 @@ async def call_deepseek_api(
             raise AIExtractionError("AI 服务连接失败：请检查网络连接")
         else:
             raise AIExtractionError(f"AI 服务调用失败: {error_msg}")
+
+    except APIStatusError as e:
+        logger.error("DeepSeek API 状态错误: %s %s", e.status_code, e)
+        if e.status_code == 402 or "insufficient" in str(e).lower() or "balance" in str(e).lower():
+            raise AIExtractionError("AI 服务余额不足，暂时无法调用")
+        if e.status_code in (401, 403):
+            raise AIExtractionError("AI 服务认证失败：请检查 API Key 是否正确")
+        raise AIExtractionError(f"AI 服务调用失败: {e}")
     
     except Exception as e:
         logger.error(f"DeepSeek API 调用失败: {e}")
@@ -343,7 +366,7 @@ async def generate_action_advice(action_text: str, context: str = "") -> str:
 3. 保持动力的技巧
 4. 追踪进度的方法
 
-请用简洁、实用的语言回答，每条建议都要具体可执行。"""
+请用简洁、实用的中文回答，并使用 Markdown 排版：关键步骤和注意事项用 **加粗**，分点用列表。"""
         
         response = await call_deepseek_api(prompt)
         return response
