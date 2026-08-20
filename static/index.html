@@ -6,6 +6,9 @@
     <title>Self-talk 内心对话系统</title>
     <link rel="icon" href="/static/icons/app-icon-1024.png">
     <link rel="apple-touch-icon" href="/static/icons/app-icon-1024.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -264,94 +267,357 @@
             background: rgba(255, 255, 255, 0.3);
         }
         
-        /* 登录模态框样式 */
+        /* 登录页 · 水墨画 */
         .auth-modal {
+            --ink: #1c1b19;
+            --ink-soft: rgba(28, 27, 25, 0.62);
+            --cinnabar: #9c3b32;
+            --paper: #efe8d8;
+            --paper-deep: #e4dcc8;
             position: fixed;
-            top: 0;
-            left: 0;
+            inset: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 1000;
-            backdrop-filter: blur(5px);
+            z-index: 2000;
+            overflow: hidden;
+            background: #e8e0cc;
+            scrollbar-width: none;
+            color: var(--ink);
+            font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
         }
-        
+
+        .auth-modal::-webkit-scrollbar {
+            display: none;
+        }
+
+        .auth-modal.hidden {
+            display: none !important;
+        }
+
         .auth-modal.is-open {
             display: flex;
         }
-        
+
+        .auth-modal::before {
+            content: '';
+            position: fixed;
+            inset: 14px;
+            border: 1px solid rgba(28, 27, 25, 0.12);
+            pointer-events: none;
+            z-index: 4;
+        }
+
+        .auth-modal::after {
+            content: '';
+            position: fixed;
+            inset: 20px;
+            border: 1px solid rgba(28, 27, 25, 0.06);
+            pointer-events: none;
+            z-index: 4;
+        }
+
+        .ink-scene {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background:
+                radial-gradient(ellipse at 18% 22%, rgba(255, 250, 240, 0.55) 0%, transparent 42%),
+                radial-gradient(ellipse at 82% 78%, rgba(120, 110, 90, 0.12) 0%, transparent 46%),
+                linear-gradient(180deg, #f4eee0 0%, #e9e1cd 48%, #d8d0ba 100%);
+        }
+
+        .ink-scene svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .ink-grain {
+            position: absolute;
+            inset: 0;
+            opacity: 0.18;
+            mix-blend-mode: multiply;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+        }
+
+        .ink-mist {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 36% at 50% 62%, rgba(244, 238, 224, 0.55) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 28% at 22% 70%, rgba(244, 238, 224, 0.4) 0%, transparent 70%);
+            animation: mistDrift 28s ease-in-out infinite alternate;
+        }
+
+        @keyframes mistDrift {
+            from { transform: translateX(-1.5%) scale(1); }
+            to { transform: translateX(2%) scale(1.04); }
+        }
+
+        .ink-colophon {
+            position: fixed;
+            left: 36px;
+            bottom: 42px;
+            z-index: 2;
+            writing-mode: vertical-rl;
+            letter-spacing: 0.55em;
+            font-size: 0.78rem;
+            color: rgba(28, 27, 25, 0.38);
+            pointer-events: none;
+        }
+
+        .auth-layout {
+            position: relative;
+            z-index: 3;
+            width: min(1080px, calc(100% - 80px));
+            display: grid;
+            grid-template-columns: 1fr minmax(320px, 420px);
+            gap: 48px;
+            align-items: center;
+        }
+
+        .auth-brand {
+            color: var(--ink);
+            padding-left: 12px;
+            animation: inkRise 0.9s ease both;
+        }
+
+        .ink-seal {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 46px;
+            height: 46px;
+            margin-bottom: 18px;
+            border: 2px solid var(--cinnabar);
+            color: var(--cinnabar);
+            font-family: "Ma Shan Zheng", "STKaiti", "KaiTi", serif;
+            font-size: 1.55rem;
+            line-height: 1;
+            transform: rotate(-9deg);
+            box-shadow: inset 0 0 0 1px rgba(156, 59, 50, 0.35);
+            opacity: 0.92;
+        }
+
+        .auth-brand h1 {
+            font-family: "Ma Shan Zheng", "STKaiti", "KaiTi", "KaiTi_GB2312", serif;
+            font-size: clamp(4.2rem, 8vw, 7rem);
+            font-weight: 400;
+            line-height: 0.92;
+            letter-spacing: 0.12em;
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+        }
+
+        .brand-brush {
+            width: 168px;
+            height: 10px;
+            margin: 18px 0 22px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 16' fill='none'%3E%3Cpath d='M2 9 C 28 3, 46 13, 72 8 S 120 3, 148 9 186 12, 198 7' stroke='%231c1b19' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center / contain;
+            opacity: 0.72;
+        }
+
+        .brand-tagline {
+            max-width: 18em;
+            font-size: 1.05rem;
+            line-height: 1.9;
+            color: var(--ink-soft);
+            letter-spacing: 0.18em;
+        }
+
         .auth-container {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            width: 400px;
+            background-color: rgba(247, 241, 226, 0.72);
+            background-image:
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23p)' opacity='0.06'/%3E%3C/svg%3E"),
+                linear-gradient(180deg, rgba(255, 252, 245, 0.78) 0%, rgba(247, 241, 226, 0.7) 100%);
+            padding: 36px 34px 32px;
+            border-radius: 2px;
+            box-shadow:
+                0 18px 50px rgba(40, 32, 18, 0.12),
+                0 0 0 1px rgba(28, 27, 25, 0.08);
+            width: 100%;
             max-width: 90vw;
             position: relative;
+            backdrop-filter: blur(10px);
+            animation: paperSettle 0.85s ease 0.12s both;
         }
-        
+
+        .auth-container::before {
+            content: '';
+            position: absolute;
+            inset: 8px;
+            border: 1px solid rgba(28, 27, 25, 0.08);
+            pointer-events: none;
+        }
+
+        @keyframes inkRise {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes paperSettle {
+            from { opacity: 0; transform: translateY(22px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .auth-header {
-            text-align: center;
-            margin-bottom: 30px;
+            text-align: left;
+            margin-bottom: 22px;
         }
-        
+
         .auth-header h2 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 1.8rem;
+            color: var(--ink);
+            margin-bottom: 6px;
+            font-size: 1.35rem;
+            font-weight: 600;
+            letter-spacing: 0.28em;
         }
-        
+
         .auth-header p {
-            color: #666;
-            font-size: 0.9rem;
+            color: rgba(28, 27, 25, 0.5);
+            font-size: 0.86rem;
+            letter-spacing: 0.08em;
         }
-        
+
         .auth-tabs {
             display: flex;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 26px;
+            border-bottom: 1px solid rgba(28, 27, 25, 0.12);
+            gap: 8px;
         }
-        
+
         .auth-tab {
             flex: 1;
-            padding: 15px;
+            padding: 12px 8px 14px;
             text-align: center;
             cursor: pointer;
             border: none;
             background: none;
             font-size: 1rem;
-            color: #666;
-            transition: all 0.3s;
+            font-family: inherit;
+            color: rgba(28, 27, 25, 0.42);
+            letter-spacing: 0.32em;
+            text-indent: 0.32em;
+            transition: color 0.3s;
+            position: relative;
         }
-        
+
         .auth-tab.active {
-            color: #667eea;
-            border-bottom: 2px solid #667eea;
+            color: var(--ink);
             font-weight: 600;
+            border-bottom: none;
         }
-        
+
+        .auth-tab.active::after {
+            content: '';
+            position: absolute;
+            left: 22%;
+            right: 22%;
+            bottom: -1px;
+            height: 2px;
+            background: var(--ink);
+            border-radius: 1px;
+        }
+
         .auth-form {
             display: none;
         }
-        
+
         .auth-form.active {
             display: block;
+            animation: inkRise 0.35s ease;
         }
-        
+
+        .auth-modal .form-group {
+            margin-bottom: 18px;
+        }
+
+        .auth-modal .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: rgba(28, 27, 25, 0.72);
+            font-weight: 500;
+            font-size: 0.86rem;
+            letter-spacing: 0.16em;
+        }
+
+        .auth-modal .form-group input {
+            width: 100%;
+            padding: 11px 2px 12px;
+            border: none;
+            border-bottom: 1px solid rgba(28, 27, 25, 0.22);
+            border-radius: 0;
+            font-size: 1rem;
+            font-family: inherit;
+            color: var(--ink);
+            background: transparent;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .auth-modal .form-group input::placeholder {
+            color: rgba(28, 27, 25, 0.28);
+        }
+
+        .auth-modal .form-group input:focus {
+            outline: none;
+            border-bottom-color: var(--ink);
+            box-shadow: 0 1px 0 var(--ink);
+        }
+
+        .auth-modal .password-hint {
+            font-size: 0.75rem;
+            color: rgba(28, 27, 25, 0.42);
+            margin-top: 6px;
+        }
+
+        .auth-modal .auth-btn {
+            width: 100%;
+            margin-top: 8px;
+            padding: 13px 16px;
+            background: var(--ink);
+            color: #f4eee0;
+            border: none;
+            border-radius: 1px;
+            font-size: 1rem;
+            font-family: inherit;
+            font-weight: 600;
+            letter-spacing: 0.42em;
+            text-indent: 0.42em;
+            cursor: pointer;
+            transition: background 0.25s ease, transform 0.2s ease;
+        }
+
+        .auth-modal .auth-btn:hover {
+            background: var(--cinnabar);
+            transform: none;
+        }
+
+        .auth-modal .auth-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-modal .close-modal {
+            display: none;
+        }
+
         .form-group {
             margin-bottom: 20px;
         }
-        
+
         .form-group label {
             display: block;
             margin-bottom: 8px;
             color: #333;
             font-weight: 500;
         }
-        
+
         .form-group input {
             width: 100%;
             padding: 12px 15px;
@@ -360,18 +626,18 @@
             font-size: 1rem;
             transition: border-color 0.3s;
         }
-        
+
         .form-group input:focus {
             outline: none;
             border-color: #667eea;
         }
-        
+
         .password-hint {
             font-size: 0.8rem;
             color: #888;
             margin-top: 5px;
         }
-        
+
         .auth-btn {
             width: 100%;
             padding: 15px;
@@ -384,15 +650,24 @@
             cursor: pointer;
             transition: transform 0.2s;
         }
-        
+
         .auth-btn:hover {
             transform: translateY(-2px);
         }
-        
+
         .auth-btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .ink-mist,
+            .auth-brand,
+            .auth-container,
+            .auth-form.active {
+                animation: none;
+            }
         }
         
         .close-modal {
@@ -2084,6 +2359,57 @@
             .nav-text {
                 display: block;
             }
+
+            .auth-modal {
+                overflow-y: auto;
+            }
+
+            .auth-modal::before,
+            .auth-modal::after {
+                inset: 8px;
+            }
+
+            .auth-layout {
+                width: min(440px, calc(100% - 32px));
+                grid-template-columns: 1fr;
+                gap: 18px;
+                padding: 24px 0 32px;
+            }
+
+            .auth-brand {
+                text-align: center;
+                padding: 8px 0 0;
+            }
+
+            .auth-brand h1 {
+                font-size: 3.4rem;
+            }
+
+            .brand-brush {
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .brand-tagline {
+                max-width: none;
+                font-size: 0.9rem;
+                letter-spacing: 0.1em;
+            }
+
+            .ink-seal {
+                width: 36px;
+                height: 36px;
+                font-size: 1.2rem;
+                margin-bottom: 8px;
+            }
+
+            .ink-colophon {
+                display: none;
+            }
+
+            .auth-container {
+                padding: 26px 22px 22px;
+            }
         }
     </style>
 </head>
@@ -2707,50 +3033,103 @@
         </section>
     </main>
     
-    <!-- 登录/注册模态框 -->
+    <!-- 登录/注册 · 水墨画 -->
     <div class="auth-modal hidden" id="authModal" aria-hidden="true">
-        <div class="auth-container">
-            <button class="close-modal" onclick="closeAuthModal()">&times;</button>
-            <div class="auth-header">
-                <h2>欢迎使用读书笔记系统</h2>
-                <p>请选择登录或注册新账户</p>
+        <div class="ink-scene" aria-hidden="true">
+            <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="inkSky" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#f7f1e4"/>
+                        <stop offset="55%" stop-color="#ebe3cf"/>
+                        <stop offset="100%" stop-color="#d5cdb6"/>
+                    </linearGradient>
+                    <filter id="inkWash" x="-8%" y="-8%" width="116%" height="116%">
+                        <feTurbulence type="fractalNoise" baseFrequency="0.025" numOctaves="3" seed="7" result="noise"/>
+                        <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G"/>
+                    </filter>
+                    <filter id="inkSoft" x="-10%" y="-10%" width="120%" height="120%">
+                        <feGaussianBlur stdDeviation="6"/>
+                    </filter>
+                </defs>
+                <rect width="1600" height="900" fill="url(#inkSky)"/>
+                <!-- 远山 -->
+                <g filter="url(#inkWash)" fill="#8d877a" opacity="0.28">
+                    <path d="M-40 430 C 120 390, 220 470, 360 380 C 520 270, 640 430, 800 330 C 960 230, 1080 400, 1240 310 C 1380 240, 1500 360, 1640 300 L 1640 900 L -40 900 Z"/>
+                </g>
+                <!-- 中景 -->
+                <g filter="url(#inkWash)" fill="#4f4c46" opacity="0.38">
+                    <path d="M-60 560 C 80 500, 180 610, 320 520 C 470 420, 560 600, 720 510 C 880 420, 980 590, 1140 500 C 1280 430, 1410 560, 1660 490 L 1660 900 L -60 900 Z"/>
+                </g>
+                <!-- 近山 -->
+                <g filter="url(#inkWash)" fill="#1e1d1b" opacity="0.72">
+                    <path d="M-80 710 C 40 650, 140 760, 280 680 C 430 590, 520 760, 700 690 C 840 640, 900 780, 1040 720 C 1160 670, 1280 790, 1660 700 L 1660 900 L -80 900 Z"/>
+                </g>
+                <!-- 墨渍 -->
+                <ellipse cx="180" cy="760" rx="90" ry="38" fill="#111" opacity="0.18" filter="url(#inkSoft)"/>
+                <ellipse cx="1380" cy="180" rx="70" ry="40" fill="#111" opacity="0.08" filter="url(#inkSoft)"/>
+                <ellipse cx="250" cy="210" rx="26" ry="18" fill="#111" opacity="0.12" filter="url(#inkSoft)"/>
+                <!-- 远鸟 -->
+                <g fill="none" stroke="#2a2926" stroke-width="1.4" opacity="0.35" stroke-linecap="round">
+                    <path d="M1180 210 q 10 -8 20 0"/>
+                    <path d="M1218 198 q 8 -6 16 0"/>
+                </g>
+                <!-- 近松意笔 -->
+                <g fill="#161513" opacity="0.82" filter="url(#inkWash)">
+                    <path d="M148 900 L 160 620 C 120 640, 90 700, 70 760 C 110 720, 140 680, 160 620 C 150 560, 180 500, 210 470 C 170 520, 150 560, 160 620 C 190 580, 240 530, 270 510 C 220 560, 180 610, 168 660 L 176 900 Z"/>
+                </g>
+            </svg>
+            <div class="ink-grain"></div>
+            <div class="ink-mist"></div>
+        </div>
+        <p class="ink-colophon">开卷有益 · 知行合一</p>
+        <div class="auth-layout">
+            <div class="auth-brand">
+                <span class="ink-seal">然</span>
+                <h1>书然</h1>
+                <div class="brand-brush"></div>
+                <p class="brand-tagline">把读书笔记，变成真正在做的行动</p>
             </div>
-            
-            <div class="auth-tabs">
-                <button class="auth-tab active" onclick="switchTab('login')">登录</button>
-                <button class="auth-tab" onclick="switchTab('register')">注册</button>
+            <div class="auth-container">
+                <button class="close-modal" onclick="closeAuthModal()">&times;</button>
+                <div class="auth-header">
+                    <h2>入册</h2>
+                    <p>登录已有账户，或注册开启书然</p>
+                </div>
+
+                <div class="auth-tabs">
+                    <button class="auth-tab active" onclick="switchTab('login')">登录</button>
+                    <button class="auth-tab" onclick="switchTab('register')">注册</button>
+                </div>
+
+                <form class="auth-form active" id="loginForm">
+                    <div class="form-group">
+                        <label for="loginEmail">邮箱</label>
+                        <input type="email" id="loginEmail" required placeholder="请输入邮箱">
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">密码</label>
+                        <input type="password" id="loginPassword" required placeholder="请输入密码">
+                    </div>
+                    <button type="submit" class="auth-btn">登录</button>
+                </form>
+
+                <form class="auth-form" id="registerForm">
+                    <div class="form-group">
+                        <label for="registerEmail">邮箱</label>
+                        <input type="email" id="registerEmail" required placeholder="请输入邮箱">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">密码</label>
+                        <input type="password" id="registerPassword" required placeholder="请输入密码">
+                        <div class="password-hint">至少 6 位，建议字母与数字搭配</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerName">姓名（可选）</label>
+                        <input type="text" id="registerName" placeholder="怎么称呼你">
+                    </div>
+                    <button type="submit" class="auth-btn">注册</button>
+                </form>
             </div>
-            
-            <!-- 登录表单 -->
-            <form class="auth-form active" id="loginForm">
-                <div class="form-group">
-                    <label for="loginEmail">邮箱地址</label>
-                    <input type="email" id="loginEmail" required placeholder="请输入您的邮箱">
-                </div>
-                <div class="form-group">
-                    <label for="loginPassword">密码</label>
-                    <input type="password" id="loginPassword" required placeholder="请输入密码">
-                </div>
-                <button type="submit" class="auth-btn">登录</button>
-            </form>
-            
-            <!-- 注册表单 -->
-            <form class="auth-form" id="registerForm">
-                <div class="form-group">
-                    <label for="registerEmail">邮箱地址</label>
-                    <input type="email" id="registerEmail" required placeholder="请输入您的邮箱">
-                </div>
-                <div class="form-group">
-                    <label for="registerPassword">密码</label>
-                    <input type="password" id="registerPassword" required placeholder="请输入密码">
-                    <div class="password-hint">密码至少6位，建议包含字母和数字</div>
-                </div>
-                <div class="form-group">
-                    <label for="registerName">姓名（可选）</label>
-                    <input type="text" id="registerName" placeholder="请输入您的姓名">
-                </div>
-                <button type="submit" class="auth-btn">注册</button>
-            </form>
         </div>
     </div>
     
@@ -3918,13 +4297,23 @@
         
         // 切换登录/注册标签
         function switchTab(tab) {
-            // 更新标签状态
             document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
             document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
-            
-            // 更新表单显示
+
             document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
             document.getElementById(tab + 'Form').classList.add('active');
+
+            const title = document.querySelector('.auth-header h2');
+            const desc = document.querySelector('.auth-header p');
+            if (title && desc) {
+                if (tab === 'register') {
+                    title.textContent = '开卷';
+                    desc.textContent = '注册新账户，开始你的知行';
+                } else {
+                    title.textContent = '入册';
+                    desc.textContent = '登录已有账户，或注册开启书然';
+                }
+            }
         }
         
         // 用户登录
