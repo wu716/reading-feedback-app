@@ -5,6 +5,10 @@
     let todayOverviewData = null;
     let expandedPanel = null;
     let readingAdjustEntryId = null;
+    let pendingReadingMinutes = null;
+    let readingSaveTimer = null;
+    let readingSaving = false;
+    let readingWheelBound = false;
 
     function formatMinutes(mins) {
         const m = Math.max(0, parseInt(mins, 10) || 0);
@@ -68,13 +72,22 @@
         }
     };
 
-    function renderTodayOverview(data) {
-        const goal = data.reading_goal_minutes || 120;
-        const total = data.reading_total_minutes || 0;
+    function currentReadingMinutes() {
+        if (pendingReadingMinutes != null) return pendingReadingMinutes;
+        return todayOverviewData?.reading_total_minutes || 0;
+    }
+
+    function paintReadingMinutes(total) {
         const rt = document.getElementById('todayReadingTime');
+        const rpb = document.getElementById('readingProgressBar');
+        const goal = todayOverviewData?.reading_goal_minutes || 120;
+        if (rt) rt.textContent = formatMinutes(total);
+        if (rpb) rpb.style.width = `${Math.min(100, Math.round((total / Math.max(goal, 1)) * 100))}%`;
+    }
+
+    function renderTodayOverview(data) {
         const ca = document.getElementById('completedActions');
         const pc = document.getElementById('practiceCount');
-        const rpb = document.getElementById('readingProgressBar');
         const apb = document.getElementById('actionsProgressBar');
         const ppb = document.getElementById('practiceProgressBar');
         const stSummary = document.getElementById('selfTalkPlaySummary');
@@ -82,7 +95,7 @@
         const stCount = data.self_talk_play_count || 0;
         const stSeconds = data.self_talk_play_seconds || 0;
 
-        if (rt) rt.textContent = formatMinutes(total);
+        paintReadingMinutes(currentReadingMinutes());
         if (ca) ca.textContent = `${data.actions_completed}/${data.actions_total}`;
         if (pc) pc.textContent = `${data.practice_count}次`;
         if (stSummary) {
@@ -90,7 +103,6 @@
                 ? `${stCount}次 · ${formatDurationSeconds(stSeconds)}`
                 : '0次';
         }
-        if (rpb) rpb.style.width = `${Math.min(100, Math.round((total / goal) * 100))}%`;
         if (apb) {
             const pct = data.actions_total ? (data.actions_completed / data.actions_total) * 100 : 0;
             apb.style.width = `${Math.min(100, Math.round(pct))}%`;
@@ -98,9 +110,11 @@
         if (ppb) ppb.style.width = `${Math.min(100, data.practice_count * 10)}%`;
         if (stpb) stpb.style.width = `${Math.min(100, Math.round(stSeconds / 60))}%`;
 
-        readingAdjustEntryId = data.reading_entries?.[0]?.id || null;
+        if (pendingReadingMinutes == null) {
+            readingAdjustEntryId = data.reading_entries?.[0]?.id || null;
+        }
         renderOverviewPanels(data);
-        setupReadingWheel();
+        setupReadingAdjustControls();
     }
 
     function renderOverviewPanels(data) {
@@ -207,43 +221,121 @@
         expandedPanel = name;
     };
 
-    function setupReadingWheel() {
+    function setupReadingAdjustControls() {
         const el = document.getElementById('readingStatItem');
-        if (!el || el.dataset.wheelBound) return;
-        el.dataset.wheelBound = '1';
-        el.addEventListener('wheel', async (e) => {
-            e.preventDefault();
-            const delta = e.deltaY < 0 ? 5 : -5;
-            await adjustReadingMinutes(delta);
-        }, { passive: false });
+        if (el && !el.dataset.keyBound) {
+            el.dataset.keyBound = '1';
+            el.setAttribute('tabindex', '0');
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowUp' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    applyReadingDelta(5);
+                } else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    applyReadingDelta(-5);
+                }
+            });
+            el.querySelectorAll('.duration-step').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    applyReadingDelta(parseInt(btn.dataset.delta, 10) || 0);
+                });
+            });
+        }
+
+        if (readingWheelBound) return;
+        readingWheelBound = true;
+        document.addEventListener('wheel', onReadingWheel, { passive: false, capture: true });
     }
 
-    async function adjustReadingMinutes(delta) {
-        if (!todayOverviewData) return;
-        const entryId = readingAdjustEntryId;
-        const entry = todayOverviewData.reading_entries?.find((e) => e.id === entryId);
+    function onReadingWheel(e) {
+        if (e.ctrlKey || e.deltaY === 0) return;
+        const el = document.getElementById('readingStatItem');
+        if (!el || !el.contains(e.target)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const delta = e.deltaY < 0 ? 5 : -5;
+        applyReadingDelta(delta);
+    }
 
+    function applyReadingDelta(delta) {
+        if (!delta) return;
+        if (!localStorage.getItem('authToken')) {
+            if (typeof showMessage === 'function') showMessage('请先登录后再调整时长', 'error');
+            return;
+        }
+        const current = currentReadingMinutes();
+        const next = Math.max(0, Math.min(24 * 60, current + delta));
+        if (next === current) return;
+        pendingReadingMinutes = next;
+        paintReadingMinutes(next);
+        scheduleSaveReadingMinutes();
+    }
+
+    function scheduleSaveReadingMinutes() {
+        clearTimeout(readingSaveTimer);
+        readingSaveTimer = setTimeout(() => {
+            persistReadingMinutes();
+        }, 280);
+    }
+
+    async function persistReadingMinutes() {
+        if (readingSaving) {
+            scheduleSaveReadingMinutes();
+            return;
+        }
+        if (pendingReadingMinutes == null) return;
+        if (!localStorage.getItem('authToken')) return;
+
+        readingSaving = true;
+        const target = pendingReadingMinutes;
         try {
+            if (!todayOverviewData) {
+                todayOverviewData = await todayApi('/overview');
+            }
+            const entries = todayOverviewData.reading_entries || [];
+            const entry = entries.find((e) => e.id === readingAdjustEntryId) || entries[0];
+            const currentTotal = todayOverviewData.reading_total_minutes || 0;
+
             if (entry) {
-                const newDur = Math.max(0, (entry.duration_minutes || 0) + delta);
-                await todayApi(`/reading-entries/${entryId}`, {
+                const othersSum = Math.max(0, currentTotal - (entry.duration_minutes || 0));
+                const newDur = Math.max(0, target - othersSum);
+                await todayApi(`/reading-entries/${entry.id}`, {
                     method: 'PATCH',
                     body: JSON.stringify({ duration_minutes: newDur }),
                 });
+                entry.duration_minutes = newDur;
+                readingAdjustEntryId = entry.id;
+                todayOverviewData.reading_total_minutes = othersSum + newDur;
             } else {
-                await todayApi('/reading-entries', {
+                const created = await todayApi('/reading-entries', {
                     method: 'POST',
                     body: JSON.stringify({
                         book_title: '今日阅读',
                         content: '（点击展开可填写阅读内容）',
-                        duration_minutes: Math.max(0, delta),
+                        duration_minutes: target,
                     }),
                 });
+                readingAdjustEntryId = created.id;
+                todayOverviewData.reading_entries = [created, ...entries];
+                todayOverviewData.reading_total_minutes = target;
             }
-            await loadTodayDashboard();
+
+            if (pendingReadingMinutes === target) {
+                pendingReadingMinutes = null;
+                await loadTodayDashboard();
+            }
         } catch (err) {
             console.error(err);
+            pendingReadingMinutes = null;
             if (typeof showMessage === 'function') showMessage('更新阅读时长失败', 'error');
+            if (todayOverviewData) paintReadingMinutes(todayOverviewData.reading_total_minutes || 0);
+        } finally {
+            readingSaving = false;
+            if (pendingReadingMinutes != null && pendingReadingMinutes !== target) {
+                scheduleSaveReadingMinutes();
+            }
         }
     }
 
@@ -442,7 +534,9 @@
             clearInterval(window._todayDashboardRefreshTimer);
         }
         window._todayDashboardRefreshTimer = setInterval(() => {
-            if (localStorage.getItem('authToken')) loadTodayDashboard();
+            if (!localStorage.getItem('authToken')) return;
+            if (pendingReadingMinutes != null || readingSaving) return;
+            loadTodayDashboard();
         }, TODAY_REFRESH_MS);
     }
 
@@ -452,6 +546,7 @@
 
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && localStorage.getItem('authToken')) {
+            if (pendingReadingMinutes != null || readingSaving) return;
             loadTodayDashboard();
         }
     });
@@ -463,10 +558,12 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         initializeTodos();
+        setupReadingAdjustControls();
         if (window.authCheckSettled) {
             tryLoadTodayDashboard();
         } else {
             window.addEventListener('auth-check-settled', tryLoadTodayDashboard, { once: true });
         }
     });
+    setupReadingAdjustControls();
 })();

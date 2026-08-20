@@ -1621,6 +1621,40 @@
             background: #eef2ff;
         }
 
+        #readingStatItem {
+            overscroll-behavior: contain;
+        }
+
+        .stat-value-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .stat-value-row .stat-value {
+            margin-bottom: 0;
+            min-width: 4.5em;
+        }
+
+        .duration-step {
+            width: 28px;
+            height: 28px;
+            border: 1px solid #c5cde8;
+            background: #fff;
+            color: #667eea;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            line-height: 1;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .duration-step:hover {
+            background: #eef2ff;
+            border-color: #667eea;
+        }
+
         .overview-panel {
             margin: -5px 0 10px 65px;
             padding: 12px;
@@ -2688,9 +2722,13 @@
                             <div class="stat-item clickable" id="readingStatItem" onclick="toggleOverviewPanel('reading')">
                                 <div class="stat-icon">📚</div>
                                 <div class="stat-content">
-                                    <div class="stat-value" id="todayReadingTime">--</div>
+                                    <div class="stat-value-row">
+                                        <button type="button" class="duration-step" data-delta="-5" aria-label="减少5分钟" onclick="event.stopPropagation()">−</button>
+                                        <div class="stat-value" id="todayReadingTime">--</div>
+                                        <button type="button" class="duration-step" data-delta="5" aria-label="增加5分钟" onclick="event.stopPropagation()">+</button>
+                                    </div>
                                     <div class="stat-label">今日阅读时长</div>
-                                    <div class="reading-duration-hint">滚轮可调时长 · 点击展开阅读内容与笔记</div>
+                                    <div class="reading-duration-hint">滚轮或 ± 可调时长 · 点击展开阅读内容与笔记</div>
                                     <div class="stat-progress"><div class="progress-bar" id="readingProgressBar" style="width: 0%;"></div></div>
                                 </div>
                             </div>
