@@ -43,6 +43,7 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
     volumes:
       - uploads_data:/app/uploads
+      - ../../releases:/app/releases
     command: ["python", "start_aliyun.py"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

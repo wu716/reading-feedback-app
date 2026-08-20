@@ -90,3 +90,17 @@ Thumbs.db
 uploads/
 uploads/**
 scripts/app.db.backup
+
+# Android 安装包（通过 /download 提供，不入库）
+releases/*.apk
+
+# Android 构建产物与本机 SDK 配置
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/local.properties
+mobile/android/keystore.properties
+mobile/android/keystore/
+mobile/android/dist/
+*.jks
+*.keystore

@@ -2,7 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Self-talk 内心对话系统</title>
     <link rel="icon" href="/static/icons/app-icon-1024.png">
     <link rel="apple-touch-icon" href="/static/icons/app-icon-1024.png">
@@ -160,6 +163,49 @@
             height: 1px;
             background: #e1e5e9;
             margin: 15px 20px;
+        }
+
+        .header-nav-controls {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            margin-right: 4px;
+            flex-shrink: 0;
+        }
+
+        .header-icon-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 1.25rem;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .sidebar-overlay {
+            display: none;
+        }
+
+        .page-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin: 0 0 12px;
+            padding: 8px 2px;
+            background: none;
+            border: none;
+            color: #667eea;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
         }
         
         /* 主内容区域样式 */
@@ -2322,9 +2368,30 @@
                 left: 59.5px;
             }
             
+            .header-nav-controls {
+                display: flex;
+            }
+
+            .sidebar-overlay {
+                display: block;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.4);
+                z-index: 998;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
+            }
+
+            .sidebar-overlay.visible {
+                opacity: 1;
+                pointer-events: auto;
+            }
+
             .app-sidebar {
                 transform: translateX(-100%);
                 transition: transform 0.3s ease;
+                z-index: 999;
             }
             
             .app-sidebar.mobile-open {
@@ -2337,6 +2404,15 @@
             
             .app-header {
                 padding: 0 15px;
+            }
+
+            .app-logo > span:first-of-type {
+                display: none;
+            }
+
+            .header-icon-btn {
+                width: 36px;
+                height: 36px;
             }
             
             .app-logo {
@@ -2417,6 +2493,10 @@
     <!-- 顶部导航栏 -->
     <header class="app-header">
         <div class="app-logo">
+            <div class="header-nav-controls">
+                <button type="button" class="header-icon-btn" id="menuToggleBtn" onclick="toggleMobileSidebar()" aria-label="打开菜单">☰</button>
+                <button type="button" class="header-icon-btn" id="headerBackBtn" onclick="handlePageBack()" aria-label="返回" hidden>←</button>
+            </div>
             <span style="font-size: 1.8rem;">🎤</span>
             <span>阅读反馈系统</span>
         </div>
@@ -2425,6 +2505,8 @@
             <button class="logout-btn" onclick="logout()">退出登录</button>
         </div>
     </header>
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
     
     <!-- 侧边导航栏 -->
     <aside class="app-sidebar">
@@ -2718,6 +2800,7 @@
         <!-- 上传笔记区 -->
         <section id="upload" class="content-section">
             <div class="section-header">
+                <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
                 <h1>📝 上传读书笔记</h1>
                 <p>上传你的读书笔记，系统将自动抽取可执行的行动项</p>
             </div>
@@ -2788,6 +2871,7 @@
         <!-- 行动项管理区 -->
         <section id="actions" class="content-section">
             <div class="section-header">
+                <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
                 <h1>🎯 我的行动项</h1>
                 <p>管理和追踪你的行动项执行情况</p>
             </div>
@@ -2824,7 +2908,7 @@
         <!-- 个人中心区 -->
         <section id="user-center" class="content-section hidden">
             <div class="section-header">
-                <button class="back-btn" onclick="navigateTo('overview')" style="position: absolute; left: 20px; top: 20px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #667eea;">&larr; 返回</button>
+                <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
                 <h1>👤 个人中心</h1>
             </div>
             
@@ -2976,6 +3060,7 @@
         <!-- 实践统计区 -->
         <section id="stats" class="content-section">
             <div class="section-header">
+                <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
                 <h1>📊 实践统计</h1>
                 <p>查看你的实践数据和成长轨迹</p>
             </div>
@@ -3436,6 +3521,59 @@
         let currentFilterType = 'all'; // 当前筛选类型
         
         // ============= 导航切换功能 =============
+        function isMobileNav() {
+            return window.innerWidth <= 768;
+        }
+
+        function currentSectionId() {
+            const active = document.querySelector('.content-section.active');
+            return active ? active.id : 'overview';
+        }
+
+        function closeMobileSidebar() {
+            const sidebar = document.querySelector('.app-sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sidebar) sidebar.classList.remove('mobile-open');
+            if (overlay) overlay.classList.remove('visible');
+        }
+
+        function toggleMobileSidebar() {
+            const sidebar = document.querySelector('.app-sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (!sidebar) return;
+            const open = !sidebar.classList.contains('mobile-open');
+            sidebar.classList.toggle('mobile-open', open);
+            if (overlay) overlay.classList.toggle('visible', open);
+        }
+
+        function updateHeaderBackButton() {
+            const btn = document.getElementById('headerBackBtn');
+            if (!btn) return;
+            const show = isMobileNav() && currentSectionId() !== 'overview';
+            btn.hidden = !show;
+        }
+
+        function handlePageBack() {
+            closeMobileSidebar();
+            if (currentSectionId() !== 'overview') {
+                navigateTo('overview');
+                return true;
+            }
+            return false;
+        }
+
+        window.handleAppBack = function () {
+            const sidebar = document.querySelector('.app-sidebar');
+            if (sidebar && sidebar.classList.contains('mobile-open')) {
+                closeMobileSidebar();
+                return 'consumed';
+            }
+            if (handlePageBack()) {
+                return 'consumed';
+            }
+            return 'exit';
+        };
+
         function navigateTo(sectionId) {
             // 隐藏所有内容区
             document.querySelectorAll('.content-section').forEach(section => {
@@ -3466,19 +3604,25 @@
             // 更新URL（使用hash，无需刷新页面）
             window.location.hash = sectionId;
             
-            // 移动端：关闭侧边栏
-            if (window.innerWidth <= 768) {
-                document.querySelector('.app-sidebar').classList.remove('mobile-open');
-            }
+            closeMobileSidebar();
+            updateHeaderBackButton();
         }
         
         // 支持浏览器前进/后退
         window.addEventListener('hashchange', () => {
             const hash = location.hash.slice(1);
             if (hash && document.getElementById(hash)) {
-                navigateTo(hash);
+                if (currentSectionId() !== hash) {
+                    navigateTo(hash);
+                }
+            } else if (!hash) {
+                if (currentSectionId() !== 'overview') {
+                    navigateTo('overview');
+                }
             }
         });
+
+        window.addEventListener('resize', updateHeaderBackButton);
         
         // 页面加载时根据hash显示对应区域
         window.addEventListener('DOMContentLoaded', async () => {
@@ -3491,6 +3635,8 @@
             initializeClock();
             initializeCalendar();
             
+            updateHeaderBackButton();
+
             // 初始化新增组件
             initializeWeather();
             initializePersonalStats();

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -341,24 +341,54 @@
             100% { transform: rotate(360deg); }
         }
 
-        .back-button {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
+        .st-topbar {
+            position: sticky;
+            top: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 16px;
+            padding-top: max(12px, env(safe-area-inset-top, 12px));
+            margin: -20px -20px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
         }
 
-        .back-button:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
+        .back-button,
+        .settings-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            padding: 10px 18px;
+            border-radius: 25px;
+            font-size: 1rem;
+            text-decoration: none;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            pointer-events: auto;
+            border: none;
+        }
+
+        .back-button {
+            background: rgba(255, 255, 255, 0.22);
+            color: white;
+            backdrop-filter: blur(10px);
+            z-index: 10001;
+        }
+
+        .back-button:hover,
+        .back-button:active {
+            background: rgba(255, 255, 255, 0.35);
+        }
+
+        .settings-button {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border: 2px solid #667eea;
+            white-space: nowrap;
         }
 
         @media (max-width: 768px) {
@@ -368,25 +398,33 @@
             }
             
             .header h1 {
-                font-size: 2rem;
+                font-size: 1.8rem;
             }
             
             .container {
                 padding: 15px;
             }
+
+            .st-topbar {
+                margin: -15px -15px 16px;
+            }
+
+            .settings-button {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>
 <body>
-    <button class="back-button" onclick="goBack()">← 返回</button>
-    
     <div class="container">
+        <div class="st-topbar">
+            <a href="/static/index.html" class="back-button" id="selfTalkBackBtn">← 返回</a>
+            <a href="/static/index.html#user-center" class="settings-button">🔔 提醒设置</a>
+        </div>
         <div class="header">
             <h1>🎤 Self-talk</h1>
             <p>记录你的内心对话，让思考更有力量</p>
-            <button class="settings-button" onclick="goToReminderSettings()" style="position: absolute; top: 30px; right: 30px; background: rgba(255,255,255,0.9); color: #667eea; border: 2px solid #667eea; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; transition: all 0.3s;">
-                🔔 提醒设置
-            </button>
         </div>
 
         <div class="main-content">
@@ -439,21 +477,32 @@
             alert('您的浏览器不支持录音功能，请使用现代浏览器');
         }
 
-        // 返回按钮
-        function goBack() {
-            // 确保认证状态正确传递
-            const authToken = localStorage.getItem('authToken');
-            if (authToken) {
-                window.location.href = '/static/index.html';
-            } else {
-                alert('请先登录');
-                window.location.href = '/static/index.html';
+        function homeUrl() {
+            return (window.location.origin || '') + '/static/index.html';
+        }
+
+        function goBack(event) {
+            if (event) {
+                event.preventDefault();
             }
+            window.location.href = homeUrl();
+            return false;
         }
 
         function goToReminderSettings() {
-            window.location.href = '/static/user_center.html';
+            window.location.href = homeUrl() + '#user-center';
         }
+
+        window.handleAppBack = function () {
+            goBack();
+            return 'consumed';
+        };
+
+        document.addEventListener('click', function (event) {
+            const backBtn = event.target.closest('#selfTalkBackBtn');
+            if (!backBtn) return;
+            goBack(event);
+        }, true);
 
         // 切换录音状态
         async function toggleRecording() {

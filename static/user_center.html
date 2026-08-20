@@ -415,6 +415,11 @@
         let currentUser = null;
         const API_BASE = '/api';
 
+        window.handleAppBack = function () {
+            window.location.href = (window.location.origin || '') + '/static/index.html';
+            return 'consumed';
+        };
+
         // 页面加载时获取用户信息和设置
         document.addEventListener('DOMContentLoaded', async () => {
             await loadUserInfo();
