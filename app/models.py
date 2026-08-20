@@ -269,3 +269,14 @@ class SelfTalkReminderLog(Base):
     
     # 关系
     user = relationship("User")
+
+
+class AiCallLog(Base):
+    """用户每日 AI 调用记录，用于额度控制"""
+    __tablename__ = "ai_call_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    kind = Column(String(50), nullable=False, default="generic")
+    call_date = Column(Date, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

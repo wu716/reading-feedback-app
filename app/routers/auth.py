@@ -14,6 +14,18 @@ router = APIRouter(prefix="/auth", tags=["认证"])
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate, db: Session = Depends(get_db)):
     """用户注册"""
+    if not settings.is_registration_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="当前未开放公开注册，请使用已有账号登录，或向管理员索取邀请码"
+        )
+    expected_invite = (settings.invite_code or "").strip()
+    if expected_invite and (user.invite_code or "").strip() != expected_invite:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="邀请码不正确"
+        )
+
     # 检查邮箱是否已存在
     existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
@@ -44,6 +56,15 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     
     return db_user
+
+
+@router.get("/register-config")
+async def register_config():
+    """前端用于显示注册入口 / 邀请码输入框"""
+    return {
+        "open": settings.is_registration_allowed,
+        "invite_required": bool((settings.invite_code or "").strip()),
+    }
 
 
 @router.post("/login", response_model=Token)

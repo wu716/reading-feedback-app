@@ -45,6 +45,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6, max_length=100)
+    invite_code: Optional[str] = None
     
     @validator('password')
     def validate_password(cls, v):

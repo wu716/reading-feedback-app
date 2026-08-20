@@ -18,6 +18,7 @@ from app.schemas import (
 )
 from app.auth import get_current_active_user
 from app.ai_service import call_deepseek_api, generate_action_advice
+from app.ai_quota import enforce_ai_quota
 
 router = APIRouter(prefix="/api/ai-advice", tags=["AI建议"])
 
@@ -132,6 +133,7 @@ async def chat_with_ai(
     db: Session = Depends(get_db)
 ):
     """与AI进行对话"""
+    enforce_ai_quota(db, current_user, kind="ai-advice")
     
     # 验证会话是否存在且属于当前用户
     session = db.query(AIAdviceSession).filter(
@@ -249,6 +251,7 @@ async def chat_with_ai_stream(
     db: Session = Depends(get_db)
 ):
     """与AI进行流式对话（用于实时显示思考过程）"""
+    enforce_ai_quota(db, current_user, kind="ai-advice-stream")
     
     # 验证会话是否存在且属于当前用户
     session = db.query(AIAdviceSession).filter(
@@ -349,17 +352,7 @@ def build_action_context(action: Action, practice_logs: List[PracticeLog]) -> st
     return context
 
 
-async def generate_ai_response(
-    user_message: str,
-    context: str,
-    conversation_history: List[dict],
-    model_type: str,
-    web_search_enabled: bool
-) -> dict:
-    """生成AI响应"""
-    
-    # 构建系统提示
-    system_prompt = f"""你是一个专业的行动建议助手。请基于用户的行动项和实践反馈，提供个性化的建议和指导。
+ADVICE_SYSTEM_PROMPT = """你是一个专业的行动建议助手。请基于用户的行动项和实践反馈，提供个性化的建议和指导。
 
 {context}
 
@@ -369,7 +362,25 @@ async def generate_ai_response(
 3. 鼓励和支持用户
 4. 提供具体的改进建议
 
+排版要求（必须遵守）：
+- 使用 Markdown，不要输出 HTML
+- 关键结论、必须执行的步骤、风险和注意事项用 **加粗**
+- 分点用列表（- 或 1.）
+- 小节用 ## 小标题
+- 重点词句加粗，让用户一眼看到该做什么
+
 请用中文回答。"""
+
+
+async def generate_ai_response(
+    user_message: str,
+    context: str,
+    conversation_history: List[dict],
+    model_type: str,
+    web_search_enabled: bool
+) -> dict:
+    """生成AI响应"""
+    system_prompt = ADVICE_SYSTEM_PROMPT.format(context=context)
     
     # 构建消息列表
     messages = [{"role": "system", "content": system_prompt}]
@@ -405,19 +416,7 @@ async def generate_ai_response_stream(
     web_search_enabled: bool
 ):
     """生成AI流式响应"""
-    
-    # 构建系统提示
-    system_prompt = f"""你是一个专业的行动建议助手。请基于用户的行动项和实践反馈，提供个性化的建议和指导。
-
-{context}
-
-请根据用户的提问，结合上述行动项信息和实践反馈，提供有针对性的建议。回答要：
-1. 具体实用，可操作
-2. 结合用户的实际情况
-3. 鼓励和支持用户
-4. 提供具体的改进建议
-
-请用中文回答。"""
+    system_prompt = ADVICE_SYSTEM_PROMPT.format(context=context)
     
     # 构建消息列表
     messages = [{"role": "system", "content": system_prompt}]
