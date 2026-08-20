@@ -12,7 +12,7 @@ import uvicorn
 from app.config import settings
 from app.database import create_tables, get_db
 from app.scheduler import start_scheduler
-from app.routers import auth, actions, practice, dashboard, ai_advice, today
+from app.routers import auth, actions, practice, dashboard, ai_advice, today, app_download
 from app.self_talk.router import router as self_talk_router
 from app.routers.self_talk_reminders import router as self_talk_reminders_router
 from app.ai_service import test_ai_connection
@@ -70,6 +70,7 @@ app.include_router(ai_advice.router)  # AI建议路由（已有前缀 /api/ai-ad
 app.include_router(self_talk_router)
 app.include_router(self_talk_reminders_router)  # Self-talk 提醒路由
 app.include_router(today.router, prefix="/api")
+app.include_router(app_download.router)
 
 # 静态文件服务
 app.mount("/static", StaticFiles(directory="static"), name="static")

@@ -1,3 +1,8 @@
+window.handleAppBack = function () {
+    window.location.href = (window.location.origin || '') + '/static/index.html';
+    return 'consumed';
+};
+
 // API 配置
 const API_BASE = window.location.origin;
 let authToken = localStorage.getItem('authToken');
