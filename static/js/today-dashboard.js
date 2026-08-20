@@ -124,16 +124,22 @@
         }
 
         if (ap) {
-            const items = (data.action_items || []).filter((a) => a.practiced_today);
+            const items = (data.action_items || []).filter((a) => a.status !== 'done');
             ap.innerHTML = items.length
                 ? items.map((a) => `
                     <div class="overview-panel-item">
-                        <h5>${escapeHtml(a.book_title)} · ${a.status}</h5>
+                        <h5>${escapeHtml(a.book_title)} · ${a.practiced_today ? '今日已记录' : '待实践'}</h5>
                         <p><strong>行动：</strong>${escapeHtml(a.action_text)}</p>
-                        <p><strong>摘录：</strong>${escapeHtml(a.source_excerpt)}</p>
+                        ${a.practiced_today
+                            ? ''
+                            : `<p style="margin-top:8px;"><button type="button" class="todo-btn" onclick="showPracticeModal(${a.id})">记录实践</button></p>`}
                     </div>`).join('')
-                : '<p style="color:#999;font-size:0.85rem;">今日暂无实践记录的行动项。</p>';
-            ap.innerHTML += `<p style="margin-top:8px;"><button type="button" class="todo-btn" onclick="navigateTo('actions')">查看全部行动项</button></p>`;
+                : '<p style="color:#999;font-size:0.85rem;">暂无行动项，可先添加一条。</p>';
+            ap.innerHTML += `<p style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;">
+                <button type="button" class="todo-add-btn" onclick="recordTodayPractice()">记录今日实践</button>
+                <button type="button" class="todo-btn" onclick="addAction()">＋ 添加行动项</button>
+                <button type="button" class="todo-btn" onclick="navigateTo('actions')">查看全部</button>
+            </p>`;
         }
 
         if (pp) {

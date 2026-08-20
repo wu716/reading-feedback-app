@@ -735,6 +735,7 @@
             margin-bottom: 15px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             border-left: 4px solid #667eea;
+            overflow-wrap: anywhere;
         }
         
         .action-item h3 {
@@ -742,7 +743,9 @@
             color: #333;
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
+            gap: 8px;
+            flex-wrap: wrap;
         }
         
         .status-badge {
@@ -785,7 +788,15 @@
         .action-buttons {
             margin-top: 15px;
             display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .action-filter-row {
+            display: flex;
+            flex-wrap: wrap;
             gap: 10px;
+            margin-bottom: 15px;
         }
         
         .btn-small {
@@ -795,6 +806,7 @@
             border: none;
             cursor: pointer;
             transition: all 0.3s;
+            white-space: nowrap;
         }
         
         .btn-complete {
@@ -870,7 +882,28 @@
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
             width: 500px;
             max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
             position: relative;
+        }
+
+        .practice-picker-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .practice-picker-item:last-child {
+            border-bottom: none;
+        }
+
+        .practice-picker-item p {
+            margin: 0;
+            color: #555;
+            font-size: 0.9rem;
         }
         
         .practice-header h3 {
@@ -1825,8 +1858,8 @@
         }
 
         .stat-trend {
-            font-size: 0.9rem;
-            color: #28a745;
+            font-size: 0.85rem;
+            color: #888;
             font-weight: 500;
         }
 
@@ -2002,26 +2035,29 @@
                 inset 0 -2px 4px rgba(255,255,255,0.5);
         }
 
-        /* 时钟刻度线 */
+        /* 时钟刻度线：用旋转包裹层对齐圆心，避免写死像素 */
         .clock-marks {
             position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
+            inset: 0;
+        }
+
+        .clock-mark-wrap {
+            position: absolute;
+            inset: 0;
+            transform-origin: center center;
         }
 
         .hour-mark, .minute-mark {
             position: absolute;
+            left: 50%;
             background: #2c3e50;
-            transform-origin: center bottom;
+            transform: translateX(-50%);
         }
 
         .hour-mark {
             width: 3px;
             height: 12px;
             top: 4px;
-            left: 68.5px;
             border-radius: 1px;
         }
 
@@ -2029,7 +2065,6 @@
             width: 1px;
             height: 6px;
             top: 7px;
-            left: 69.5px;
             opacity: 0.6;
         }
 
@@ -2048,6 +2083,8 @@
 
         .clock-hand {
             position: absolute;
+            left: 50%;
+            bottom: 50%;
             transform-origin: bottom center;
             transition: transform 0.1s ease-out;
         }
@@ -2055,8 +2092,7 @@
         .hour-hand {
             width: 5px;
             height: 38px;
-            top: 32px;
-            left: 67.5px;
+            margin-left: -2.5px;
             background: linear-gradient(to top, #2c3e50 0%, #34495e 100%);
             border-radius: 3px 3px 0 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
@@ -2066,8 +2102,7 @@
         .minute-hand {
             width: 3px;
             height: 50px;
-            top: 20px;
-            left: 68.5px;
+            margin-left: -1.5px;
             background: linear-gradient(to top, #2c3e50 0%, #34495e 100%);
             border-radius: 2px 2px 0 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
@@ -2077,8 +2112,7 @@
         .second-hand {
             width: 1px;
             height: 55px;
-            top: 15px;
-            left: 69.5px;
+            margin-left: -0.5px;
             background: linear-gradient(to top, #e74c3c 0%, #c0392b 100%);
             border-radius: 1px;
             box-shadow: 0 1px 2px rgba(0,0,0,0.3);
@@ -2090,7 +2124,8 @@
             content: '';
             position: absolute;
             bottom: -3px;
-            left: -2px;
+            left: 50%;
+            transform: translateX(-50%);
             width: 5px;
             height: 5px;
             background: #e74c3c;
@@ -2099,12 +2134,15 @@
 
         .clock-numbers {
             position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             font-size: 14px;
             font-weight: bold;
             color: #2c3e50;
             text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+            pointer-events: none;
         }
 
         .clock-number {
@@ -2326,23 +2364,17 @@
                 width: 120px;
                 height: 120px;
             }
-            
+
             .hour-hand {
                 height: 32px;
-                top: 28px;
-                left: 57.5px;
             }
-            
+
             .minute-hand {
                 height: 42px;
-                top: 18px;
-                left: 58.5px;
             }
-            
+
             .second-hand {
                 height: 47px;
-                top: 13px;
-                left: 59.5px;
             }
             
             .clock-center {
@@ -2357,15 +2389,16 @@
             .hour-mark {
                 width: 2px;
                 height: 10px;
-                top: 3px;
-                left: 59px;
             }
             
             .minute-mark {
-                width: 1px;
                 height: 5px;
-                top: 6px;
-                left: 59.5px;
+            }
+
+            .action-buttons .btn-small {
+                flex: 1 1 calc(50% - 8px);
+                min-width: 132px;
+                text-align: center;
             }
             
             .header-nav-controls {
@@ -2578,21 +2611,8 @@
                                 <!-- 时钟刻度线 -->
                                 <div class="clock-marks" id="clockMarks"></div>
                                 
-                                <!-- 时钟数字 -->
-                                <div class="clock-numbers">
-                                    <div class="clock-number" style="top: 12px; left: 70px;">12</div>
-                                    <div class="clock-number" style="top: 22px; left: 95px;">1</div>
-                                    <div class="clock-number" style="top: 35px; left: 115px;">2</div>
-                                    <div class="clock-number" style="top: 70px; left: 120px;">3</div>
-                                    <div class="clock-number" style="top: 105px; left: 115px;">4</div>
-                                    <div class="clock-number" style="top: 118px; left: 95px;">5</div>
-                                    <div class="clock-number" style="top: 128px; left: 70px;">6</div>
-                                    <div class="clock-number" style="top: 118px; left: 45px;">7</div>
-                                    <div class="clock-number" style="top: 105px; left: 25px;">8</div>
-                                    <div class="clock-number" style="top: 70px; left: 20px;">9</div>
-                                    <div class="clock-number" style="top: 35px; left: 25px;">10</div>
-                                    <div class="clock-number" style="top: 22px; left: 45px;">11</div>
-                                </div>
+                                <!-- 时钟数字（按表盘半径动态定位） -->
+                                <div class="clock-numbers" id="clockNumbers"></div>
                                 
                                 <!-- 时钟指针 -->
                                 <div class="clock-hand hour-hand" id="hourHand"></div>
@@ -2711,6 +2731,14 @@
                     <div class="widget-card">
                         <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.2rem;">⚡ 快速操作</h3>
                         <div class="quick-actions">
+                            <button class="quick-action-btn" onclick="recordTodayPractice()">
+                                <div class="action-icon">✅</div>
+                                <div class="action-text">记录实践</div>
+                            </button>
+                            <button class="quick-action-btn" onclick="addAction()">
+                                <div class="action-icon">🎯</div>
+                                <div class="action-text">添加行动项</div>
+                            </button>
                             <button class="quick-action-btn" onclick="startReading()">
                                 <div class="action-icon">📖</div>
                                 <div class="action-text">开始阅读</div>
@@ -2718,10 +2746,6 @@
                             <button class="quick-action-btn" onclick="recordSelfTalk()">
                                 <div class="action-icon">💭</div>
                                 <div class="action-text">记录对话</div>
-                            </button>
-                            <button class="quick-action-btn" onclick="addAction()">
-                                <div class="action-icon">🎯</div>
-                                <div class="action-text">添加行动项</div>
                             </button>
                             <button class="quick-action-btn" onclick="viewDashboard()">
                                 <div class="action-icon">📊</div>
@@ -2740,9 +2764,9 @@
                             <div class="stat-card">
                                 <div class="stat-icon-large">🎯</div>
                                 <div class="stat-info">
-                                    <div class="stat-value-large" id="weeklyGoal">85%</div>
-                                    <div class="stat-label-large">本周阅读目标</div>
-                                    <div class="stat-trend">↗️ +12%</div>
+                                    <div class="stat-value-large" id="weeklyGoal">--</div>
+                                    <div class="stat-label-large">本周实践成功率</div>
+                                    <div class="stat-trend" id="weeklyGoalHint">登录后查看</div>
                                 </div>
                                 <div class="stat-chart">
                                     <div class="mini-chart" id="weeklyChart"></div>
@@ -2751,9 +2775,9 @@
                             <div class="stat-card">
                                 <div class="stat-icon-large">🔥</div>
                                 <div class="stat-info">
-                                    <div class="stat-value-large" id="streakDays">7天</div>
-                                    <div class="stat-label-large">连续阅读</div>
-                                    <div class="stat-trend">↗️ +2天</div>
+                                    <div class="stat-value-large" id="streakDays">--</div>
+                                    <div class="stat-label-large">连续坚持</div>
+                                    <div class="stat-trend" id="streakDaysHint">登录后查看</div>
                                 </div>
                                 <div class="stat-chart">
                                     <div class="mini-chart" id="streakChart"></div>
@@ -2762,9 +2786,9 @@
                             <div class="stat-card">
                                 <div class="stat-icon-large">📊</div>
                                 <div class="stat-info">
-                                    <div class="stat-value-large" id="successRate">78%</div>
-                                    <div class="stat-label-large">实践成功率</div>
-                                    <div class="stat-trend">↗️ +5%</div>
+                                    <div class="stat-value-large" id="successRate">--</div>
+                                    <div class="stat-label-large">行动完成率</div>
+                                    <div class="stat-trend" id="successRateHint">登录后查看</div>
                                 </div>
                                 <div class="stat-chart">
                                     <div class="mini-chart" id="successChart"></div>
@@ -2877,16 +2901,21 @@
             </div>
             
             <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
                     <h2>🎯 我的行动项</h2>
-                    <button class="btn-small" id="batchTimeBtn" onclick="showBatchTimeManagementModal()" style="background: #17a2b8; color: white; display: none;">
-                        ⏰ 批量设置时间
-                    </button>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn-small" onclick="addAction()" style="background: #667eea; color: white;">
+                            ＋ 添加行动项
+                        </button>
+                        <button class="btn-small" id="batchTimeBtn" onclick="showBatchTimeManagementModal()" style="background: #17a2b8; color: white; display: none;">
+                            ⏰ 批量设置时间
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- 行动类型筛选 -->
                 <div style="margin-bottom: 20px;">
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <div class="action-filter-row">
                         <button class="action-type-filter active" data-type="all" onclick="filterActionsByType('all')">
                             📋 全部
                         </button>
@@ -3363,6 +3392,18 @@
         </div>
     </div>
     
+    <!-- 首页选择要记录的行动项 -->
+    <div class="practice-modal hidden" id="homePracticePicker">
+        <div class="practice-container">
+            <button class="close-modal" onclick="closePracticePicker()">&times;</button>
+            <div class="practice-header">
+                <h3>📝 记录今日实践</h3>
+            </div>
+            <p style="color:#666;margin-bottom:12px;">选择一条行动项进行记录</p>
+            <div id="homePracticePickerList"></div>
+        </div>
+    </div>
+
     <!-- 实践记录模态框 -->
     <div class="practice-modal hidden" id="practiceModal">
         <div class="practice-container">
@@ -3570,6 +3611,11 @@
             const sidebar = document.querySelector('.app-sidebar');
             if (sidebar && sidebar.classList.contains('mobile-open')) {
                 closeMobileSidebar();
+                return 'consumed';
+            }
+            const openModal = document.querySelector('.practice-modal:not(.hidden)');
+            if (openModal) {
+                openModal.classList.add('hidden');
                 return 'consumed';
             }
             if (handlePageBack()) {
@@ -3791,8 +3837,16 @@
         function initializeClock() {
             loadStoredClockOffset();
             createClockMarks();
+            layoutClockNumbers();
             updateClock();
             setInterval(updateClock, 100);
+
+            const face = document.querySelector('.clock-face');
+            if (face && typeof ResizeObserver !== 'undefined') {
+                new ResizeObserver(() => layoutClockNumbers()).observe(face);
+            } else {
+                window.addEventListener('resize', layoutClockNumbers);
+            }
 
             syncNetworkTime();
             window.addEventListener('online', () => syncNetworkTime());
@@ -3806,23 +3860,48 @@
         function createClockMarks() {
             const clockMarks = document.getElementById('clockMarks');
             if (!clockMarks) return;
+            clockMarks.innerHTML = '';
 
-            // 创建小时刻度线（12个）
             for (let i = 0; i < 12; i++) {
+                const wrap = document.createElement('div');
+                wrap.className = 'clock-mark-wrap';
+                wrap.style.transform = `rotate(${i * 30}deg)`;
                 const hourMark = document.createElement('div');
                 hourMark.className = 'hour-mark';
-                hourMark.style.transform = `rotate(${i * 30}deg)`;
-                clockMarks.appendChild(hourMark);
+                wrap.appendChild(hourMark);
+                clockMarks.appendChild(wrap);
             }
 
-            // 创建分钟刻度线（60个）
             for (let i = 0; i < 60; i++) {
-                if (i % 5 !== 0) { // 跳过小时刻度线位置
-                    const minuteMark = document.createElement('div');
-                    minuteMark.className = 'minute-mark';
-                    minuteMark.style.transform = `rotate(${i * 6}deg)`;
-                    clockMarks.appendChild(minuteMark);
-                }
+                if (i % 5 === 0) continue;
+                const wrap = document.createElement('div');
+                wrap.className = 'clock-mark-wrap';
+                wrap.style.transform = `rotate(${i * 6}deg)`;
+                const minuteMark = document.createElement('div');
+                minuteMark.className = 'minute-mark';
+                wrap.appendChild(minuteMark);
+                clockMarks.appendChild(wrap);
+            }
+        }
+
+        function layoutClockNumbers() {
+            const container = document.getElementById('clockNumbers');
+            const face = document.querySelector('.clock-face');
+            if (!container || !face) return;
+            const size = face.clientWidth;
+            if (!size) return;
+            const radius = size / 2 - Math.max(14, size * 0.14);
+            const cx = size / 2;
+            const cy = size / 2;
+            container.innerHTML = '';
+            for (let i = 1; i <= 12; i++) {
+                const angle = (i * 30 - 90) * Math.PI / 180;
+                const el = document.createElement('div');
+                el.className = 'clock-number';
+                el.textContent = String(i);
+                el.style.left = `${cx + radius * Math.cos(angle)}px`;
+                el.style.top = `${cy + radius * Math.sin(angle)}px`;
+                container.appendChild(el);
             }
         }
 
@@ -4218,29 +4297,54 @@
 
         // 个人统计功能
         function initializePersonalStats() {
-            // 模拟个人统计数据
-            const personalStats = {
-                weeklyGoal: '85%',
-                streakDays: '7天',
-                successRate: '78%'
-            };
-            
-            updatePersonalStats(personalStats);
-            
-            // 每小时更新一次
-            setInterval(() => {
-                updatePersonalStats(personalStats);
-            }, 60 * 60 * 1000);
+            loadPersonalStats();
+            setInterval(loadPersonalStats, 60 * 60 * 1000);
+        }
+
+        async function loadPersonalStats() {
+            if (!localStorage.getItem('authToken')) {
+                updatePersonalStats({
+                    weeklyGoal: '--',
+                    streakDays: '--',
+                    successRate: '--',
+                    weeklyHint: '登录后查看',
+                    streakHint: '登录后查看',
+                    successHint: '登录后查看',
+                });
+                return;
+            }
+            try {
+                const [stats, streak] = await Promise.all([
+                    apiRequest('/api/dashboard/stats?days=7', { skipAuthRedirect: true }),
+                    apiRequest('/api/actions/analytics/streak', { skipAuthRedirect: true }),
+                ]);
+                updatePersonalStats({
+                    weeklyGoal: `${Math.round(stats.success_rate || 0)}%`,
+                    streakDays: `${streak.current_streak_days || 0}天`,
+                    successRate: `${Math.round(stats.completion_rate || 0)}%`,
+                    weeklyHint: `近7天 · ${stats.total_practice_logs || 0} 次实践`,
+                    streakHint: `最长 ${streak.longest_streak_days || 0} 天`,
+                    successHint: `${stats.completed_actions || 0}/${stats.total_actions || 0} 项已完成`,
+                });
+            } catch (error) {
+                console.error('加载个人统计失败', error);
+            }
         }
 
         function updatePersonalStats(stats) {
             const weeklyGoal = document.getElementById('weeklyGoal');
             const streakDays = document.getElementById('streakDays');
             const successRate = document.getElementById('successRate');
-            
+            const weeklyHint = document.getElementById('weeklyGoalHint');
+            const streakHint = document.getElementById('streakDaysHint');
+            const successHint = document.getElementById('successRateHint');
+
             if (weeklyGoal) weeklyGoal.textContent = stats.weeklyGoal;
             if (streakDays) streakDays.textContent = stats.streakDays;
             if (successRate) successRate.textContent = stats.successRate;
+            if (weeklyHint && stats.weeklyHint) weeklyHint.textContent = stats.weeklyHint;
+            if (streakHint && stats.streakHint) streakHint.textContent = stats.streakHint;
+            if (successHint && stats.successHint) successHint.textContent = stats.successHint;
         }
 
         // 快速操作功能
@@ -4260,11 +4364,77 @@
         }
 
         function addAction() {
-            showMessage('准备添加行动项...', 'success');
-            setTimeout(() => {
-                navigateTo('actions');
-            }, 1000);
+            if (!localStorage.getItem('authToken')) {
+                showAuthModal(true);
+                return;
+            }
+            navigateTo('upload');
+            if (typeof switchUploadTab === 'function') {
+                switchUploadTab('manual');
+            }
         }
+
+        function escapePickerHtml(s) {
+            return String(s ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        async function recordTodayPractice() {
+            if (!localStorage.getItem('authToken')) {
+                showAuthModal(true);
+                return;
+            }
+            try {
+                const data = await apiRequest('/api/today/overview');
+                const items = (data.action_items || []).filter((a) => a.status !== 'done');
+                if (!items.length) {
+                    showMessage('还没有行动项，先添加一条吧', 'error');
+                    addAction();
+                    return;
+                }
+                const pending = items.filter((a) => !a.practiced_today);
+                const choices = pending.length ? pending : items;
+                if (choices.length === 1) {
+                    showPracticeModal(choices[0].id);
+                    return;
+                }
+                openPracticePicker(choices);
+            } catch (error) {
+                showMessage('加载行动项失败', 'error');
+            }
+        }
+
+        function openPracticePicker(items) {
+            const modal = document.getElementById('homePracticePicker');
+            const list = document.getElementById('homePracticePickerList');
+            if (!modal || !list) return;
+            list.innerHTML = items.map((a) => `
+                <div class="practice-picker-item">
+                    <div>
+                        <p><strong>${escapePickerHtml(a.action_text)}</strong></p>
+                        <p style="font-size:0.8rem;color:#888;">${escapePickerHtml(a.book_title)}${a.practiced_today ? ' · 今日已记录' : ''}</p>
+                    </div>
+                    <button type="button" class="btn-small btn-log" onclick="pickPracticeAction(${a.id})">记录</button>
+                </div>
+            `).join('');
+            modal.classList.remove('hidden');
+        }
+
+        function closePracticePicker() {
+            document.getElementById('homePracticePicker')?.classList.add('hidden');
+        }
+
+        function pickPracticeAction(actionId) {
+            closePracticePicker();
+            showPracticeModal(actionId);
+        }
+
+        window.recordTodayPractice = recordTodayPractice;
+        window.closePracticePicker = closePracticePicker;
+        window.pickPracticeAction = pickPracticeAction;
 
         function viewDashboard() {
             showMessage('跳转到数据仪表盘...', 'success');
@@ -4341,6 +4511,7 @@
             const tasks = [];
             if (typeof loadActions === 'function') tasks.push(loadActions());
             if (typeof loadTodayDashboard === 'function') tasks.push(loadTodayDashboard());
+            if (typeof loadPersonalStats === 'function') tasks.push(loadPersonalStats());
             if (typeof loadCurrentViewData === 'function') tasks.push(loadCurrentViewData());
             await Promise.allSettled(tasks);
         }
@@ -4602,6 +4773,8 @@
             clearAuthSession();
             localStorage.removeItem('token'); // 清理可能存在的旧token
             updateUserInfo(null);
+            if (typeof loadPersonalStats === 'function') loadPersonalStats();
+            if (typeof loadTodayDashboard === 'function') loadTodayDashboard();
             showMessage('已退出登录', 'info');
             
             // 确保显示登录模态框
@@ -5203,7 +5376,12 @@
                 showMessage('实践记录已保存！', 'success');
                 closePracticeModal();
                 loadActions();
-                // 如果当前在仪表盘页面，刷新仪表盘数据
+                if (typeof loadTodayDashboard === 'function') {
+                    loadTodayDashboard();
+                }
+                if (typeof loadPersonalStats === 'function') {
+                    loadPersonalStats();
+                }
                 if (typeof loadCurrentViewData === 'function') {
                     loadCurrentViewData();
                 }
