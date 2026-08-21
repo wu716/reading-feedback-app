@@ -630,10 +630,43 @@
         }
 
         function asciiAudioFilename(name) {
-            const raw = String(name || 'audio.m4a');
+            const raw = String(name || 'audio.mp3');
             const match = raw.toLowerCase().match(/\.(wav|mp3|m4a|ogg|webm|mp4)$/);
-            const ext = match ? match[0] : '.m4a';
+            const ext = match ? match[0] : '.mp3';
             return 'selftalk_' + Date.now() + ext;
+        }
+
+        function mimeForAudioName(name, fallbackType) {
+            const ext = (String(name || '').toLowerCase().match(/\.(wav|mp3|m4a|ogg|webm|mp4)$/) || [])[1];
+            const map = {
+                wav: 'audio/wav',
+                mp3: 'audio/mpeg',
+                m4a: 'audio/mp4',
+                ogg: 'audio/ogg',
+                webm: 'audio/webm',
+                mp4: 'audio/mp4'
+            };
+            if (fallbackType && fallbackType !== 'application/octet-stream') {
+                return fallbackType;
+            }
+            return map[ext] || 'audio/mpeg';
+        }
+
+        async function toAsciiAudioFile(fileOrBlob, originalName) {
+            const name = asciiAudioFilename(originalName || fileOrBlob.name || 'audio.mp3');
+            const type = mimeForAudioName(name, fileOrBlob.type);
+            const buffer = await fileOrBlob.arrayBuffer();
+            if (!buffer || buffer.byteLength === 0) {
+                throw new Error('读取音频文件失败，文件是空的');
+            }
+            if (buffer.byteLength > 50 * 1024 * 1024) {
+                throw new Error('文件大小不能超过 50MB');
+            }
+            try {
+                return new File([buffer], name, { type: type, lastModified: Date.now() });
+            } catch (e) {
+                return new Blob([buffer], { type: type });
+            }
         }
 
         function shouldRecognizeText() {
@@ -705,7 +738,9 @@
                 return false;
             }
             const error = await response.json().catch(() => ({ detail: '未知错误' }));
-            showStatus(statusId, `上传失败: ${formatUploadError(error)}`, 'error');
+            const message = `上传失败: ${formatUploadError(error)}`;
+            showStatus(statusId, message, 'error');
+            alert(message);
             return false;
         }
 
@@ -721,15 +756,17 @@
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('file', audioBlob, asciiAudioFilename(recordingFilename()));
-            appendUploadFields(formData);
-
             try {
+                const uploadFile = await toAsciiAudioFile(audioBlob, recordingFilename());
+                const formData = new FormData();
+                formData.append('file', uploadFile, uploadFile.name || asciiAudioFilename(recordingFilename()));
+                appendUploadFields(formData);
                 await postSelfTalk(formData, 'recordingStatus');
             } catch (error) {
                 console.error('上传失败:', error);
-                showStatus('recordingStatus', '上传失败，请检查网络连接后重试', 'error');
+                const message = (error && error.message) ? error.message : '上传失败，请检查网络连接后重试';
+                showStatus('recordingStatus', message, 'error');
+                alert(message);
             }
         }
 
@@ -749,19 +786,21 @@
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('file', file, asciiAudioFilename(file.name || 'audio.m4a'));
-            appendUploadFields(formData);
-
             try {
                 if (uploadButton) uploadButton.disabled = true;
+                const uploadFile = await toAsciiAudioFile(file, file.name || 'audio.mp3');
+                const formData = new FormData();
+                formData.append('file', uploadFile, uploadFile.name || asciiAudioFilename(file.name || 'audio.mp3'));
+                appendUploadFields(formData);
                 const ok = await postSelfTalk(formData, 'uploadStatus');
                 if (ok) {
                     fileInput.value = '';
                 }
             } catch (error) {
                 console.error('上传失败:', error);
-                showStatus('uploadStatus', '上传失败，请检查网络连接后重试', 'error');
+                const message = (error && error.message) ? error.message : '上传失败，请检查网络连接后重试';
+                showStatus('uploadStatus', message, 'error');
+                alert(message);
             } finally {
                 if (uploadButton) uploadButton.disabled = false;
             }

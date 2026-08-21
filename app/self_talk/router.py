@@ -84,6 +84,26 @@ def safe_audio_ext(filename: Optional[str], content_type: Optional[str]) -> str:
     return ""
 
 
+def sniff_audio_ext(header: bytes) -> str:
+    """文件名缺失或被手机改成无扩展名时，用文件头判断格式。"""
+    if not header or len(header) < 12:
+        return ""
+    if header.startswith(b"ID3") or header[:2] in {b"\xff\xfb", b"\xff\xf3", b"\xff\xf2", b"\xff\xe3"}:
+        return ".mp3"
+    if header[4:8] == b"ftyp":
+        brand = header[8:12]
+        if brand in {b"M4A ", b"M4B ", b"M4P "}:
+            return ".m4a"
+        return ".mp4" if brand in {b"mp42", b"isom", b"iso2", b"mp41"} else ".m4a"
+    if header.startswith(b"RIFF") and header[8:12] == b"WAVE":
+        return ".wav"
+    if header.startswith(b"OggS"):
+        return ".ogg"
+    if header.startswith(b"\x1a\x45\xdf\xa3"):
+        return ".webm"
+    return ""
+
+
 def get_audio_full_path(audio_path: str) -> str:
     """根据存储文件名构建完整路径"""
     return os.path.join(UPLOAD_DIR, os.path.basename(audio_path))
@@ -140,19 +160,15 @@ def delete_audio_file(audio_path: str) -> bool:
         return False
 
 
-async def save_audio_file(file: UploadFile, user_id: int, file_extension: str) -> str:
-    """
-    保存音频文件到本地。文件名只用 uuid，避免手机录音中文名导致 multipart/路径问题。
-    """
-    unique_filename = f"{user_id}_{uuid.uuid4().hex}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
-
-    content = await file.read()
+def save_audio_bytes(content: bytes, user_id: int, file_extension: str) -> str:
+    """保存音频字节到本地。磁盘文件名只用 uuid。"""
     if not content:
         raise HTTPException(status_code=400, detail="音频文件为空")
     if len(content) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=400, detail="文件大小不能超过 50MB")
 
+    unique_filename = f"{user_id}_{uuid.uuid4().hex}{file_extension}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
     try:
         with open(file_path, "wb") as buffer:
             buffer.write(content)
@@ -176,7 +192,19 @@ async def upload_self_talk(
     上传 Self-talk 音频文件。默认只保存音频；recognize_text=true 时才识别文字。
     """
     try:
-        file_ext = safe_audio_ext(file.filename, file.content_type)
+        content = await file.read()
+        file_ext = (
+            safe_audio_ext(file.filename, file.content_type)
+            or sniff_audio_ext(content[:64])
+        )
+        logger.info(
+            "收到 Self-talk 上传: user=%s filename=%r content_type=%s size=%s ext=%s",
+            current_user.id,
+            file.filename,
+            file.content_type,
+            len(content) if content else 0,
+            file_ext,
+        )
         if file_ext not in ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=400,
@@ -184,7 +212,7 @@ async def upload_self_talk(
             )
 
         ensure_upload_dir()
-        audio_path = await save_audio_file(file, current_user.id, file_ext)
+        audio_path = save_audio_bytes(content, current_user.id, file_ext)
         actual_file_path = os.path.join(UPLOAD_DIR, audio_path)
         want_transcript = parse_form_flag(recognize_text)
 
