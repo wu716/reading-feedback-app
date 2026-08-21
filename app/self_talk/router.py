@@ -3,7 +3,7 @@
 Self-talk API 路由
 """
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 import os
@@ -24,7 +24,7 @@ from app.self_talk.schemas import (
     PlaybackLogResponse,
 )
 from app.config import settings
-from app.self_talk.speech_recognition import transcribe_audio_file, is_speech_recognition_available, is_valid_wav_file
+from app.self_talk.speech_recognition import transcribe_audio_file, is_speech_recognition_available
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,14 @@ CONTENT_TYPE_EXT = {
     'audio/ogg': '.ogg',
     'audio/opus': '.ogg',
     'video/mp4': '.mp4',
+}
+AUDIO_MEDIA_TYPES = {
+    '.wav': 'audio/wav',
+    '.mp3': 'audio/mpeg',
+    '.webm': 'audio/webm',
+    '.ogg': 'audio/ogg',
+    '.m4a': 'audio/mp4',
+    '.mp4': 'audio/mp4',
 }
 
 
@@ -79,6 +87,30 @@ def safe_audio_ext(filename: Optional[str], content_type: Optional[str]) -> str:
 def get_audio_full_path(audio_path: str) -> str:
     """根据存储文件名构建完整路径"""
     return os.path.join(UPLOAD_DIR, os.path.basename(audio_path))
+
+
+def parse_form_flag(value: Optional[str]) -> bool:
+    """解析 multipart 里的开关。未传或 false/0 都视为关闭，避免把字符串 'false' 当成真。"""
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "on", "y"}
+
+
+def usable_transcript(text: Optional[str]) -> Optional[str]:
+    """过滤识别模块返回的失败提示，避免写进转写栏。"""
+    if not text:
+        return None
+    transcript = text.strip()
+    if not transcript:
+        return None
+    if transcript.startswith("语音识别失败") or transcript.startswith("语音识别结果为空"):
+        return None
+    return transcript
+
+
+def audio_media_type(audio_path: str) -> str:
+    ext = os.path.splitext(audio_path)[1].lower()
+    return AUDIO_MEDIA_TYPES.get(ext, "application/octet-stream")
 
 
 def to_self_talk_response(self_talk: SelfTalk) -> SelfTalkResponse:
@@ -136,20 +168,12 @@ async def save_audio_file(file: UploadFile, user_id: int, file_extension: str) -
 async def upload_self_talk(
     file: UploadFile = File(...),
     action_id: Optional[int] = Form(None),
+    recognize_text: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    上传 Self-talk 音频文件
-    
-    Args:
-        file: 音频文件
-        action_id: 可选的关联行动项ID
-        current_user: 当前用户
-        db: 数据库会话
-        
-    Returns:
-        创建的 Self-talk 记录
+    上传 Self-talk 音频文件。默认只保存音频；recognize_text=true 时才识别文字。
     """
     try:
         file_ext = safe_audio_ext(file.filename, file.content_type)
@@ -161,29 +185,9 @@ async def upload_self_talk(
 
         ensure_upload_dir()
         audio_path = await save_audio_file(file, current_user.id, file_ext)
-
         actual_file_path = os.path.join(UPLOAD_DIR, audio_path)
-        logger.info("验证音频文件格式: %s", actual_file_path)
-        if not is_valid_wav_file(actual_file_path):
-            logger.warning("音频文件不是 WAV，将按原格式处理: %s", actual_file_path)
+        want_transcript = parse_form_flag(recognize_text)
 
-        # 转写失败不得阻断上传
-        transcript = None
-        try:
-            if is_speech_recognition_available():
-                logger.info("开始语音识别...")
-                transcript = transcribe_audio_file(actual_file_path)
-                if transcript:
-                    logger.info("语音识别成功: %s", transcript[:200])
-                else:
-                    logger.warning("语音识别无结果（音频已保存）")
-            else:
-                logger.warning("语音识别服务不可用，跳过转写")
-        except Exception:
-            logger.exception("语音识别异常，仍保存音频")
-            transcript = None
-        
-        # 验证 action_id（如果提供）
         if action_id:
             from app.models import Action
             action = db.query(Action).filter(
@@ -193,23 +197,39 @@ async def upload_self_talk(
             ).first()
             if not action:
                 raise HTTPException(status_code=404, detail="指定的行动项不存在")
-        
-        # 创建数据库记录
+
+        # 先落库，保证上传后立刻能在历史里播放；识别失败或超时也不能吞掉音频
         self_talk = SelfTalk(
             user_id=current_user.id,
             action_id=action_id,
             audio_path=audio_path,
-            transcript=transcript
+            transcript=None,
         )
-        
         db.add(self_talk)
         db.commit()
         db.refresh(self_talk)
-        
-        logger.info(f"Self-talk 创建成功: ID={self_talk.id}")
-        
+        logger.info("Self-talk 创建成功: ID=%s recognize_text=%s", self_talk.id, want_transcript)
+
+        if want_transcript:
+            try:
+                if not is_speech_recognition_available():
+                    logger.warning("语音识别服务不可用，跳过转写")
+                else:
+                    logger.info("开始语音识别: %s", actual_file_path)
+                    transcript = usable_transcript(transcribe_audio_file(actual_file_path))
+                    if transcript:
+                        self_talk.transcript = transcript
+                        self_talk.updated_at = datetime.utcnow()
+                        db.commit()
+                        db.refresh(self_talk)
+                        logger.info("语音识别成功: %s", transcript[:200])
+                    else:
+                        logger.warning("语音识别无结果（音频已保存，可播放）")
+            except Exception:
+                logger.exception("语音识别异常，音频仍可播放")
+
         return to_self_talk_response(self_talk)
-        
+
     except HTTPException:
         raise
     except OSError as e:
@@ -411,32 +431,21 @@ async def get_audio_file(
         # 构建实际文件路径
         actual_file_path = get_audio_full_path(self_talk.audio_path)
         
-        if not os.path.exists(actual_file_path):
+        if not os.path.isfile(actual_file_path):
+            logger.error("音频文件不存在: %s", actual_file_path)
             raise HTTPException(status_code=404, detail="音频文件不存在")
-        
-        # 返回文件流
-        def iterfile():
-            with open(actual_file_path, "rb") as file_like:
-                yield from file_like
-        
-        # 根据文件扩展名设置媒体类型
-        file_ext = os.path.splitext(self_talk.audio_path)[1].lower()
-        media_type = {
-            '.wav': 'audio/wav',
-            '.mp3': 'audio/mpeg',
-            '.webm': 'audio/webm',
-            '.ogg': 'audio/ogg',
-            '.m4a': 'audio/mp4',
-            '.mp4': 'audio/mp4'
-        }.get(file_ext, 'audio/wav')
-        
-        return StreamingResponse(
-            iterfile(),
-            media_type=media_type,
+
+        filename = os.path.basename(self_talk.audio_path)
+        return FileResponse(
+            actual_file_path,
+            media_type=audio_media_type(self_talk.audio_path),
+            filename=filename,
+            content_disposition_type="inline",
             headers={
-                "Content-Disposition": f"inline; filename={self_talk.audio_path}",
-                "Cache-Control": "private, max-age=3600"  # 1小时缓存
-            }
+                "Cache-Control": "private, max-age=3600",
+                "Accept-Ranges": "bytes",
+                "X-Content-Type-Options": "nosniff",
+            },
         )
         
     except HTTPException:
