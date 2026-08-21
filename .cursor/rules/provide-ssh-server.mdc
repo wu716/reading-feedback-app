@@ -1,0 +1,18 @@
+---
+description: 本项目代码改完要上服务器时，必须提供 SSH 登录命令
+alwaysApply: true
+---
+
+# 代码上服务器时提供 SSH
+
+在 `reading-feedback-app` 里，只要本轮有代码修改且需要上传 / 更新生产服务器，按 `.cursor/skills/provide-ssh-server/SKILL.md` 执行：回复里必须给出 SSH 命令，帮助用户启动服务器。不要擅自 SSH，除非用户当场要求代登。
+
+```bash
+ssh root@47.236.122.207
+```
+
+登录后再执行：
+
+```bash
+cd /opt/shuran-app && git pull origin main && cd deploy/aliyun && docker compose up -d --build
+```

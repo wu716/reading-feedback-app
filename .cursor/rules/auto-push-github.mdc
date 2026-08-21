@@ -7,10 +7,15 @@ alwaysApply: true
 
 在 `reading-feedback-app` 里，完成用户要求的代码改动后，立刻按 `.cursor/skills/auto-push-github/SKILL.md` 提交并 `git push`，不要等用户再说「提交」或「推送」。
 
-推送成功后，把下面这条服务器更新命令发给用户（不要擅自 SSH，除非用户当场要求）：
+推送成功后，把 SSH 登录命令和服务器更新命令发给用户（不要擅自 SSH，除非用户当场要求）：
+
+```bash
+ssh root@47.236.122.207
+```
 
 ```bash
 cd /opt/shuran-app && git pull origin main && cd deploy/aliyun && docker compose up -d --build
 ```
+
 
 用户明确说先不要提交 / 先不要推时，停下。不要提交 `.env`、密钥、APK。
