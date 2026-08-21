@@ -274,20 +274,26 @@ async def get_pending_reminders(
     db: Session = Depends(get_db)
 ):
     """
-    获取待处理的提醒（用于前端轮询）
+    获取未处理的应用内提醒（前端轮询 / 铃铛列表）。
+    保留到用户手动关闭，避免页面未打开时错过。
     """
     try:
         from datetime import datetime, timedelta
         
-        # 获取最近5分钟内的未处理提醒
-        recent_time = datetime.now() - timedelta(minutes=5)
+        recent_time = datetime.now() - timedelta(days=7)
         
-        pending_logs = db.query(SelfTalkReminderLog).filter(
-            SelfTalkReminderLog.user_id == current_user.id,
-            SelfTalkReminderLog.triggered_at >= recent_time,
-            SelfTalkReminderLog.dismissed_at.is_(None),
-            SelfTalkReminderLog.action_taken == False
-        ).all()
+        pending_logs = (
+            db.query(SelfTalkReminderLog)
+            .filter(
+                SelfTalkReminderLog.user_id == current_user.id,
+                SelfTalkReminderLog.triggered_at >= recent_time,
+                SelfTalkReminderLog.dismissed_at.is_(None),
+                SelfTalkReminderLog.action_taken == False
+            )
+            .order_by(SelfTalkReminderLog.triggered_at.desc())
+            .limit(50)
+            .all()
+        )
         
         notifications = []
         for log in pending_logs:
@@ -295,12 +301,15 @@ async def get_pending_reminders(
                 log.reminder_type,
                 current_user.name
             )
+            action_url = "/static/index.html#actions" if log.reminder_type == "action_practice" else "/static/self_talk/index.html"
             notifications.append({
                 "log_id": log.id,
                 "title": title,
                 "message": message,
                 "reminder_type": log.reminder_type,
-                "triggered_at": log.triggered_at.isoformat()
+                "triggered_at": log.triggered_at.isoformat(),
+                "action_url": action_url,
+                "action_label": "去践行" if log.reminder_type == "action_practice" else "立即记录",
             })
         
         return {
