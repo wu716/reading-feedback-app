@@ -45,7 +45,7 @@ git commit -m "Fix homepage recording flow and live stats."
 ```
 
 6. `git push -u origin HEAD`
-7. 成功后告诉用户：已推到哪个分支，并给出服务器更新命令（见下方）。**不要擅自 SSH 登录服务器**，除非用户当场要求代登。
+7. 成功后告诉用户：已推到哪个分支，并给出 SSH 登录命令和服务器更新命令（见下方）。**不要擅自 SSH 登录服务器**，除非用户当场要求代登。
 
 ## 安全
 
@@ -57,7 +57,11 @@ git commit -m "Fix homepage recording flow and live stats."
 
 ## 服务器更新（推送后发给用户）
 
-GitHub 更新后，生产机需要再拉一次。默认命令：
+GitHub 更新后，先给用户 SSH 登录命令（帮助启动服务器），再给生产机拉代码命令：
+
+```bash
+ssh root@47.236.122.207
+```
 
 ```bash
 cd /opt/shuran-app && git pull origin main && cd deploy/aliyun && docker compose up -d --build
