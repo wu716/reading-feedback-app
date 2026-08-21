@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 import logging
+import os
 import uvicorn
 
 from app.config import settings
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """应用生命周期：启动 / 关闭"""
     logger.info("正在启动应用...")
+    os.makedirs("uploads/self_talks", exist_ok=True)
     create_tables()
     logger.info("数据库表创建完成")
     start_scheduler(app)
@@ -159,10 +161,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # 全局异常处理
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    logger.error(f"全局异常: {exc}", exc_info=True)
+    path = str(getattr(getattr(request, "url", None), "path", "") or "")
+    logger.error("全局异常 path=%s: %s", path, exc, exc_info=True)
+    detail = "上传失败，请稍后重试" if "self_talks" in path else "服务器内部错误"
     return JSONResponse(
         status_code=500,
-        content={"detail": "服务器内部错误"}
+        content={"detail": detail}
     )
 
 

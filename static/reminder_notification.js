@@ -151,9 +151,7 @@ class ReminderNotificationService {
             .in-app-reminder-bar .ghost { background: #fff; color: #555; }
             .in-app-toast-host { position: fixed; top: 84px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
             .in-page-notification { pointer-events: auto; background: #fff; padding: 16px 18px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.16); max-width: 360px; border-left: 4px solid #667eea; animation: inAppSlideIn 0.25s ease; }
-            .reminder-bell-wrap.floating { position: fixed; right: 16px; bottom: 20px; z-index: 1100; }
-            .reminder-bell-wrap.floating .reminder-bell-btn { background: #667eea; width: 48px; height: 48px; border-radius: 50%; box-shadow: 0 4px 14px rgba(102,126,234,0.4); }
-            .reminder-bell-wrap.floating .reminder-dropdown { top: auto; bottom: calc(100% + 8px); }
+            .reminder-bell-wrap.floating { display: none; }
             @keyframes inAppSlideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
             @media (max-width: 768px) {
                 .in-app-toast-host { top: 76px; left: 12px; right: 12px; }
@@ -197,8 +195,8 @@ class ReminderNotificationService {
                 actions.insertBefore(wrap, actions.firstChild);
             }
         } else {
-            wrap.classList.add('floating');
-            document.body.appendChild(wrap);
+            // Self-talk / 个人中心已有顶栏「提醒设置」，不再挂悬浮铃铛（会挡住历史记录）
+            return;
         }
     }
 

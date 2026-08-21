@@ -94,6 +94,14 @@
             gap: 12px;
             font-size: 1.3rem;
             font-weight: 700;
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        .app-logo .app-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .app-header .user-info {
@@ -113,6 +121,8 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            flex: 0 0 auto;
+            min-width: 0;
         }
         
         /* 侧边导航栏样式 */
@@ -2533,7 +2543,12 @@
             }
             
             .app-header {
-                padding: 0 15px;
+                padding: 8px 12px;
+                height: auto;
+                min-height: 56px;
+                gap: 8px;
+                flex-wrap: nowrap;
+                align-items: center;
             }
 
             .app-logo > span:first-of-type {
@@ -2546,7 +2561,40 @@
             }
             
             .app-logo {
-                font-size: 1.1rem;
+                font-size: 1rem;
+                gap: 6px;
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+
+            .app-logo .app-title {
+                white-space: nowrap;
+                writing-mode: horizontal-tb;
+                font-size: 1rem;
+            }
+
+            .header-actions {
+                flex: 0 1 auto;
+                margin-left: auto;
+                gap: 6px;
+            }
+
+            .app-header .user-info,
+            .app-header .user-info.show {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 6px;
+                padding: 4px 8px;
+            }
+
+            .app-header .user-email {
+                display: none;
+            }
+
+            .app-header .logout-btn {
+                padding: 4px 10px;
+                white-space: nowrap;
             }
             
             .section-header h1 {
@@ -2628,7 +2676,7 @@
                 <button type="button" class="header-icon-btn" id="headerBackBtn" onclick="handlePageBack()" aria-label="返回" hidden>←</button>
             </div>
             <span style="font-size: 1.8rem;">🎤</span>
-            <span>阅读反馈系统</span>
+            <span class="app-title">阅读反馈系统</span>
         </div>
         <div class="header-actions">
             <div class="reminder-bell-wrap" id="reminderBellWrap" hidden>
