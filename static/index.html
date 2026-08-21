@@ -108,6 +108,12 @@
         .app-header .user-info.show {
             display: block;
         }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
         
         /* 侧边导航栏样式 */
         .app-sidebar {
@@ -2289,8 +2295,23 @@
             font-weight: bold;
         }
 
+        .calendar-day.selected:not(.today) {
+            background-color: #eef2ff;
+            box-shadow: inset 0 0 0 2px #667eea;
+        }
+
         .calendar-day.other-month {
             color: #ccc;
+            cursor: default;
+        }
+
+        .calendar-day.has-todos:not(.today) {
+            font-weight: 600;
+        }
+
+        .calendar-day.has-todos .event-indicator,
+        .calendar-day.has-events .event-indicator {
+            background: #ff4757;
         }
 
         .calendar-day.has-events {
@@ -2362,6 +2383,48 @@
 
         .event-item:last-child {
             border-bottom: none;
+        }
+
+        .day-todo-panel {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f8fafc;
+            border: 1px solid #e8ecf4;
+            border-radius: 12px;
+        }
+
+        .day-todo-panel-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            gap: 8px;
+        }
+
+        .day-todo-panel-head h4 {
+            margin: 0;
+            color: #667eea;
+            font-size: 0.95rem;
+        }
+
+        .day-todo-panel-close {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: #999;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .day-todo-hint {
+            margin: 8px 0 0;
+            color: #888;
+            font-size: 0.8rem;
+        }
+
+        .day-todo-panel .todo-item.past-readonly .todo-actions .todo-btn.edit,
+        .day-todo-panel .todo-item.past-readonly .todo-btn.delete {
+            display: none;
         }
 
         .event-time {
@@ -2567,9 +2630,21 @@
             <span style="font-size: 1.8rem;">🎤</span>
             <span>阅读反馈系统</span>
         </div>
-        <div class="user-info" id="userInfo">
-            <div class="user-email" id="userEmail"></div>
-            <button class="logout-btn" onclick="logout()">退出登录</button>
+        <div class="header-actions">
+            <div class="reminder-bell-wrap" id="reminderBellWrap" hidden>
+                <button type="button" class="header-icon-btn reminder-bell-btn" id="reminderBellBtn" aria-label="应用内提醒" title="应用内提醒">🔔<span class="reminder-bell-badge" id="reminderBellBadge" hidden>0</span></button>
+                <div class="reminder-dropdown" id="reminderDropdown" hidden>
+                    <div class="reminder-dropdown-head">
+                        <strong>应用内提醒</strong>
+                        <a href="#" id="reminderSettingsLink">提醒设置</a>
+                    </div>
+                    <div class="reminder-dropdown-list" id="reminderDropdownList"></div>
+                </div>
+            </div>
+            <div class="user-info" id="userInfo">
+                <div class="user-email" id="userEmail"></div>
+                <button class="logout-btn" onclick="logout()">退出登录</button>
+            </div>
         </div>
     </header>
 
@@ -2621,6 +2696,8 @@
                 <h1>欢迎使用阅读反馈系统</h1>
                 <p>记录内心对话，让思考更有力量</p>
             </div>
+
+            <div class="in-app-reminder-bar" id="inAppReminderBar" hidden></div>
             
             <!-- 新增：首页仪表板区域 -->
             <div class="homepage-dashboard">
@@ -2700,6 +2777,18 @@
                                 <button class="nav-btn" onclick="nextMonth()" style="background: #667eea; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer;">›</button>
                             </div>
                             <div class="calendar-grid" id="calendarGrid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;"></div>
+                            <div class="day-todo-panel" id="dayTodoPanel" hidden>
+                                <div class="day-todo-panel-head">
+                                    <h4 id="dayTodoPanelTitle">该日待办</h4>
+                                    <button type="button" class="day-todo-panel-close" id="dayTodoPanelClose" aria-label="关闭">×</button>
+                                </div>
+                                <div id="dayTodoList" class="todos-list"></div>
+                                <div class="todo-add-row" id="dayTodoAddRow">
+                                    <input type="text" id="dayTodoInput" class="todo-add-input" placeholder="为这一天添加待办…" maxlength="500">
+                                    <button type="button" class="todo-add-btn" id="dayTodoAddBtn">＋ 添加</button>
+                                </div>
+                                <p class="day-todo-hint" id="dayTodoHint"></p>
+                            </div>
                         </div>
                         <!-- 今日待办 -->
                         <div class="today-todos" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
@@ -3100,10 +3189,11 @@
                     <!-- 通知方式设置 -->
                     <div class="reminder-subsection" style="margin-left: 20px; margin-top: 15px; margin-bottom: 15px;">
                         <h5 style="color: #555; margin-bottom: 10px; font-size: 1rem;">📱 通知方式</h5>
+                        <p style="color:#888;font-size:0.85rem;margin:0 0 10px;">到点后会在首页通知条和右上角铃铛里显示，不依赖邮箱。即使浏览器拒绝系统通知，页面内仍能看到。</p>
                         <div class="setting-item" style="margin-bottom: 10px;">
                             <label style="display: flex; align-items: center; gap: 8px;">
                                 <input type="checkbox" id="reminderBrowserSwitch" style="transform: scale(1.2);">
-                                <span>浏览器通知</span>
+                                <span>浏览器系统通知（额外弹窗，需允许通知权限）</span>
                             </label>
                         </div>
                         <div class="setting-item" style="margin-bottom: 10px;">
@@ -3114,7 +3204,10 @@
                         </div>
                     </div>
 
-                    <button onclick="saveReminderSettings()" style="margin-top: 20px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; width: 100%;">保存设置</button>
+                    <div style="display:flex;gap:10px;margin-top:20px;">
+                        <button onclick="saveReminderSettings()" style="flex:1;padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem;">保存设置</button>
+                        <button type="button" onclick="testInAppReminder()" style="flex:1;padding: 10px 20px; background: #fff; color: #667eea; border: 1px solid #667eea; border-radius: 6px; cursor: pointer; font-size: 1rem;">测试应用内提醒</button>
+                    </div>
                 </div>
 
                 <!-- 退出登录按钮 -->
@@ -4006,13 +4099,6 @@
 
         function initializeCalendar() {
             renderCalendar();
-            
-            // 点击日历外的区域关闭事件弹窗
-            document.addEventListener('click', function(e) {
-                if (!e.target.closest('.calendar-day') && !e.target.closest('.event-popup')) {
-                    closeEventPopup();
-                }
-            });
         }
 
         function renderCalendar() {
@@ -4062,35 +4148,22 @@
                 dayElement.textContent = day;
                 
                 const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                dayElement.dataset.date = dateKey;
                 
                 // 标记今天（北京时间，已联网校准）
                 const todayParts = getBeijingParts();
                 if (year === todayParts.year && month === todayParts.month - 1 && day === todayParts.day) {
                     dayElement.classList.add('today');
                 }
-                
-                // 检查是否有事件
-                if (eventsData[dateKey]) {
-                    const hasImportant = eventsData[dateKey].some(event => event.type === 'important');
-                    if (hasImportant) {
-                        dayElement.classList.add('important');
-                    } else {
-                        dayElement.classList.add('has-events');
-                    }
-                    
-                    // 添加事件指示器
-                    const indicator = document.createElement('div');
-                    indicator.className = 'event-indicator';
-                    if (dayElement.classList.contains('today')) {
-                        indicator.classList.add('today');
-                    }
-                    dayElement.appendChild(indicator);
+                if (window.selectedCalendarDate === dateKey) {
+                    dayElement.classList.add('selected');
                 }
                 
-                // 添加点击事件
                 dayElement.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    showEventPopup(e, dateKey, eventsData[dateKey] || []);
+                    if (typeof window.openCalendarDayTodos === 'function') {
+                        window.openCalendarDayTodos(dateKey);
+                    }
                 });
                 
                 calendarGrid.appendChild(dayElement);
@@ -4106,6 +4179,10 @@
                 dayElement.className = 'calendar-day other-month';
                 dayElement.textContent = day;
                 calendarGrid.appendChild(dayElement);
+            }
+
+            if (typeof window.refreshCalendarTodoMarkers === 'function') {
+                window.refreshCalendarTodoMarkers(year, month + 1);
             }
         }
 
@@ -4534,6 +4611,9 @@
             localStorage.removeItem('authToken');
             localStorage.removeItem('userEmail');
             localStorage.removeItem('authTokenExpiresAt');
+            if (window.reminderNotificationService) {
+                window.reminderNotificationService.stop();
+            }
         }
 
         function isAuthSessionExpired() {
@@ -4552,6 +4632,9 @@
             if (typeof loadPersonalStats === 'function') tasks.push(loadPersonalStats());
             if (typeof loadCurrentViewData === 'function') tasks.push(loadCurrentViewData());
             await Promise.allSettled(tasks);
+            if (window.reminderNotificationService) {
+                window.reminderNotificationService.start();
+            }
         }
 
         // API 请求封装
@@ -5771,6 +5854,35 @@
             } catch (error) {
                 console.error('保存提醒设置失败:', error);
                 showMessage('保存提醒设置失败', 'error');
+            }
+        }
+
+        async function testInAppReminder() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                showMessage('请先登录', 'error');
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/api/self_talk_reminders/trigger`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        reminder_type: 'daily',
+                        notification_method: 'browser'
+                    })
+                });
+                if (!response.ok) throw new Error('测试失败');
+                showMessage('已发送测试提醒，请看首页通知条或右上角铃铛', 'success');
+                if (window.reminderNotificationService) {
+                    window.reminderNotificationService.checkPendingReminders();
+                }
+            } catch (error) {
+                console.error('测试提醒失败:', error);
+                showMessage('测试提醒失败（请确认已启用提醒功能）', 'error');
             }
         }
         

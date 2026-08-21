@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import func
+from sqlalchemy import Integer, func
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user
@@ -148,15 +148,69 @@ async def list_daily_todos(
     return rows
 
 
+class TodoMonthDayCount(BaseModel):
+    date: date
+    total: int
+    completed: int
+
+
+class TodoMonthSummaryResponse(BaseModel):
+    year: int
+    month: int
+    days: List[TodoMonthDayCount]
+
+
+@router.get("/todos/month", response_model=TodoMonthSummaryResponse)
+async def list_month_todo_summary(
+    year: int = Query(..., ge=2000, le=2100),
+    month: int = Query(..., ge=1, le=12),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """按月返回有待办的日期，供首页日历圆点标记。"""
+    start = date(year, month, 1)
+    end = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+    rows = (
+        db.query(
+            DailyTodo.todo_date,
+            func.count(DailyTodo.id).label("total"),
+            func.sum(func.cast(DailyTodo.completed, Integer)).label("completed"),
+        )
+        .filter(
+            DailyTodo.user_id == current_user.id,
+            DailyTodo.todo_date >= start,
+            DailyTodo.todo_date < end,
+            DailyTodo.deleted_at.is_(None),
+        )
+        .group_by(DailyTodo.todo_date)
+        .all()
+    )
+    return TodoMonthSummaryResponse(
+        year=year,
+        month=month,
+        days=[
+            TodoMonthDayCount(
+                date=row.todo_date,
+                total=int(row.total or 0),
+                completed=int(row.completed or 0),
+            )
+            for row in rows
+        ],
+    )
+
+
 @router.post("/todos", response_model=DailyTodoResponse, status_code=status.HTTP_201_CREATED)
 async def create_daily_todo(
     body: DailyTodoCreate,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    text = body.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="待办内容不能为空")
     row = DailyTodo(
         user_id=current_user.id,
-        text=body.text.strip(),
+        text=text,
         todo_date=body.todo_date or beijing_today(),
     )
     db.add(row)

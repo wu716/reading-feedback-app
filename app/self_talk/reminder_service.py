@@ -196,8 +196,7 @@ class ReminderService:
         title: str,
         message: str,
     ) -> None:
-        """根据用户设置发送浏览器日志 + 邮件"""
-        method = "both"
+        """记录应用内提醒，并按设置额外发送邮件。邮件关闭时不影响应用内提醒。"""
         if setting.browser_notification and setting.email_notification:
             method = "both"
         elif setting.browser_notification:
@@ -205,11 +204,11 @@ class ReminderService:
         elif setting.email_notification:
             method = "email"
         else:
-            return
+            method = "in_app"
 
         ReminderService.log_reminder(db, user_id, reminder_type, method)
 
-        if setting.email_notification and method in ("email", "both"):
+        if setting.email_notification:
             ReminderService.send_email_notification(db, user_id, title, message)
     
     @staticmethod
