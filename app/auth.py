@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 import bcrypt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -13,6 +13,30 @@ from app.schemas import TokenData
 
 # JWT 配置
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
+
+
+def _auth_exception() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+def resolve_user_from_access_token(token: str, db: Session) -> User:
+    """用 JWT 解析当前用户。"""
+    credentials_exception = _auth_exception()
+    token_data = verify_token(token, credentials_exception)
+    user = db.query(User).filter(
+        User.email == token_data.email,
+        User.deleted_at.is_(None),
+    ).first()
+    if user is None:
+        logger = __import__("logging").getLogger(__name__)
+        logger.warning("用户不存在或已被删除: %s", token_data.email)
+        raise credentials_exception
+    return user
 
 
 def _truncate_password_bytes(password: str) -> bytes:
@@ -91,28 +115,9 @@ def get_current_user(
     db: Session = Depends(get_db)
 ) -> User:
     """获取当前用户"""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    
+    credentials_exception = _auth_exception()
     try:
-        token = credentials.credentials
-        token_data = verify_token(token, credentials_exception)
-        
-        user = db.query(User).filter(
-            User.email == token_data.email,
-            User.deleted_at.is_(None)
-        ).first()
-        
-        if user is None:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(f"用户不存在或已被删除: {token_data.email}")
-            raise credentials_exception
-        
-        return user
+        return resolve_user_from_access_token(credentials.credentials, db)
     except HTTPException:
         raise
     except Exception as e:
@@ -120,6 +125,20 @@ def get_current_user(
         logger = logging.getLogger(__name__)
         logger.error(f"获取当前用户失败: {e}")
         raise credentials_exception
+
+
+def get_current_user_for_media(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
+    token: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+) -> User:
+    """音频播放：Authorization 头或 URL 上的 token 都可以。"""
+    raw = credentials.credentials if credentials else None
+    if not raw:
+        raw = token
+    if not raw:
+        raise _auth_exception()
+    return resolve_user_from_access_token(raw, db)
 
 
 def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:

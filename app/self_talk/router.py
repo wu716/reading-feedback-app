@@ -13,7 +13,7 @@ from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
 from app.database import get_db
-from app.auth import get_current_user
+from app.auth import get_current_user, get_current_user_for_media
 from app.models import User, SelfTalk, SelfTalkPlaybackLog
 from app.self_talk.schemas import (
     SelfTalkCreate,
@@ -439,7 +439,7 @@ async def update_self_talk_transcript(
 @router.get("/{self_talk_id}/audio")
 async def get_audio_file(
     self_talk_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_for_media),
     db: Session = Depends(get_db)
 ):
     """

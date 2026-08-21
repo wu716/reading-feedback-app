@@ -6,6 +6,8 @@
         selfTalkId: null,
         audio: null,
         blobUrl: null,
+        loadTimer: null,
+        autoPlayed: false,
         loopMode: 'once',
         loopsDone: 0,
         sessionStart: 0,
@@ -49,37 +51,16 @@
         return getListenSeconds() >= 1 || state.loopsDone >= 1;
     }
 
-    function extFromDisposition(header) {
-        if (!header) return '';
-        const match = header.match(/filename\*?=(?:UTF-8''|"?)([^";]+)/i);
-        const name = match ? decodeURIComponent(match[1]).replace(/"/g, '') : '';
-        const extMatch = name.toLowerCase().match(/\.(wav|mp3|m4a|ogg|webm|mp4)$/);
-        return extMatch ? extMatch[0] : '';
+    function mediaAudioUrl(selfTalkId) {
+        const token = localStorage.getItem('authToken') || '';
+        return `/api/self_talks/${selfTalkId}/audio?token=${encodeURIComponent(token)}`;
     }
 
-    function guessAudioMime(contentType, ext) {
-        const headerType = (contentType || '').split(';')[0].trim().toLowerCase();
-        if (headerType && headerType !== 'application/octet-stream' && headerType !== 'application/json') {
-            if (ext === '.m4a' && (headerType === 'audio/mp4' || headerType === 'video/mp4')) {
-                return 'audio/mp4';
-            }
-            return headerType;
+    function clearLoadTimer() {
+        if (state.loadTimer) {
+            clearTimeout(state.loadTimer);
+            state.loadTimer = null;
         }
-        return {
-            '.wav': 'audio/wav',
-            '.mp3': 'audio/mpeg',
-            '.webm': 'audio/webm',
-            '.ogg': 'audio/ogg',
-            '.m4a': 'audio/mp4',
-            '.mp4': 'audio/mp4',
-        }[ext] || 'audio/mp4';
-    }
-
-    async function audioBlobFromResponse(res) {
-        const ext = extFromDisposition(res.headers.get('content-disposition'));
-        const mime = guessAudioMime(res.headers.get('content-type'), ext);
-        const buffer = await res.arrayBuffer();
-        return new Blob([buffer], { type: mime });
     }
 
     function notifyPlaybackLogged() {
@@ -265,10 +246,19 @@
         const dock = document.getElementById('stPlayerDock');
         if (dock) dock.classList.remove('open', 'paused');
 
+        clearLoadTimer();
         if (state.audio) {
             state.audio.pause();
             state.audio.onended = null;
             state.audio.ontimeupdate = null;
+            state.audio.onerror = null;
+            state.audio.oncanplay = null;
+            state.audio.onloadedmetadata = null;
+            state.audio.removeAttribute('src');
+            try { state.audio.load(); } catch (e) { /* ignore */ }
+            if (state.audio.parentNode) {
+                state.audio.parentNode.removeChild(state.audio);
+            }
         }
         if (state.stopTimer) {
             clearInterval(state.stopTimer);
@@ -378,7 +368,8 @@
     }
 
     window.openSelfTalkPlayer = async function (selfTalkId) {
-        if (!localStorage.getItem('authToken')) {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
             alert('请先登录');
             return;
         }
@@ -388,43 +379,59 @@
         state.totalListenedSec = 0;
         state.loopMode = 'once';
         state.sessionReported = false;
+        state.autoPlayed = false;
 
         openDock();
         setStatus('加载音频…');
         document.getElementById('stPlayerTitle').textContent = `Self-talk #${selfTalkId}`;
 
-        try {
-            const res = await fetch(`/api/self_talks/${selfTalkId}/audio`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.detail || `加载失败 (${res.status})`);
+        const audio = document.createElement('audio');
+        audio.setAttribute('playsinline', 'true');
+        audio.setAttribute('webkit-playsinline', 'true');
+        audio.preload = 'auto';
+        audio.controls = false;
+        audio.style.display = 'none';
+        document.getElementById('stPlayerDock').appendChild(audio);
+        state.audio = audio;
+
+        const markReady = () => {
+            clearLoadTimer();
+            const dur = audio.duration;
+            if (dur && Number.isFinite(dur)) {
+                document.getElementById('stTimeTotal').textContent = formatTime(dur);
             }
-            const blob = await audioBlobFromResponse(res);
-            state.blobUrl = URL.createObjectURL(blob);
-            state.audio = new Audio();
-            state.audio.preload = 'auto';
-            state.audio.src = state.blobUrl;
-            state.audio.onended = onTrackEnded;
-            state.audio.ontimeupdate = updateProgress;
-            state.audio.onerror = () => {
-                const code = state.audio && state.audio.error ? state.audio.error.code : '';
-                setStatus(code === 4 ? '当前格式无法播放，请改用 mp3/wav 后重试' : '音频播放失败');
-            };
-            state.audio.onloadedmetadata = () => {
-                document.getElementById('stTimeTotal').textContent = formatTime(state.audio.duration);
-            };
+        };
+
+        audio.onended = onTrackEnded;
+        audio.ontimeupdate = updateProgress;
+        audio.onloadedmetadata = markReady;
+        audio.oncanplay = async () => {
+            markReady();
+            if (state.autoPlayed || state.selfTalkId !== selfTalkId) return;
+            state.autoPlayed = true;
             try {
                 await togglePlay();
             } catch (playErr) {
                 console.warn('自动播放被拦截，请手动点击播放', playErr);
                 setStatus('已就绪，点击播放');
             }
-        } catch (e) {
-            setStatus(e && e.message ? `音频加载失败：${e.message}` : '音频加载失败');
-            console.error(e);
-        }
+        };
+        audio.onerror = () => {
+            clearLoadTimer();
+            const code = audio.error ? audio.error.code : 0;
+            setStatus(code === 4 ? '当前格式无法播放' : '音频加载失败，请稍后重试');
+        };
+
+        clearLoadTimer();
+        state.loadTimer = setTimeout(() => {
+            if (state.selfTalkId !== selfTalkId) return;
+            if (!audio.duration || !Number.isFinite(audio.duration)) {
+                setStatus('加载超时，请关闭后重试');
+            }
+        }, 12000);
+
+        audio.src = mediaAudioUrl(selfTalkId);
+        audio.load();
     };
 
     window.playAudio = function (selfTalkId) {
