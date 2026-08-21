@@ -49,6 +49,39 @@
         return getListenSeconds() >= 1 || state.loopsDone >= 1;
     }
 
+    function extFromDisposition(header) {
+        if (!header) return '';
+        const match = header.match(/filename\*?=(?:UTF-8''|"?)([^";]+)/i);
+        const name = match ? decodeURIComponent(match[1]).replace(/"/g, '') : '';
+        const extMatch = name.toLowerCase().match(/\.(wav|mp3|m4a|ogg|webm|mp4)$/);
+        return extMatch ? extMatch[0] : '';
+    }
+
+    function guessAudioMime(contentType, ext) {
+        const headerType = (contentType || '').split(';')[0].trim().toLowerCase();
+        if (headerType && headerType !== 'application/octet-stream' && headerType !== 'application/json') {
+            if (ext === '.m4a' && (headerType === 'audio/mp4' || headerType === 'video/mp4')) {
+                return 'audio/mp4';
+            }
+            return headerType;
+        }
+        return {
+            '.wav': 'audio/wav',
+            '.mp3': 'audio/mpeg',
+            '.webm': 'audio/webm',
+            '.ogg': 'audio/ogg',
+            '.m4a': 'audio/mp4',
+            '.mp4': 'audio/mp4',
+        }[ext] || 'audio/mp4';
+    }
+
+    async function audioBlobFromResponse(res) {
+        const ext = extFromDisposition(res.headers.get('content-disposition'));
+        const mime = guessAudioMime(res.headers.get('content-type'), ext);
+        const buffer = await res.arrayBuffer();
+        return new Blob([buffer], { type: mime });
+    }
+
     function notifyPlaybackLogged() {
         window.dispatchEvent(new CustomEvent('selftalk-playback-logged'));
         if (typeof loadTodayDashboard === 'function') {
@@ -364,18 +397,32 @@
             const res = await fetch(`/api/self_talks/${selfTalkId}/audio`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
             });
-            if (!res.ok) throw new Error('加载失败');
-            const blob = await res.blob();
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.detail || `加载失败 (${res.status})`);
+            }
+            const blob = await audioBlobFromResponse(res);
             state.blobUrl = URL.createObjectURL(blob);
-            state.audio = new Audio(state.blobUrl);
+            state.audio = new Audio();
+            state.audio.preload = 'auto';
+            state.audio.src = state.blobUrl;
             state.audio.onended = onTrackEnded;
             state.audio.ontimeupdate = updateProgress;
+            state.audio.onerror = () => {
+                const code = state.audio && state.audio.error ? state.audio.error.code : '';
+                setStatus(code === 4 ? '当前格式无法播放，请改用 mp3/wav 后重试' : '音频播放失败');
+            };
             state.audio.onloadedmetadata = () => {
                 document.getElementById('stTimeTotal').textContent = formatTime(state.audio.duration);
             };
-            setStatus('已就绪，点击播放');
+            try {
+                await togglePlay();
+            } catch (playErr) {
+                console.warn('自动播放被拦截，请手动点击播放', playErr);
+                setStatus('已就绪，点击播放');
+            }
         } catch (e) {
-            setStatus('音频加载失败');
+            setStatus(e && e.message ? `音频加载失败：${e.message}` : '音频加载失败');
             console.error(e);
         }
     };
