@@ -33,6 +33,23 @@ router = APIRouter(prefix="/api/self_talks", tags=["self-talk"])
 # 音频文件存储目录
 UPLOAD_DIR = "uploads/self_talks"
 ALLOWED_EXTENSIONS = {'.wav', '.mp3', '.m4a', '.ogg', '.webm', '.mp4'}
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+CONTENT_TYPE_EXT = {
+    'audio/mp4': '.m4a',
+    'audio/x-m4a': '.m4a',
+    'audio/m4a': '.m4a',
+    'audio/aac': '.m4a',
+    'audio/mpeg': '.mp3',
+    'audio/mp3': '.mp3',
+    'audio/wav': '.wav',
+    'audio/x-wav': '.wav',
+    'audio/wave': '.wav',
+    'audio/webm': '.webm',
+    'video/webm': '.webm',
+    'audio/ogg': '.ogg',
+    'audio/opus': '.ogg',
+    'video/mp4': '.mp4',
+}
 
 
 def ensure_upload_dir():
@@ -43,6 +60,20 @@ def ensure_upload_dir():
 def is_allowed_file(filename: str) -> bool:
     """检查文件扩展名是否允许"""
     return any(filename.lower().endswith(ext) for ext in ALLOWED_EXTENSIONS)
+
+
+def safe_audio_ext(filename: Optional[str], content_type: Optional[str]) -> str:
+    """从文件名或 Content-Type 得到安全的小写扩展名；无法识别则返回空串。"""
+    if filename:
+        ext = os.path.splitext(filename)[1].lower()
+        if ext in ALLOWED_EXTENSIONS:
+            return ext
+    if content_type:
+        ct = content_type.split(";")[0].strip().lower()
+        mapped = CONTENT_TYPE_EXT.get(ct)
+        if mapped:
+            return mapped
+    return ""
 
 
 def get_audio_full_path(audio_path: str) -> str:
@@ -77,32 +108,27 @@ def delete_audio_file(audio_path: str) -> bool:
         return False
 
 
-def save_audio_file(file: UploadFile, user_id: int) -> str:
+async def save_audio_file(file: UploadFile, user_id: int, file_extension: str) -> str:
     """
-    保存音频文件到本地
-    
-    Args:
-        file: 上传的文件
-        user_id: 用户ID
-        
-    Returns:
-        保存的文件路径
+    保存音频文件到本地。文件名只用 uuid，避免手机录音中文名导致 multipart/路径问题。
     """
-    # 生成唯一文件名
-    file_extension = os.path.splitext(file.filename)[1].lower()
-    if not file_extension:
-        file_extension = '.wav'  # 默认扩展名
-    
     unique_filename = f"{user_id}_{uuid.uuid4().hex}{file_extension}"
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
-    
-    # 保存文件
-    with open(file_path, "wb") as buffer:
-        content = file.file.read()
-        buffer.write(content)
-    
-    logger.info(f"音频文件保存成功: {file_path}")
-    # 返回相对路径，不暴露完整文件路径
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="音频文件为空")
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=400, detail="文件大小不能超过 50MB")
+
+    try:
+        with open(file_path, "wb") as buffer:
+            buffer.write(content)
+    except OSError as e:
+        logger.exception("保存音频文件失败: %s", file_path)
+        raise HTTPException(status_code=500, detail="无法保存音频文件，请稍后重试") from e
+
+    logger.info("音频文件保存成功: %s (%s bytes)", file_path, len(content))
     return unique_filename
 
 
@@ -126,44 +152,36 @@ async def upload_self_talk(
         创建的 Self-talk 记录
     """
     try:
-        # 检查文件类型
-        if not file.filename or not is_allowed_file(file.filename):
+        file_ext = safe_audio_ext(file.filename, file.content_type)
+        if file_ext not in ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=400,
-                detail=f"不支持的文件类型。支持的格式: {', '.join(ALLOWED_EXTENSIONS)}"
+                detail=f"不支持的文件类型。支持的格式: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
             )
-        
-        # 检查文件大小 (限制为 50MB)
-        file.file.seek(0, 2)  # 移动到文件末尾
-        file_size = file.file.tell()
-        file.file.seek(0)  # 重置到文件开头
-        
-        if file_size > 50 * 1024 * 1024:  # 50MB
-            raise HTTPException(status_code=400, detail="文件大小不能超过 50MB")
-        
-        # 确保上传目录存在
+
         ensure_upload_dir()
-        
-        # 保存音频文件
-        audio_path = save_audio_file(file, current_user.id)
-        
-        # 验证音频文件格式
+        audio_path = await save_audio_file(file, current_user.id, file_ext)
+
         actual_file_path = os.path.join(UPLOAD_DIR, audio_path)
-        logger.info(f"验证音频文件格式: {actual_file_path}")
+        logger.info("验证音频文件格式: %s", actual_file_path)
         if not is_valid_wav_file(actual_file_path):
-            logger.warning(f"音频文件格式可能有问题，但继续处理: {actual_file_path}")
-        
-        # 语音识别
+            logger.warning("音频文件不是 WAV，将按原格式处理: %s", actual_file_path)
+
+        # 转写失败不得阻断上传
         transcript = None
-        if is_speech_recognition_available():
-            logger.info("开始语音识别...")
-            transcript = transcribe_audio_file(actual_file_path)
-            if transcript:
-                logger.info(f"语音识别成功: {transcript}")
+        try:
+            if is_speech_recognition_available():
+                logger.info("开始语音识别...")
+                transcript = transcribe_audio_file(actual_file_path)
+                if transcript:
+                    logger.info("语音识别成功: %s", transcript[:200])
+                else:
+                    logger.warning("语音识别无结果（音频已保存）")
             else:
-                logger.warning("语音识别失败或结果为空")
-        else:
-            logger.warning("语音识别服务不可用")
+                logger.warning("语音识别服务不可用，跳过转写")
+        except Exception:
+            logger.exception("语音识别异常，仍保存音频")
+            transcript = None
         
         # 验证 action_id（如果提供）
         if action_id:
@@ -194,9 +212,12 @@ async def upload_self_talk(
         
     except HTTPException:
         raise
+    except OSError as e:
+        logger.exception("上传 Self-talk 失败（无法写入文件）: %s", e)
+        raise HTTPException(status_code=500, detail="无法保存音频文件，请稍后重试")
     except Exception as e:
-        logger.error(f"上传 Self-talk 失败: {e}")
-        raise HTTPException(status_code=500, detail="服务器内部错误")
+        logger.exception("上传 Self-talk 失败: %s", e)
+        raise HTTPException(status_code=500, detail="上传失败，请稍后重试")
 
 
 @router.get("/", response_model=SelfTalkListResponse)

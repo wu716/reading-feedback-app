@@ -38,6 +38,8 @@ def main():
 
     os.environ.setdefault("ENVIRONMENT", "production")
 
+    os.makedirs("uploads/self_talks", exist_ok=True)
+
     if not check_environment():
         sys.exit(1)
 

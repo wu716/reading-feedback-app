@@ -29,31 +29,57 @@ except ImportError as e:
 # Vosk 模型配置
 MODEL_NAME = "vosk-model-small-cn-0.22"
 MODEL_PATH = os.path.join("models", MODEL_NAME)
+_vosk_model = None
+_ffmpeg_available = None
+
+
+def is_ffmpeg_available() -> bool:
+    """检查系统是否有 ffmpeg（m4a/webm/mp3 转写依赖它）"""
+    global _ffmpeg_available
+    if _ffmpeg_available is not None:
+        return _ffmpeg_available
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-version"],
+            capture_output=True,
+            timeout=5,
+        )
+        _ffmpeg_available = result.returncode == 0
+    except Exception:
+        _ffmpeg_available = False
+    if not _ffmpeg_available:
+        logger.warning("未检测到 ffmpeg，非 WAV 音频将无法自动转写")
+    return _ffmpeg_available
+
+
+def get_vosk_model():
+    """懒加载并缓存 Vosk 模型，避免每次上传都重新加载导致内存暴涨。"""
+    global _vosk_model
+    if vosk is None:
+        raise RuntimeError("Vosk 库未安装")
+    if not os.path.exists(MODEL_PATH):
+        raise RuntimeError(f"Vosk 模型不存在: {MODEL_PATH}")
+    if _vosk_model is None:
+        logger.info("正在加载 Vosk 模型: %s", MODEL_PATH)
+        _vosk_model = vosk.Model(MODEL_PATH)
+        logger.info("Vosk 模型加载完成")
+    return _vosk_model
+
 
 def is_speech_recognition_available() -> bool:
     """
-    检查语音识别服务是否可用
-    
-    Returns:
-        bool: 语音识别服务是否可用
+    检查语音识别服务是否可用（不实际加载模型，避免每次请求占用大量内存）
     """
     if vosk is None:
         logger.warning("Vosk 库未安装")
         return False
-    
+
     if not os.path.exists(MODEL_PATH):
         logger.warning(f"Vosk 模型文件不存在: {MODEL_PATH}")
         logger.info("请下载中文模型: https://alphacephei.com/vosk/models")
         return False
-    
-    try:
-        # 尝试加载模型
-        model = vosk.Model(MODEL_PATH)
-        logger.info("Vosk 模型加载成功")
-        return True
-    except Exception as e:
-        logger.error(f"Vosk 模型加载失败: {e}")
-        return False
+
+    return True
 
 def transcribe_audio_file(audio_path: str) -> Optional[str]:
     """
@@ -67,11 +93,16 @@ def transcribe_audio_file(audio_path: str) -> Optional[str]:
     """
     if not is_speech_recognition_available():
         logger.warning("语音识别服务不可用")
-        return "语音识别服务不可用，请检查 Vosk 模型"
+        return None
     
     if not os.path.exists(audio_path):
         logger.error(f"音频文件不存在: {audio_path}")
-        return "音频文件不存在"
+        return None
+
+    ext = os.path.splitext(audio_path)[1].lower()
+    if ext not in {".wav"} and not is_ffmpeg_available():
+        logger.warning("非 WAV 且未安装 ffmpeg，跳过转写（音频仍会保存）: %s", audio_path)
+        return None
     
     try:
         # 检查文件格式并尝试修复
@@ -90,13 +121,14 @@ def transcribe_audio_file(audio_path: str) -> Optional[str]:
                 audio_path = converted_path
                 logger.info(f"音频格式转换成功: {audio_path}")
             else:
-                logger.warning("音频格式转换失败，尝试直接处理")
+                logger.warning("音频格式转换失败，跳过转写（音频仍会保存）")
+                return None
         
         # 优先使用 pydub 进行音频格式转换
         if PYDUB_AVAILABLE:
             logger.info(f"使用 pydub 处理音频文件: {audio_path}")
             result = transcribe_with_pydub(audio_path)
-            if result and not result.startswith("语音识别失败"):
+            if result and not str(result).startswith("语音识别失败"):
                 return result
             else:
                 logger.warning("pydub 处理失败，回退到 wave 模块")
@@ -106,8 +138,8 @@ def transcribe_audio_file(audio_path: str) -> Optional[str]:
             return transcribe_with_wave(audio_path)
             
     except Exception as e:
-        logger.error(f"语音识别失败: {e}")
-        return f"语音识别失败: {str(e)}"
+        logger.exception("语音识别失败: %s", e)
+        return None
 
 
 def transcribe_with_pydub(audio_path: str) -> Optional[str]:
@@ -132,8 +164,7 @@ def transcribe_with_pydub(audio_path: str) -> Optional[str]:
         audio.export(wav_buffer, format="wav")
         wav_buffer.seek(0)  # 将缓冲区指针重置到开头
         
-        # 加载 Vosk 模型
-        model = vosk.Model(MODEL_PATH)
+        model = get_vosk_model()
         
         # 创建识别器
         rec = vosk.KaldiRecognizer(model, 16000)
@@ -185,8 +216,7 @@ def transcribe_with_wave(audio_path: str) -> Optional[str]:
     使用 wave 模块进行识别（备用方法）
     """
     try:
-        # 加载模型
-        model = vosk.Model(MODEL_PATH)
+        model = get_vosk_model()
         
         # 创建识别器
         rec = vosk.KaldiRecognizer(model, 16000)
@@ -320,7 +350,7 @@ def convert_audio_to_wav(input_path: str) -> Optional[str]:
             cmd,
             capture_output=True,
             text=True,
-            timeout=30  # 30秒超时
+            timeout=120
         )
         
         if result.returncode == 0 and os.path.exists(output_path):

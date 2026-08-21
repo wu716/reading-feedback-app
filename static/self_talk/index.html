@@ -25,7 +25,7 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 0 20px 20px;
         }
 
         .header {
@@ -33,6 +33,7 @@
             margin-bottom: 40px;
             color: white;
             position: relative;
+            padding-top: 8px;
         }
 
         .header h1 {
@@ -351,8 +352,8 @@
             gap: 12px;
             padding: 12px 16px;
             padding-top: max(12px, env(safe-area-inset-top, 12px));
-            margin: -20px -20px 20px;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+            margin: 0 -20px 16px;
+            background: #5b6fd6;
         }
 
         .back-button,
@@ -402,11 +403,11 @@
             }
             
             .container {
-                padding: 15px;
+                padding: 0 15px 15px;
             }
 
             .st-topbar {
-                margin: -15px -15px 16px;
+                margin: 0 -15px 16px;
             }
 
             .settings-button {
@@ -583,6 +584,23 @@
             }
         }
 
+        function asciiAudioFilename(name) {
+            const raw = String(name || 'audio.m4a');
+            const match = raw.toLowerCase().match(/\.(wav|mp3|m4a|ogg|webm|mp4)$/);
+            const ext = match ? match[0] : '.m4a';
+            return 'selftalk_' + Date.now() + ext;
+        }
+
+        function formatUploadError(error) {
+            const detail = error && error.detail;
+            if (!detail) return '请重试';
+            if (typeof detail === 'string') return detail;
+            if (Array.isArray(detail)) {
+                return detail.map((item) => item.msg || JSON.stringify(item)).join('；');
+            }
+            return '请重试';
+        }
+
         // 上传录音
         async function uploadRecording() {
             // 首先检查认证令牌
@@ -608,7 +626,7 @@
             }
 
             const formData = new FormData();
-            formData.append('file', audioBlob, filename);
+            formData.append('file', audioBlob, asciiAudioFilename(filename));
 
             try {
                 showStatus('recordingStatus', '正在上传和识别...', 'info');
@@ -633,7 +651,7 @@
                     window.location.href = '/static/index.html';
                 } else {
                     const error = await response.json().catch(() => ({ detail: '未知错误' }));
-                    showStatus('recordingStatus', `上传失败: ${error.detail || '请重试'}`, 'error');
+                    showStatus('recordingStatus', `上传失败: ${formatUploadError(error)}`, 'error');
                 }
             } catch (error) {
                 console.error('上传失败:', error);
@@ -657,7 +675,7 @@
             }
 
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', file, asciiAudioFilename(file.name || 'audio.m4a'));
 
             try {
                 showStatus('uploadStatus', '正在上传和识别...', 'info');
@@ -683,7 +701,7 @@
                     window.location.href = '/static/index.html';
                 } else {
                     const error = await response.json().catch(() => ({ detail: '未知错误' }));
-                    showStatus('uploadStatus', `上传失败: ${error.detail || '请重试'}`, 'error');
+                    showStatus('uploadStatus', `上传失败: ${formatUploadError(error)}`, 'error');
                 }
             } catch (error) {
                 console.error('上传失败:', error);
