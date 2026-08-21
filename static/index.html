@@ -2683,8 +2683,11 @@
                 <button type="button" class="header-icon-btn reminder-bell-btn" id="reminderBellBtn" aria-label="应用内提醒" title="应用内提醒">🔔<span class="reminder-bell-badge" id="reminderBellBadge" hidden>0</span></button>
                 <div class="reminder-dropdown" id="reminderDropdown" hidden>
                     <div class="reminder-dropdown-head">
-                        <strong>应用内提醒</strong>
-                        <a href="#" id="reminderSettingsLink">提醒设置</a>
+                        <strong>提醒</strong>
+                        <div class="reminder-dropdown-head-actions">
+                            <a href="#" id="reminderSettingsLink">提醒设置</a>
+                            <button type="button" class="reminder-dropdown-close" id="reminderDropdownClose" aria-label="关闭">×</button>
+                        </div>
                     </div>
                     <div class="reminder-dropdown-list" id="reminderDropdownList"></div>
                 </div>

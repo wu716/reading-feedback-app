@@ -109,10 +109,19 @@ class ReminderNotificationService {
                 this.openSettings();
             });
         }
+        const closeBtn = document.getElementById('reminderDropdownClose');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.closeDropdown();
+            });
+        }
         document.addEventListener('click', (e) => {
             const wrap = document.getElementById('reminderBellWrap');
             if (wrap && !wrap.contains(e.target)) this.closeDropdown();
         });
+        window.addEventListener('resize', () => this.positionDropdown());
+        window.addEventListener('orientationchange', () => this.positionDropdown());
 
         this.uiReady = true;
     }
@@ -126,10 +135,13 @@ class ReminderNotificationService {
             .reminder-bell-wrap { position: relative; flex-shrink: 0; }
             .reminder-bell-btn { position: relative; width: 40px; height: 40px; border: none; border-radius: 12px; background: rgba(255,255,255,0.2); color: white; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
             .reminder-bell-badge { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; background: #ff4757; color: #fff; border-radius: 9px; font-size: 11px; line-height: 18px; font-weight: 700; }
-            .reminder-dropdown { position: absolute; top: calc(100% + 8px); right: 0; width: min(360px, calc(100vw - 24px)); background: #fff; color: #333; border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,0.18); z-index: 1200; overflow: hidden; }
-            .reminder-dropdown-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid #eee; font-size: 0.95rem; }
+            .reminder-dropdown { position: absolute; top: calc(100% + 8px); right: 0; left: auto; width: 360px; max-width: calc(100vw - 24px); box-sizing: border-box; background: #fff; color: #333; border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,0.18); z-index: 1200; overflow: hidden; display: flex; flex-direction: column; }
+            .reminder-dropdown[hidden] { display: none !important; }
+            .reminder-dropdown-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #eee; font-size: 0.95rem; flex-shrink: 0; }
+            .reminder-dropdown-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
             .reminder-dropdown-head a { color: #667eea; text-decoration: none; font-size: 0.85rem; }
-            .reminder-dropdown-list { max-height: 360px; overflow-y: auto; }
+            .reminder-dropdown-close { width: 32px; height: 32px; border: none; border-radius: 8px; background: #f0f0f0; color: #555; font-size: 1.25rem; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+            .reminder-dropdown-list { max-height: 360px; overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
             .reminder-empty { padding: 20px; color: #999; font-size: 0.9rem; text-align: center; }
             .reminder-item { padding: 12px 14px; border-bottom: 1px solid #f3f3f3; }
             .reminder-item:last-child { border-bottom: none; }
@@ -157,6 +169,10 @@ class ReminderNotificationService {
                 .in-app-toast-host { top: 76px; left: 12px; right: 12px; }
                 .in-page-notification { max-width: none; }
                 .in-app-reminder-bar { flex-direction: column; }
+                .reminder-dropdown { position: fixed; top: var(--reminder-sheet-top, 64px); left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); width: auto; max-width: none; max-height: calc(100dvh - var(--reminder-sheet-top, 64px) - 12px); transform: none; z-index: 1300; }
+                .reminder-dropdown-list { max-height: none; flex: 1 1 auto; }
+                .reminder-item-actions { flex-wrap: wrap; }
+                .reminder-item-actions button { min-width: 0; }
             }
         `;
         document.head.appendChild(style);
@@ -170,8 +186,11 @@ class ReminderNotificationService {
             <button type="button" class="header-icon-btn reminder-bell-btn" id="reminderBellBtn" aria-label="应用内提醒" title="应用内提醒">🔔<span class="reminder-bell-badge" id="reminderBellBadge" hidden>0</span></button>
             <div class="reminder-dropdown" id="reminderDropdown" hidden>
                 <div class="reminder-dropdown-head">
-                    <strong>应用内提醒</strong>
-                    <a href="#" id="reminderSettingsLink">提醒设置</a>
+                    <strong>提醒</strong>
+                    <div class="reminder-dropdown-head-actions">
+                        <a href="#" id="reminderSettingsLink">提醒设置</a>
+                        <button type="button" class="reminder-dropdown-close" id="reminderDropdownClose" aria-label="关闭">×</button>
+                    </div>
                 </div>
                 <div class="reminder-dropdown-list" id="reminderDropdownList"></div>
             </div>
@@ -216,12 +235,41 @@ class ReminderNotificationService {
         if (!dropdown) return;
         this.dropdownOpen = dropdown.hidden;
         dropdown.hidden = !this.dropdownOpen;
+        if (this.dropdownOpen) this.positionDropdown();
     }
 
     closeDropdown() {
         const dropdown = document.getElementById('reminderDropdown');
         if (dropdown) dropdown.hidden = true;
         this.dropdownOpen = false;
+    }
+
+    isNarrowViewport() {
+        return window.matchMedia('(max-width: 768px)').matches;
+    }
+
+    positionDropdown() {
+        const dropdown = document.getElementById('reminderDropdown');
+        if (!dropdown || dropdown.hidden) return;
+
+        dropdown.style.transform = '';
+        dropdown.style.removeProperty('--reminder-sheet-top');
+
+        if (this.isNarrowViewport()) {
+            const header = document.querySelector('.app-header');
+            const headerBottom = header ? header.getBoundingClientRect().bottom : 56;
+            const top = Math.max(8, Math.round(headerBottom + 8));
+            dropdown.style.setProperty('--reminder-sheet-top', `${top}px`);
+            return;
+        }
+
+        const rect = dropdown.getBoundingClientRect();
+        const pad = 12;
+        if (rect.left < pad) {
+            dropdown.style.transform = `translateX(${pad - rect.left}px)`;
+        } else if (rect.right > window.innerWidth - pad) {
+            dropdown.style.transform = `translateX(${window.innerWidth - pad - rect.right}px)`;
+        }
     }
 
     openSettings() {
