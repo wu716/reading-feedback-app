@@ -756,34 +756,60 @@ function shuranIsNativeApp() {
     return shuranShellInfo().inApp;
 }
 
+function shuranCopyText(text) {
+    function fallback() {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            ta.setSelectionRange(0, text.length);
+            const ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            return ok;
+        } catch (e) {
+            return false;
+        }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).then(function () {
+            return true;
+        }).catch(function () {
+            return fallback();
+        });
+    }
+    return Promise.resolve(fallback());
+}
+
 function shuranStartAppUpdate() {
     const shell = shuranShellInfo();
     const origin = window.location.origin || 'http://47.236.122.207:8000';
-    const page = origin + '/download?from=app';
-    const apk = origin + '/download/apk';
+    const pageUrl = origin + '/download';
     if (shell.hasUpdater) {
         window.ShuranNative.checkUpdate();
         return;
     }
-    const link = document.createElement('a');
-    link.href = apk;
-    link.setAttribute('download', 'shuran.apk');
-    link.rel = 'noopener';
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    try {
-        link.click();
-    } catch (e) { /* ignore */ }
-    setTimeout(function () {
-        if (link.parentNode) link.parentNode.removeChild(link);
-        window.location.href = page;
-    }, 120);
+    if (shell.inApp) {
+        shuranCopyText(pageUrl).then(function (ok) {
+            window.location.href = pageUrl + '?from=app' + (ok ? '&copied=1' : '');
+        });
+        return;
+    }
+    window.location.href = pageUrl;
 }
 
 function fillAppVersionLabel() {
     const label = document.getElementById('appVersionLabel');
     if (!label) return;
     const shell = shuranShellInfo();
+    const group = label.closest ? label.closest('.me-group') : null;
+    const hint = group ? group.querySelector('.me-hint') : null;
+    if (shell.inApp && !shell.hasUpdater && hint) {
+        hint.textContent = '请复制下载链接，用手机自带的浏览器打开后安装。安装时选择「更新」，不要卸载。';
+    }
     if (shell.versionName) {
         const extra = shell.hasUpdater ? '' : ' · 建议更新';
         label.textContent = '当前 ' + shell.versionName + extra;
@@ -829,14 +855,19 @@ function promptLegacyNativeUpdate() {
         ].join(';');
         const current = shell.versionName || '1.0.0';
         bar.innerHTML = '<strong style="font-size:16px;">发现新版本</strong>'
-            + '<p style="margin:8px 0 14px;opacity:.92;">当前 ' + current + '，最新 1.2.1。覆盖安装后即可使用系统通知，账号数据会保留。</p>'
+            + '<p style="margin:8px 0 14px;opacity:.92;">当前 ' + current + '，最新 1.2.1。请复制下载链接，用手机自带的浏览器（荣耀浏览器 / Chrome）打开后安装。安装时选择「更新」，不要卸载。</p>'
             + '<div style="display:flex;gap:8px;">'
             + '<button type="button" id="shuranUpdateNowBtn" style="flex:1;border:none;border-radius:10px;padding:11px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:600;">立即更新</button>'
             + '<button type="button" id="shuranUpdateLaterBtn" style="border:none;border-radius:10px;padding:11px 16px;background:#333;color:#ddd;">稍后</button>'
             + '</div>';
         document.body.appendChild(bar);
         document.getElementById('shuranUpdateNowBtn').onclick = function () {
-            shuranStartAppUpdate();
+            const btnNow = document.getElementById('shuranUpdateNowBtn');
+            const origin = window.location.origin || 'http://47.236.122.207:8000';
+            shuranCopyText(origin + '/download').then(function (ok) {
+                if (ok && btnNow) btnNow.textContent = '链接已复制';
+                shuranStartAppUpdate();
+            });
         };
         document.getElementById('shuranUpdateLaterBtn').onclick = function () {
             sessionStorage.setItem('shuran_update_banner_dismissed', '1');
@@ -846,7 +877,7 @@ function promptLegacyNativeUpdate() {
             if (!info || !info.versionName) return;
             const p = bar.querySelector('p');
             if (p) {
-                p.textContent = '当前 ' + current + '，最新 ' + info.versionName + '。覆盖安装后即可使用系统通知，账号数据会保留。';
+                p.textContent = '当前 ' + current + '，最新 ' + info.versionName + '。请复制下载链接，用手机自带的浏览器（荣耀浏览器 / Chrome）打开后安装。安装时选择「更新」，不要卸载。';
             }
         }).catch(function () { /* keep default copy */ });
     } catch (e) {
