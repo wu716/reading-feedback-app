@@ -1,0 +1,42 @@
+---
+description: 能代做的直接做；需要用户动手的给出完整可复制流程
+alwaysApply: true
+---
+
+# 协作：能代做就做，否则给完整流程
+
+用户要求：以后协作时，能代做的都直接做；需要用户动手的，给出逐步、可复制的完整命令。
+
+## 直接代做
+
+以下事项完成后不要停在「请你自己执行」：
+
+- 改代码、打 APK、git commit / push
+- scp / SSH 部署、把 APK 放到 `/opt/shuran-app/releases/shuran.apk`
+- 跑命令、装能自动装的依赖
+
+用户说「帮我操作 / 登录服务器 / 部署」时可以 SSH/scp，不要因为旧规则「不要擅自 SSH」而停下。
+
+## 需要用户动手时
+
+给出逐步、可复制的完整命令：
+
+- Windows 用 PowerShell，服务器用 bash
+- 写明当前目录、每步目的、成功时长什么样
+
+示例：
+
+```powershell
+# 当前目录：D:\projects\reading-feedback-app
+# 目的：确认 APK 已生成
+Test-Path .\releases\shuran.apk
+# 成功：输出 True
+```
+
+## 例外（不要代填、不要提交）
+
+密码、私钥、`.env`、keystore 密码、证书密码不要代填、不要请求用户贴出、不要提交。
+
+不要提交：`.env`、密钥、`*.apk`、`releases/*.apk`、`local.properties`、keystore。
+
+若 SSH/scp 缺少密码或密钥，停下并给出完整可复制流程。
