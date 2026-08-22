@@ -726,26 +726,61 @@ class ReminderNotificationService {
 
 window.reminderNotificationService = new ReminderNotificationService();
 
+function shuranShellInfo() {
+    const ua = navigator.userAgent || '';
+    const uaMatch = ua.match(/ShuranApp\/([\w.\-]+)/);
+    const native = window.ShuranNative;
+    const hasUpdater = !!(native && typeof native.checkUpdate === 'function');
+    let versionName = '';
+    let versionCode = 0;
+    try {
+        if (native && typeof native.getAppVersion === 'function') {
+            versionName = String(native.getAppVersion() || '');
+        }
+        if (native && typeof native.getVersionCode === 'function') {
+            versionCode = Number(native.getVersionCode()) || 0;
+        }
+    } catch (e) { /* ignore */ }
+    if (!versionName && uaMatch) {
+        versionName = uaMatch[1];
+    }
+    return {
+        inApp: !!(native || uaMatch),
+        hasUpdater: hasUpdater,
+        versionName: versionName,
+        versionCode: versionCode
+    };
+}
+
 function shuranIsNativeApp() {
-    return !!(window.ShuranNative && typeof window.ShuranNative.isNative === 'function'
-        ? window.ShuranNative.isNative()
-        : window.ShuranNative);
+    return shuranShellInfo().inApp;
+}
+
+function shuranOpenSystemBrowser(url) {
+    const rest = String(url || '').replace(/^https?:\/\//, '');
+    const scheme = String(url || '').indexOf('https') === 0 ? 'https' : 'http';
+    const intentUrl = 'intent://' + rest
+        + '#Intent;scheme=' + scheme
+        + ';action=android.intent.action.VIEW'
+        + ';category=android.intent.category.BROWSABLE;end';
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url);
+        }
+    } catch (e) { /* ignore */ }
+    window.location.href = intentUrl;
 }
 
 function shuranStartAppUpdate() {
-    const native = window.ShuranNative;
-    if (native && typeof native.checkUpdate === 'function') {
-        native.checkUpdate();
-        return;
-    }
+    const shell = shuranShellInfo();
     const origin = window.location.origin || 'http://47.236.122.207:8000';
     const page = origin + '/download';
-    if (native) {
-        const rest = page.replace(/^https?:\/\//, '');
-        const scheme = origin.indexOf('https') === 0 ? 'https' : 'http';
-        window.location.href = 'intent://' + rest
-            + '#Intent;scheme=' + scheme
-            + ';action=android.intent.action.VIEW;end';
+    if (shell.hasUpdater) {
+        window.ShuranNative.checkUpdate();
+        return;
+    }
+    if (shell.inApp) {
+        shuranOpenSystemBrowser(page);
         return;
     }
     window.location.href = '/download';
@@ -754,29 +789,32 @@ function shuranStartAppUpdate() {
 function fillAppVersionLabel() {
     const label = document.getElementById('appVersionLabel');
     if (!label) return;
-    const native = window.ShuranNative;
-    if (native && typeof native.getAppVersion === 'function') {
-        const name = native.getAppVersion();
-        const code = typeof native.getVersionCode === 'function' ? native.getVersionCode() : '';
-        label.textContent = '当前 App：' + name + (code ? '（' + code + '）' : '');
+    const shell = shuranShellInfo();
+    if (shell.versionName) {
+        const extra = shell.versionCode ? '（' + shell.versionCode + '）' : '';
+        const hint = shell.hasUpdater ? '' : ' · 旧版壳，请点检查更新覆盖安装一次';
+        label.textContent = '当前 App：' + shell.versionName + extra + hint;
         return;
     }
-    if (native) {
-        label.textContent = '当前是较旧的书然 App，点检查更新即可安装新版本。';
+    if (shell.inApp) {
+        label.textContent = '当前是较旧的书然 App（约 1.0.0），点检查更新即可覆盖安装。';
         return;
     }
-    label.textContent = '网页版无需安装包。请在手机里打开书然 App，进入「我的」检查更新。';
+    label.textContent = '网页版无需安装包。请在手机书然 App 里打开「我的」检查更新。';
 }
 
 window.shuranStartAppUpdate = shuranStartAppUpdate;
+
+function startReminderServiceIfLoggedIn() {
     const token = localStorage.getItem('authToken') || localStorage.getItem('token');
     if (token) window.reminderNotificationService.start();
 }
 
 function promptLegacyNativeUpdate() {
     try {
-        if (!shuranIsNativeApp()) return;
-        if (typeof window.ShuranNative.checkUpdate === 'function') return;
+        const shell = shuranShellInfo();
+        if (!shell.inApp) return;
+        if (shell.hasUpdater) return;
         if (sessionStorage.getItem('shuran_update_banner_dismissed') === '1') return;
         if (document.getElementById('shuranNativeUpdateBanner')) return;
         const bar = document.createElement('div');
@@ -820,3 +858,6 @@ if (document.readyState === 'loading') {
     fillAppVersionLabel();
 }
 window.addEventListener('auth-check-settled', startReminderServiceIfLoggedIn);
+[0, 200, 800].forEach(function (ms) {
+    setTimeout(fillAppVersionLabel, ms);
+});
