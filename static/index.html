@@ -12,6 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/app-tabbar.css">
     <style>
         * {
             margin: 0;
@@ -179,6 +180,127 @@
             height: 1px;
             background: #e1e5e9;
             margin: 15px 20px;
+        }
+
+        .dashboard-row.today-calendar-row {
+            grid-template-columns: 1fr;
+        }
+
+        .notes-entry-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding: 16px 18px;
+            background: linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%);
+            border: 1px solid #e0e7ff;
+            border-radius: 14px;
+            cursor: pointer;
+        }
+
+        .notes-entry-card h3 {
+            margin: 0 0 4px;
+            color: #4c51bf;
+            font-size: 1rem;
+        }
+
+        .notes-entry-card p {
+            margin: 0;
+            color: #718096;
+            font-size: 0.85rem;
+        }
+
+        .me-menu {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .me-menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 16px 18px;
+            background: #fff;
+            border: 1px solid #e8ecf4;
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 1rem;
+            color: #333;
+        }
+
+        .me-menu-item:hover {
+            border-color: #c7d2fe;
+            color: #667eea;
+        }
+
+        .guide-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px 22px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .guide-card h3 {
+            color: #667eea;
+            margin: 0 0 10px;
+            font-size: 1.05rem;
+        }
+
+        .guide-card p,
+        .guide-card li {
+            color: #555;
+            line-height: 1.7;
+            font-size: 0.95rem;
+        }
+
+        .guide-card ol {
+            padding-left: 1.2rem;
+            margin: 0;
+        }
+
+        .todo-remind-input {
+            width: 108px;
+            padding: 8px 8px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            background: #fff;
+        }
+
+        .todo-remind-badge {
+            font-size: 0.75rem;
+            color: #667eea;
+            background: #eef2ff;
+            border-radius: 999px;
+            padding: 2px 8px;
+            margin-left: 8px;
+            white-space: nowrap;
+        }
+
+        .todo-main {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        #self-talk {
+            margin: -30px;
+        }
+
+        .self-talk-frame {
+            width: 100%;
+            height: calc(100vh - 70px);
+            border: 0;
+            background: #f5f7fa;
         }
 
         .header-nav-controls {
@@ -2512,6 +2634,31 @@
                 display: flex;
             }
 
+            #menuToggleBtn {
+                display: none !important;
+            }
+
+            .app-sidebar,
+            .sidebar-overlay {
+                display: none !important;
+            }
+
+            #self-talk {
+                margin: -16px -12px;
+            }
+
+            .self-talk-frame {
+                height: calc(100dvh - 56px - 64px - env(safe-area-inset-bottom, 0px));
+            }
+
+            .app-main {
+                padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+            }
+
+            .todo-add-row {
+                flex-wrap: wrap;
+            }
+
             .sidebar-overlay {
                 display: block;
                 position: fixed;
@@ -2672,7 +2819,6 @@
     <header class="app-header">
         <div class="app-logo">
             <div class="header-nav-controls">
-                <button type="button" class="header-icon-btn" id="menuToggleBtn" onclick="toggleMobileSidebar()" aria-label="打开菜单">☰</button>
                 <button type="button" class="header-icon-btn" id="headerBackBtn" onclick="handlePageBack()" aria-label="返回" hidden>←</button>
             </div>
             <span style="font-size: 1.8rem;">🎤</span>
@@ -2705,33 +2851,20 @@
     <aside class="app-sidebar">
         <nav class="sidebar-nav">
             <div class="nav-item active" data-section="overview" onclick="navigateTo('overview')">
-                <span class="nav-icon">📊</span>
-                <span class="nav-text">首页概览</span>
-            </div>
-            <div class="nav-item" data-section="upload" onclick="navigateTo('upload')">
-                <span class="nav-icon">📝</span>
-                <span class="nav-text">上传笔记</span>
+                <span class="nav-icon">📅</span>
+                <span class="nav-text">今日</span>
             </div>
             <div class="nav-item" data-section="actions" onclick="navigateTo('actions')">
                 <span class="nav-icon">🎯</span>
-                <span class="nav-text">我的行动项</span>
+                <span class="nav-text">行动</span>
             </div>
-            <div class="nav-item" data-section="stats" onclick="navigateTo('stats')">
-                <span class="nav-icon">📈</span>
-                <span class="nav-text">实践统计</span>
-            </div>
-            <div class="nav-divider"></div>
-            <div class="nav-item" onclick="goToSelfTalk()">
+            <div class="nav-item" data-section="self-talk" onclick="navigateTo('self-talk')">
                 <span class="nav-icon">🎤</span>
-                <span class="nav-text">Self-Talk</span>
+                <span class="nav-text">Self-talk</span>
             </div>
-            <div class="nav-item" onclick="goToDashboard()">
-                <span class="nav-icon">📊</span>
-                <span class="nav-text">数据看板</span>
-            </div>
-            <div class="nav-item" onclick="goToUserCenter()">
+            <div class="nav-item" data-section="user-center" onclick="navigateTo('user-center')">
                 <span class="nav-icon">👤</span>
-                <span class="nav-text">个人中心</span>
+                <span class="nav-text">我的</span>
             </div>
         </nav>
     </aside>
@@ -2744,81 +2877,15 @@
         <!-- 首页概览区 -->
         <section id="overview" class="content-section active">
             <div class="section-header">
-                <h1>欢迎使用阅读反馈系统</h1>
-                <p>记录内心对话，让思考更有力量</p>
+                <h1>今日</h1>
+                <p>点日历给某一天加待办，到点会提醒你</p>
             </div>
 
             <div class="in-app-reminder-bar" id="inAppReminderBar" hidden></div>
             
             <!-- 新增：首页仪表板区域 -->
             <div class="homepage-dashboard">
-                <!-- 第一行：时钟和日历 -->
-                <div class="dashboard-row">
-                    <!-- 北京时间时钟 -->
-                    <div class="widget-card clock-widget">
-                        <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.2rem;">🕐 北京时间</h3>
-                        
-                        <!-- 动态背景区域 -->
-                        <div class="dynamic-background" id="dynamicBackground">
-                            <div class="abstract-shapes">
-                                <div class="shape shape-1"></div>
-                                <div class="shape shape-2"></div>
-                                <div class="shape shape-3"></div>
-                                <div class="shape shape-4"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="beijing-clock">
-                            <div class="clock-face">
-                                <!-- 时钟刻度线 -->
-                                <div class="clock-marks" id="clockMarks"></div>
-                                
-                                <!-- 时钟数字（按表盘半径动态定位） -->
-                                <div class="clock-numbers" id="clockNumbers"></div>
-                                
-                                <!-- 时钟指针 -->
-                                <div class="clock-hand hour-hand" id="hourHand"></div>
-                                <div class="clock-hand minute-hand" id="minuteHand"></div>
-                                <div class="clock-hand second-hand" id="secondHand"></div>
-                                
-                                <!-- 时钟中心点 -->
-                                <div class="clock-center"></div>
-                            </div>
-                            <div class="date-display" id="beijingDate" style="color: #666; font-size: 1rem;"></div>
-                            <div id="clockSyncStatus" style="color: #a0aec0; font-size: 0.75rem; margin-top: 4px;"></div>
-                        </div>
-                        
-                        <!-- 扩展天气信息 -->
-                        <div class="extended-weather" id="extendedWeather">
-                            <div class="weather-main">
-                                <div id="weatherIcon">☀️</div>
-                                <div class="weather-text">
-                                    <div id="weatherTemp">22℃</div>
-                                    <div id="weatherCondition">晴朗</div>
-                                </div>
-                            </div>
-                            <div class="weather-details">
-                                <div class="weather-item">
-                                    <span class="weather-label">日出</span>
-                                    <span id="sunrise">6:30</span>
-                                </div>
-                                <div class="weather-item">
-                                    <span class="weather-label">日落</span>
-                                    <span id="sunset">18:20</span>
-                                </div>
-                                <div class="weather-item">
-                                    <span class="weather-label">湿度</span>
-                                    <span id="humidity">65%</span>
-                                </div>
-                                <div class="weather-item">
-                                    <span class="weather-label">风速</span>
-                                    <span id="windSpeed">2m/s</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 日历组件 -->
+                <div class="dashboard-row today-calendar-row">
                     <div class="widget-card">
                         <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.2rem;">📅 日历</h3>
                         <div class="calendar-widget">
@@ -2836,6 +2903,7 @@
                                 <div id="dayTodoList" class="todos-list"></div>
                                 <div class="todo-add-row" id="dayTodoAddRow">
                                     <input type="text" id="dayTodoInput" class="todo-add-input" placeholder="为这一天添加待办…" maxlength="500">
+                                    <input type="time" id="dayTodoRemindTime" class="todo-remind-input" aria-label="提醒时间" title="提醒时间（可选）">
                                     <button type="button" class="todo-add-btn" id="dayTodoAddBtn">＋ 添加</button>
                                 </div>
                                 <p class="day-todo-hint" id="dayTodoHint"></p>
@@ -2847,6 +2915,7 @@
                             <div id="todayTodosList" class="todos-list"></div>
                             <div class="todo-add-row">
                                 <input type="text" id="newTodoInput" class="todo-add-input" placeholder="添加今日待办…" maxlength="500">
+                                <input type="time" id="newTodoRemindTime" class="todo-remind-input" aria-label="提醒时间" title="提醒时间（可选）">
                                 <button type="button" class="todo-add-btn" onclick="addDailyTodo()">＋ 添加</button>
                             </div>
                         </div>
@@ -2976,27 +3045,6 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- 快捷入口卡片 -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                <!-- Self-talk 入口 -->
-                <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; cursor: pointer;" onclick="goToSelfTalk()">
-                    <h2 style="color: white;">🎤 Self-talk 内心对话</h2>
-                    <p style="margin-bottom: 20px; opacity: 0.9;">记录你的内心对话，让思考更有力量</p>
-                    <button class="btn" style="background: white; color: #667eea; width: auto; padding: 12px 30px; font-size: 1.1rem;">
-                        开始 Self-talk →
-                    </button>
-                </div>
-                
-                <!-- 数据可视化入口 -->
-                <div class="card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; cursor: pointer;" onclick="goToDashboard()">
-                    <h2 style="color: white;">📊 数据可视化</h2>
-                    <p style="margin-bottom: 20px; opacity: 0.9;">深入分析你的行为数据，发现成长规律</p>
-                    <button class="btn" style="background: white; color: #f5576c; width: auto; padding: 12px 30px; font-size: 1.1rem;">
-                        查看仪表盘 →
-                    </button>
-                </div>
-            </div>
         </section>
         
         <!-- 上传笔记区 -->
@@ -3073,9 +3121,16 @@
         <!-- 行动项管理区 -->
         <section id="actions" class="content-section">
             <div class="section-header">
-                <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
-                <h1>🎯 我的行动项</h1>
-                <p>管理和追踪你的行动项执行情况</p>
+                <h1>🎯 行动</h1>
+                <p>管理行动项，并从这里进入读书笔记</p>
+            </div>
+
+            <div class="notes-entry-card" onclick="openNotesFromActions()">
+                <div>
+                    <h3>📖 读书笔记</h3>
+                    <p>记录阅读内容，或用 AI 从笔记抽取行动项</p>
+                </div>
+                <span aria-hidden="true">→</span>
             </div>
             
             <div class="card">
@@ -3113,13 +3168,23 @@
         </section>
         
         <!-- 个人中心区 -->
-        <section id="user-center" class="content-section hidden">
+        <section id="user-center" class="content-section">
             <div class="section-header">
-                <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
-                <h1>👤 个人中心</h1>
+                <h1>👤 我的</h1>
             </div>
             
             <div class="content-wrapper" style="max-width: 800px; margin: 0 auto; padding: 20px;">
+                <div class="me-menu">
+                    <button type="button" class="me-menu-item" onclick="navigateTo('stats')">
+                        <span>📈 实践统计</span><span>→</span>
+                    </button>
+                    <button type="button" class="me-menu-item" onclick="goToDashboard()">
+                        <span>📊 数据看板</span><span>→</span>
+                    </button>
+                    <button type="button" class="me-menu-item" onclick="navigateTo('guide')">
+                        <span>📘 使用说明</span><span>→</span>
+                    </button>
+                </div>
                 <!-- 用户信息区域 -->
                 <div class="user-info-section card" style="margin-bottom: 30px; padding: 25px; background: #f8f9fa; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <h4 style="color: #667eea; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; font-size: 1.2rem;">
@@ -3145,6 +3210,7 @@
                     <h4 style="color: #667eea; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; font-size: 1.2rem;">
                         <span>🔔</span> 提醒设置
                     </h4>
+                    <p style="color:#888;font-size:0.85rem;margin:0 0 14px;">待办提醒在「今日」添加待办时单独选时间；到点后走下面这套通知。</p>
                     
                     <!-- 总开关 -->
                     <div class="setting-item" style="margin-bottom: 15px;">
@@ -3325,6 +3391,42 @@
                 <h3>🔥 坚持度分析</h3>
                 <div id="streakDetails"></div>
             </div>
+            </div>
+        </section>
+
+        <section id="self-talk" class="content-section">
+            <iframe id="selfTalkFrame" class="self-talk-frame" title="Self-talk" allow="microphone"></iframe>
+        </section>
+
+        <section id="guide" class="content-section">
+            <div class="section-header">
+                <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
+                <h1>📘 使用说明</h1>
+                <p>用四步把阅读变成行动</p>
+            </div>
+            <div class="guide-card">
+                <h3>1. 今日</h3>
+                <ol>
+                    <li>打开应用先看今天要做的事。</li>
+                    <li>点日历上的某一天，可以为那天添加待办。</li>
+                    <li>添加时可选提醒时间；到点后会收到通知（请允许通知权限）。</li>
+                </ol>
+            </div>
+            <div class="guide-card">
+                <h3>2. 行动</h3>
+                <ol>
+                    <li>这里管理从书里抽出的行动项，按情境或习惯筛选。</li>
+                    <li>点「读书笔记」记录阅读内容，或让 AI 从笔记抽取行动项。</li>
+                    <li>做完一项就记录实践，方便之后复盘。</li>
+                </ol>
+            </div>
+            <div class="guide-card">
+                <h3>3. Self-talk</h3>
+                <p>用录音记下内心对话。完成行动或到了提醒时间，可以来这里复盘。</p>
+            </div>
+            <div class="guide-card">
+                <h3>4. 我的</h3>
+                <p>改昵称、开关提醒、查看实践统计和数据看板。这份说明随时可以再打开。</p>
             </div>
         </section>
     </main>
@@ -3773,16 +3875,29 @@
             if (overlay) overlay.classList.toggle('visible', open);
         }
 
+        const PRIMARY_TABS = new Set(['overview', 'actions', 'self-talk', 'user-center']);
+        const SECTION_PARENT = { upload: 'actions', stats: 'user-center', guide: 'user-center' };
+
+        function primaryTabFor(sectionId) {
+            return SECTION_PARENT[sectionId] || sectionId;
+        }
+
         function updateHeaderBackButton() {
             const btn = document.getElementById('headerBackBtn');
             if (!btn) return;
-            const show = isMobileNav() && currentSectionId() !== 'overview';
+            const show = isMobileNav() && !PRIMARY_TABS.has(currentSectionId());
             btn.hidden = !show;
         }
 
         function handlePageBack() {
             closeMobileSidebar();
-            if (currentSectionId() !== 'overview') {
+            const current = currentSectionId();
+            const parent = SECTION_PARENT[current];
+            if (parent) {
+                navigateTo(parent);
+                return true;
+            }
+            if (current !== 'overview') {
                 navigateTo('overview');
                 return true;
             }
@@ -3807,37 +3922,41 @@
         };
 
         function navigateTo(sectionId) {
-            // 隐藏所有内容区
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
             });
             
-            // 显示目标内容区
             const targetSection = document.getElementById(sectionId);
             if (targetSection) {
                 targetSection.classList.add('active');
                 
-                // 如果是个人中心，加载数据
                 if (sectionId === 'user-center') {
                     loadUserInfo();
                     loadReminderSettings();
                 }
+                if (sectionId === 'self-talk') {
+                    const frame = document.getElementById('selfTalkFrame');
+                    if (frame && !frame.getAttribute('src')) {
+                        frame.src = '/static/self_talk/index.html?embed=1';
+                    }
+                }
             }
             
-            // 更新导航高亮
+            const tabId = primaryTabFor(sectionId);
             document.querySelectorAll('.nav-item[data-section]').forEach(item => {
-                item.classList.remove('active');
+                item.classList.toggle('active', item.dataset.section === tabId);
             });
-            const activeNav = document.querySelector(`.nav-item[data-section="${sectionId}"]`);
-            if (activeNav) {
-                activeNav.classList.add('active');
-            }
             
-            // 更新URL（使用hash，无需刷新页面）
             window.location.hash = sectionId;
-            
             closeMobileSidebar();
             updateHeaderBackButton();
+            if (typeof syncAppTabbar === 'function') syncAppTabbar();
+            window.scrollTo(0, 0);
+        }
+
+        function openNotesFromActions() {
+            navigateTo('upload');
+            if (typeof switchUploadTab === 'function') switchUploadTab('reading');
         }
         
         // 支持浏览器前进/后退
@@ -3863,18 +3982,9 @@
                 navigateTo(hash);
             }
             
-            // 初始化时钟和日历
-            initializeClock();
             initializeCalendar();
-            
             updateHeaderBackButton();
-
-            // 初始化新增组件
-            initializeWeather();
             initializePersonalStats();
-            
-            // 添加天气切换演示（可选功能）
-            addWeatherDemoFeature();
             
             // 先检查认证状态，再决定是否加载数据
             await checkAuthAndLoadData();
@@ -4515,18 +4625,12 @@
 
         // 快速操作功能
         function startReading() {
-            showMessage('开始阅读模式...', 'success');
-            // 这里可以添加实际的阅读功能
-            setTimeout(() => {
-                navigateTo('upload');
-            }, 1000);
+            navigateTo('upload');
+            if (typeof switchUploadTab === 'function') switchUploadTab('reading');
         }
 
         function recordSelfTalk() {
-            showMessage('准备开始Self-talk...', 'success');
-            setTimeout(() => {
-                goToSelfTalk();
-            }, 1000);
+            navigateTo('self-talk');
         }
 
         function addAction() {
@@ -5699,7 +5803,7 @@
                 showAuthModal();
                 return;
             }
-            window.location.href = '/static/self_talk/index.html';
+            navigateTo('self-talk');
         }
         
         // 跳转到数据可视化仪表盘
@@ -6448,6 +6552,7 @@
     
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/reminder_notification.js"></script>
+    <script src="/static/js/app-tabbar.js"></script>
     <script src="/static/js/today-dashboard.js"></script>
 </body>
 </html>

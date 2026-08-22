@@ -15,7 +15,7 @@ from app.self_talk.reminder_schemas import (
     ReminderSettingCreate, ReminderSettingUpdate, ReminderSettingResponse,
     ReminderLogResponse, ReminderLogListResponse, TriggerReminderRequest
 )
-from app.self_talk.reminder_service import ReminderService
+from app.self_talk.reminder_service import ReminderService, check_todo_reminders
 
 logger = logging.getLogger(__name__)
 
@@ -279,6 +279,8 @@ async def get_pending_reminders(
     """
     try:
         from datetime import datetime, timedelta
+
+        check_todo_reminders(db, user_id=current_user.id)
         
         recent_time = datetime.now() - timedelta(days=7)
         
@@ -299,9 +301,18 @@ async def get_pending_reminders(
         for log in pending_logs:
             title, message = ReminderService.get_reminder_message(
                 log.reminder_type,
-                current_user.name
+                current_user.name,
+                log.detail,
             )
-            action_url = "/static/index.html#actions" if log.reminder_type == "action_practice" else "/static/self_talk/index.html"
+            if log.reminder_type == "todo":
+                action_url = "/static/index.html#overview"
+                action_label = "查看待办"
+            elif log.reminder_type == "action_practice":
+                action_url = "/static/index.html#actions"
+                action_label = "去践行"
+            else:
+                action_url = "/static/self_talk/index.html"
+                action_label = "立即记录"
             notifications.append({
                 "log_id": log.id,
                 "title": title,
@@ -309,7 +320,7 @@ async def get_pending_reminders(
                 "reminder_type": log.reminder_type,
                 "triggered_at": log.triggered_at.isoformat(),
                 "action_url": action_url,
-                "action_label": "去践行" if log.reminder_type == "action_practice" else "立即记录",
+                "action_label": action_label,
             })
         
         return {

@@ -11,6 +11,7 @@ from app.self_talk.reminder_service import (
     check_daily_reminders,
     check_inactive_reminders,
     check_action_practice_reminders,
+    check_todo_reminders,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,12 @@ def create_scheduler() -> BackgroundScheduler:
         id="action_practice_reminders",
         replace_existing=True,
     )
+    scheduler.add_job(
+        lambda: _run_with_db(check_todo_reminders),
+        IntervalTrigger(minutes=1),
+        id="todo_reminders",
+        replace_existing=True,
+    )
 
     return scheduler
 
@@ -57,5 +64,5 @@ def start_scheduler(app) -> BackgroundScheduler | None:
     scheduler = create_scheduler()
     scheduler.start()
     app.state.scheduler = scheduler
-    logger.info("定时任务调度器已启动（每日/非活跃/行动践行提醒）")
+    logger.info("定时任务调度器已启动（每日/非活跃/行动践行/待办提醒）")
     return scheduler

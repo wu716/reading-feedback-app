@@ -122,6 +122,8 @@ class DailyTodo(Base):
     text = Column(Text, nullable=False)
     completed = Column(Boolean, default=False)
     todo_date = Column(Date, nullable=False, index=True)
+    remind_time = Column(String(8), nullable=True)
+    reminded_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
@@ -261,7 +263,8 @@ class SelfTalkReminderLog(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    reminder_type = Column(String(50), nullable=False)  # "daily", "after_action", "inactive", "after_new_action"
+    reminder_type = Column(String(50), nullable=False)  # "daily", "after_action", "inactive", "after_new_action", "todo"
+    detail = Column(Text, nullable=True)
     triggered_at = Column(DateTime(timezone=True), server_default=func.now())
     dismissed_at = Column(DateTime(timezone=True), nullable=True)
     action_taken = Column(Boolean, default=False)  # 用户是否响应提醒做了 self-talk
