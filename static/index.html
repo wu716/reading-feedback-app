@@ -1334,6 +1334,17 @@
             border-radius: 8px;
             margin-bottom: 20px;
         }
+
+        #message {
+            position: fixed;
+            top: calc(76px + env(safe-area-inset-top, 0px));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20000;
+            max-width: min(520px, calc(100vw - 24px));
+            width: max-content;
+            pointer-events: none;
+        }
         
         /* 时间管理设置样式 */
         .time-management-settings {
@@ -6021,33 +6032,22 @@
                 showMessage('请先登录', 'error');
                 return;
             }
+            const btn = document.querySelector('button[onclick="testInAppReminder()"]');
+            if (btn) btn.disabled = true;
             try {
-                const response = await fetch(`${API_BASE}/api/self_talk_reminders/trigger`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        reminder_type: 'daily',
-                        notification_method: 'browser'
-                    })
-                });
-                if (!response.ok) throw new Error('测试失败');
-                showMessage(
-                    window.ShuranNative
-                        ? '已发送测试提醒，请查看手机状态栏、锁屏或下拉通知栏'
-                        : '已发送测试提醒，请看首页通知条或右上角铃铛',
-                    'success'
-                );
                 if (window.reminderNotificationService) {
-                    window.reminderNotificationService.checkPendingReminders();
+                    await window.reminderNotificationService.testNow();
+                } else {
+                    showMessage('通知模块未加载，请刷新页面后再试', 'error');
                 }
             } catch (error) {
                 console.error('测试提醒失败:', error);
-                showMessage('测试提醒失败（请确认已启用提醒功能）', 'error');
+                showMessage('测试通知失败：' + (error && error.message ? error.message : '未知错误'), 'error');
+            } finally {
+                if (btn) btn.disabled = false;
             }
         }
+        window.testInAppReminder = testInAppReminder;
         
         // 显示编辑昵称模态框
         function showEditNameModal() {
@@ -6551,7 +6551,7 @@
     </script>
     
     <!-- Self-talk 提醒通知服务 -->
-    <script src="/static/reminder_notification.js"></script>
+    <script src="/static/reminder_notification.js?v=121"></script>
     <script src="/static/js/app-tabbar.js"></script>
     <script src="/static/js/today-dashboard.js"></script>
 </body>

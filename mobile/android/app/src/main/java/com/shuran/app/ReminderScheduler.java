@@ -119,12 +119,14 @@ public final class ReminderScheduler {
     }
 
     private static void showFromJsLocked(Context context, JSONObject data) {
-        if (!prefs(context).getBoolean(KEY_SYSTEM, true)) {
+        boolean force = data.optBoolean("force", false)
+                || "test".equals(data.optString("reminder_type", ""));
+        if (!force && !prefs(context).getBoolean(KEY_SYSTEM, true)) {
             return;
         }
         int logId = data.optInt("log_id", 0);
         String type = data.optString("reminder_type", "");
-        if (shouldSkip(context, logId, type)) {
+        if (!force && shouldSkip(context, logId, type)) {
             return;
         }
         if (isStale(data.optString("triggered_at", ""))) {

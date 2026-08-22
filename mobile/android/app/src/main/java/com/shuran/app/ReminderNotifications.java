@@ -15,9 +15,10 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 public final class ReminderNotifications {
-    public static final String CHANNEL_ID = "self_talk_reminders";
+    public static final String CHANNEL_ID = "shuran_system_reminders";
     public static final String EXTRA_OPEN_PATH = "open_path";
     public static final int DAILY_NOTIFICATION_ID = 9001;
+    public static final int TEST_NOTIFICATION_ID = 9002;
 
     private ReminderNotifications() {}
 
@@ -66,6 +67,16 @@ public final class ReminderNotifications {
         return origin + path;
     }
 
+    public static void showTest(Context context) {
+        show(
+                context,
+                TEST_NOTIFICATION_ID,
+                context.getString(R.string.notification_test_title),
+                context.getString(R.string.notification_test_body),
+                "/static/index.html#user-center"
+        );
+    }
+
     public static void show(Context context, int notificationId, String title, String body, String actionPath) {
         if (!areEnabled(context)) {
             return;
@@ -111,6 +122,10 @@ public final class ReminderNotifications {
                 .setContentIntent(contentIntent)
                 .build();
 
-        NotificationManagerCompat.from(context).notify(notificationId, notification);
+        try {
+            NotificationManagerCompat.from(context).notify(notificationId, notification);
+        } catch (SecurityException ignored) {
+            // Android 13+ 未授予 POST_NOTIFICATIONS 时系统会拒绝，由调用方提示用户
+        }
     }
 }

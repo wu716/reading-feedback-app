@@ -583,43 +583,25 @@
             }
         }
 
-        // 测试提醒
+        // 测试提醒：立刻给可见反馈；App 内弹系统通知，浏览器说明原因
         async function testReminder() {
             const token = localStorage.getItem('authToken');
+            if (!token) {
+                showNotification('请先登录', 'error');
+                return;
+            }
             try {
-                const response = await fetch(`${API_BASE}/self_talk_reminders/trigger`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        reminder_type: 'daily',
-                        notification_method: 'browser'
-                    })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    showNotification(
-                        window.ShuranNative
-                            ? '测试提醒已发送！请查看手机状态栏、锁屏或下拉通知栏'
-                            : '测试提醒已发送！请看页面内通知或铃铛',
-                        'success'
-                    );
-                    if (window.reminderNotificationService) {
-                        window.reminderNotificationService.checkPendingReminders();
-                    } else if (data.notification) {
-                        showBrowserNotification(data.notification.title, data.notification.message);
-                    }
-                } else {
-                    throw new Error('测试失败');
+                if (window.reminderNotificationService) {
+                    await window.reminderNotificationService.testNow();
+                    return;
                 }
+                showNotification('通知模块未加载，请刷新页面后再试', 'error');
             } catch (error) {
                 console.error('测试提醒失败:', error);
-                showNotification('测试提醒失败', 'error');
+                showNotification('测试通知失败：' + (error && error.message ? error.message : '未知错误'), 'error');
             }
         }
+        window.testReminder = testReminder;
 
         // 请求通知权限
         function requestNotificationPermission() {
@@ -673,7 +655,7 @@
             }, 3000);
         }
     </script>
-    <script src="/static/reminder_notification.js"></script>
+    <script src="/static/reminder_notification.js?v=121"></script>
 </body>
 </html>
 
