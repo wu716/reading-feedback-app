@@ -1,6 +1,7 @@
 /**
- * 应用内自我提醒：轮询 pending 接口，首页通知条 + 铃铛列表必显示；
- * 浏览器允许时额外弹出 Notification，拒绝权限也不影响页面内提醒。
+ * 自我提醒：轮询 pending 接口。
+ * Android App（WebView + ShuranNative）走系统通知（状态栏/锁屏/通知栏），后台由 AlarmManager 触发；
+ * 普通浏览器保留页面内铃铛/通知条，并在允许时使用 Notification API。
  */
 
 class ReminderNotificationService {
@@ -19,10 +20,12 @@ class ReminderNotificationService {
     start() {
         this.ensureUi();
         if (this.isPolling) {
+            this.syncNativeSchedule();
             this.checkPendingReminders();
             return;
         }
         this.requestNotificationPermission();
+        this.syncNativeSchedule();
         this.checkPendingReminders();
         this.timer = setInterval(() => this.checkPendingReminders(), this.pollInterval);
         this.isPolling = true;
@@ -49,6 +52,15 @@ class ReminderNotificationService {
             bar.innerHTML = '';
         }
         this.closeDropdown();
+        this.clearNativeSession();
+    }
+
+    isNativeApp() {
+        try {
+            return !!(window.ShuranNative && typeof window.ShuranNative.showReminder === 'function');
+        } catch (e) {
+            return false;
+        }
     }
 
     authToken() {
@@ -68,6 +80,14 @@ class ReminderNotificationService {
     }
 
     async requestNotificationPermission() {
+        if (this.isNativeApp()) {
+            try {
+                window.ShuranNative.requestPermission();
+                return !!window.ShuranNative.hasPermission();
+            } catch (e) {
+                return false;
+            }
+        }
         if (!('Notification' in window)) return false;
         if (Notification.permission === 'granted') return true;
         if (Notification.permission !== 'denied') {
@@ -75,6 +95,55 @@ class ReminderNotificationService {
             return permission === 'granted';
         }
         return false;
+    }
+
+    syncNativeSession() {
+        if (!this.isNativeApp()) return;
+        try {
+            window.ShuranNative.syncSession(JSON.stringify({
+                token: this.authToken() || '',
+                origin: window.location.origin,
+            }));
+        } catch (e) {
+            console.error('同步原生会话失败:', e);
+        }
+    }
+
+    clearNativeSession() {
+        if (!this.isNativeApp()) return;
+        try {
+            window.ShuranNative.clearSession();
+        } catch (e) {
+            console.error('清除原生提醒会话失败:', e);
+        }
+    }
+
+    async syncNativeSchedule() {
+        if (!this.isNativeApp()) return;
+        const token = this.authToken();
+        this.syncNativeSession();
+        if (!token) {
+            this.clearNativeSession();
+            return;
+        }
+        try {
+            const response = await fetch(`${this.apiBase}/self_talk_reminders/settings`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!response.ok) return;
+            const settings = await response.json();
+            window.ShuranNative.scheduleReminders(JSON.stringify({
+                enabled: !!settings.is_enabled,
+                dailyEnabled: !!settings.daily_reminder_enabled,
+                dailyTime: settings.daily_reminder_time || '20:00',
+                reminderDays: settings.reminder_days || [0, 1, 2, 3, 4, 5, 6],
+                systemNotification: settings.browser_notification !== false,
+            }));
+            window.ShuranNative.requestPermission();
+            window.ShuranNative.pollNow();
+        } catch (e) {
+            console.error('同步原生提醒失败:', e);
+        }
     }
 
     ensureUi() {
@@ -303,7 +372,7 @@ class ReminderNotificationService {
                 this.pending = list;
                 this.renderAll();
                 if (firstLoad) {
-                    if (list[0]) this.announceNew(list[0]);
+                    if (!this.isNativeApp() && list[0]) this.announceNew(list[0]);
                 } else {
                     list.filter((n) => !prevIds.has(n.log_id)).forEach((n) => this.announceNew(n));
                 }
@@ -316,11 +385,32 @@ class ReminderNotificationService {
     }
 
     announceNew(notification) {
+        if (this.isNativeApp()) {
+            this.showNativeNotification(notification);
+            return;
+        }
         this.showInPageToast(notification);
         this.maybeShowOsNotification(notification);
     }
 
+    showNativeNotification(reminderData) {
+        try {
+            window.ShuranNative.showReminder(JSON.stringify({
+                log_id: reminderData.log_id,
+                title: reminderData.title,
+                message: this.stripHtml(reminderData.message),
+                reminder_type: reminderData.reminder_type,
+                action_url: reminderData.action_url || '/static/self_talk/index.html',
+                triggered_at: reminderData.triggered_at || '',
+            }));
+        } catch (error) {
+            console.error('显示系统通知失败:', error);
+            this.showInPageToast(reminderData);
+        }
+    }
+
     maybeShowOsNotification(reminderData) {
+        if (this.isNativeApp()) return;
         if (!('Notification' in window) || Notification.permission !== 'granted') return;
         if (this.shownOsIds.has(reminderData.log_id)) return;
         this.shownOsIds.add(reminderData.log_id);
@@ -424,7 +514,7 @@ class ReminderNotificationService {
     renderHomepageBar() {
         const bar = document.getElementById('inAppReminderBar');
         if (!bar) return;
-        if (!this.pending.length) {
+        if (this.isNativeApp() || !this.pending.length) {
             bar.hidden = true;
             bar.classList.remove('show');
             bar.innerHTML = '';

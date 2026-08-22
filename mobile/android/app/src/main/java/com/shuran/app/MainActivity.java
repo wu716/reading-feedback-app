@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
@@ -24,9 +25,12 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
 public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int AUDIO_PERMISSION_REQUEST = 1002;
+    private static final int NOTIFICATION_PERMISSION_REQUEST = 1003;
 
     private WebView webView;
     private ProgressBar progressBar;
@@ -34,6 +38,7 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> filePathCallback;
     private PermissionRequest pendingPermissionRequest;
     private long lastBackHandledAt;
+    private boolean notificationPermissionRequested;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -64,6 +69,9 @@ public class MainActivity extends Activity {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setUserAgentString(settings.getUserAgentString() + " ShuranApp/1.0");
+
+        ReminderNotifications.ensureChannel(this);
+        webView.addJavascriptInterface(new ReminderJsBridge(this), "ShuranNative");
 
         webView.setOnKeyListener((v, keyCode, event) -> {
             if (keyCode != KeyEvent.KEYCODE_BACK) {
@@ -152,9 +160,35 @@ public class MainActivity extends Activity {
 
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState);
+            applyOpenPath(getIntent());
         } else {
-            loadApp();
+            loadApp(getIntent());
         }
+    }
+
+    void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return;
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        if (notificationPermissionRequested) {
+            return;
+        }
+        notificationPermissionRequested = true;
+        requestPermissions(
+                new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                NOTIFICATION_PERMISSION_REQUEST
+        );
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        applyOpenPath(intent);
     }
 
     private void handlePermissionRequest(PermissionRequest request) {
@@ -178,9 +212,33 @@ public class MainActivity extends Activity {
     }
 
     private void loadApp() {
+        loadApp(getIntent());
+    }
+
+    private void loadApp(Intent intent) {
         errorView.setVisibility(View.GONE);
         webView.setVisibility(View.VISIBLE);
-        webView.loadUrl(getString(R.string.app_url));
+        String path = intent != null ? intent.getStringExtra(ReminderNotifications.EXTRA_OPEN_PATH) : null;
+        if (path != null && !path.isEmpty()) {
+            intent.removeExtra(ReminderNotifications.EXTRA_OPEN_PATH);
+            webView.loadUrl(ReminderNotifications.resolveUrl(this, path));
+        } else {
+            webView.loadUrl(getString(R.string.app_url));
+        }
+    }
+
+    private void applyOpenPath(Intent intent) {
+        if (intent == null || webView == null) {
+            return;
+        }
+        String path = intent.getStringExtra(ReminderNotifications.EXTRA_OPEN_PATH);
+        if (path == null || path.isEmpty()) {
+            return;
+        }
+        intent.removeExtra(ReminderNotifications.EXTRA_OPEN_PATH);
+        errorView.setVisibility(View.GONE);
+        webView.setVisibility(View.VISIBLE);
+        webView.loadUrl(ReminderNotifications.resolveUrl(this, path));
     }
 
     private void handleBackNavigation() {
@@ -233,6 +291,12 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                ReminderScheduler.pollNow(getApplicationContext());
+            }
+            return;
+        }
         if (requestCode != AUDIO_PERMISSION_REQUEST || pendingPermissionRequest == null) {
             return;
         }

@@ -3240,11 +3240,11 @@
                     <!-- 通知方式设置 -->
                     <div class="reminder-subsection" style="margin-left: 20px; margin-top: 15px; margin-bottom: 15px;">
                         <h5 style="color: #555; margin-bottom: 10px; font-size: 1rem;">📱 通知方式</h5>
-                        <p style="color:#888;font-size:0.85rem;margin:0 0 10px;">到点后会在首页通知条和右上角铃铛里显示，不依赖邮箱。即使浏览器拒绝系统通知，页面内仍能看到。</p>
+                        <p style="color:#888;font-size:0.85rem;margin:0 0 10px;">到点后会像微信一样出现在手机状态栏、锁屏和下拉通知栏（网页版则显示页面内通知）。请允许通知权限。</p>
                         <div class="setting-item" style="margin-bottom: 10px;">
                             <label style="display: flex; align-items: center; gap: 8px;">
                                 <input type="checkbox" id="reminderBrowserSwitch" style="transform: scale(1.2);">
-                                <span>浏览器系统通知（额外弹窗，需允许通知权限）</span>
+                                <span>系统通知（状态栏 / 锁屏 / 通知栏）</span>
                             </label>
                         </div>
                         <div class="setting-item" style="margin-bottom: 10px;">
@@ -3257,7 +3257,7 @@
 
                     <div style="display:flex;gap:10px;margin-top:20px;">
                         <button onclick="saveReminderSettings()" style="flex:1;padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem;">保存设置</button>
-                        <button type="button" onclick="testInAppReminder()" style="flex:1;padding: 10px 20px; background: #fff; color: #667eea; border: 1px solid #667eea; border-radius: 6px; cursor: pointer; font-size: 1rem;">测试应用内提醒</button>
+                        <button type="button" onclick="testInAppReminder()" style="flex:1;padding: 10px 20px; background: #fff; color: #667eea; border: 1px solid #667eea; border-radius: 6px; cursor: pointer; font-size: 1rem;">测试通知</button>
                     </div>
                 </div>
 
@@ -5899,6 +5899,9 @@
 
                 if (response.ok) {
                     showMessage('提醒设置保存成功！', 'success');
+                    if (window.reminderNotificationService) {
+                        window.reminderNotificationService.syncNativeSchedule();
+                    }
                 } else {
                     throw new Error('保存失败');
                 }
@@ -5927,7 +5930,12 @@
                     })
                 });
                 if (!response.ok) throw new Error('测试失败');
-                showMessage('已发送测试提醒，请看首页通知条或右上角铃铛', 'success');
+                showMessage(
+                    window.ShuranNative
+                        ? '已发送测试提醒，请查看手机状态栏、锁屏或下拉通知栏'
+                        : '已发送测试提醒，请看首页通知条或右上角铃铛',
+                    'success'
+                );
                 if (window.reminderNotificationService) {
                     window.reminderNotificationService.checkPendingReminders();
                 }
