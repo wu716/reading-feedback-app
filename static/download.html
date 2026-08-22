@@ -115,33 +115,39 @@
     <div class="card">
         <img class="icon" src="/static/icons/app-icon-1024.png" alt="书然">
         <h1>书然</h1>
-        <p class="sub">Android 应用更新（覆盖安装，无需卸载）</p>
+        <p class="sub" id="subText">覆盖安装，账号数据会保留</p>
         <p class="meta" id="meta">正在检查安装包…</p>
-        <button type="button" class="btn btn-primary" id="downloadBtn" disabled>立即更新</button>
-        <button type="button" class="btn btn-ghost" id="copyBtn">复制更新页链接</button>
-        <p class="warn">已安装过书然？直接下载并打开安装包即可覆盖更新，登录数据会保留，<strong>不必卸载重装</strong>。不要用微信发送或打开压缩包，请把这个页面链接发给对方，并用系统浏览器打开。</p>
+        <a class="btn btn-primary" id="downloadBtn" href="/download/apk" style="pointer-events:none;opacity:0.45;">立即更新</a>
+        <p class="warn" id="inAppHint" style="display:none;">当前页面在应用内打开，无法直接安装。请点击右上角 <strong>···</strong>，选择 <strong>在浏览器中打开</strong>，再点「立即更新」。</p>
+        <button type="button" class="btn btn-ghost" id="copyBtn">复制下载链接</button>
+        <p class="warn">已安装书然时，打开安装包选择「更新」即可，不必卸载。</p>
         <div class="tips">
-            <h2>荣耀 / 华为手机更新步骤</h2>
+            <h2>安装说明</h2>
             <ol>
-                <li>用<strong>系统浏览器</strong>（荣耀浏览器或 Chrome）打开本页</li>
-                <li>点「立即更新」，等待下载完成</li>
-                <li>若系统询问，允许该浏览器安装应用；已安装书然时选择<strong>更新</strong></li>
-                <li>如有「纯净模式」，先关闭</li>
-                <li>到通知栏或「文件管理 → 下载」中点开 <strong>书然.apk</strong> 覆盖安装</li>
+                <li>使用系统浏览器打开本页并下载安装包</li>
+                <li>允许该浏览器安装应用</li>
+                <li>选择「更新」，不要卸载</li>
             </ol>
         </div>
     </div>
 
     <script>
         const inWeChat = /MicroMessenger/i.test(navigator.userAgent || "");
+        const inShuranApp = /ShuranApp/i.test(navigator.userAgent || "") || !!window.ShuranNative;
+        const hasNativeUpdater = !!(window.ShuranNative && typeof window.ShuranNative.checkUpdate === "function");
+        const fromApp = /(?:^|[?&])from=app(?:&|$)/.test(window.location.search) || inShuranApp;
         const mask = document.getElementById("wechatMask");
         const btn = document.getElementById("downloadBtn");
         const meta = document.getElementById("meta");
         const copyBtn = document.getElementById("copyBtn");
+        const inAppHint = document.getElementById("inAppHint");
         const pageUrl = window.location.origin + "/download";
 
         if (inWeChat) {
             mask.classList.add("show");
+        }
+        if (fromApp && !hasNativeUpdater && inAppHint) {
+            inAppHint.style.display = "block";
         }
 
         async function loadInfo() {
@@ -149,28 +155,30 @@
                 const res = await fetch("/download/info", { cache: "no-store" });
                 const data = await res.json();
                 if (!data.available) {
-                    meta.textContent = "安装包尚未上传到服务器";
-                    btn.disabled = true;
+                    meta.textContent = "安装包暂不可用，请稍后重试";
+                    btn.style.pointerEvents = "none";
+                    btn.style.opacity = "0.45";
                     return;
                 }
                 const version = data.versionName ? ("v" + data.versionName + " · ") : "";
-                meta.textContent = version + "约 " + data.size_mb + " MB · 覆盖更新，无需卸载";
-                btn.disabled = false;
+                meta.textContent = version + "约 " + data.size_mb + " MB";
+                btn.style.pointerEvents = "auto";
+                btn.style.opacity = "1";
             } catch (e) {
                 meta.textContent = "无法检查安装包，请稍后重试";
             }
         }
 
-        btn.addEventListener("click", function () {
+        btn.addEventListener("click", function (event) {
             if (inWeChat) {
+                event.preventDefault();
                 mask.classList.add("show");
                 return;
             }
-            if (window.ShuranNative && typeof window.ShuranNative.checkUpdate === "function") {
+            if (hasNativeUpdater) {
+                event.preventDefault();
                 window.ShuranNative.checkUpdate();
-                return;
             }
-            window.location.href = "/download/apk";
         });
 
         copyBtn.addEventListener("click", async function () {

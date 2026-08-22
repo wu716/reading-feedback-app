@@ -756,34 +756,28 @@ function shuranIsNativeApp() {
     return shuranShellInfo().inApp;
 }
 
-function shuranOpenSystemBrowser(url) {
-    const rest = String(url || '').replace(/^https?:\/\//, '');
-    const scheme = String(url || '').indexOf('https') === 0 ? 'https' : 'http';
-    const intentUrl = 'intent://' + rest
-        + '#Intent;scheme=' + scheme
-        + ';action=android.intent.action.VIEW'
-        + ';category=android.intent.category.BROWSABLE;end';
-    try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(url);
-        }
-    } catch (e) { /* ignore */ }
-    window.location.href = intentUrl;
-}
-
 function shuranStartAppUpdate() {
     const shell = shuranShellInfo();
     const origin = window.location.origin || 'http://47.236.122.207:8000';
-    const page = origin + '/download';
+    const page = origin + '/download?from=app';
+    const apk = origin + '/download/apk';
     if (shell.hasUpdater) {
         window.ShuranNative.checkUpdate();
         return;
     }
-    if (shell.inApp) {
-        shuranOpenSystemBrowser(page);
-        return;
-    }
-    window.location.href = '/download';
+    const link = document.createElement('a');
+    link.href = apk;
+    link.setAttribute('download', 'shuran.apk');
+    link.rel = 'noopener';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    try {
+        link.click();
+    } catch (e) { /* ignore */ }
+    setTimeout(function () {
+        if (link.parentNode) link.parentNode.removeChild(link);
+        window.location.href = page;
+    }, 120);
 }
 
 function fillAppVersionLabel() {
@@ -791,16 +785,15 @@ function fillAppVersionLabel() {
     if (!label) return;
     const shell = shuranShellInfo();
     if (shell.versionName) {
-        const extra = shell.versionCode ? '（' + shell.versionCode + '）' : '';
-        const hint = shell.hasUpdater ? '' : ' · 旧版壳，请点检查更新覆盖安装一次';
-        label.textContent = '当前 App：' + shell.versionName + extra + hint;
+        const extra = shell.hasUpdater ? '' : '，请更新到最新版本';
+        label.textContent = '当前版本 ' + shell.versionName + extra;
         return;
     }
     if (shell.inApp) {
-        label.textContent = '当前是较旧的书然 App（约 1.0.0），点检查更新即可覆盖安装。';
+        label.textContent = '当前版本 1.0.0，请更新到最新版本';
         return;
     }
-    label.textContent = '网页版无需安装包。请在手机书然 App 里打开「我的」检查更新。';
+    label.textContent = '网页版无需安装。请在书然 App 中检查更新。';
 }
 
 window.shuranStartAppUpdate = shuranStartAppUpdate;
@@ -829,12 +822,18 @@ function promptLegacyNativeUpdate() {
             'background:#1a1a2e',
             'color:#fff',
             'border-radius:14px',
-            'padding:14px 16px',
+            'padding:16px',
             'box-shadow:0 8px 24px rgba(0,0,0,.25)',
-            'font-size:14px',
-            'line-height:1.5'
+            'font-size:15px',
+            'line-height:1.55'
         ].join(';');
-        bar.innerHTML = '<strong>发现新版本</strong><p style="margin:6px 0 12px;opacity:.9;">在 App 里点立即更新即可覆盖安装，登录数据会保留，不必自己去记网址。</p><div style="display:flex;gap:8px;"><button type="button" id="shuranUpdateNowBtn" style="flex:1;border:none;border-radius:10px;padding:10px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:700;">立即更新</button><button type="button" id="shuranUpdateLaterBtn" style="border:none;border-radius:10px;padding:10px 14px;background:#333;color:#ddd;">稍后</button></div>';
+        const current = shell.versionName || '1.0.0';
+        bar.innerHTML = '<strong style="font-size:16px;">发现新版本</strong>'
+            + '<p style="margin:8px 0 14px;opacity:.92;">当前 ' + current + '，最新 1.2.1。覆盖安装后即可使用系统通知，账号数据会保留。</p>'
+            + '<div style="display:flex;gap:8px;">'
+            + '<button type="button" id="shuranUpdateNowBtn" style="flex:1;border:none;border-radius:10px;padding:11px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:600;">立即更新</button>'
+            + '<button type="button" id="shuranUpdateLaterBtn" style="border:none;border-radius:10px;padding:11px 16px;background:#333;color:#ddd;">稍后</button>'
+            + '</div>';
         document.body.appendChild(bar);
         document.getElementById('shuranUpdateNowBtn').onclick = function () {
             shuranStartAppUpdate();
@@ -843,6 +842,13 @@ function promptLegacyNativeUpdate() {
             sessionStorage.setItem('shuran_update_banner_dismissed', '1');
             bar.remove();
         };
+        fetch('/download/info', { cache: 'no-store' }).then(function (res) { return res.json(); }).then(function (info) {
+            if (!info || !info.versionName) return;
+            const p = bar.querySelector('p');
+            if (p) {
+                p.textContent = '当前 ' + current + '，最新 ' + info.versionName + '。覆盖安装后即可使用系统通知，账号数据会保留。';
+            }
+        }).catch(function () { /* keep default copy */ });
     } catch (e) {
         console.warn('promptLegacyNativeUpdate', e);
     }
