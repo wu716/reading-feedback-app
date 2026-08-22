@@ -46,6 +46,7 @@
             font-size: 1.05rem;
             font-weight: 700;
             cursor: pointer;
+            font-family: inherit;
         }
         .btn-primary {
             background: linear-gradient(135deg, #667eea, #764ba2);
@@ -56,6 +57,10 @@
             margin-top: 10px;
             background: #f4f2fb;
             color: #5a4b8c;
+        }
+        .btn-success {
+            background: #1f8a4c;
+            color: #fff;
         }
         .tips {
             margin-top: 22px;
@@ -75,7 +80,40 @@
             border-radius: 10px;
             background: #fff4e5;
             color: #8a5a00;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
+            line-height: 1.55;
+        }
+        .ok {
+            display: none;
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            background: #e8f8ef;
+            color: #146c36;
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-align: center;
+        }
+        .ok.show { display: block; }
+        .url-box {
+            display: none;
+            margin-top: 10px;
+            padding: 12px;
+            border-radius: 10px;
+            background: #f4f2fb;
+            color: #333;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            word-break: break-all;
+            user-select: all;
+            -webkit-user-select: all;
+        }
+        .url-box.show { display: block; }
+        .url-box strong {
+            display: block;
+            margin-bottom: 6px;
+            color: #5a4b8c;
+            font-size: 0.8rem;
         }
         .wechat-mask {
             display: none;
@@ -117,13 +155,16 @@
         <h1>书然</h1>
         <p class="sub" id="subText">覆盖安装，账号数据会保留</p>
         <p class="meta" id="meta">正在检查安装包…</p>
+        <p class="warn" id="inAppHint" style="display:none;">当前无法在应用内完成安装。请打开手机自带的浏览器（荣耀浏览器 / Chrome），在地址栏粘贴链接后下载。安装时选择「更新」，不要卸载。</p>
         <a class="btn btn-primary" id="downloadBtn" href="/download/apk" style="pointer-events:none;opacity:0.45;">立即更新</a>
-        <p class="warn" id="inAppHint" style="display:none;">当前页面在应用内打开，无法直接安装。请点击右上角 <strong>···</strong>，选择 <strong>在浏览器中打开</strong>，再点「立即更新」。</p>
         <button type="button" class="btn btn-ghost" id="copyBtn">复制下载链接</button>
+        <p class="ok" id="copiedHint">链接已复制</p>
+        <p class="url-box" id="urlBox"><strong>下载链接</strong><span id="urlText"></span></p>
+        <a class="btn btn-ghost" id="apkLink" href="/download/apk" style="display:none;">下载安装包</a>
         <p class="warn">已安装书然时，打开安装包选择「更新」即可，不必卸载。</p>
         <div class="tips">
             <h2>安装说明</h2>
-            <ol>
+            <ol id="tipsList">
                 <li>使用系统浏览器打开本页并下载安装包</li>
                 <li>允许该浏览器安装应用</li>
                 <li>选择「更新」，不要卸载</li>
@@ -132,22 +173,111 @@
     </div>
 
     <script>
-        const inWeChat = /MicroMessenger/i.test(navigator.userAgent || "");
-        const inShuranApp = /ShuranApp/i.test(navigator.userAgent || "") || !!window.ShuranNative;
+        const ua = navigator.userAgent || "";
+        const inWeChat = /MicroMessenger/i.test(ua);
+        const inShuranApp = /ShuranApp/i.test(ua) || !!window.ShuranNative;
         const hasNativeUpdater = !!(window.ShuranNative && typeof window.ShuranNative.checkUpdate === "function");
-        const fromApp = /(?:^|[?&])from=app(?:&|$)/.test(window.location.search) || inShuranApp;
+        const needsBrowserInstall = inShuranApp && !hasNativeUpdater;
+        const alreadyCopied = /(?:^|[?&])copied=1(?:&|$)/.test(window.location.search);
         const mask = document.getElementById("wechatMask");
         const btn = document.getElementById("downloadBtn");
         const meta = document.getElementById("meta");
         const copyBtn = document.getElementById("copyBtn");
         const inAppHint = document.getElementById("inAppHint");
+        const copiedHint = document.getElementById("copiedHint");
+        const urlBox = document.getElementById("urlBox");
+        const urlText = document.getElementById("urlText");
+        const apkLink = document.getElementById("apkLink");
+        const tipsList = document.getElementById("tipsList");
         const pageUrl = window.location.origin + "/download";
+
+        function copyTextFallback(text) {
+            try {
+                const ta = document.createElement("textarea");
+                ta.value = text;
+                ta.setAttribute("readonly", "");
+                ta.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;";
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                ta.setSelectionRange(0, text.length);
+                const ok = document.execCommand("copy");
+                document.body.removeChild(ta);
+                return !!ok;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function copyText(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(text).then(function () {
+                    return true;
+                }).catch(function () {
+                    return copyTextFallback(text);
+                });
+            }
+            return Promise.resolve(copyTextFallback(text));
+        }
+
+        function showUrlBox() {
+            urlText.textContent = pageUrl;
+            urlBox.classList.add("show");
+        }
+
+        function markCopied(ok) {
+            showUrlBox();
+            if (ok) {
+                copiedHint.classList.add("show");
+                copiedHint.textContent = "链接已复制";
+                copyBtn.textContent = "链接已复制";
+                copyBtn.classList.add("btn-success");
+                copyBtn.classList.remove("btn-primary", "btn-ghost");
+                if (needsBrowserInstall) {
+                    btn.textContent = "链接已复制";
+                    btn.classList.add("btn-success");
+                    btn.classList.remove("btn-primary");
+                }
+                return;
+            }
+            copiedHint.classList.add("show");
+            copiedHint.textContent = "未能自动复制，请长按下方链接";
+            copiedHint.style.background = "#fff4e5";
+            copiedHint.style.color = "#8a5a00";
+        }
+
+        async function copyDownloadLink() {
+            const ok = await copyText(pageUrl);
+            markCopied(ok);
+            return ok;
+        }
 
         if (inWeChat) {
             mask.classList.add("show");
         }
-        if (fromApp && !hasNativeUpdater && inAppHint) {
+
+        if (needsBrowserInstall) {
             inAppHint.style.display = "block";
+            inAppHint.parentNode.insertBefore(inAppHint, btn);
+            copyBtn.className = "btn btn-primary";
+            copyBtn.style.marginTop = "0";
+            btn.parentNode.insertBefore(copyBtn, btn);
+            btn.textContent = "立即更新";
+            btn.className = "btn btn-ghost";
+            btn.removeAttribute("href");
+            btn.style.pointerEvents = "auto";
+            btn.style.opacity = "1";
+            btn.style.display = "block";
+            apkLink.style.display = "block";
+            showUrlBox();
+            tipsList.innerHTML = ""
+                + "<li>点击「复制下载链接」</li>"
+                + "<li>打开手机自带的浏览器（荣耀浏览器 / Chrome）</li>"
+                + "<li>在地址栏粘贴并打开，下载安装包</li>"
+                + "<li>安装时选择「更新」，不要卸载</li>";
+            if (alreadyCopied) {
+                markCopied(true);
+            }
         }
 
         async function loadInfo() {
@@ -156,14 +286,20 @@
                 const data = await res.json();
                 if (!data.available) {
                     meta.textContent = "安装包暂不可用，请稍后重试";
-                    btn.style.pointerEvents = "none";
-                    btn.style.opacity = "0.45";
+                    apkLink.style.pointerEvents = "none";
+                    apkLink.style.opacity = "0.45";
+                    if (!needsBrowserInstall) {
+                        btn.style.pointerEvents = "none";
+                        btn.style.opacity = "0.45";
+                    }
                     return;
                 }
                 const version = data.versionName ? ("v" + data.versionName + " · ") : "";
                 meta.textContent = version + "约 " + data.size_mb + " MB";
-                btn.style.pointerEvents = "auto";
-                btn.style.opacity = "1";
+                if (!needsBrowserInstall) {
+                    btn.style.pointerEvents = "auto";
+                    btn.style.opacity = "1";
+                }
             } catch (e) {
                 meta.textContent = "无法检查安装包，请稍后重试";
             }
@@ -178,16 +314,16 @@
             if (hasNativeUpdater) {
                 event.preventDefault();
                 window.ShuranNative.checkUpdate();
+                return;
+            }
+            if (needsBrowserInstall) {
+                event.preventDefault();
+                copyDownloadLink();
             }
         });
 
-        copyBtn.addEventListener("click", async function () {
-            try {
-                await navigator.clipboard.writeText(pageUrl);
-                copyBtn.textContent = "已复制，发给对方即可";
-            } catch (e) {
-                prompt("请复制这个链接发给对方：", pageUrl);
-            }
+        copyBtn.addEventListener("click", function () {
+            copyDownloadLink();
         });
 
         loadInfo();
