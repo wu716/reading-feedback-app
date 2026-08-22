@@ -55,12 +55,146 @@ class ReminderNotificationService {
         this.clearNativeSession();
     }
 
-    isNativeApp() {
+    nativeBridge() {
         try {
-            return !!(window.ShuranNative && typeof window.ShuranNative.showReminder === 'function');
+            return window.ShuranNative || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    hasNativeMethod(name) {
+        const native = this.nativeBridge();
+        if (!native) return false;
+        try {
+            return typeof native[name] === 'function';
         } catch (e) {
             return false;
         }
+    }
+
+    isNativeApp() {
+        try {
+            const native = this.nativeBridge();
+            if (!native) return false;
+            if (this.hasNativeMethod('isNative')) {
+                try {
+                    return !!native.isNative();
+                } catch (e) {
+                    return true;
+                }
+            }
+            return this.hasNativeMethod('showTestNotification')
+                || this.hasNativeMethod('showReminder')
+                || this.hasNativeMethod('hasPermission');
+        } catch (e) {
+            return false;
+        }
+    }
+
+    showFeedback(message, type) {
+        this.ensureUi();
+        let host = document.getElementById('shuranFeedbackToast');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'shuranFeedbackToast';
+            host.setAttribute('role', 'status');
+            host.style.cssText = [
+                'position:fixed',
+                'left:50%',
+                'top:calc(76px + env(safe-area-inset-top, 0px))',
+                'transform:translateX(-50%)',
+                'z-index:2147483646',
+                'max-width:min(520px, calc(100vw - 24px))',
+                'padding:12px 16px',
+                'border-radius:12px',
+                'box-shadow:0 8px 24px rgba(0,0,0,.22)',
+                'font-size:15px',
+                'line-height:1.5',
+                'color:#fff',
+                'pointer-events:none',
+                'display:none'
+            ].join(';');
+            document.body.appendChild(host);
+        }
+        const colors = {
+            success: '#2f9e44',
+            error: '#e03131',
+            info: '#4263eb',
+        };
+        host.style.background = colors[type] || colors.info;
+        host.textContent = message;
+        host.style.display = 'block';
+        clearTimeout(this._feedbackTimer);
+        this._feedbackTimer = setTimeout(() => {
+            host.style.display = 'none';
+        }, 5000);
+    }
+
+    async testNow() {
+        this.ensureUi();
+        this.showFeedback('正在发送测试通知…', 'info');
+
+        const native = this.nativeBridge();
+        if (native && this.hasNativeMethod('requestPermission')) {
+            try { native.requestPermission(); } catch (e) {}
+        }
+
+        if (native && this.hasNativeMethod('showTestNotification')) {
+            let result = '';
+            try {
+                result = String(native.showTestNotification() || '');
+            } catch (e) {
+                console.error('showTestNotification failed', e);
+                this.showFeedback('调用系统通知失败，请检查通知权限后重试。', 'error');
+                return { ok: false, native: true };
+            }
+            if (result === 'ok') {
+                this.showFeedback('已弹出系统通知。请下拉状态栏或看锁屏，同时页面也会提示。', 'success');
+                return { ok: true, native: true };
+            }
+            if (result === 'no_permission') {
+                this.showFeedback('尚未获得通知权限。请在系统弹窗中点「允许」，然后再次点击测试。', 'error');
+                return { ok: false, native: true };
+            }
+            this.showFeedback('系统通知发送失败。请到系统设置里确认已允许「书然」通知。', 'error');
+            return { ok: false, native: true };
+        }
+
+        if (native && this.hasNativeMethod('showReminder')) {
+            try {
+                native.showReminder(JSON.stringify({
+                    log_id: Date.now() % 100000000,
+                    title: '书然测试通知',
+                    message: '看到这条就说明系统通知已打通。若状态栏没有出现，请检查更新到最新 App。',
+                    reminder_type: 'test',
+                    force: true,
+                    action_url: '/static/index.html#user-center',
+                    triggered_at: new Date().toISOString(),
+                }));
+                this.showFeedback('已请求系统通知。若状态栏没有出现，请到「我的」检查更新并安装 1.2.1。', 'success');
+                return { ok: true, native: true };
+            } catch (e) {
+                console.error('showReminder test failed', e);
+                this.showFeedback('当前 App 版本过旧，无法弹出系统通知。请检查更新或重新安装书然 App。', 'error');
+                return { ok: false, native: true };
+            }
+        }
+
+        if (native) {
+            this.showFeedback('当前 App 版本过旧，无法弹出系统通知。请检查更新或重新安装书然 App。', 'error');
+            return { ok: false, native: true };
+        }
+
+        this.showInPageToast({
+            log_id: 'test-' + Date.now(),
+            title: '书然测试通知',
+            message: '这是页面内预览。手机状态栏通知只能在书然 App 里测试。',
+            action_label: '知道了',
+            reminder_type: 'test',
+        });
+        this.showFeedback('浏览器无法弹出手机状态栏通知。请在书然 App 中打开本页再点「测试通知」。', 'info');
+        return { ok: true, native: false };
     }
 
     authToken() {
@@ -547,6 +681,10 @@ class ReminderNotificationService {
     }
 
     goToAction(reminderData, actionTaken) {
+        if (reminderData && reminderData.reminder_type === 'test') {
+            this.closeDropdown();
+            return;
+        }
         this.dismissReminder(reminderData.log_id, actionTaken);
         this.closeDropdown();
         const type = reminderData.reminder_type;
@@ -572,7 +710,7 @@ class ReminderNotificationService {
 
     async dismissReminder(logId, actionTaken = false) {
         const token = this.authToken();
-        if (!token || !logId) return;
+        if (!token || !logId || !Number.isFinite(Number(logId))) return;
         this.pending = this.pending.filter((n) => n.log_id !== logId);
         this.renderAll();
         try {

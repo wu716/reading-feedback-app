@@ -2,6 +2,7 @@ package com.shuran.app;
 
 import android.util.Log;
 import android.webkit.JavascriptInterface;
+import android.widget.Toast;
 
 import org.json.JSONObject;
 
@@ -34,6 +35,32 @@ public class ReminderJsBridge {
             ReminderScheduler.showFromJs(activity.getApplicationContext(), new JSONObject(json));
         } catch (Exception e) {
             Log.e(TAG, "showReminder failed", e);
+        }
+    }
+
+    /** 测试按钮专用：立刻发一条状态栏通知，不受每日去重/设置开关影响。 */
+    @JavascriptInterface
+    public String showTestNotification() {
+        try {
+            if (!ReminderNotifications.areEnabled(activity)) {
+                activity.runOnUiThread(activity::requestNotificationPermission);
+                activity.runOnUiThread(() -> Toast.makeText(
+                        activity,
+                        R.string.notification_need_permission,
+                        Toast.LENGTH_LONG
+                ).show());
+                return "no_permission";
+            }
+            ReminderNotifications.showTest(activity.getApplicationContext());
+            activity.runOnUiThread(() -> Toast.makeText(
+                    activity,
+                    R.string.notification_test_toast,
+                    Toast.LENGTH_SHORT
+            ).show());
+            return "ok";
+        } catch (Exception e) {
+            Log.e(TAG, "showTestNotification failed", e);
+            return "error";
         }
     }
 

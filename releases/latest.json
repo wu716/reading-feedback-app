@@ -1,6 +1,6 @@
 {
-  "versionCode": 3,
-  "versionName": "1.2.0",
+  "versionCode": 4,
+  "versionName": "1.2.1",
   "filename": "shuran.apk",
-  "notes": "支持应用内更新，无需卸载。新增系统通知提醒。"
+  "notes": "修复「测试通知」无反应，点击后立即弹出系统通知。"
 }
