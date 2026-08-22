@@ -785,15 +785,15 @@ function fillAppVersionLabel() {
     if (!label) return;
     const shell = shuranShellInfo();
     if (shell.versionName) {
-        const extra = shell.hasUpdater ? '' : '，请更新到最新版本';
-        label.textContent = '当前版本 ' + shell.versionName + extra;
+        const extra = shell.hasUpdater ? '' : ' · 建议更新';
+        label.textContent = '当前 ' + shell.versionName + extra;
         return;
     }
     if (shell.inApp) {
-        label.textContent = '当前版本 1.0.0，请更新到最新版本';
+        label.textContent = '当前 1.0.0 · 建议更新';
         return;
     }
-    label.textContent = '网页版无需安装。请在书然 App 中检查更新。';
+    label.textContent = '网页版';
 }
 
 window.shuranStartAppUpdate = shuranStartAppUpdate;
