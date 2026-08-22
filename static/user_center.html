@@ -377,11 +377,11 @@
             <!-- 通知方式 -->
             <div class="setting-group">
                 <h3>📬 通知方式</h3>
-                <p class="description" style="margin:0 0 12px;">到点后会在网页/App 内显示（首页通知条、铃铛列表），不依赖邮箱。即使浏览器拒绝系统通知，页面内仍能看到。</p>
+                <p class="description" style="margin:0 0 12px;">到点后会像微信一样出现在手机状态栏、锁屏和下拉通知栏（网页版则显示页面内通知）。请允许通知权限。</p>
                 <div class="setting-item">
                     <label>
-                        <strong>浏览器系统通知</strong>
-                        <span class="description">额外弹出系统通知（需允许通知权限）</span>
+                        <strong>系统通知</strong>
+                        <span class="description">状态栏、锁屏、下拉通知栏（需允许通知权限）</span>
                     </label>
                     <label class="toggle-switch">
                         <input type="checkbox" id="browserNotification">
@@ -556,6 +556,9 @@
 
                 if (response.ok) {
                     showNotification('设置保存成功！', 'success');
+                    if (window.reminderNotificationService) {
+                        window.reminderNotificationService.syncNativeSchedule();
+                    }
                 } else {
                     throw new Error('保存失败');
                 }
@@ -583,7 +586,12 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    showNotification('测试提醒已发送！请看页面内通知或铃铛', 'success');
+                    showNotification(
+                        window.ShuranNative
+                            ? '测试提醒已发送！请查看手机状态栏、锁屏或下拉通知栏'
+                            : '测试提醒已发送！请看页面内通知或铃铛',
+                        'success'
+                    );
                     if (window.reminderNotificationService) {
                         window.reminderNotificationService.checkPendingReminders();
                     } else if (data.notification) {
@@ -600,6 +608,10 @@
 
         // 请求通知权限
         function requestNotificationPermission() {
+            if (window.ShuranNative && typeof window.ShuranNative.requestPermission === 'function') {
+                window.ShuranNative.requestPermission();
+                return;
+            }
             if ('Notification' in window && Notification.permission === 'default') {
                 Notification.requestPermission();
             }
