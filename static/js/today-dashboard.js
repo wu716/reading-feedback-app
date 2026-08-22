@@ -437,10 +437,15 @@
 
     function renderTodoItem(t) {
         const done = t.completed;
+        const remind = t.remind_time ? String(t.remind_time).slice(0, 5) : '';
         return `
             <div class="todo-item ${done ? 'completed' : ''}" data-todo-id="${t.id}">
-                <span class="todo-text" ondblclick="editDailyTodo(${t.id})">${escapeHtml(t.text)}</span>
+                <div class="todo-main">
+                    <span class="todo-text" ondblclick="editDailyTodo(${t.id})">${escapeHtml(t.text)}</span>
+                    ${remind ? `<span class="todo-remind-badge">⏰ ${escapeHtml(remind)}</span>` : ''}
+                </div>
                 <div class="todo-actions">
+                    <button type="button" class="todo-btn edit" onclick="setTodoRemindTime(${t.id})" title="提醒时间">⏰</button>
                     <button type="button" class="todo-btn edit" onclick="editDailyTodo(${t.id})" title="编辑">✎</button>
                     <button type="button" class="todo-check" onclick="toggleDailyTodo(${t.id}, ${!done})" title="${done ? '标为未完成' : '完成'}">${done ? '↩' : '✓'}</button>
                     <button type="button" class="todo-btn delete" onclick="deleteDailyTodo(${t.id})" title="删除">×</button>
@@ -448,16 +453,45 @@
             </div>`;
     }
 
+    function readRemindTime(inputId) {
+        const el = document.getElementById(inputId);
+        const value = el?.value?.trim();
+        return value || null;
+    }
+
     window.addDailyTodo = async function () {
         const input = document.getElementById('newTodoInput');
         const text = input?.value?.trim();
         if (!text) return;
         try {
-            await todayApi('/todos', { method: 'POST', body: JSON.stringify({ text }) });
+            await todayApi('/todos', {
+                method: 'POST',
+                body: JSON.stringify({ text, remind_time: readRemindTime('newTodoRemindTime') }),
+            });
             input.value = '';
+            const timeInput = document.getElementById('newTodoRemindTime');
+            if (timeInput) timeInput.value = '';
             await refreshTodosAfterChange();
         } catch (e) {
             showMessage('添加待办失败', 'error');
+        }
+    };
+
+    window.setTodoRemindTime = async function (id) {
+        const item = document.querySelector(`[data-todo-id="${id}"]`);
+        const current = item?.querySelector('.todo-remind-badge')?.textContent?.replace(/[^\d:]/g, '') || '';
+        const next = window.prompt('设置提醒时间（HH:MM，留空则取消）', current);
+        if (next === null) return;
+        const remindTime = next.trim();
+        if (remindTime && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(remindTime)) {
+            showMessage('时间格式应为 HH:MM', 'error');
+            return;
+        }
+        try {
+            await todayApi(`/todos/${id}`, { method: 'PATCH', body: JSON.stringify({ remind_time: remindTime }) });
+            await refreshTodosAfterChange();
+        } catch (e) {
+            showMessage('设置提醒失败', 'error');
         }
     };
 
@@ -654,8 +688,17 @@
             return;
         }
         try {
-            await todayApi('/todos', { method: 'POST', body: JSON.stringify({ text, todo_date: dateKey }) });
+            await todayApi('/todos', {
+                method: 'POST',
+                body: JSON.stringify({
+                    text,
+                    todo_date: dateKey,
+                    remind_time: readRemindTime('dayTodoRemindTime'),
+                }),
+            });
             input.value = '';
+            const timeInput = document.getElementById('dayTodoRemindTime');
+            if (timeInput) timeInput.value = '';
             await refreshTodosAfterChange();
         } catch (e) {
             showMessage('添加待办失败', 'error');

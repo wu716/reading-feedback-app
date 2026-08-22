@@ -550,6 +550,14 @@ class ReminderNotificationService {
         this.dismissReminder(reminderData.log_id, actionTaken);
         this.closeDropdown();
         const type = reminderData.reminder_type;
+        if (type === 'todo') {
+            if (typeof navigateTo === 'function') {
+                navigateTo('overview');
+                return;
+            }
+            window.location.href = reminderData.action_url || '/static/index.html#overview';
+            return;
+        }
         if (type === 'action_practice') {
             if (typeof navigateTo === 'function') {
                 navigateTo('actions');

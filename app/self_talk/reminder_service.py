@@ -6,17 +6,20 @@ Self-talk 提醒服务
 import json
 import logging
 import smtplib
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Optional, List
+from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 
 from app.models import (
-    User, SelfTalk, SelfTalkReminderSetting, 
-    SelfTalkReminderLog, Action, PracticeLog
+    User, SelfTalk, SelfTalkReminderSetting,
+    SelfTalkReminderLog, Action, PracticeLog, DailyTodo
 )
+
+BEIJING_TZ = ZoneInfo("Asia/Shanghai")
 
 logger = logging.getLogger(__name__)
 
@@ -110,13 +113,15 @@ class ReminderService:
         db: Session, 
         user_id: int, 
         reminder_type: str,
-        notification_method: str = "both"
+        notification_method: str = "both",
+        detail: Optional[str] = None,
     ) -> SelfTalkReminderLog:
         """记录提醒日志"""
         log = SelfTalkReminderLog(
             user_id=user_id,
             reminder_type=reminder_type,
-            notification_method=notification_method
+            notification_method=notification_method,
+            detail=detail,
         )
         db.add(log)
         db.commit()
@@ -195,6 +200,7 @@ class ReminderService:
         reminder_type: str,
         title: str,
         message: str,
+        detail: Optional[str] = None,
     ) -> None:
         """记录应用内提醒，并按设置额外发送邮件。邮件关闭时不影响应用内提醒。"""
         if setting.browser_notification and setting.email_notification:
@@ -206,14 +212,16 @@ class ReminderService:
         else:
             method = "in_app"
 
-        ReminderService.log_reminder(db, user_id, reminder_type, method)
+        ReminderService.log_reminder(db, user_id, reminder_type, method, detail=detail)
 
         if setting.email_notification:
             ReminderService.send_email_notification(db, user_id, title, message)
     
     @staticmethod
-    def get_reminder_message(reminder_type: str, user_name: str = "用户") -> tuple:
+    def get_reminder_message(reminder_type: str, user_name: str = "用户", detail: Optional[str] = None) -> tuple:
         """获取提醒消息内容"""
+        if reminder_type == "todo":
+            return ("待办提醒", detail or f"{user_name}，你有一条待办到点了。")
         messages = {
             "daily": (
                 "每日提醒",
@@ -422,4 +430,52 @@ def check_action_practice_reminders(db: Session):
         logger.error(f"检查行动践行提醒时出错: {e}")
         import traceback
         traceback.print_exc()
+
+
+def _todo_due_at(todo: DailyTodo) -> Optional[datetime]:
+    raw = (todo.remind_time or "").strip()
+    if not raw:
+        return None
+    try:
+        parts = raw.split(":")
+        hour = int(parts[0])
+        minute = int(parts[1]) if len(parts) > 1 else 0
+        return datetime.combine(todo.todo_date, time(hour, minute), tzinfo=BEIJING_TZ)
+    except Exception:
+        return None
+
+
+def check_todo_reminders(db: Session, user_id: Optional[int] = None) -> int:
+    """把已到期的待办写成提醒日志，供页面轮询和系统通知使用。"""
+    now = datetime.now(BEIJING_TZ)
+    query = db.query(DailyTodo).filter(
+        DailyTodo.deleted_at.is_(None),
+        DailyTodo.completed == False,
+        DailyTodo.remind_time.isnot(None),
+        DailyTodo.reminded_at.is_(None),
+    )
+    if user_id is not None:
+        query = query.filter(DailyTodo.user_id == user_id)
+
+    fired = 0
+    for todo in query.all():
+        due = _todo_due_at(todo)
+        if due is None or now < due:
+            continue
+        user = db.query(User).filter(User.id == todo.user_id).first()
+        if not user or not user.is_active:
+            continue
+        setting = ReminderService.get_or_create_setting(db, todo.user_id)
+        if not setting.is_enabled:
+            continue
+        title, message = ReminderService.get_reminder_message("todo", user.name, todo.text)
+        ReminderService.dispatch_notifications(
+            db, todo.user_id, setting, "todo", title, message, detail=todo.text
+        )
+        todo.reminded_at = datetime.now(BEIJING_TZ)
+        fired += 1
+    if fired:
+        db.commit()
+        logger.info("已触发 %s 条待办提醒", fired)
+    return fired
 

@@ -453,9 +453,29 @@
                 font-size: 0.9rem;
             }
         }
+
+        html.embed-mode .st-topbar {
+            display: none;
+        }
+
+        html.embed-mode .header {
+            padding-top: 8px;
+            margin-bottom: 20px;
+        }
+
+        html.embed-mode body {
+            min-height: 100%;
+            background: #f5f7fa;
+        }
     </style>
+    <link rel="stylesheet" href="/static/css/app-tabbar.css">
 </head>
 <body>
+    <script>
+        if (new URLSearchParams(location.search).get('embed') === '1') {
+            document.documentElement.classList.add('embed-mode');
+        }
+    </script>
     <div class="container">
         <div class="st-topbar">
             <a href="/static/index.html" class="back-button" id="selfTalkBackBtn">← 返回</a>
@@ -1137,5 +1157,6 @@
     <script src="/static/js/wheel-picker.js"></script>
     <script src="/static/js/self-talk-player.js?v=20260821play"></script>
     <script src="/static/reminder_notification.js"></script>
+    <script src="/static/js/app-tabbar.js"></script>
 </body>
 </html>

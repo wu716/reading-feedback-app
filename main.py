@@ -11,7 +11,7 @@ import os
 import uvicorn
 
 from app.config import settings
-from app.database import create_tables, get_db
+from app.database import ensure_schema, get_db
 from app.scheduler import start_scheduler
 from app.routers import auth, actions, practice, dashboard, ai_advice, today, app_download
 from app.self_talk.router import router as self_talk_router
@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
     """应用生命周期：启动 / 关闭"""
     logger.info("正在启动应用...")
     os.makedirs("uploads/self_talks", exist_ok=True)
-    create_tables()
+    ensure_schema()
     logger.info("数据库表创建完成")
     start_scheduler(app)
     logger.info("应用启动完成")

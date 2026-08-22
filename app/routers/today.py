@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """今日待办、阅读记录、今日概览 API"""
+import re
 from datetime import date, datetime
 from typing import List, Optional
 from zoneinfo import ZoneInfo
@@ -24,10 +25,24 @@ from app.models import (
 router = APIRouter(prefix="/today", tags=["今日概览"])
 
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
+REMIND_TIME_RE = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
 
 
 def beijing_today() -> date:
     return datetime.now(BEIJING_TZ).date()
+
+
+def normalize_remind_time(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    if len(value) >= 8 and value[2] == ":" and value[5] == ":":
+        value = value[:5]
+    if not REMIND_TIME_RE.fullmatch(value):
+        raise HTTPException(status_code=400, detail="提醒时间格式应为 HH:MM")
+    return value
 
 
 # ---------- Schemas ----------
@@ -36,11 +51,13 @@ def beijing_today() -> date:
 class DailyTodoCreate(BaseModel):
     text: str = Field(..., min_length=1, max_length=500)
     todo_date: Optional[date] = None
+    remind_time: Optional[str] = None
 
 
 class DailyTodoUpdate(BaseModel):
     text: Optional[str] = Field(None, min_length=1, max_length=500)
     completed: Optional[bool] = None
+    remind_time: Optional[str] = None
 
 
 class DailyTodoResponse(BaseModel):
@@ -48,6 +65,7 @@ class DailyTodoResponse(BaseModel):
     text: str
     completed: bool
     todo_date: date
+    remind_time: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -212,6 +230,7 @@ async def create_daily_todo(
         user_id=current_user.id,
         text=text,
         todo_date=body.todo_date or beijing_today(),
+        remind_time=normalize_remind_time(body.remind_time),
     )
     db.add(row)
     db.commit()
@@ -242,6 +261,9 @@ async def update_daily_todo(
         row.text = body.text.strip()
     if body.completed is not None:
         row.completed = body.completed
+    if "remind_time" in body.model_fields_set:
+        row.remind_time = normalize_remind_time(body.remind_time)
+        row.reminded_at = None
     row.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(row)
