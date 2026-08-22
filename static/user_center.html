@@ -407,6 +407,20 @@
                 <button class="btn btn-secondary" onclick="testReminder()">🔔 测试提醒</button>
             </div>
         </div>
+
+        <div class="card" id="appUpdateCard">
+            <h2>📱 软件更新</h2>
+            <div class="setting-item">
+                <label>
+                    <strong>当前版本</strong>
+                    <span class="description" id="appVersionLabel">网页版无需安装包</span>
+                </label>
+            </div>
+            <p style="color:#666;font-size:0.9rem;margin:12px 0 0;">已安装 App 可直接覆盖更新，登录数据会保留，不必卸载重装。</p>
+            <div class="action-buttons">
+                <button class="btn" type="button" onclick="checkAppUpdate()">检查更新</button>
+            </div>
+        </div>
     </div>
 
     <!-- 通知提示 -->
@@ -427,6 +441,7 @@
             await loadSettings();
             setupEventListeners();
             requestNotificationPermission();
+            showAppVersion();
         });
 
         // 获取用户信息
@@ -615,6 +630,26 @@
             if ('Notification' in window && Notification.permission === 'default') {
                 Notification.requestPermission();
             }
+        }
+
+        function showAppVersion() {
+            const label = document.getElementById('appVersionLabel');
+            if (!label) return;
+            if (window.ShuranNative && typeof window.ShuranNative.getAppVersion === 'function') {
+                const name = window.ShuranNative.getAppVersion();
+                const code = typeof window.ShuranNative.getVersionCode === 'function'
+                    ? window.ShuranNative.getVersionCode()
+                    : '';
+                label.textContent = code ? (name + '（' + code + '）') : name;
+            }
+        }
+
+        function checkAppUpdate() {
+            if (window.ShuranNative && typeof window.ShuranNative.checkUpdate === 'function') {
+                window.ShuranNative.checkUpdate();
+                return;
+            }
+            window.location.href = '/download';
         }
 
         // 显示浏览器通知

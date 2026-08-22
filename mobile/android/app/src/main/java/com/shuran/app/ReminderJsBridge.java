@@ -69,4 +69,19 @@ public class ReminderJsBridge {
     public void clearSession() {
         ReminderScheduler.clearSession(activity.getApplicationContext());
     }
+
+    @JavascriptInterface
+    public String getAppVersion() {
+        return AppUpdater.currentVersionName(activity);
+    }
+
+    @JavascriptInterface
+    public int getVersionCode() {
+        return AppUpdater.currentVersionCode(activity);
+    }
+
+    @JavascriptInterface
+    public void checkUpdate() {
+        activity.runOnUiThread(activity::checkAppUpdateFromUser);
+    }
 }

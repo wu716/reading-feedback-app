@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <title>下载书然 App</title>
+    <title>更新书然 App</title>
     <link rel="icon" href="/static/icons/app-icon-1024.png">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -115,19 +115,19 @@
     <div class="card">
         <img class="icon" src="/static/icons/app-icon-1024.png" alt="书然">
         <h1>书然</h1>
-        <p class="sub">Android 安装包下载</p>
+        <p class="sub">Android 应用更新（覆盖安装，无需卸载）</p>
         <p class="meta" id="meta">正在检查安装包…</p>
-        <button type="button" class="btn btn-primary" id="downloadBtn" disabled>下载安装包</button>
-        <button type="button" class="btn btn-ghost" id="copyBtn">复制下载页链接</button>
-        <p class="warn">不要用微信发送或打开压缩包。请把这个页面链接发给对方，并用系统浏览器打开。</p>
+        <button type="button" class="btn btn-primary" id="downloadBtn" disabled>立即更新</button>
+        <button type="button" class="btn btn-ghost" id="copyBtn">复制更新页链接</button>
+        <p class="warn">已安装过书然？直接下载并打开安装包即可覆盖更新，登录数据会保留，<strong>不必卸载重装</strong>。不要用微信发送或打开压缩包，请把这个页面链接发给对方，并用系统浏览器打开。</p>
         <div class="tips">
-            <h2>荣耀 / 华为手机安装步骤</h2>
+            <h2>荣耀 / 华为手机更新步骤</h2>
             <ol>
                 <li>用<strong>系统浏览器</strong>（荣耀浏览器或 Chrome）打开本页</li>
-                <li>点「下载安装包」，等待下载完成</li>
-                <li>打开 <strong>设置 → 安全和隐私 → 更多安全设置 → 安装外部应用</strong>，允许该浏览器安装</li>
+                <li>点「立即更新」，等待下载完成</li>
+                <li>若系统询问，允许该浏览器安装应用；已安装书然时选择<strong>更新</strong></li>
                 <li>如有「纯净模式」，先关闭</li>
-                <li>到通知栏或「文件管理 → 下载」中点开 <strong>书然.apk</strong> 安装</li>
+                <li>到通知栏或「文件管理 → 下载」中点开 <strong>书然.apk</strong> 覆盖安装</li>
             </ol>
         </div>
     </div>
@@ -153,7 +153,8 @@
                     btn.disabled = true;
                     return;
                 }
-                meta.textContent = "大小约 " + data.size_mb + " MB";
+                const version = data.versionName ? ("v" + data.versionName + " · ") : "";
+                meta.textContent = version + "约 " + data.size_mb + " MB · 覆盖更新，无需卸载";
                 btn.disabled = false;
             } catch (e) {
                 meta.textContent = "无法检查安装包，请稍后重试";

@@ -39,6 +39,8 @@ public class MainActivity extends Activity {
     private PermissionRequest pendingPermissionRequest;
     private long lastBackHandledAt;
     private boolean notificationPermissionRequested;
+    private boolean updateChecked;
+    private AppUpdater appUpdater;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -68,10 +70,24 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setUserAgentString(settings.getUserAgentString() + " ShuranApp/1.0");
+        settings.setUserAgentString(
+                settings.getUserAgentString() + " ShuranApp/" + AppUpdater.currentVersionName(this)
+        );
 
+        appUpdater = new AppUpdater(this);
         ReminderNotifications.ensureChannel(this);
         webView.addJavascriptInterface(new ReminderJsBridge(this), "ShuranNative");
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
+            if (url != null && (url.contains("/download/apk")
+                    || "application/vnd.android.package-archive".equals(mimeType))) {
+                checkAppUpdateFromUser();
+                return;
+            }
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+            } catch (Exception ignored) {
+            }
+        });
 
         webView.setOnKeyListener((v, keyCode, event) -> {
             if (keyCode != KeyEvent.KEYCODE_BACK) {
@@ -92,6 +108,11 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
+                String path = uri.getPath();
+                if (path != null && path.endsWith("/download/apk")) {
+                    checkAppUpdateFromUser();
+                    return true;
+                }
                 String scheme = uri.getScheme();
                 if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
                     return false;
@@ -114,6 +135,7 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(View.GONE);
                 CookieManager.getInstance().flush();
+                maybeCheckAppUpdate();
             }
 
             @Override
@@ -164,6 +186,24 @@ public class MainActivity extends Activity {
         } else {
             loadApp(getIntent());
         }
+    }
+
+    void checkAppUpdateFromUser() {
+        if (appUpdater != null) {
+            appUpdater.check(true);
+        }
+    }
+
+    private void maybeCheckAppUpdate() {
+        if (updateChecked || appUpdater == null || errorView.getVisibility() == View.VISIBLE) {
+            return;
+        }
+        updateChecked = true;
+        webView.postDelayed(() -> {
+            if (!isFinishing() && appUpdater != null) {
+                appUpdater.check(false);
+            }
+        }, 1800);
     }
 
     void requestNotificationPermission() {
@@ -280,6 +320,12 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == AppUpdater.REQUEST_INSTALL_UNKNOWN) {
+            if (appUpdater != null) {
+                appUpdater.onInstallPermissionResult();
+            }
+            return;
+        }
         if (requestCode != FILE_CHOOSER_REQUEST || filePathCallback == null) {
             return;
         }
