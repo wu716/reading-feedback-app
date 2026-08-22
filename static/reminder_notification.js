@@ -585,9 +585,48 @@ function startReminderServiceIfLoggedIn() {
     if (token) window.reminderNotificationService.start();
 }
 
+function promptLegacyNativeUpdate() {
+    try {
+        if (!window.ShuranNative) return;
+        if (typeof window.ShuranNative.checkUpdate === 'function') return;
+        if (sessionStorage.getItem('shuran_update_banner_dismissed') === '1') return;
+        if (document.getElementById('shuranNativeUpdateBanner')) return;
+        const bar = document.createElement('div');
+        bar.id = 'shuranNativeUpdateBanner';
+        bar.setAttribute('role', 'dialog');
+        bar.style.cssText = [
+            'position:fixed',
+            'left:12px',
+            'right:12px',
+            'bottom:16px',
+            'z-index:9999',
+            'background:#1a1a2e',
+            'color:#fff',
+            'border-radius:14px',
+            'padding:14px 16px',
+            'box-shadow:0 8px 24px rgba(0,0,0,.25)',
+            'font-size:14px',
+            'line-height:1.5'
+        ].join(';');
+        bar.innerHTML = '<strong>发现新版本</strong><p style="margin:6px 0 12px;opacity:.9;">可直接覆盖更新，登录数据会保留，不必卸载重装。</p><div style="display:flex;gap:8px;"><button type="button" id="shuranUpdateNowBtn" style="flex:1;border:none;border-radius:10px;padding:10px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:700;">立即更新</button><button type="button" id="shuranUpdateLaterBtn" style="border:none;border-radius:10px;padding:10px 14px;background:#333;color:#ddd;">稍后</button></div>';
+        document.body.appendChild(bar);
+        document.getElementById('shuranUpdateNowBtn').onclick = function () {
+            window.location.href = '/download';
+        };
+        document.getElementById('shuranUpdateLaterBtn').onclick = function () {
+            sessionStorage.setItem('shuran_update_banner_dismissed', '1');
+            bar.remove();
+        };
+    } catch (e) {
+        console.warn('promptLegacyNativeUpdate', e);
+    }
+}
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startReminderServiceIfLoggedIn);
+    document.addEventListener('DOMContentLoaded', promptLegacyNativeUpdate);
 } else {
     startReminderServiceIfLoggedIn();
+    promptLegacyNativeUpdate();
 }
 window.addEventListener('auth-check-settled', startReminderServiceIfLoggedIn);
