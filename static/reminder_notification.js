@@ -726,14 +726,56 @@ class ReminderNotificationService {
 
 window.reminderNotificationService = new ReminderNotificationService();
 
-function startReminderServiceIfLoggedIn() {
+function shuranIsNativeApp() {
+    return !!(window.ShuranNative && typeof window.ShuranNative.isNative === 'function'
+        ? window.ShuranNative.isNative()
+        : window.ShuranNative);
+}
+
+function shuranStartAppUpdate() {
+    const native = window.ShuranNative;
+    if (native && typeof native.checkUpdate === 'function') {
+        native.checkUpdate();
+        return;
+    }
+    const origin = window.location.origin || 'http://47.236.122.207:8000';
+    const page = origin + '/download';
+    if (native) {
+        const rest = page.replace(/^https?:\/\//, '');
+        const scheme = origin.indexOf('https') === 0 ? 'https' : 'http';
+        window.location.href = 'intent://' + rest
+            + '#Intent;scheme=' + scheme
+            + ';action=android.intent.action.VIEW;end';
+        return;
+    }
+    window.location.href = '/download';
+}
+
+function fillAppVersionLabel() {
+    const label = document.getElementById('appVersionLabel');
+    if (!label) return;
+    const native = window.ShuranNative;
+    if (native && typeof native.getAppVersion === 'function') {
+        const name = native.getAppVersion();
+        const code = typeof native.getVersionCode === 'function' ? native.getVersionCode() : '';
+        label.textContent = '当前 App：' + name + (code ? '（' + code + '）' : '');
+        return;
+    }
+    if (native) {
+        label.textContent = '当前是较旧的书然 App，点检查更新即可安装新版本。';
+        return;
+    }
+    label.textContent = '网页版无需安装包。请在手机里打开书然 App，进入「我的」检查更新。';
+}
+
+window.shuranStartAppUpdate = shuranStartAppUpdate;
     const token = localStorage.getItem('authToken') || localStorage.getItem('token');
     if (token) window.reminderNotificationService.start();
 }
 
 function promptLegacyNativeUpdate() {
     try {
-        if (!window.ShuranNative) return;
+        if (!shuranIsNativeApp()) return;
         if (typeof window.ShuranNative.checkUpdate === 'function') return;
         if (sessionStorage.getItem('shuran_update_banner_dismissed') === '1') return;
         if (document.getElementById('shuranNativeUpdateBanner')) return;
@@ -754,10 +796,10 @@ function promptLegacyNativeUpdate() {
             'font-size:14px',
             'line-height:1.5'
         ].join(';');
-        bar.innerHTML = '<strong>发现新版本</strong><p style="margin:6px 0 12px;opacity:.9;">可直接覆盖更新，登录数据会保留，不必卸载重装。</p><div style="display:flex;gap:8px;"><button type="button" id="shuranUpdateNowBtn" style="flex:1;border:none;border-radius:10px;padding:10px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:700;">立即更新</button><button type="button" id="shuranUpdateLaterBtn" style="border:none;border-radius:10px;padding:10px 14px;background:#333;color:#ddd;">稍后</button></div>';
+        bar.innerHTML = '<strong>发现新版本</strong><p style="margin:6px 0 12px;opacity:.9;">在 App 里点立即更新即可覆盖安装，登录数据会保留，不必自己去记网址。</p><div style="display:flex;gap:8px;"><button type="button" id="shuranUpdateNowBtn" style="flex:1;border:none;border-radius:10px;padding:10px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:700;">立即更新</button><button type="button" id="shuranUpdateLaterBtn" style="border:none;border-radius:10px;padding:10px 14px;background:#333;color:#ddd;">稍后</button></div>';
         document.body.appendChild(bar);
         document.getElementById('shuranUpdateNowBtn').onclick = function () {
-            window.location.href = '/download';
+            shuranStartAppUpdate();
         };
         document.getElementById('shuranUpdateLaterBtn').onclick = function () {
             sessionStorage.setItem('shuran_update_banner_dismissed', '1');
@@ -771,8 +813,10 @@ function promptLegacyNativeUpdate() {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startReminderServiceIfLoggedIn);
     document.addEventListener('DOMContentLoaded', promptLegacyNativeUpdate);
+    document.addEventListener('DOMContentLoaded', fillAppVersionLabel);
 } else {
     startReminderServiceIfLoggedIn();
     promptLegacyNativeUpdate();
+    fillAppVersionLabel();
 }
 window.addEventListener('auth-check-settled', startReminderServiceIfLoggedIn);

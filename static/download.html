@@ -166,6 +166,10 @@
                 mask.classList.add("show");
                 return;
             }
+            if (window.ShuranNative && typeof window.ShuranNative.checkUpdate === "function") {
+                window.ShuranNative.checkUpdate();
+                return;
+            }
             window.location.href = "/download/apk";
         });
 

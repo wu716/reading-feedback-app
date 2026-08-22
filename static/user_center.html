@@ -627,6 +627,10 @@
         }
 
         function checkAppUpdate() {
+            if (typeof window.shuranStartAppUpdate === 'function') {
+                window.shuranStartAppUpdate();
+                return;
+            }
             if (window.ShuranNative && typeof window.ShuranNative.checkUpdate === 'function') {
                 window.ShuranNative.checkUpdate();
                 return;
@@ -655,7 +659,7 @@
             }, 3000);
         }
     </script>
-    <script src="/static/reminder_notification.js?v=121"></script>
+    <script src="/static/reminder_notification.js?v=122"></script>
 </body>
 </html>
 
