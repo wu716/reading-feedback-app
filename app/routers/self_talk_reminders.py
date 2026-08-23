@@ -15,11 +15,40 @@ from app.self_talk.reminder_schemas import (
     ReminderSettingCreate, ReminderSettingUpdate, ReminderSettingResponse,
     ReminderLogResponse, ReminderLogListResponse, TriggerReminderRequest
 )
-from app.self_talk.reminder_service import ReminderService, check_todo_reminders
+from app.self_talk.reminder_service import (
+    ReminderService,
+    check_todo_reminders,
+    check_reading_reminders,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/self_talk_reminders", tags=["self-talk-reminders"])
+
+
+def _setting_response(setting: SelfTalkReminderSetting, reminder_days=None) -> ReminderSettingResponse:
+    if reminder_days is None:
+        try:
+            reminder_days = json.loads(setting.reminder_days)
+        except Exception:
+            reminder_days = [0, 1, 2, 3, 4, 5, 6]
+    return ReminderSettingResponse(
+        id=setting.id,
+        user_id=setting.user_id,
+        is_enabled=setting.is_enabled,
+        daily_reminder_enabled=setting.daily_reminder_enabled,
+        daily_reminder_time=setting.daily_reminder_time,
+        reminder_days=reminder_days,
+        after_action_reminder=setting.after_action_reminder,
+        after_new_action_reminder=setting.after_new_action_reminder,
+        inactive_days_threshold=setting.inactive_days_threshold,
+        browser_notification=setting.browser_notification,
+        email_notification=setting.email_notification,
+        reading_reminder_enabled=bool(getattr(setting, "reading_reminder_enabled", False)),
+        reading_reminder_time=getattr(setting, "reading_reminder_time", None),
+        created_at=setting.created_at,
+        updated_at=setting.updated_at,
+    )
 
 
 @router.get("/settings", response_model=ReminderSettingResponse)
@@ -33,28 +62,7 @@ async def get_reminder_settings(
     """
     try:
         setting = ReminderService.get_or_create_setting(db, current_user.id)
-        
-        # 解析 reminder_days JSON
-        try:
-            reminder_days = json.loads(setting.reminder_days)
-        except:
-            reminder_days = [0,1,2,3,4,5,6]
-        
-        return ReminderSettingResponse(
-            id=setting.id,
-            user_id=setting.user_id,
-            is_enabled=setting.is_enabled,
-            daily_reminder_enabled=setting.daily_reminder_enabled,
-            daily_reminder_time=setting.daily_reminder_time,
-            reminder_days=reminder_days,
-            after_action_reminder=setting.after_action_reminder,
-            after_new_action_reminder=setting.after_new_action_reminder,
-            inactive_days_threshold=setting.inactive_days_threshold,
-            browser_notification=setting.browser_notification,
-            email_notification=setting.email_notification,
-            created_at=setting.created_at,
-            updated_at=setting.updated_at
-        )
+        return _setting_response(setting)
         
     except Exception as e:
         logger.error(f"获取提醒设置失败: {e}")
@@ -77,8 +85,8 @@ async def create_reminder_settings(
         ).first()
         
         if existing_setting:
-            # 更新现有设置
-            for key, value in settings.dict().items():
+            payload = settings.model_dump(exclude_unset=True) if hasattr(settings, "model_dump") else settings.dict(exclude_unset=True)
+            for key, value in payload.items():
                 if key == "reminder_days":
                     setattr(existing_setting, key, json.dumps(value))
                 else:
@@ -100,7 +108,9 @@ async def create_reminder_settings(
                 after_new_action_reminder=settings.after_new_action_reminder,
                 inactive_days_threshold=settings.inactive_days_threshold,
                 browser_notification=settings.browser_notification,
-                email_notification=settings.email_notification
+                email_notification=settings.email_notification,
+                reading_reminder_enabled=settings.reading_reminder_enabled,
+                reading_reminder_time=settings.reading_reminder_time,
             )
             db.add(setting)
             db.commit()
@@ -108,21 +118,7 @@ async def create_reminder_settings(
         
         logger.info(f"用户 {current_user.id} 的提醒设置已保存")
         
-        return ReminderSettingResponse(
-            id=setting.id,
-            user_id=setting.user_id,
-            is_enabled=setting.is_enabled,
-            daily_reminder_enabled=setting.daily_reminder_enabled,
-            daily_reminder_time=setting.daily_reminder_time,
-            reminder_days=settings.reminder_days,
-            after_action_reminder=setting.after_action_reminder,
-            after_new_action_reminder=setting.after_new_action_reminder,
-            inactive_days_threshold=setting.inactive_days_threshold,
-            browser_notification=setting.browser_notification,
-            email_notification=setting.email_notification,
-            created_at=setting.created_at,
-            updated_at=setting.updated_at
-        )
+        return _setting_response(setting, reminder_days=settings.reminder_days)
         
     except Exception as e:
         logger.error(f"保存提醒设置失败: {e}")
@@ -156,23 +152,7 @@ async def update_reminder_settings(
         
         logger.info(f"用户 {current_user.id} 的提醒设置已更新")
         
-        reminder_days = json.loads(setting.reminder_days)
-        
-        return ReminderSettingResponse(
-            id=setting.id,
-            user_id=setting.user_id,
-            is_enabled=setting.is_enabled,
-            daily_reminder_enabled=setting.daily_reminder_enabled,
-            daily_reminder_time=setting.daily_reminder_time,
-            reminder_days=reminder_days,
-            after_action_reminder=setting.after_action_reminder,
-            after_new_action_reminder=setting.after_new_action_reminder,
-            inactive_days_threshold=setting.inactive_days_threshold,
-            browser_notification=setting.browser_notification,
-            email_notification=setting.email_notification,
-            created_at=setting.created_at,
-            updated_at=setting.updated_at
-        )
+        return _setting_response(setting)
         
     except Exception as e:
         logger.error(f"更新提醒设置失败: {e}")
@@ -281,6 +261,7 @@ async def get_pending_reminders(
         from datetime import datetime, timedelta
 
         check_todo_reminders(db, user_id=current_user.id)
+        check_reading_reminders(db, user_id=current_user.id)
         
         recent_time = datetime.now() - timedelta(days=7)
         
@@ -304,9 +285,9 @@ async def get_pending_reminders(
                 current_user.name,
                 log.detail,
             )
-            if log.reminder_type == "todo":
+            if log.reminder_type in ("todo", "reading"):
                 action_url = "/static/index.html#overview"
-                action_label = "查看待办"
+                action_label = "查看今日"
             elif log.reminder_type == "action_practice":
                 action_url = "/static/index.html#actions"
                 action_label = "去践行"

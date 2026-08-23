@@ -88,6 +88,25 @@ public class ReminderJsBridge {
     }
 
     @JavascriptInterface
+    public void scheduleTodos(String json) {
+        try {
+            ReminderScheduler.applyTodos(activity.getApplicationContext(), new org.json.JSONArray(json));
+        } catch (Exception e) {
+            Log.e(TAG, "scheduleTodos failed", e);
+        }
+    }
+
+    @JavascriptInterface
+    public boolean canScheduleExactAlarms() {
+        return ReminderScheduler.canScheduleExact(activity.getApplicationContext());
+    }
+
+    @JavascriptInterface
+    public void openExactAlarmSettings() {
+        activity.runOnUiThread(activity::openExactAlarmSettings);
+    }
+
+    @JavascriptInterface
     public void pollNow() {
         ReminderScheduler.pollNow(activity.getApplicationContext());
     }

@@ -17,10 +17,18 @@ from app.schemas import (
 from app.auth import get_current_active_user
 from app.config import settings
 from app.ai_service import extract_actions_from_notes, AIExtractionError, AIValidationError
-from app.ai_quota import enforce_ai_quota
+from app.ai_quota import enforce_ai_quota, get_quota_status
 from app.self_talk.reminder_service import ReminderService
 
 router = APIRouter(prefix="/actions", tags=["行动项管理"])
+
+
+@router.get("/ai-quota")
+async def get_ai_quota(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    return get_quota_status(db, current_user)
 
 
 @router.post("/upload-notes", response_model=NotesUploadResponse)

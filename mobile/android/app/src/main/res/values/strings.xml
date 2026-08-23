@@ -14,6 +14,10 @@
     <string name="notification_test_body">看到这条就说明系统通知已打通。到点提醒会出现在状态栏、锁屏和下拉通知栏。</string>
     <string name="notification_test_toast">已发送测试通知，请下拉状态栏查看</string>
     <string name="notification_need_permission">请允许通知权限后再点测试</string>
+    <string name="notification_reading_title">该阅读了</string>
+    <string name="notification_reading_body">到每日阅读时间了，打开今日记录一下。</string>
+    <string name="notification_todo_title">待办提醒</string>
+    <string name="notification_todo_fallback">你有一条待办到点了。</string>
     <string name="update_title">发现新版本</string>
     <string name="update_message">当前版本 %1$s，最新版本 %2$s。\n将覆盖安装，登录数据会保留，无需卸载。</string>
     <string name="update_now">立即更新</string>

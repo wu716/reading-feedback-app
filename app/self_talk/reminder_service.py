@@ -44,7 +44,9 @@ class ReminderService:
                 after_new_action_reminder=True,
                 inactive_days_threshold=3,
                 browser_notification=True,
-                email_notification=True
+                email_notification=True,
+                reading_reminder_enabled=False,
+                reading_reminder_time="21:00",
             )
             db.add(setting)
             db.commit()
@@ -222,6 +224,8 @@ class ReminderService:
         """获取提醒消息内容"""
         if reminder_type == "todo":
             return ("待办提醒", detail or f"{user_name}，你有一条待办到点了。")
+        if reminder_type == "reading":
+            return ("该阅读了", "到每日阅读时间了，打开今日记录一下。")
         messages = {
             "daily": (
                 "每日提醒",
@@ -443,6 +447,60 @@ def _todo_due_at(todo: DailyTodo) -> Optional[datetime]:
         return datetime.combine(todo.todo_date, time(hour, minute), tzinfo=BEIJING_TZ)
     except Exception:
         return None
+
+
+def _parse_clock(raw: Optional[str]) -> Optional[time]:
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw.strip(), "%H:%M:%S").time()
+    except ValueError:
+        try:
+            return datetime.strptime(raw.strip(), "%H:%M").time()
+        except ValueError:
+            return None
+
+
+def check_reading_reminders(db: Session, user_id: Optional[int] = None) -> int:
+    """到每日阅读时间后写一条 reading 日志。"""
+    now = datetime.now(BEIJING_TZ)
+    current_minutes = now.hour * 60 + now.minute
+    today_start = datetime.combine(now.date(), time.min)
+    query = db.query(SelfTalkReminderSetting).filter(
+        SelfTalkReminderSetting.is_enabled == True,
+        SelfTalkReminderSetting.reading_reminder_enabled == True,
+    )
+    if user_id is not None:
+        query = query.filter(SelfTalkReminderSetting.user_id == user_id)
+
+    fired = 0
+    for setting in query.all():
+        reminder_time = _parse_clock(setting.reading_reminder_time)
+        if reminder_time is None:
+            continue
+        if current_minutes < reminder_time.hour * 60 + reminder_time.minute:
+            continue
+        existing = db.query(SelfTalkReminderLog).filter(
+            and_(
+                SelfTalkReminderLog.user_id == setting.user_id,
+                SelfTalkReminderLog.reminder_type == "reading",
+                SelfTalkReminderLog.triggered_at >= today_start,
+            )
+        ).first()
+        if existing:
+            continue
+        user = db.query(User).filter(User.id == setting.user_id).first()
+        if not user or not user.is_active:
+            continue
+        title, message = ReminderService.get_reminder_message("reading", user.name)
+        ReminderService.dispatch_notifications(
+            db, setting.user_id, setting, "reading", title, message
+        )
+        fired += 1
+        logger.info("已为用户 %s 发送每日阅读提醒", user.name)
+    if fired:
+        logger.info("每日阅读提醒检查完成，共发送 %s 条", fired)
+    return fired
 
 
 def check_todo_reminders(db: Session, user_id: Optional[int] = None) -> int:

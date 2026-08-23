@@ -1,9 +1,9 @@
 (function () {
     const TABS = [
-        { id: 'overview', label: '今日', icon: '📅', href: '/static/index.html#overview' },
-        { id: 'actions', label: '行动', icon: '🎯', href: '/static/index.html#actions' },
-        { id: 'self-talk', label: 'Self-talk', icon: '🎤', href: '/static/index.html#self-talk' },
-        { id: 'user-center', label: '我的', icon: '👤', href: '/static/index.html#user-center' },
+        { id: 'overview', label: '今日', icon: '今', href: '/static/index.html#overview' },
+        { id: 'actions', label: '行动', icon: '行', href: '/static/index.html#actions' },
+        { id: 'self-talk', label: 'Self-talk', icon: '谈', href: '/static/index.html#self-talk' },
+        { id: 'user-center', label: '我的', icon: '我', href: '/static/index.html#user-center' },
     ];
 
     function currentTab() {

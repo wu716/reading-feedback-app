@@ -9,6 +9,7 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.View;
 import android.webkit.CookieManager;
@@ -222,6 +223,23 @@ public class MainActivity extends Activity {
                 new String[]{Manifest.permission.POST_NOTIFICATIONS},
                 NOTIFICATION_PERMISSION_REQUEST
         );
+    }
+
+    void openExactAlarmSettings() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return;
+        }
+        try {
+            Intent intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        .setData(Uri.parse("package:" + getPackageName())));
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     @Override

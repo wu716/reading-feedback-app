@@ -47,29 +47,8 @@
             z-index: -1;
         }
 
-        /* 微妙的光点效果 */
         body::after {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.3), transparent),
-                radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.2), transparent),
-                radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.4), transparent),
-                radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.3), transparent);
-            background-repeat: repeat;
-            background-size: 150px 100px;
-            pointer-events: none;
-            z-index: -1;
-            animation: sparkle 20s linear infinite;
-        }
-
-        @keyframes sparkle {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 0.6; }
+            display: none;
         }
         
         /* 顶部导航栏样式 */
@@ -167,9 +146,21 @@
         }
         
         .nav-icon {
-            font-size: 1.4rem;
-            width: 28px;
-            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            width: 22px;
+            height: 22px;
+            border-radius: 7px;
+            background: #f0f4ff;
+            color: #667eea;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-item.active .nav-icon {
+            background: #667eea;
+            color: #fff;
         }
         
         .nav-text {
@@ -581,6 +572,20 @@
         .guide-card ol {
             padding-left: 1.2rem;
             margin: 0;
+        }
+
+        .reading-remind-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0 12px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #f1f3f8;
+        }
+
+        .reading-remind-row .me-row-main {
+            flex: 1;
+            min-width: 0;
         }
 
         .todo-remind-input {
@@ -1408,15 +1413,11 @@
         }
         
         .card {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease;
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
+            background: #fff;
+            border-radius: 14px;
+            padding: 22px;
+            border: 1px solid rgba(102, 126, 234, 0.10);
+            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
         }
         
         .card h2 {
@@ -1728,41 +1729,20 @@
         }
 
         .widget-card {
-            background: linear-gradient(135deg, #ffffff 0%, #f0f4ff 30%, #fff0f5 70%, #ffffff 100%);
-            border: 1px solid rgba(102, 126, 234, 0.08);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 
-                0 8px 32px rgba(0,0,0,0.08),
-                0 2px 8px rgba(0,0,0,0.04),
-                inset 0 1px 0 rgba(255,255,255,0.9),
-                inset 0 -1px 0 rgba(102, 126, 234, 0.05);
-            transition: all 0.3s ease;
-            animation: fadeInUp 0.6s ease-out;
+            background: linear-gradient(180deg, #ffffff 0%, #f7f8ff 100%);
+            border: 1px solid rgba(102, 126, 234, 0.12);
+            border-radius: 14px;
+            padding: 16px 18px;
+            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
             position: relative;
-            overflow: hidden;
         }
 
-        /* 光晕纹理效果 */
-        .widget-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: 
-                radial-gradient(circle at 20% 20%, rgba(255, 99, 132, 0.03) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(102, 126, 234, 0.03) 0%, transparent 50%),
-                radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        /* 确保内容在光晕之上 */
-        .widget-card > * {
-            position: relative;
-            z-index: 2;
+        .block-title {
+            color: #667eea;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            font-weight: 650;
+            letter-spacing: 0.02em;
         }
 
         /* 为不同行的卡片添加不同的动画延迟 */
@@ -1819,36 +1799,7 @@
         }
 
         .progress-bar::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-            animation: shimmer 2s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { left: -100%; }
-            100% { left: 100%; }
-        }
-
-        .widget-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 
-                0 12px 40px rgba(0,0,0,0.12),
-                0 4px 12px rgba(0,0,0,0.08),
-                inset 0 1px 0 rgba(255,255,255,0.95),
-                inset 0 -1px 0 rgba(102, 126, 234, 0.08);
-        }
-
-        .widget-card:hover::before {
-            background: 
-                radial-gradient(circle at 20% 20%, rgba(255, 99, 132, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(102, 126, 234, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
-            transition: background 0.3s ease;
+            display: none;
         }
 
         .widget-card.full-width {
@@ -2213,9 +2164,12 @@
         }
 
         .stat-icon {
-            font-size: 2rem;
-            width: 50px;
-            text-align: center;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            flex-shrink: 0;
+            font-size: 0;
         }
 
         .stat-content {
@@ -2251,67 +2205,52 @@
 
         /* 快速操作样式 */
         .quick-actions {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            border: 1px solid #f1f3f8;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
         }
 
         .quick-action-btn {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 8px;
-            padding: 20px 15px;
-            background: linear-gradient(135deg, #667eea 0%, #ff6b9d 50%, #764ba2 100%);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
+            gap: 12px;
+            width: 100%;
+            min-height: 48px;
+            padding: 12px 14px;
+            background: #fff;
+            color: #1f2937;
+            border: none;
+            border-bottom: 1px solid #f1f3f8;
+            border-radius: 0;
             cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            position: relative;
-            overflow: hidden;
+            text-align: left;
         }
 
-        .quick-action-btn::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: 
-                radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 70% 70%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 1;
+        .quick-action-btn:last-child {
+            border-bottom: none;
         }
 
-        .quick-action-btn > * {
-            position: relative;
-            z-index: 2;
-        }
-
-        .quick-action-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-            background: linear-gradient(135deg, #5a6fd8 0%, #ff5a8a 50%, #6a4190 100%);
-        }
-
-        .quick-action-btn:hover::after {
-            background: 
-                radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 70% 70%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
-            transition: background 0.3s ease;
+        .quick-action-btn::after,
+        .quick-action-btn::before {
+            display: none;
         }
 
         .action-icon {
-            font-size: 1.5rem;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            flex-shrink: 0;
+            font-size: 0;
         }
 
         .action-text {
-            font-size: 0.9rem;
-            font-weight: 500;
+            font-size: 0.95rem;
+            font-weight: 600;
         }
 
         /* 个人统计样式 */
@@ -2332,14 +2271,16 @@
         }
 
         .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
         }
 
         .stat-icon-large {
-            font-size: 2.5rem;
-            width: 60px;
-            text-align: center;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #667eea;
+            font-size: 0;
+            flex-shrink: 0;
         }
 
         .stat-info {
@@ -3181,19 +3122,19 @@
     <aside class="app-sidebar">
         <nav class="sidebar-nav">
             <div class="nav-item active" data-section="overview" onclick="navigateTo('overview')">
-                <span class="nav-icon">📅</span>
+                <span class="nav-icon">今</span>
                 <span class="nav-text">今日</span>
             </div>
             <div class="nav-item" data-section="actions" onclick="navigateTo('actions')">
-                <span class="nav-icon">🎯</span>
+                <span class="nav-icon">行</span>
                 <span class="nav-text">行动</span>
             </div>
             <div class="nav-item" data-section="self-talk" onclick="navigateTo('self-talk')">
-                <span class="nav-icon">🎤</span>
+                <span class="nav-icon">谈</span>
                 <span class="nav-text">Self-talk</span>
             </div>
             <div class="nav-item" data-section="user-center" onclick="navigateTo('user-center')">
-                <span class="nav-icon">👤</span>
+                <span class="nav-icon">我</span>
                 <span class="nav-text">我的</span>
             </div>
         </nav>
@@ -3217,7 +3158,7 @@
             <div class="homepage-dashboard">
                 <div class="dashboard-row today-calendar-row">
                     <div class="widget-card">
-                        <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.2rem;">📅 日历</h3>
+                        <h3 class="block-title">日历</h3>
                         <div class="calendar-widget">
                             <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                                 <button class="nav-btn" onclick="previousMonth()" style="background: #667eea; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer;">‹</button>
@@ -3241,7 +3182,18 @@
                         </div>
                         <!-- 今日待办 -->
                         <div class="today-todos" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
-                            <h4 style="color: #667eea; margin-bottom: 10px; font-size: 1rem;">📋 今日待办</h4>
+                            <h4 class="block-title">今日待办</h4>
+                            <div class="reading-remind-row">
+                                <div class="me-row-main">
+                                    <div class="me-row-title">每日阅读时间</div>
+                                    <div class="me-row-desc">到点单独提醒「该阅读了」</div>
+                                </div>
+                                <label class="me-switch">
+                                    <input type="checkbox" id="readingReminderSwitch">
+                                    <span class="me-switch-ui"></span>
+                                </label>
+                                <input type="time" class="me-control" id="readingReminderTime" value="21:00">
+                            </div>
                             <div id="todayTodosList" class="todos-list"></div>
                             <div class="todo-add-row">
                                 <input type="text" id="newTodoInput" class="todo-add-input" placeholder="添加今日待办…" maxlength="500">
@@ -3256,10 +3208,10 @@
                 <div class="dashboard-row">
                     <!-- 今日概览 -->
                     <div class="widget-card">
-                        <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.2rem;">📊 今日概览</h3>
+                        <h3 class="block-title">今日概览</h3>
                         <div class="overview-stats" id="todayOverviewStats">
                             <div class="stat-item clickable" id="readingStatItem" onclick="toggleOverviewPanel('reading')">
-                                <div class="stat-icon">📚</div>
+                                <div class="stat-icon" aria-hidden="true"></div>
                                 <div class="stat-content">
                                     <div class="stat-value-row">
                                         <button type="button" class="duration-step" data-delta="-5" aria-label="减少5分钟" onclick="event.stopPropagation()">−</button>
@@ -3273,7 +3225,7 @@
                             </div>
                             <div class="overview-panel hidden" id="readingPanel"></div>
                             <div class="stat-item clickable" id="actionsStatItem" onclick="toggleOverviewPanel('actions')">
-                                <div class="stat-icon">✅</div>
+                                <div class="stat-icon" aria-hidden="true"></div>
                                 <div class="stat-content">
                                     <div class="stat-value" id="completedActions">--</div>
                                     <div class="stat-label">今日实践行动项</div>
@@ -3282,7 +3234,7 @@
                             </div>
                             <div class="overview-panel hidden" id="actionsPanel"></div>
                             <div class="stat-item clickable" id="practiceStatItem" onclick="toggleOverviewPanel('practice')">
-                                <div class="stat-icon">🎯</div>
+                                <div class="stat-icon" aria-hidden="true"></div>
                                 <div class="stat-content">
                                     <div class="stat-value" id="practiceCount">--</div>
                                     <div class="stat-label">今日实践记录</div>
@@ -3291,7 +3243,7 @@
                             </div>
                             <div class="overview-panel hidden" id="practicePanel"></div>
                             <div class="stat-item clickable" id="selfTalkStatItem" onclick="toggleOverviewPanel('selftalk')">
-                                <div class="stat-icon">💭</div>
+                                <div class="stat-icon" aria-hidden="true"></div>
                                 <div class="stat-content">
                                     <div class="stat-value" id="selfTalkPlaySummary">--</div>
                                     <div class="stat-label">Self-talk 播放</div>
@@ -3306,26 +3258,26 @@
                     
                     <!-- 快速操作 -->
                     <div class="widget-card">
-                        <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.2rem;">⚡ 快速操作</h3>
+                        <h3 class="block-title">快速操作</h3>
                         <div class="quick-actions">
-                            <button class="quick-action-btn" onclick="recordTodayPractice()">
-                                <div class="action-icon">✅</div>
+                            <button type="button" class="quick-action-btn" onclick="recordTodayPractice()">
+                                <div class="action-icon"></div>
                                 <div class="action-text">记录实践</div>
                             </button>
-                            <button class="quick-action-btn" onclick="addAction()">
-                                <div class="action-icon">🎯</div>
+                            <button type="button" class="quick-action-btn" onclick="addAction()">
+                                <div class="action-icon"></div>
                                 <div class="action-text">添加行动项</div>
                             </button>
-                            <button class="quick-action-btn" onclick="startReading()">
-                                <div class="action-icon">📖</div>
+                            <button type="button" class="quick-action-btn" onclick="startReading()">
+                                <div class="action-icon"></div>
                                 <div class="action-text">开始阅读</div>
                             </button>
-                            <button class="quick-action-btn" onclick="recordSelfTalk()">
-                                <div class="action-icon">💭</div>
+                            <button type="button" class="quick-action-btn" onclick="recordSelfTalk()">
+                                <div class="action-icon"></div>
                                 <div class="action-text">记录对话</div>
                             </button>
-                            <button class="quick-action-btn" onclick="viewDashboard()">
-                                <div class="action-icon">📊</div>
+                            <button type="button" class="quick-action-btn" onclick="viewDashboard()">
+                                <div class="action-icon"></div>
                                 <div class="action-text">查看数据</div>
                             </button>
                         </div>
@@ -3336,10 +3288,10 @@
                 <div class="dashboard-row">
                     <!-- 个人统计 -->
                     <div class="widget-card full-width">
-                        <h3 style="color: #667eea; margin-bottom: 15px; font-size: 1.2rem;">📈 个人统计</h3>
+                        <h3 class="block-title">个人统计</h3>
                         <div class="personal-stats">
                             <div class="stat-card">
-                                <div class="stat-icon-large">🎯</div>
+                                <div class="stat-icon-large" aria-hidden="true"></div>
                                 <div class="stat-info">
                                     <div class="stat-value-large" id="weeklyGoal">--</div>
                                     <div class="stat-label-large">本周实践成功率</div>
@@ -3350,7 +3302,7 @@
                                 </div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-icon-large">🔥</div>
+                                <div class="stat-icon-large" aria-hidden="true"></div>
                                 <div class="stat-info">
                                     <div class="stat-value-large" id="streakDays">--</div>
                                     <div class="stat-label-large">连续坚持</div>
@@ -3361,7 +3313,7 @@
                                 </div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-icon-large">📊</div>
+                                <div class="stat-icon-large" aria-hidden="true"></div>
                                 <div class="stat-info">
                                     <div class="stat-value-large" id="successRate">--</div>
                                     <div class="stat-label-large">行动完成率</div>
@@ -3381,19 +3333,20 @@
         <section id="upload" class="content-section">
             <div class="section-header">
                 <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
-                <h1>📝 上传读书笔记</h1>
+                <h1>上传读书笔记</h1>
                 <p>上传你的读书笔记，系统将自动抽取可执行的行动项</p>
             </div>
             
             <div class="card">
                 <div class="upload-tabs">
-                    <button type="button" class="upload-tab active" data-tab="ai" onclick="switchUploadTab('ai')">🤖 AI 抽取行动项</button>
-                    <button type="button" class="upload-tab" data-tab="manual" onclick="switchUploadTab('manual')">✍️ 手动添加行动项</button>
-                    <button type="button" class="upload-tab" data-tab="reading" onclick="switchUploadTab('reading')">📖 阅读内容与笔记</button>
+                    <button type="button" class="upload-tab active" data-tab="ai" onclick="switchUploadTab('ai')">AI 抽取行动项</button>
+                    <button type="button" class="upload-tab" data-tab="manual" onclick="switchUploadTab('manual')">手动添加行动项</button>
+                    <button type="button" class="upload-tab" data-tab="reading" onclick="switchUploadTab('reading')">阅读内容与笔记</button>
                 </div>
 
                 <div class="upload-panel" data-panel="ai">
-                    <h2>📝 上传读书笔记（AI 抽取）</h2>
+                    <h2>上传读书笔记（AI 抽取）</h2>
+                    <p id="aiExtractQuotaHint" class="me-hint">登录后显示今日剩余抽取次数</p>
                     <form id="uploadForm">
                         <div class="form-group">
                             <label for="bookTitle">书籍名称</label>
@@ -3403,12 +3356,12 @@
                             <label for="notesContent">笔记内容</label>
                             <textarea id="notesContent" placeholder="请输入你的读书笔记内容..."></textarea>
                         </div>
-                        <button type="submit" class="btn" id="uploadBtn">🚀 抽取行动项</button>
+                        <button type="submit" class="btn" id="uploadBtn">抽取行动项</button>
                     </form>
                 </div>
 
                 <div class="upload-panel hidden" data-panel="manual">
-                    <h2>✍️ 手动添加行动项（无需 AI）</h2>
+                    <h2>手动添加行动项（无需 AI）</h2>
                     <div class="form-group">
                         <label for="manualBookTitle">书籍名称</label>
                         <input type="text" id="manualBookTitle" placeholder="书名">
@@ -3421,11 +3374,11 @@
                         <label for="manualSourceExcerpt">摘录/备注（可选）</label>
                         <textarea id="manualSourceExcerpt" placeholder="相关原文或说明…"></textarea>
                     </div>
-                    <button type="button" class="btn" onclick="createManualAction()">💾 保存行动项</button>
+                    <button type="button" class="btn" onclick="createManualAction()">保存行动项</button>
                 </div>
 
                 <div class="upload-panel hidden" data-panel="reading">
-                    <h2>📖 阅读内容与笔记</h2>
+                    <h2>阅读内容与笔记</h2>
                     <input type="hidden" id="readingEntryId" value="">
                     <div class="form-group">
                         <label for="readingBookTitle">书籍名称</label>
@@ -3443,7 +3396,7 @@
                         <label for="readingReflection">笔记 / 感悟</label>
                         <textarea id="readingReflection" placeholder="读后感、摘录、思考…"></textarea>
                     </div>
-                    <button type="button" class="btn" onclick="saveReadingEntry()">💾 保存阅读记录</button>
+                    <button type="button" class="btn" onclick="saveReadingEntry()">保存阅读记录</button>
                 </div>
             </div>
         </section>
@@ -3451,13 +3404,13 @@
         <!-- 行动项管理区 -->
         <section id="actions" class="content-section">
             <div class="section-header">
-                <h1>🎯 行动</h1>
+                <h1>行动</h1>
                 <p>管理行动项，并从这里进入读书笔记</p>
             </div>
 
             <div class="notes-entry-card" onclick="openNotesFromActions()">
                 <div>
-                    <h3>📖 读书笔记</h3>
+                    <h3>读书笔记</h3>
                     <p>记录阅读内容，或用 AI 从笔记抽取行动项</p>
                 </div>
                 <span aria-hidden="true">→</span>
@@ -3465,7 +3418,7 @@
             
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
-                    <h2>🎯 我的行动项</h2>
+                    <h2>我的行动项</h2>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="btn-small" onclick="addAction()" style="background: #667eea; color: white;">
                             ＋ 添加行动项
@@ -3480,13 +3433,13 @@
                 <div style="margin-bottom: 20px;">
                     <div class="action-filter-row">
                         <button class="action-type-filter active" data-type="all" onclick="filterActionsByType('all')">
-                            📋 全部
+                            全部
                         </button>
                         <button class="action-type-filter" data-type="trigger" onclick="filterActionsByType('trigger')">
-                            🎯 情境触发型
+                            情境触发型
                         </button>
                         <button class="action-type-filter" data-type="habit" onclick="filterActionsByType('habit')">
-                            🔄 习惯养成型
+                            习惯养成型
                         </button>
                     </div>
                 </div>
@@ -3554,7 +3507,7 @@
 
                 <div class="me-group reminder-settings-section">
                     <div class="me-group-title">提醒</div>
-                    <p class="me-hint">待办的提醒时间在添加时单独设置；到点后按这里的方式通知。</p>
+                    <p class="me-hint">待办时间在添加时单独设置；阅读时间在今日待办里设置。到点后会弹出系统通知。</p>
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
                             <div class="me-row-title">启用提醒</div>
@@ -3640,6 +3593,13 @@
                 <div class="me-group">
                     <div class="me-group-title">通知</div>
                     <p class="me-hint">系统通知出现在状态栏与锁屏。网页版会在应用内提示。</p>
+                    <div class="me-row me-row-static" id="exactAlarmRow" hidden>
+                        <div class="me-row-main">
+                            <div class="me-row-title">精确闹钟</div>
+                            <div class="me-row-desc">未开启时，到点提醒可能被推迟到打开应用才出现</div>
+                        </div>
+                        <button type="button" class="me-link-btn" onclick="openExactAlarmSettings()">去开启</button>
+                    </div>
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
                             <div class="me-row-title">系统通知</div>
@@ -3672,12 +3632,12 @@
         <section id="stats" class="content-section">
             <div class="section-header">
                 <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
-                <h1>📊 实践统计</h1>
+                <h1>实践统计</h1>
                 <p>查看你的实践数据和成长轨迹</p>
             </div>
             
             <div class="card dashboard">
-            <h2>📊 实践统计</h2>
+            <h2>实践统计</h2>
             <div class="stats-grid" id="statsGrid">
                 <div class="stat-card">
                     <div class="stat-number" id="totalActions">-</div>
@@ -3699,7 +3659,7 @@
             
             <!-- 时间维度分析 -->
             <div style="margin-top: 30px;">
-                <h3>⏰ 时间维度分析</h3>
+                <h3>时间维度分析</h3>
                 <div class="stats-grid" id="durationStatsGrid">
                     <div class="stat-card">
                         <div class="stat-number" id="shortTermActions">-</div>
@@ -3722,7 +3682,7 @@
             
             <!-- 坚持度分析 -->
             <div style="margin-top: 30px;" id="streakAnalysis" style="display: none;">
-                <h3>🔥 坚持度分析</h3>
+                <h3>坚持度分析</h3>
                 <div id="streakDetails"></div>
             </div>
             </div>
@@ -3735,7 +3695,7 @@
         <section id="guide" class="content-section">
             <div class="section-header">
                 <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
-                <h1>📘 使用说明</h1>
+                <h1>使用说明</h1>
                 <p>用四步把阅读变成行动</p>
             </div>
             <div class="guide-card">
@@ -3743,7 +3703,7 @@
                 <ol>
                     <li>打开应用先看今天要做的事。</li>
                     <li>点日历上的某一天，可以为那天添加待办。</li>
-                    <li>添加时可选提醒时间；到点后会收到通知（请允许通知权限）。</li>
+                    <li>添加时可选提醒时间；也可设置每日阅读时间。到点后会收到系统通知（请允许通知与精确闹钟）。</li>
                 </ol>
             </div>
             <div class="guide-card">
@@ -4267,6 +4227,9 @@
                 if (sectionId === 'user-center') {
                     loadUserInfo();
                     loadReminderSettings();
+                }
+                if (sectionId === 'upload') {
+                    refreshAiExtractQuota();
                 }
                 if (sectionId === 'self-talk') {
                     const frame = document.getElementById('selfTalkFrame');
@@ -5070,6 +5033,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             initializeTodos();
             initializeUserCenter();
+            refreshAiExtractQuota();
         });
         
         // ============= 新增组件功能结束 =============
@@ -5486,6 +5450,26 @@
         }
         
         // 上传笔记并抽取行动项
+        async function refreshAiExtractQuota() {
+            const hint = document.getElementById('aiExtractQuotaHint');
+            if (!hint) return;
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                hint.textContent = '登录后显示今日剩余抽取次数';
+                return;
+            }
+            try {
+                const data = await apiRequest('/api/actions/ai-quota');
+                if (data.extract_remaining == null) {
+                    hint.textContent = '今日抽取次数不限';
+                    return;
+                }
+                hint.textContent = `今日还可抽取 ${data.extract_remaining} / ${data.extract_limit} 次`;
+            } catch (e) {
+                hint.textContent = '';
+            }
+        }
+
         async function uploadNotes() {
             const bookTitle = document.getElementById('bookTitle').value.trim();
             const notesContent = document.getElementById('notesContent').value.trim();
@@ -5508,7 +5492,7 @@
             
             const uploadBtn = document.getElementById('uploadBtn');
             uploadBtn.disabled = true;
-            uploadBtn.textContent = '🔄 正在抽取...';
+            uploadBtn.textContent = '正在抽取...';
             
             try {
                 const response = await apiRequest('/api/actions/upload-notes', {
@@ -5522,6 +5506,7 @@
                 showMessage(response.message, 'success');
                 document.getElementById('bookTitle').value = '';
                 document.getElementById('notesContent').value = '';
+                refreshAiExtractQuota();
                 
                 // 刷新行动项列表
                 loadActions();
@@ -5554,7 +5539,8 @@
                 showMessage(errorMessage, 'error');
             } finally {
                 uploadBtn.disabled = false;
-                uploadBtn.textContent = '🚀 抽取行动项';
+                uploadBtn.textContent = '抽取行动项';
+                refreshAiExtractQuota();
             }
         }
         
@@ -6303,6 +6289,15 @@
 
             // 设置联动逻辑
             updateReminderSwitchStates();
+            if (window.reminderNotificationService) {
+                window.reminderNotificationService.refreshExactAlarmHint();
+            }
+        }
+
+        function openExactAlarmSettings() {
+            if (window.reminderNotificationService) {
+                window.reminderNotificationService.openExactAlarmSettings();
+            }
         }
         
         // 更新提醒开关状态（联动逻辑）

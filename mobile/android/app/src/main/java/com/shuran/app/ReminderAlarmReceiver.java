@@ -18,6 +18,10 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
                     ReminderScheduler.onDailyAlarm(context.getApplicationContext());
                 } else if (ReminderScheduler.ACTION_POLL.equals(action)) {
                     ReminderScheduler.onPollAlarm(context.getApplicationContext());
+                } else if (ReminderScheduler.ACTION_READING.equals(action)) {
+                    ReminderScheduler.onReadingAlarm(context.getApplicationContext());
+                } else if (ReminderScheduler.ACTION_TODO.equals(action)) {
+                    ReminderScheduler.onTodoAlarm(context.getApplicationContext(), intent);
                 }
             } finally {
                 result.finish();

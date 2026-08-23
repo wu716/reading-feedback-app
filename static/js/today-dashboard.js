@@ -62,6 +62,10 @@
             todayOverviewData = await todayApi('/overview');
             renderTodayOverview(todayOverviewData);
             renderDailyTodos(todayOverviewData.todos || []);
+            await loadReadingReminderSettings();
+            if (window.reminderNotificationService) {
+                window.reminderNotificationService.syncNativeTodos();
+            }
             const hint = document.getElementById('todayOverviewHint');
             if (hint) hint.textContent = `数据已更新 · ${todayOverviewData.date}`;
             startTodayAutoRefresh();
@@ -442,10 +446,10 @@
             <div class="todo-item ${done ? 'completed' : ''}" data-todo-id="${t.id}">
                 <div class="todo-main">
                     <span class="todo-text" ondblclick="editDailyTodo(${t.id})">${escapeHtml(t.text)}</span>
-                    ${remind ? `<span class="todo-remind-badge">⏰ ${escapeHtml(remind)}</span>` : ''}
+                    ${remind ? `<span class="todo-remind-badge">${escapeHtml(remind)}</span>` : ''}
                 </div>
                 <div class="todo-actions">
-                    <button type="button" class="todo-btn edit" onclick="setTodoRemindTime(${t.id})" title="提醒时间">⏰</button>
+                    <button type="button" class="todo-btn edit" onclick="setTodoRemindTime(${t.id})" title="提醒时间">时</button>
                     <button type="button" class="todo-btn edit" onclick="editDailyTodo(${t.id})" title="编辑">✎</button>
                     <button type="button" class="todo-check" onclick="toggleDailyTodo(${t.id}, ${!done})" title="${done ? '标为未完成' : '完成'}">${done ? '↩' : '✓'}</button>
                     <button type="button" class="todo-btn delete" onclick="deleteDailyTodo(${t.id})" title="删除">×</button>
@@ -582,7 +586,53 @@
             await loadCalendarDayTodos();
         }
         await refreshOpenMonthMarkers();
+        if (window.reminderNotificationService) {
+            window.reminderNotificationService.syncNativeTodos();
+        }
     }
+
+    async function loadReadingReminderSettings() {
+        const enabledEl = document.getElementById('readingReminderSwitch');
+        const timeEl = document.getElementById('readingReminderTime');
+        if (!enabledEl || !timeEl || typeof apiRequest !== 'function') return;
+        try {
+            const settings = await apiRequest('/api/self_talk_reminders/settings');
+            enabledEl.checked = !!settings.reading_reminder_enabled;
+            if (settings.reading_reminder_time) {
+                timeEl.value = String(settings.reading_reminder_time).slice(0, 5);
+            } else if (!timeEl.value) {
+                timeEl.value = '21:00';
+            }
+            timeEl.disabled = !enabledEl.checked;
+        } catch (e) {
+            console.warn('加载阅读提醒失败', e);
+        }
+    }
+
+    async function saveReadingReminderSettings() {
+        const enabledEl = document.getElementById('readingReminderSwitch');
+        const timeEl = document.getElementById('readingReminderTime');
+        if (!enabledEl || !timeEl || typeof apiRequest !== 'function') return;
+        const enabled = enabledEl.checked;
+        const time = (timeEl.value || '21:00').slice(0, 5);
+        timeEl.disabled = !enabled;
+        try {
+            await apiRequest('/api/self_talk_reminders/settings', {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    reading_reminder_enabled: enabled,
+                    reading_reminder_time: time,
+                }),
+            });
+            if (window.reminderNotificationService) {
+                window.reminderNotificationService.syncNativeSchedule();
+            }
+        } catch (e) {
+            showMessage('保存阅读提醒失败', 'error');
+        }
+    }
+
+    window.saveReadingReminderSettings = saveReadingReminderSettings;
 
     async function refreshOpenMonthMarkers() {
         const first = document.querySelector('.calendar-day[data-date]');
@@ -732,6 +782,16 @@
         if (closeBtn && !closeBtn.dataset.bound) {
             closeBtn.dataset.bound = '1';
             closeBtn.addEventListener('click', () => closeCalendarDayTodos());
+        }
+        const readingSwitch = document.getElementById('readingReminderSwitch');
+        const readingTime = document.getElementById('readingReminderTime');
+        if (readingSwitch && !readingSwitch.dataset.bound) {
+            readingSwitch.dataset.bound = '1';
+            readingSwitch.addEventListener('change', () => saveReadingReminderSettings());
+        }
+        if (readingTime && !readingTime.dataset.bound) {
+            readingTime.dataset.bound = '1';
+            readingTime.addEventListener('change', () => saveReadingReminderSettings());
         }
     };
 

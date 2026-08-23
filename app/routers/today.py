@@ -166,6 +166,27 @@ async def list_daily_todos(
     return rows
 
 
+@router.get("/todos/scheduled", response_model=List[DailyTodoResponse])
+async def list_scheduled_todos(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """未完成且设了提醒时间的今日及未来待办，供原生闹钟同步。"""
+    today = beijing_today()
+    return (
+        db.query(DailyTodo)
+        .filter(
+            DailyTodo.user_id == current_user.id,
+            DailyTodo.deleted_at.is_(None),
+            DailyTodo.completed == False,
+            DailyTodo.remind_time.isnot(None),
+            DailyTodo.todo_date >= today,
+        )
+        .order_by(DailyTodo.todo_date.asc(), DailyTodo.id.asc())
+        .all()
+    )
+
+
 class TodoMonthDayCount(BaseModel):
     date: date
     total: int

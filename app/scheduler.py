@@ -12,6 +12,7 @@ from app.self_talk.reminder_service import (
     check_inactive_reminders,
     check_action_practice_reminders,
     check_todo_reminders,
+    check_reading_reminders,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,12 @@ def create_scheduler() -> BackgroundScheduler:
         lambda: _run_with_db(check_todo_reminders),
         IntervalTrigger(minutes=1),
         id="todo_reminders",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        lambda: _run_with_db(check_reading_reminders),
+        IntervalTrigger(minutes=1),
+        id="reading_reminders",
         replace_existing=True,
     )
 
