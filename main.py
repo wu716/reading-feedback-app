@@ -2,7 +2,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
@@ -63,6 +63,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+STATIC_UI_VERSION = "20260823formal"
+NO_STORE_HEADERS = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
+
+
+@app.middleware("http")
+async def disable_page_cache(request: Request, call_next):
+    """WebView 常把旧 HTML/JS 存下来，页面资源一律禁止缓存。"""
+    response = await call_next(request)
+    path = request.url.path
+    if path == "/" or path.endswith((".html", ".js", ".css")):
+        response.headers["Cache-Control"] = NO_STORE_HEADERS["Cache-Control"]
+        response.headers["Pragma"] = NO_STORE_HEADERS["Pragma"]
+        response.headers["Expires"] = NO_STORE_HEADERS["Expires"]
+    return response
+
 # 注册路由
 app.include_router(auth.router)
 app.include_router(actions.router, prefix="/api")
@@ -73,6 +93,22 @@ app.include_router(self_talk_router)
 app.include_router(self_talk_reminders_router)  # Self-talk 提醒路由
 app.include_router(today.router, prefix="/api")
 app.include_router(app_download.router)
+
+
+@app.get("/static/index.html")
+async def indexed_home(request: Request):
+    """未带版本号的首页会 307 到新地址，逼 WebView 丢掉旧 HTML。"""
+    if request.query_params.get("v") != STATIC_UI_VERSION:
+        return RedirectResponse(
+            url=f"/static/index.html?v={STATIC_UI_VERSION}",
+            headers={**NO_STORE_HEADERS, "Clear-Site-Data": '"cache"'},
+        )
+    return FileResponse(
+        "static/index.html",
+        media_type="text/html",
+        headers=NO_STORE_HEADERS,
+    )
+
 
 # 静态文件服务
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -90,9 +126,12 @@ else:
 
 @app.get("/")
 async def root():
-    """根路径 - 重定向到前端页面"""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/static/index.html")
+    """根路径直接返回首页，避免 WebView 缓存旧的 302 跳转。"""
+    return FileResponse(
+        "static/index.html",
+        media_type="text/html",
+        headers={**NO_STORE_HEADERS, "Clear-Site-Data": '"cache"'},
+    )
 
 
 @app.get("/health")
