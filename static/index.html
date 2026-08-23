@@ -12,8 +12,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260823formal">
+    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260823formal2">
     <style>
+        :root {
+            --ink: #1c1b19;
+            --cinnabar: #9c3b32;
+            --paper: #f3efe6;
+            --line: #e6e1d6;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -22,10 +29,10 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: #f3efe6;
             background-attachment: fixed;
             min-height: 100vh;
-            color: #333;
+            color: #1c1b19;
             margin: 0;
             padding: 0;
             position: relative;
@@ -39,10 +46,9 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: 
-                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.1) 0%, transparent 50%);
+            background:
+                radial-gradient(ellipse at 18% 12%, rgba(255, 252, 245, 0.7) 0%, transparent 46%),
+                radial-gradient(ellipse at 88% 86%, rgba(120, 110, 90, 0.08) 0%, transparent 42%);
             pointer-events: none;
             z-index: -1;
         }
@@ -82,6 +88,20 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        .header-mark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border: 1px solid #c4a39a;
+            color: #d7b8b2;
+            font-size: 0.95rem;
+            line-height: 1;
+            transform: rotate(-8deg);
+            flex-shrink: 0;
         }
         
         .app-header .user-info {
@@ -218,10 +238,10 @@
             gap: 14px;
             padding: 20px 18px;
             margin-bottom: 12px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #1c1b19;
             border-radius: 16px;
-            color: #fff;
-            box-shadow: 0 10px 24px rgba(102, 126, 234, 0.22);
+            color: #f4efe4;
+            box-shadow: none;
         }
 
         .me-avatar {
@@ -1195,8 +1215,9 @@
             padding: 20px;
             border-radius: 12px;
             margin-bottom: 15px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            border-left: 4px solid #667eea;
+            box-shadow: none;
+            border: 1px solid #e6e1d6;
+            border-left: 3px solid #1c1b19;
             overflow-wrap: anywhere;
         }
         
@@ -1248,10 +1269,13 @@
         }
         
         .action-buttons {
-            margin-top: 15px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+            margin-top: 16px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            border: 1px solid var(--line, #e6e1d6);
+            border-radius: 10px;
+            overflow: hidden;
+            background: #faf8f3;
         }
 
         .action-filter-row {
@@ -1262,36 +1286,62 @@
         }
         
         .btn-small {
-            padding: 8px 16px;
-            font-size: 0.9rem;
-            border-radius: 6px;
-            border: none;
+            padding: 8px 14px;
+            font-size: 0.88rem;
+            border-radius: 8px;
+            border: 1px solid var(--line, #e6e1d6);
+            background: #faf8f3;
+            color: #3d3a34;
             cursor: pointer;
-            transition: all 0.3s;
             white-space: nowrap;
         }
-        
-        .btn-complete {
-            background: #00b894;
-            color: white;
+
+        .action-buttons .btn-small {
+            width: 100%;
+            min-width: 0;
+            padding: 11px 6px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #3d3a34;
+            background: transparent;
+            border: none;
+            border-right: 1px solid var(--line, #e6e1d6);
+            border-bottom: 1px solid var(--line, #e6e1d6);
+            border-radius: 0;
+        }
+
+        .action-buttons .btn-small:nth-child(3n) {
+            border-right: none;
+        }
+
+        .action-buttons .btn-small:nth-last-child(-n+3) {
+            border-bottom: none;
+        }
+
+        .action-buttons .btn-small:active {
+            background: #f1eee6;
+        }
+
+        .action-buttons .btn-small.btn-danger {
+            color: #9c3b32;
+            background: transparent;
         }
         
-        .btn-complete:hover {
-            background: #00a085;
+        .btn-complete,
+        .btn-log {
+            background: #faf8f3;
+            color: #3d3a34;
+        }
+        
+        .btn-complete:hover,
+        .btn-log:hover {
+            background: #f1eee6;
         }
         
         .btn-complete:disabled {
-            background: #ddd;
+            background: #eee;
+            color: #aaa;
             cursor: not-allowed;
-        }
-        
-        .btn-log {
-            background: #74b9ff;
-            color: white;
-        }
-        
-        .btn-log:hover {
-            background: #0984e3;
         }
         
         /* 行动类型筛选按钮样式 */
@@ -1308,14 +1358,14 @@
         }
         
         .action-type-filter:hover {
-            border-color: #667eea;
-            color: #667eea;
+            border-color: #1c1b19;
+            color: #1c1b19;
         }
         
         .action-type-filter.active {
-            background: #667eea;
-            border-color: #667eea;
-            color: white;
+            background: #1c1b19;
+            border-color: #1c1b19;
+            color: #f4efe4;
         }
         
         /* 实践记录模态框 */
@@ -1729,16 +1779,16 @@
         }
 
         .widget-card {
-            background: linear-gradient(180deg, #ffffff 0%, #f7f8ff 100%);
-            border: 1px solid rgba(102, 126, 234, 0.12);
+            background: #fffcf6;
+            border: 1px solid #e6e1d6;
             border-radius: 14px;
             padding: 16px 18px;
-            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+            box-shadow: none;
             position: relative;
         }
 
         .block-title {
-            color: #667eea;
+            color: #1c1b19;
             margin-bottom: 12px;
             font-size: 0.95rem;
             font-weight: 650;
@@ -2895,9 +2945,12 @@
                 height: 5px;
             }
 
+            .action-buttons {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
             .action-buttons .btn-small {
-                flex: 1 1 calc(50% - 8px);
-                min-width: 132px;
+                min-width: 0;
                 text-align: center;
             }
             
@@ -3092,7 +3145,7 @@
             <div class="header-nav-controls">
                 <button type="button" class="header-icon-btn" id="headerBackBtn" onclick="handlePageBack()" aria-label="返回" hidden>←</button>
             </div>
-            <span style="font-size: 1.8rem;">🎤</span>
+            <span class="header-mark" aria-hidden="true">书</span>
             <span class="app-title">阅读反馈系统</span>
         </div>
         <div class="header-actions">
@@ -3420,11 +3473,11 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
                     <h2>我的行动项</h2>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button class="btn-small" onclick="addAction()" style="background: #667eea; color: white;">
-                            ＋ 添加行动项
+                        <button class="btn-small" onclick="addAction()">
+                            添加行动项
                         </button>
-                        <button class="btn-small" id="batchTimeBtn" onclick="showBatchTimeManagementModal()" style="background: #17a2b8; color: white; display: none;">
-                            ⏰ 批量设置时间
+                        <button class="btn-small" id="batchTimeBtn" onclick="showBatchTimeManagementModal()" style="display: none;">
+                            批量设置时间
                         </button>
                     </div>
                 </div>
@@ -5090,6 +5143,57 @@
             }
         }
 
+        function httpStatusMessage(status) {
+            if (status === 401) return '登录已过期，请重新登录';
+            if (status === 403) return '没有权限执行此操作';
+            if (status === 404) return '要操作的内容不存在或已删除';
+            if (status === 409) return '操作冲突，请刷新后重试';
+            if (status >= 500) return '服务器暂时出错，请稍后重试';
+            return '请求失败，请稍后重试';
+        }
+
+        function humanizeApiError(error) {
+            const raw = error && error.message ? String(error.message) : '';
+            if (!raw) return '请求失败，请稍后重试';
+            if (/unexpected end of json input/i.test(raw) || /unexpected token/i.test(raw)) {
+                return '服务器没有返回有效数据';
+            }
+            if (/failed to fetch/i.test(raw) || /networkerror/i.test(raw)) {
+                return '网络连接失败，请检查网络后重试';
+            }
+            if (/^HTTP\s+\d+/i.test(raw)) {
+                const status = error && error.status ? error.status : parseInt(raw.replace(/\D/g, ''), 10);
+                return httpStatusMessage(status);
+            }
+            return raw;
+        }
+
+        function parseApiResponseBody(text) {
+            if (!text || !String(text).trim()) {
+                return null;
+            }
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                const error = new Error('服务器没有返回有效数据');
+                throw error;
+            }
+        }
+
+        function readApiErrorMessage(errorData, fallback) {
+            if (!errorData) return fallback;
+            if (typeof errorData.detail === 'string' && errorData.detail) {
+                return errorData.detail;
+            }
+            if (Array.isArray(errorData.detail)) {
+                return errorData.detail.map(e => e.msg || JSON.stringify(e)).join('; ') || fallback;
+            }
+            if (typeof errorData.message === 'string' && errorData.message) {
+                return errorData.message;
+            }
+            return fallback;
+        }
+
         // API 请求封装
         async function apiRequest(endpoint, options = {}) {
             const url = `${API_BASE}${endpoint}`;
@@ -5109,6 +5213,7 @@
             
             try {
                 const response = await fetch(url, config);
+                const responseText = await response.text();
                 if (!response.ok) {
                     // 仅真正的登录失效(401)才清除会话；403 可能是权限不足
                     if (response.status === 401 && !skipAuthRedirect) {
@@ -5116,21 +5221,10 @@
                         if (!authCheckInProgress) showAuthModal();
                     }
                     
-                    // 尝试解析错误响应体
-                    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    let errorMessage = httpStatusMessage(response.status);
                     try {
-                        const errorData = await response.json();
-                        if (errorData.detail) {
-                            // 如果是字符串，直接使用
-                            if (typeof errorData.detail === 'string') {
-                                errorMessage = errorData.detail;
-                            } else if (Array.isArray(errorData.detail)) {
-                                // 如果是数组，提取错误信息
-                                errorMessage = errorData.detail.map(e => e.msg || JSON.stringify(e)).join('; ');
-                            }
-                        }
+                        errorMessage = readApiErrorMessage(parseApiResponseBody(responseText), errorMessage);
                     } catch (e) {
-                        // 如果解析失败，使用默认错误消息
                         console.warn('无法解析错误响应:', e);
                     }
                     
@@ -5138,7 +5232,10 @@
                     error.status = response.status;
                     throw error;
                 }
-                return await response.json();
+                if (response.status === 204 || response.status === 205) {
+                    return null;
+                }
+                return parseApiResponseBody(responseText);
             } catch (error) {
                 console.error('API 请求失败:', error);
                 
@@ -5585,37 +5682,23 @@
                     <h3>${action.action_text} 
                         <span class="status-badge status-${action.status}">${getStatusText(action.status)}</span>
                     </h3>
-                    <p><strong>📖 来源:</strong> ${action.book_title}</p>
-                    <p><strong>📝 原文:</strong> ${action.source_excerpt}</p>
-                    <p><strong>🎯 类型:</strong> ${getActionTypeText(actionType)}</p>
-                    <p><strong>⏰ 时间管理:</strong> ${getDurationInfo(action)}</p>
+                    <p><strong>来源：</strong> ${action.book_title}</p>
+                    <p><strong>原文：</strong> ${action.source_excerpt}</p>
+                    <p><strong>类型：</strong> ${getActionTypeText(actionType)}</p>
+                    <p><strong>时间管理：</strong> ${getDurationInfo(action)}</p>
                     <div class="action-tags">
                         ${action.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
                     </div>
                     <div class="action-buttons">
-                        ${isHabit ? 
-                            `<button class="btn-small btn-time-management" onclick="showTimeManagementModal(${action.id})" style="background: #28a745; color: white;">
-                                ⏰ 设置时间
-                            </button>` :
-                            `<button class="btn-small btn-time-management" onclick="showCountAndDaysModal(${action.id})" style="background: #28a745; color: white;">
-                                📊 设置次数和天数
-                            </button>`
+                        ${isHabit ?
+                            `<button type="button" class="btn-small" onclick="showTimeManagementModal(${action.id})">设置时间</button>` :
+                            `<button type="button" class="btn-small" onclick="showCountAndDaysModal(${action.id})">设置次数和天数</button>`
                         }
-                        <button class="btn-small btn-log" onclick="showPracticeModal(${action.id})">
-                            📝 记录实践反馈
-                        </button>
-                        <button class="btn-small" onclick="showPracticeLogsModal(${action.id})" style="background: #6c757d; color: white;">
-                            📋 查看记录
-                        </button>
-                        <button class="btn-small" onclick="openAIAdvice(${action.id})" style="background: #9c27b0; color: white;">
-                            🤖 AI建议
-                        </button>
-                        <button class="btn-small" onclick="showEditActionModal(${action.id})" style="background: #17a2b8; color: white;">
-                            ✏️ 编辑
-                        </button>
-                        <button class="btn-small" onclick="deleteAction(${action.id})" style="background: #dc3545; color: white;">
-                            🗑️ 删除
-                        </button>
+                        <button type="button" class="btn-small" onclick="showPracticeModal(${action.id})">记录实践反馈</button>
+                        <button type="button" class="btn-small" onclick="showPracticeLogsModal(${action.id})">查看记录</button>
+                        <button type="button" class="btn-small" onclick="openAIAdvice(${action.id})">AI建议</button>
+                        <button type="button" class="btn-small" onclick="showEditActionModal(${action.id})">编辑</button>
+                        <button type="button" class="btn-small btn-danger" onclick="deleteAction(${action.id})">删除</button>
                     </div>
                 </div>
                 `;
@@ -6068,7 +6151,7 @@
                     loadCurrentViewData();
                 }
             } catch (error) {
-                showMessage('删除失败: ' + error.message, 'error');
+                showMessage('删除失败: ' + humanizeApiError(error), 'error');
             }
         }
 
@@ -6889,8 +6972,8 @@
     </script>
     
     <!-- Self-talk 提醒通知服务 -->
-    <script src="/static/reminder_notification.js?v=20260823formal"></script>
-    <script src="/static/js/app-tabbar.js?v=20260823formal"></script>
-    <script src="/static/js/today-dashboard.js?v=20260823formal"></script>
+    <script src="/static/reminder_notification.js?v=20260823formal2"></script>
+    <script src="/static/js/app-tabbar.js?v=20260823formal2"></script>
+    <script src="/static/js/today-dashboard.js?v=20260823formal2"></script>
 </body>
 </html>
