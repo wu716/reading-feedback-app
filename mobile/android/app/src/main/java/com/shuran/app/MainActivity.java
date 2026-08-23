@@ -70,7 +70,8 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        webView.clearCache(true);
         settings.setUserAgentString(
                 settings.getUserAgentString() + " ShuranApp/" + AppUpdater.currentVersionName(this)
         );
@@ -279,10 +280,22 @@ public class MainActivity extends Activity {
         String path = intent != null ? intent.getStringExtra(ReminderNotifications.EXTRA_OPEN_PATH) : null;
         if (path != null && !path.isEmpty()) {
             intent.removeExtra(ReminderNotifications.EXTRA_OPEN_PATH);
-            webView.loadUrl(ReminderNotifications.resolveUrl(this, path));
+            webView.loadUrl(withCacheBust(ReminderNotifications.resolveUrl(this, path)));
         } else {
-            webView.loadUrl(getString(R.string.app_url));
+            webView.loadUrl(appPageUrl());
         }
+    }
+
+    private String appPageUrl() {
+        return withCacheBust(getString(R.string.app_url));
+    }
+
+    private String withCacheBust(String url) {
+        if (url == null || url.isEmpty()) {
+            return url;
+        }
+        String stamp = "ui=" + AppUpdater.currentVersionCode(this);
+        return url.contains("?") ? url + "&" + stamp : url + "?" + stamp;
     }
 
     private void applyOpenPath(Intent intent) {
@@ -296,7 +309,7 @@ public class MainActivity extends Activity {
         intent.removeExtra(ReminderNotifications.EXTRA_OPEN_PATH);
         errorView.setVisibility(View.GONE);
         webView.setVisibility(View.VISIBLE);
-        webView.loadUrl(ReminderNotifications.resolveUrl(this, path));
+        webView.loadUrl(withCacheBust(ReminderNotifications.resolveUrl(this, path)));
     }
 
     private void handleBackNavigation() {
