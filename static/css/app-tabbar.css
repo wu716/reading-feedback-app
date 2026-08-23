@@ -38,8 +38,22 @@
     }
 
     .app-tabbar .tab-icon {
-        font-size: 1.25rem;
-        line-height: 1;
+        font-size: 0.78rem;
+        line-height: 1.4;
+        font-weight: 700;
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        background: #f0f4ff;
+        color: #667eea;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .app-tabbar .tab-item.active .tab-icon {
+        background: #667eea;
+        color: #fff;
     }
 
     body.has-app-tabbar {

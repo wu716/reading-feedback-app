@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
     ai_daily_limit: int = 10
+    ai_extract_daily_limit: int = 3
 
     # 注册控制（生产默认关闭公开注册，见 ProductionSettings）
     registration_open: bool = True
@@ -96,6 +97,7 @@ class ProductionSettings(Settings):
     environment: str = "production"
     registration_open: bool = False
     ai_daily_limit: int = 10
+    ai_extract_daily_limit: int = 3
 
 
 settings = get_settings()

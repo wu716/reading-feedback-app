@@ -68,3 +68,13 @@ def ensure_schema():
     add_column("daily_todos", "remind_time", "remind_time VARCHAR(8)")
     add_column("daily_todos", "reminded_at", "reminded_at TIMESTAMP")
     add_column("self_talk_reminder_logs", "detail", "detail TEXT")
+    add_column(
+        "self_talk_reminder_settings",
+        "reading_reminder_enabled",
+        "reading_reminder_enabled BOOLEAN DEFAULT 0",
+    )
+    add_column(
+        "self_talk_reminder_settings",
+        "reading_reminder_time",
+        "reading_reminder_time VARCHAR(8)",
+    )

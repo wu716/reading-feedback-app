@@ -26,6 +26,7 @@ class ReminderNotificationService {
         }
         this.requestNotificationPermission();
         this.syncNativeSchedule();
+        this.refreshExactAlarmHint();
         this.checkPendingReminders();
         this.timer = setInterval(() => this.checkPendingReminders(), this.pollInterval);
         this.isPolling = true;
@@ -272,12 +273,64 @@ class ReminderNotificationService {
                 dailyTime: settings.daily_reminder_time || '20:00',
                 reminderDays: settings.reminder_days || [0, 1, 2, 3, 4, 5, 6],
                 systemNotification: settings.browser_notification !== false,
+                readingEnabled: !!settings.reading_reminder_enabled,
+                readingTime: settings.reading_reminder_time || '21:00',
             }));
             window.ShuranNative.requestPermission();
             window.ShuranNative.pollNow();
+            this.syncNativeTodos();
+            this.refreshExactAlarmHint();
         } catch (e) {
             console.error('同步原生提醒失败:', e);
         }
+    }
+
+    async syncNativeTodos() {
+        if (!this.isNativeApp() || !this.hasNativeMethod('scheduleTodos')) return;
+        const token = this.authToken();
+        if (!token) return;
+        try {
+            const response = await fetch(`${this.apiBase}/today/todos/scheduled`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!response.ok) return;
+            const todos = await response.json();
+            const payload = (Array.isArray(todos) ? todos : []).map((t) => ({
+                id: t.id,
+                text: t.text || '',
+                date: t.todo_date,
+                time: t.remind_time,
+                completed: !!t.completed,
+            }));
+            window.ShuranNative.scheduleTodos(JSON.stringify(payload));
+        } catch (e) {
+            console.error('同步待办闹钟失败:', e);
+        }
+    }
+
+    canScheduleExactAlarms() {
+        if (!this.isNativeApp() || !this.hasNativeMethod('canScheduleExactAlarms')) return true;
+        try {
+            return !!window.ShuranNative.canScheduleExactAlarms();
+        } catch (e) {
+            return true;
+        }
+    }
+
+    openExactAlarmSettings() {
+        if (!this.hasNativeMethod('openExactAlarmSettings')) return;
+        try {
+            window.ShuranNative.openExactAlarmSettings();
+        } catch (e) {
+            console.error('打开精确闹钟设置失败:', e);
+        }
+    }
+
+    refreshExactAlarmHint() {
+        const row = document.getElementById('exactAlarmRow');
+        if (!row) return;
+        const show = this.isNativeApp() && !this.canScheduleExactAlarms();
+        row.hidden = !show;
     }
 
     ensureUi() {
@@ -688,7 +741,7 @@ class ReminderNotificationService {
         this.dismissReminder(reminderData.log_id, actionTaken);
         this.closeDropdown();
         const type = reminderData.reminder_type;
-        if (type === 'todo') {
+        if (type === 'todo' || type === 'reading') {
             if (typeof navigateTo === 'function') {
                 navigateTo('overview');
                 return;

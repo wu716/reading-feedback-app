@@ -35,12 +35,22 @@ public final class ReminderScheduler {
     private static final String KEY_SYSTEM = "system_notification";
     private static final String KEY_SHOWN_IDS = "shown_log_ids";
     private static final String KEY_DAILY_SHOWN = "daily_shown_date";
+    private static final String KEY_READING_ENABLED = "reading_enabled";
+    private static final String KEY_READING_TIME = "reading_time";
+    private static final String KEY_READING_SHOWN = "reading_shown_date";
+    private static final String KEY_TODOS_JSON = "todos_json";
 
     static final String ACTION_DAILY = "com.shuran.app.REMINDER_DAILY";
     static final String ACTION_POLL = "com.shuran.app.REMINDER_POLL";
+    static final String ACTION_READING = "com.shuran.app.REMINDER_READING";
+    static final String ACTION_TODO = "com.shuran.app.REMINDER_TODO";
+    static final String EXTRA_TODO_ID = "todo_id";
+    static final String EXTRA_TODO_TEXT = "todo_text";
 
     private static final int REQ_DAILY = 41;
     private static final int REQ_POLL = 42;
+    private static final int REQ_READING = 43;
+    private static final int TODO_REQ_BASE = 10000;
     private static final long POLL_INTERVAL_MS = 15 * 60 * 1000L;
     private static final Object LOCK = new Object();
 
@@ -96,6 +106,12 @@ public final class ReminderScheduler {
         String time = settings.optString("dailyTime", "20:00");
         JSONArray days = settings.optJSONArray("reminderDays");
         String daysCsv = days == null ? "0,1,2,3,4,5,6" : joinDays(days);
+        boolean readingEnabled = settings.has("readingEnabled")
+                ? settings.optBoolean("readingEnabled", false)
+                : prefs(context).getBoolean(KEY_READING_ENABLED, false);
+        String readingTime = settings.has("readingTime")
+                ? settings.optString("readingTime", "21:00")
+                : prefs(context).getString(KEY_READING_TIME, "21:00");
 
         prefs(context).edit()
                 .putBoolean(KEY_ENABLED, enabled)
@@ -103,6 +119,8 @@ public final class ReminderScheduler {
                 .putBoolean(KEY_SYSTEM, system)
                 .putString(KEY_DAILY_TIME, time)
                 .putString(KEY_DAYS, daysCsv)
+                .putBoolean(KEY_READING_ENABLED, readingEnabled)
+                .putString(KEY_READING_TIME, readingTime)
                 .apply();
 
         if (!enabled || !system) {
@@ -110,6 +128,24 @@ public final class ReminderScheduler {
             return;
         }
         scheduleLocked(context);
+    }
+
+    public static void applyTodos(Context context, JSONArray todos) {
+        cancelTodoAlarms(context);
+        prefs(context).edit().putString(KEY_TODOS_JSON, todos == null ? "[]" : todos.toString()).apply();
+        if (!prefs(context).getBoolean(KEY_ENABLED, false)
+                || !prefs(context).getBoolean(KEY_SYSTEM, true)) {
+            return;
+        }
+        scheduleTodos(context);
+    }
+
+    public static boolean canScheduleExact(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return true;
+        }
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        return am != null && am.canScheduleExactAlarms();
     }
 
     public static void showFromJs(Context context, JSONObject data) {
@@ -162,6 +198,52 @@ public final class ReminderScheduler {
             Log.e(TAG, "daily alarm failed", e);
         } finally {
             scheduleDaily(context);
+        }
+    }
+
+    static void onReadingAlarm(Context context) {
+        try {
+            if (!canNotify(context) || !prefs(context).getBoolean(KEY_READING_ENABLED, false)) {
+                return;
+            }
+            String today = todayStamp();
+            if (!today.equals(prefs(context).getString(KEY_READING_SHOWN, ""))) {
+                ReminderNotifications.show(
+                        context,
+                        ReminderNotifications.READING_NOTIFICATION_ID,
+                        context.getString(R.string.notification_reading_title),
+                        context.getString(R.string.notification_reading_body),
+                        "/static/index.html#overview"
+                );
+                prefs(context).edit().putString(KEY_READING_SHOWN, today).apply();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "reading alarm failed", e);
+        } finally {
+            scheduleReading(context);
+        }
+    }
+
+    static void onTodoAlarm(Context context, android.content.Intent intent) {
+        try {
+            if (!canNotify(context) || intent == null) {
+                return;
+            }
+            int todoId = intent.getIntExtra(EXTRA_TODO_ID, 0);
+            String text = intent.getStringExtra(EXTRA_TODO_TEXT);
+            if (text == null || text.trim().isEmpty()) {
+                text = context.getString(R.string.notification_todo_fallback);
+            }
+            int notifyId = todoId > 0 ? 200000 + todoId : (int) (System.currentTimeMillis() % 100000);
+            ReminderNotifications.show(
+                    context,
+                    notifyId,
+                    context.getString(R.string.notification_todo_title),
+                    text,
+                    "/static/index.html#overview"
+            );
+        } catch (Exception e) {
+            Log.e(TAG, "todo alarm failed", e);
         }
     }
 
@@ -274,6 +356,8 @@ public final class ReminderScheduler {
     private static void scheduleLocked(Context context) {
         schedulePoll(context);
         scheduleDaily(context);
+        scheduleReading(context);
+        scheduleTodos(context);
     }
 
     private static void scheduleDaily(Context context) {
@@ -308,6 +392,75 @@ public final class ReminderScheduler {
         setWakeup(am, at, pi);
     }
 
+    private static void scheduleReading(Context context) {
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) {
+            return;
+        }
+        PendingIntent pi = pending(context, ACTION_READING, REQ_READING);
+        if (!prefs(context).getBoolean(KEY_ENABLED, false)
+                || !prefs(context).getBoolean(KEY_READING_ENABLED, false)
+                || !prefs(context).getBoolean(KEY_SYSTEM, true)) {
+            am.cancel(pi);
+            return;
+        }
+        setWakeup(am, nextClockMillis(prefs(context).getString(KEY_READING_TIME, "21:00")), pi);
+    }
+
+    private static void scheduleTodos(Context context) {
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) {
+            return;
+        }
+        JSONArray todos;
+        try {
+            todos = new JSONArray(prefs(context).getString(KEY_TODOS_JSON, "[]"));
+        } catch (Exception e) {
+            return;
+        }
+        if (!prefs(context).getBoolean(KEY_ENABLED, false)
+                || !prefs(context).getBoolean(KEY_SYSTEM, true)) {
+            return;
+        }
+        for (int i = 0; i < todos.length(); i++) {
+            JSONObject todo = todos.optJSONObject(i);
+            if (todo == null) {
+                continue;
+            }
+            int id = todo.optInt("id", 0);
+            if (id <= 0 || todo.optBoolean("completed", false)) {
+                continue;
+            }
+            String text = todo.optString("text", "");
+            long at = nextTodoMillis(todo.optString("date", ""), todo.optString("time", ""));
+            if (at <= 0) {
+                continue;
+            }
+            setWakeup(am, at, pendingTodo(context, id, text));
+        }
+    }
+
+    private static void cancelTodoAlarms(Context context) {
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) {
+            return;
+        }
+        try {
+            JSONArray todos = new JSONArray(prefs(context).getString(KEY_TODOS_JSON, "[]"));
+            for (int i = 0; i < todos.length(); i++) {
+                JSONObject todo = todos.optJSONObject(i);
+                if (todo == null) {
+                    continue;
+                }
+                int id = todo.optInt("id", 0);
+                if (id > 0) {
+                    am.cancel(pendingTodo(context, id, ""));
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     private static void cancelAll(Context context) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am == null) {
@@ -315,6 +468,8 @@ public final class ReminderScheduler {
         }
         am.cancel(pending(context, ACTION_DAILY, REQ_DAILY));
         am.cancel(pending(context, ACTION_POLL, REQ_POLL));
+        am.cancel(pending(context, ACTION_READING, REQ_READING));
+        cancelTodoAlarms(context);
     }
 
     private static void setWakeup(AlarmManager am, long at, PendingIntent pi) {
@@ -337,6 +492,53 @@ public final class ReminderScheduler {
             flags |= PendingIntent.FLAG_IMMUTABLE;
         }
         return PendingIntent.getBroadcast(context, requestCode, intent, flags);
+    }
+
+    private static PendingIntent pendingTodo(Context context, int todoId, String text) {
+        Intent intent = new Intent(context, ReminderAlarmReceiver.class);
+        intent.setAction(ACTION_TODO);
+        intent.putExtra(EXTRA_TODO_ID, todoId);
+        intent.putExtra(EXTRA_TODO_TEXT, text == null ? "" : text);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        return PendingIntent.getBroadcast(context, TODO_REQ_BASE + todoId, intent, flags);
+    }
+
+    private static long nextClockMillis(String rawTime) {
+        int[] hm = parseTime(rawTime);
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        cal.set(Calendar.HOUR_OF_DAY, hm[0]);
+        cal.set(Calendar.MINUTE, hm[1]);
+        if (cal.getTimeInMillis() <= System.currentTimeMillis() + 3000) {
+            cal.add(Calendar.DAY_OF_MONTH, 1);
+        }
+        return cal.getTimeInMillis();
+    }
+
+    private static long nextTodoMillis(String dateRaw, String timeRaw) {
+        int[] hm = parseTime(timeRaw);
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        if (dateRaw != null && dateRaw.length() >= 10) {
+            try {
+                String[] parts = dateRaw.substring(0, 10).split("-");
+                cal.set(Calendar.YEAR, Integer.parseInt(parts[0]));
+                cal.set(Calendar.MONTH, Integer.parseInt(parts[1]) - 1);
+                cal.set(Calendar.DAY_OF_MONTH, Integer.parseInt(parts[2]));
+            } catch (Exception ignored) {
+            }
+        }
+        cal.set(Calendar.HOUR_OF_DAY, hm[0]);
+        cal.set(Calendar.MINUTE, hm[1]);
+        if (cal.getTimeInMillis() <= System.currentTimeMillis() + 3000) {
+            return -1;
+        }
+        return cal.getTimeInMillis();
     }
 
     private static long nextDailyMillis(Context context) {

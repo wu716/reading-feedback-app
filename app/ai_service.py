@@ -84,7 +84,7 @@ def _should_retry_ai_call(exc: BaseException) -> bool:
 
 
 @retry(
-    stop=stop_after_attempt(3),
+    stop=stop_after_attempt(2),
     wait=wait_exponential(multiplier=1, min=4, max=10),
     retry=retry_if_exception(_should_retry_ai_call),
     reraise=True,
@@ -286,8 +286,7 @@ async def extract_actions_from_notes(notes: str, book_title: str = None) -> List
         # 创建提示词
         prompt = create_extraction_prompt(notes, book_title)
         
-        # 调用 AI API
-        response = await call_deepseek_api(prompt)
+        response = await call_deepseek_api(prompt, temperature=0.2, max_tokens=800)
         
         # 验证响应
         validated_data = validate_ai_response(response)

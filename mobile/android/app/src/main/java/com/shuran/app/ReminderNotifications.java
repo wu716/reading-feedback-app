@@ -19,6 +19,7 @@ public final class ReminderNotifications {
     public static final String EXTRA_OPEN_PATH = "open_path";
     public static final int DAILY_NOTIFICATION_ID = 9001;
     public static final int TEST_NOTIFICATION_ID = 9002;
+    public static final int READING_NOTIFICATION_ID = 9003;
 
     private ReminderNotifications() {}
 

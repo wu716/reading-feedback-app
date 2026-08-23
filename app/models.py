@@ -249,6 +249,9 @@ class SelfTalkReminderSetting(Base):
     # 通知方式
     browser_notification = Column(Boolean, default=True)
     email_notification = Column(Boolean, default=True)
+
+    reading_reminder_enabled = Column(Boolean, default=False)
+    reading_reminder_time = Column(String(8), nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
