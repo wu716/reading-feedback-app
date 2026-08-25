@@ -550,7 +550,8 @@
             await todayApi(`/todos/${id}`, { method: 'DELETE' });
             await refreshTodosAfterChange();
         } catch (e) {
-            showMessage('删除失败', 'error');
+            const detail = typeof humanizeApiError === 'function' ? humanizeApiError(e) : (e && e.message ? e.message : '请稍后重试');
+            showMessage('删除失败: ' + detail, 'error');
         }
     };
 

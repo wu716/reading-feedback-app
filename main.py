@@ -64,7 +64,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20260825toolbar2"
+STATIC_UI_VERSION = "20260825delete1"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",

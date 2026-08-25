@@ -31,7 +31,14 @@ async function apiRequest(endpoint) {
             }
             throw new Error(`HTTP ${response.status}`);
         }
-        return await response.json();
+        if (response.status === 204 || response.status === 205) {
+            return null;
+        }
+        const text = await response.text();
+        if (!text || !text.trim()) {
+            return null;
+        }
+        return JSON.parse(text);
     } catch (error) {
         console.error('API请求失败:', error);
         return null;
