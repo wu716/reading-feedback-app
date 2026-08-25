@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>个人中心 - 读书反馈应用</title>
+    <link rel="stylesheet" href="/static/css/time-picker.css?v=20260825time1">
     <style>
         * {
             margin: 0;
@@ -323,7 +324,7 @@
                 <div class="input-group" id="dailyReminderTime" style="display: none;">
                     <label>
                         <strong>提醒时间：</strong>
-                        <input type="time" id="reminderTime" value="20:00">
+                        <input type="time" id="reminderTime" value="20:00" data-time-title="每日提醒时间">
                     </label>
                 </div>
 
@@ -659,7 +660,8 @@
             }, 3000);
         }
     </script>
-    <script src="/static/reminder_notification.js?v=20260825delete1"></script>
+    <script src="/static/js/time-picker.js?v=20260825time1"></script>
+    <script src="/static/reminder_notification.js?v=20260825todo1"></script>
 </body>
 </html>
 

@@ -12,13 +12,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260825delete1">
+    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260825todo1">
+    <link rel="stylesheet" href="/static/css/time-picker.css?v=20260825time1">
     <style>
         :root {
             --ink: #1c1b19;
             --cinnabar: #9c3b32;
             --paper: #f3efe6;
             --line: #e6e1d6;
+            accent-color: #667eea;
         }
 
         * {
@@ -617,6 +619,10 @@
             background: #fff;
         }
 
+        .todo-add-row .tp-field {
+            flex: 0 0 auto;
+        }
+
         .todo-remind-badge {
             font-size: 0.75rem;
             color: #667eea;
@@ -636,8 +642,24 @@
             flex: 1;
         }
 
-        #self-talk {
+        #self-talk.content-section {
+            display: block;
+            animation: none;
+            transform: none;
+            visibility: hidden;
+            height: 0;
+            overflow: hidden;
+            margin: 0;
+            opacity: 1;
+            pointer-events: none;
+        }
+
+        #self-talk.content-section.active {
+            visibility: visible;
+            height: auto;
+            overflow: visible;
             margin: -30px;
+            pointer-events: auto;
         }
 
         .self-talk-frame {
@@ -2998,7 +3020,7 @@
                 display: none !important;
             }
 
-            #self-talk {
+            #self-talk.content-section.active {
                 margin: -16px -12px;
             }
 
@@ -3258,7 +3280,7 @@
                                 <div id="dayTodoList" class="todos-list"></div>
                                 <div class="todo-add-row" id="dayTodoAddRow">
                                     <input type="text" id="dayTodoInput" class="todo-add-input" placeholder="为这一天添加待办…" maxlength="500">
-                                    <input type="time" id="dayTodoRemindTime" class="todo-remind-input" aria-label="提醒时间" title="提醒时间（可选）">
+                                    <input type="time" id="dayTodoRemindTime" class="todo-remind-input" aria-label="提醒时间" data-time-title="提醒时间" title="提醒时间（可选）">
                                     <button type="button" class="todo-add-btn" id="dayTodoAddBtn">＋ 添加</button>
                                 </div>
                                 <p class="day-todo-hint" id="dayTodoHint"></p>
@@ -3276,12 +3298,12 @@
                                     <input type="checkbox" id="readingReminderSwitch">
                                     <span class="me-switch-ui"></span>
                                 </label>
-                                <input type="time" class="me-control" id="readingReminderTime" value="21:00">
+                                <input type="time" class="me-control" id="readingReminderTime" value="21:00" data-time-title="每日阅读时间">
                             </div>
                             <div id="todayTodosList" class="todos-list"></div>
                             <div class="todo-add-row">
                                 <input type="text" id="newTodoInput" class="todo-add-input" placeholder="添加今日待办…" maxlength="500">
-                                <input type="time" id="newTodoRemindTime" class="todo-remind-input" aria-label="提醒时间" title="提醒时间（可选）">
+                                <input type="time" id="newTodoRemindTime" class="todo-remind-input" aria-label="提醒时间" data-time-title="提醒时间" title="提醒时间（可选）">
                                 <button type="button" class="todo-add-btn" onclick="addDailyTodo()">＋ 添加</button>
                             </div>
                         </div>
@@ -3618,7 +3640,7 @@
                         <div class="me-row-main">
                             <div class="me-row-title">提醒时间</div>
                         </div>
-                        <input type="time" class="me-control" id="dailyReminderTime" value="20:00">
+                        <input type="time" class="me-control" id="dailyReminderTime" value="20:00" data-time-title="每日提醒时间">
                     </div>
                     <div class="me-row me-row-static me-row-last">
                         <div class="me-row-main">
@@ -4299,6 +4321,45 @@
             return 'exit';
         };
 
+        const SELF_TALK_EMBED_SRC = '/static/self_talk/index.html?embed=1';
+
+        function selfTalkFrameLooksBroken(frame) {
+            try {
+                const doc = frame.contentDocument;
+                if (!doc || !doc.body) return false;
+                const text = doc.body.innerText || '';
+                return /ERR_CONNECTION_ABORTED|ERR_CONNECTION_RESET|ERR_FAILED|ERR_EMPTY_RESPONSE|网页无法加载|net::ERR_/i.test(text);
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function ensureSelfTalkFrame() {
+            const frame = document.getElementById('selfTalkFrame');
+            if (!frame) return;
+            if (!frame.dataset.bound) {
+                frame.dataset.bound = '1';
+                frame.addEventListener('load', () => {
+                    if (!selfTalkFrameLooksBroken(frame)) {
+                        frame.dataset.retryCount = '0';
+                        return;
+                    }
+                    const n = Number(frame.dataset.retryCount || '0');
+                    if (n >= 2) return;
+                    frame.dataset.retryCount = String(n + 1);
+                    setTimeout(() => {
+                        frame.src = SELF_TALK_EMBED_SRC;
+                    }, 400);
+                });
+            }
+            const startLoad = () => {
+                if (!frame.getAttribute('src') || selfTalkFrameLooksBroken(frame)) {
+                    frame.src = SELF_TALK_EMBED_SRC;
+                }
+            };
+            requestAnimationFrame(() => setTimeout(startLoad, 50));
+        }
+
         function navigateTo(sectionId) {
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
@@ -4316,10 +4377,7 @@
                     refreshAiExtractQuota();
                 }
                 if (sectionId === 'self-talk') {
-                    const frame = document.getElementById('selfTalkFrame');
-                    if (frame && !frame.getAttribute('src')) {
-                        frame.src = '/static/self_talk/index.html?embed=1';
-                    }
+                    ensureSelfTalkFrame();
                 }
             }
             
@@ -5186,6 +5244,9 @@
         function humanizeApiError(error) {
             const raw = error && error.message ? String(error.message) : '';
             if (!raw) return '请求失败，请稍后重试';
+            if (/abort/i.test(raw) || /ERR_CONNECTION/i.test(raw) || /the user aborted/i.test(raw)) {
+                return '连接被中断，请再试一次';
+            }
             if (/unexpected end of json input/i.test(raw) || /unexpected token/i.test(raw)) {
                 return '服务器没有返回有效数据';
             }
@@ -5269,15 +5330,6 @@
                 return parseApiResponseBody(responseText);
             } catch (error) {
                 console.error('API 请求失败:', error);
-                
-                // 处理网络错误
-                if (error.message.includes('Failed to fetch')) {
-                    showMessage('网络连接错误，请检查网络', 'error');
-                } else if (!error.message.includes('认证失效')) {
-                    // 非认证错误显示具体错误信息
-                    console.log('请求失败详情:', error.message);
-                }
-                
                 throw error;
             }
         }
@@ -7017,8 +7069,9 @@
     </script>
     
     <!-- Self-talk 提醒通知服务 -->
-    <script src="/static/reminder_notification.js?v=20260825delete1"></script>
-    <script src="/static/js/app-tabbar.js?v=20260825delete1"></script>
-    <script src="/static/js/today-dashboard.js?v=20260825delete1"></script>
+    <script src="/static/js/time-picker.js?v=20260825time1"></script>
+    <script src="/static/reminder_notification.js?v=20260825todo1"></script>
+    <script src="/static/js/app-tabbar.js?v=20260825todo1"></script>
+    <script src="/static/js/today-dashboard.js?v=20260825time1"></script>
 </body>
 </html>
