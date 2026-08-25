@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260823formal2">
+    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260825toolbar2">
     <style>
         :root {
             --ink: #1c1b19;
@@ -204,21 +204,21 @@
             gap: 12px;
             margin-bottom: 16px;
             padding: 16px 18px;
-            background: linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%);
-            border: 1px solid #e0e7ff;
+            background: #fffcf6;
+            border: 1px solid var(--line, #e6e1d6);
             border-radius: 14px;
             cursor: pointer;
         }
 
         .notes-entry-card h3 {
             margin: 0 0 4px;
-            color: #4c51bf;
+            color: #1c1b19;
             font-size: 1rem;
         }
 
         .notes-entry-card p {
             margin: 0;
-            color: #718096;
+            color: #8a8478;
             font-size: 0.85rem;
         }
 
@@ -1232,25 +1232,30 @@
         }
         
         .status-badge {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 500;
+            background: #f4efe4;
+            color: #6b6560;
+            border: 1px solid var(--line, #e6e1d6);
         }
         
         .status-todo {
-            background: #ffeaa7;
-            color: #d63031;
+            background: #f4efe4;
+            color: #6b6560;
         }
         
-        .status-in_progress {
-            background: #74b9ff;
-            color: white;
+        .status-in_progress,
+        .status-in-progress {
+            background: #ece8dc;
+            color: #3d3a34;
         }
         
         .status-done {
-            background: #00b894;
-            color: white;
+            background: #1c1b19;
+            color: #f4efe4;
+            border-color: #1c1b19;
         }
         
         .action-tags {
@@ -1259,30 +1264,34 @@
         
         .tag {
             display: inline-block;
-            background: #f8f9fa;
-            color: #495057;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
+            background: #f4efe4;
+            color: #6b6560;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
             margin-right: 8px;
             margin-bottom: 4px;
+            border: 1px solid var(--line, #e6e1d6);
         }
         
         .action-buttons {
             margin-top: 16px;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
             border: 1px solid var(--line, #e6e1d6);
             border-radius: 10px;
             overflow: hidden;
-            background: #faf8f3;
+            background: var(--line, #e6e1d6);
         }
 
         .action-filter-row {
             display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+            overflow: hidden;
             margin-bottom: 15px;
+            border: 1px solid var(--line, #e6e1d6);
+            border-radius: 10px;
+            background: #fffcf6;
         }
         
         .btn-small {
@@ -1296,35 +1305,64 @@
             white-space: nowrap;
         }
 
+        .action-buttons .action-tool,
         .action-buttons .btn-small {
             width: 100%;
             min-width: 0;
-            padding: 11px 6px;
-            font-size: 0.78rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            padding: 12px 6px 10px;
+            font-size: 0.72rem;
             font-weight: 500;
-            color: #3d3a34;
-            background: transparent;
+            font-family: inherit;
+            line-height: 1.35;
+            color: #6b6560;
+            background: #fffcf6;
             border: none;
-            border-right: 1px solid var(--line, #e6e1d6);
-            border-bottom: 1px solid var(--line, #e6e1d6);
             border-radius: 0;
+            white-space: normal;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .action-buttons .btn-small:nth-child(3n) {
-            border-right: none;
+        .action-tool-ico {
+            width: 22px;
+            height: 22px;
+            color: #8a8478;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
         }
 
-        .action-buttons .btn-small:nth-last-child(-n+3) {
-            border-bottom: none;
+        .action-tool-ico svg {
+            display: block;
         }
 
+        .action-tool-label {
+            color: inherit;
+        }
+
+        .action-buttons .action-tool:active,
         .action-buttons .btn-small:active {
-            background: #f1eee6;
+            background: #f4efe4;
         }
 
+        .action-buttons .action-tool.is-danger,
         .action-buttons .btn-small.btn-danger {
-            color: #9c3b32;
-            background: transparent;
+            color: #c4564c;
+            background: #fffcf6;
+        }
+
+        .action-buttons .action-tool.is-danger .action-tool-ico {
+            color: #8a8478;
+        }
+
+        .action-buttons .action-tool.is-danger .action-tool-label {
+            color: #c4564c;
         }
         
         .btn-complete,
@@ -1344,27 +1382,35 @@
             cursor: not-allowed;
         }
         
-        /* 行动类型筛选按钮样式 */
+        /* 行动类型筛选：与工具栏同一套浅底分割 */
         .action-type-filter {
-            padding: 8px 16px;
-            border: 2px solid #e1e5e9;
-            background: white;
-            color: #666;
-            border-radius: 20px;
+            flex: 1;
+            min-width: 0;
+            padding: 9px 8px;
+            border: none;
+            border-right: 1px solid var(--line, #e6e1d6);
+            background: transparent;
+            color: #6b6560;
+            border-radius: 0;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 0.82rem;
             font-weight: 500;
-            transition: all 0.3s ease;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .action-type-filter:last-child {
+            border-right: none;
         }
         
-        .action-type-filter:hover {
-            border-color: #1c1b19;
+        .action-type-filter:hover,
+        .action-type-filter:active {
             color: #1c1b19;
+            background: #f4efe4;
         }
         
         .action-type-filter.active {
             background: #1c1b19;
-            border-color: #1c1b19;
             color: #f4efe4;
         }
         
@@ -1621,35 +1667,20 @@
         }
         
         .tag {
-            background: #667eea;
-            color: white;
-            padding: 4px 8px;
+            background: #f4efe4;
+            color: #6b6560;
+            padding: 2px 8px;
             border-radius: 4px;
             font-size: 12px;
         }
         
         .status-badge {
             display: inline-block;
-            padding: 4px 8px;
+            padding: 2px 8px;
             border-radius: 4px;
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 0.72rem;
+            font-weight: 500;
             margin-left: 10px;
-        }
-        
-        .status-todo {
-            background: #ffeaa7;
-            color: #d63031;
-        }
-        
-        .status-in-progress {
-            background: #74b9ff;
-            color: white;
-        }
-        
-        .status-done {
-            background: #00b894;
-            color: white;
         }
         
         .dashboard {
@@ -5653,6 +5684,21 @@
             }
         }
         
+        const ACTION_TOOL_ICON = {
+            count: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/><path d="M8 16h3M13 16h3"/></svg>',
+            time: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+            practice: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>',
+            logs: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
+            ai: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3"/></svg>',
+            edit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+            trash: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 14h10l1-14"/><path d="M9 7V4h6v3"/></svg>'
+        };
+
+        function actionToolBtn(onclick, icon, label, extraClass) {
+            const cls = extraClass ? `action-tool ${extraClass}` : 'action-tool';
+            return `<button type="button" class="${cls}" onclick="${onclick}"><span class="action-tool-ico" aria-hidden="true">${icon}</span><span class="action-tool-label">${label}</span></button>`;
+        }
+
         // 渲染行动项列表
         function renderActions() {
             const actionsList = document.getElementById('actionsList');
@@ -5690,15 +5736,14 @@
                         ${action.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
                     </div>
                     <div class="action-buttons">
-                        ${isHabit ?
-                            `<button type="button" class="btn-small" onclick="showTimeManagementModal(${action.id})">设置时间</button>` :
-                            `<button type="button" class="btn-small" onclick="showCountAndDaysModal(${action.id})">设置次数和天数</button>`
-                        }
-                        <button type="button" class="btn-small" onclick="showPracticeModal(${action.id})">记录实践反馈</button>
-                        <button type="button" class="btn-small" onclick="showPracticeLogsModal(${action.id})">查看记录</button>
-                        <button type="button" class="btn-small" onclick="openAIAdvice(${action.id})">AI建议</button>
-                        <button type="button" class="btn-small" onclick="showEditActionModal(${action.id})">编辑</button>
-                        <button type="button" class="btn-small btn-danger" onclick="deleteAction(${action.id})">删除</button>
+                        ${isHabit
+                            ? actionToolBtn(`showTimeManagementModal(${action.id})`, ACTION_TOOL_ICON.time, '设置时间')
+                            : actionToolBtn(`showCountAndDaysModal(${action.id})`, ACTION_TOOL_ICON.count, '设置次数和天数')}
+                        ${actionToolBtn(`showPracticeModal(${action.id})`, ACTION_TOOL_ICON.practice, '记录实践反馈')}
+                        ${actionToolBtn(`showPracticeLogsModal(${action.id})`, ACTION_TOOL_ICON.logs, '查看记录')}
+                        ${actionToolBtn(`openAIAdvice(${action.id})`, ACTION_TOOL_ICON.ai, 'AI建议')}
+                        ${actionToolBtn(`showEditActionModal(${action.id})`, ACTION_TOOL_ICON.edit, '编辑')}
+                        ${actionToolBtn(`deleteAction(${action.id})`, ACTION_TOOL_ICON.trash, '删除', 'is-danger')}
                     </div>
                 </div>
                 `;
