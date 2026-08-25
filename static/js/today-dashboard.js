@@ -467,29 +467,44 @@
         const input = document.getElementById('newTodoInput');
         const text = input?.value?.trim();
         if (!text) return;
+        const payload = { text };
+        const remindTime = readRemindTime('newTodoRemindTime');
+        if (remindTime) payload.remind_time = remindTime;
         try {
             await todayApi('/todos', {
                 method: 'POST',
-                body: JSON.stringify({ text, remind_time: readRemindTime('newTodoRemindTime') }),
+                body: JSON.stringify(payload),
             });
             input.value = '';
             const timeInput = document.getElementById('newTodoRemindTime');
             if (timeInput) timeInput.value = '';
             await refreshTodosAfterChange();
         } catch (e) {
-            showMessage('添加待办失败', 'error');
+            const detail = typeof humanizeApiError === 'function' ? humanizeApiError(e) : (e && e.message ? e.message : '请稍后重试');
+            showMessage('添加待办失败: ' + detail, 'error');
         }
     };
 
     window.setTodoRemindTime = async function (id) {
         const item = document.querySelector(`[data-todo-id="${id}"]`);
         const current = item?.querySelector('.todo-remind-badge')?.textContent?.replace(/[^\d:]/g, '') || '';
-        const next = window.prompt('设置提醒时间（HH:MM，留空则取消）', current);
-        if (next === null) return;
-        const remindTime = next.trim();
-        if (remindTime && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(remindTime)) {
-            showMessage('时间格式应为 HH:MM', 'error');
-            return;
+        let remindTime = '';
+        if (window.TimePicker && typeof window.TimePicker.pick === 'function') {
+            const picked = await window.TimePicker.pick({
+                value: current || '20:00',
+                title: '提醒时间',
+                optional: true,
+            });
+            if (picked === undefined) return;
+            remindTime = picked;
+        } else {
+            const next = window.prompt('设置提醒时间（HH:MM，留空则取消）', current);
+            if (next === null) return;
+            remindTime = next.trim();
+            if (remindTime && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(remindTime)) {
+                showMessage('时间格式应为 HH:MM', 'error');
+                return;
+            }
         }
         try {
             await todayApi(`/todos/${id}`, { method: 'PATCH', body: JSON.stringify({ remind_time: remindTime }) });
@@ -739,20 +754,20 @@
             return;
         }
         try {
+            const payload = { text, todo_date: dateKey };
+            const remindTime = readRemindTime('dayTodoRemindTime');
+            if (remindTime) payload.remind_time = remindTime;
             await todayApi('/todos', {
                 method: 'POST',
-                body: JSON.stringify({
-                    text,
-                    todo_date: dateKey,
-                    remind_time: readRemindTime('dayTodoRemindTime'),
-                }),
+                body: JSON.stringify(payload),
             });
             input.value = '';
             const timeInput = document.getElementById('dayTodoRemindTime');
             if (timeInput) timeInput.value = '';
             await refreshTodosAfterChange();
         } catch (e) {
-            showMessage('添加待办失败', 'error');
+            const detail = typeof humanizeApiError === 'function' ? humanizeApiError(e) : (e && e.message ? e.message : '请稍后重试');
+            showMessage('添加待办失败: ' + detail, 'error');
         }
     };
 
