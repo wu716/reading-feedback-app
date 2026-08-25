@@ -173,7 +173,7 @@ async def update_practice_log(
     return log
 
 
-@router.delete("/logs/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/logs/{log_id}")
 async def delete_practice_log(
     log_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -197,7 +197,7 @@ async def delete_practice_log(
     log.deleted_at = datetime.utcnow()
     db.commit()
     
-    return None
+    return {"message": "已删除"}
 
 
 @router.get("/stats/summary")

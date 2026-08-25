@@ -97,7 +97,7 @@ async def get_current_user_info(current_user: User = Depends(get_current_active_
     return current_user
 
 
-@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/me")
 async def delete_current_user(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -114,7 +114,7 @@ async def delete_current_user(
     current_user.is_active = False
     db.commit()
     
-    return None
+    return {"message": "已删除"}
 
 
 @router.put("/profile", response_model=UserResponse)

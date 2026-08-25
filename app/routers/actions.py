@@ -362,7 +362,7 @@ async def update_action(
     return action
 
 
-@router.delete("/{action_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{action_id}")
 async def delete_action(
     action_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -386,7 +386,7 @@ async def delete_action(
     action.deleted_at = datetime.utcnow()
     db.commit()
     
-    return None
+    return {"message": "已删除"}
 
 
 @router.get("/stats/summary")
