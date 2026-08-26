@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """今日待办、阅读记录、今日概览 API"""
+import logging
 import re
 from datetime import date, datetime
 from typing import List, Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import Integer, func
 from sqlalchemy.orm import Session
 
@@ -23,6 +24,7 @@ from app.models import (
 )
 
 router = APIRouter(prefix="/today", tags=["今日概览"])
+logger = logging.getLogger(__name__)
 
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
 REMIND_TIME_RE = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
@@ -33,16 +35,32 @@ def beijing_today() -> date:
 
 
 def normalize_remind_time(value: Optional[str]) -> Optional[str]:
+    """Accept HH:MM, H:MM, HH:MM:SS, and common Android WebView variants."""
     if value is None:
         return None
-    value = value.strip()
+    value = str(value).strip()
     if not value:
         return None
-    if len(value) >= 8 and value[2] == ":" and value[5] == ":":
-        value = value[:5]
-    if not REMIND_TIME_RE.fullmatch(value):
+    value = value.replace("时", ":").replace("分", "").replace("．", ":").strip()
+    lower = value.lower().replace(" ", "")
+    ampm = None
+    if lower.endswith("am") or lower.endswith("pm"):
+        ampm = lower[-2:]
+        value = re.sub(r"(?i)\s*[ap]m$", "", value).strip()
+    match = re.match(r"^(\d{1,2}):(\d{2})(?::\d{2}(?:[.:]\d+)?)?$", value)
+    if not match:
+        if not REMIND_TIME_RE.fullmatch(value):
+            raise HTTPException(status_code=400, detail="提醒时间格式应为 HH:MM")
+        return value
+    hour = int(match.group(1))
+    minute = int(match.group(2))
+    if ampm == "pm" and hour < 12:
+        hour += 12
+    if ampm == "am" and hour == 12:
+        hour = 0
+    if hour > 23 or minute > 59:
         raise HTTPException(status_code=400, detail="提醒时间格式应为 HH:MM")
-    return value
+    return f"{hour:02d}:{minute:02d}"
 
 
 # ---------- Schemas ----------
@@ -52,6 +70,21 @@ class DailyTodoCreate(BaseModel):
     text: str = Field(..., min_length=1, max_length=500)
     todo_date: Optional[date] = None
     remind_time: Optional[str] = None
+
+    @field_validator("text")
+    @classmethod
+    def strip_todo_text(cls, value: str) -> str:
+        text = (value or "").strip()
+        if not text:
+            raise ValueError("待办内容不能为空")
+        return text
+
+    @field_validator("remind_time", mode="before")
+    @classmethod
+    def coerce_remind_time(cls, value):
+        if value is None or value == "":
+            return None
+        return str(value).strip() or None
 
 
 class DailyTodoUpdate(BaseModel):
@@ -253,9 +286,14 @@ async def create_daily_todo(
         todo_date=body.todo_date or beijing_today(),
         remind_time=normalize_remind_time(body.remind_time),
     )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
+    try:
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+    except Exception:
+        db.rollback()
+        logger.exception("创建待办失败 user_id=%s", current_user.id)
+        raise HTTPException(status_code=500, detail="保存待办失败，请稍后重试")
     return row
 
 

@@ -64,7 +64,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20260825delete1"
+STATIC_UI_VERSION = "20260825todo1"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
@@ -97,11 +97,15 @@ app.include_router(app_download.router)
 
 @app.get("/static/index.html")
 async def indexed_home(request: Request):
-    """未带版本号的首页会 307 到新地址，逼 WebView 丢掉旧 HTML。"""
+    """未带版本号的首页会 307 到新地址，逼 WebView 丢掉旧 HTML。
+
+    不要带 Clear-Site-Data：Chromium/Android WebView 会因此中断进行中的
+    fetch 和 iframe 导航，表现为添加待办失败 + net::ERR_CONNECTION_ABORTED。
+    """
     if request.query_params.get("v") != STATIC_UI_VERSION:
         return RedirectResponse(
             url=f"/static/index.html?v={STATIC_UI_VERSION}",
-            headers={**NO_STORE_HEADERS, "Clear-Site-Data": '"cache"'},
+            headers=NO_STORE_HEADERS,
         )
     return FileResponse(
         "static/index.html",
@@ -130,7 +134,7 @@ async def root():
     return FileResponse(
         "static/index.html",
         media_type="text/html",
-        headers={**NO_STORE_HEADERS, "Clear-Site-Data": '"cache"'},
+        headers=NO_STORE_HEADERS,
     )
 
 
