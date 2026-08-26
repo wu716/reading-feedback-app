@@ -64,7 +64,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20260825todo1"
+STATIC_UI_VERSION = "20260826time1"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
