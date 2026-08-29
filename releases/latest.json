@@ -1,6 +1,6 @@
 {
-  "versionCode": 7,
-  "versionName": "1.3.2",
+  "versionCode": 8,
+  "versionName": "1.3.3",
   "filename": "shuran.apk",
-  "notes": "退出 App 后也能到点提醒：改用系统闹钟并引导关闭电池优化。"
+  "notes": "App 内自我对话改用原生录音，并保留退出后也能到点提醒。"
 }
