@@ -100,6 +100,60 @@
             animation: pulse 1.5s infinite;
         }
 
+        .record-button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+            animation: none;
+            box-shadow: none;
+        }
+
+        .recording-timer {
+            display: none;
+            margin: 4px 0 8px;
+            font-size: 1.5rem;
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+            color: #c53030;
+            letter-spacing: 0.04em;
+        }
+
+        .recording-timer.visible {
+            display: block;
+        }
+
+        .recording-actions {
+            display: none;
+            justify-content: center;
+            margin: 0 0 8px;
+        }
+
+        .recording-actions.visible {
+            display: flex;
+        }
+
+        .cancel-record-button {
+            min-height: 44px;
+            padding: 10px 22px;
+            border: none;
+            border-radius: 8px;
+            background: #e2e8f0;
+            color: #4a5568;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .cancel-record-button:hover {
+            background: #cbd5e0;
+        }
+
+        .recording-hint {
+            margin: 8px 0 0;
+            font-size: 0.85rem;
+            color: #718096;
+            line-height: 1.5;
+        }
+
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.1); }
@@ -488,9 +542,16 @@
             <!-- 录音区域 -->
             <div class="card recording-section">
                 <h2>开始录音</h2>
-                <button id="recordButton" class="record-button" onclick="toggleRecording()">
+                <button id="recordButton" class="record-button" type="button" onclick="toggleRecording()">
                     🎤 开始录音
                 </button>
+                <div id="recordingTimer" class="recording-timer" aria-live="polite">00:00</div>
+                <div id="recordingActions" class="recording-actions">
+                    <button type="button" id="cancelRecordButton" class="cancel-record-button" onclick="cancelRecording()">
+                        取消
+                    </button>
+                </div>
+                <p id="recordingHint" class="recording-hint"></p>
                 <div id="recordingStatus" class="status" style="display: none;"></div>
                 
                 <div class="upload-section">
@@ -535,10 +596,101 @@
         let audioChunks = [];
         let isRecording = false;
         let audioBlob = null;
+        let discardRecording = false;
+        let nativeStopHandled = false;
+        let pendingNativeStart = false;
+        let recordingTimerId = null;
+        let recordingStartedAt = 0;
+        let nativeRecordingFilename = 'recording.m4a';
 
-        // 检查浏览器支持
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert('您的浏览器不支持录音功能，请使用现代浏览器');
+        function hasNativeRecorder() {
+            try {
+                return !!(window.ShuranNative && typeof window.ShuranNative.startRecording === 'function');
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function canBrowserRecord() {
+            return !!(window.isSecureContext
+                && navigator.mediaDevices
+                && navigator.mediaDevices.getUserMedia);
+        }
+
+        function parseNativeJson(raw) {
+            if (raw && typeof raw === 'object') return raw;
+            try {
+                return JSON.parse(String(raw || '{}'));
+            } catch (e) {
+                return { ok: false, message: String(raw || '未知错误') };
+            }
+        }
+
+        function setRecordingUi(active) {
+            const button = document.getElementById('recordButton');
+            const timer = document.getElementById('recordingTimer');
+            const actions = document.getElementById('recordingActions');
+            if (button) {
+                button.textContent = active ? '⏹️ 停止录音' : '🎤 开始录音';
+                button.classList.toggle('recording', active);
+                button.disabled = false;
+            }
+            if (timer) {
+                timer.classList.toggle('visible', active);
+                if (!active) timer.textContent = '00:00';
+            }
+            if (actions) {
+                actions.classList.toggle('visible', active);
+            }
+            if (active) {
+                startRecordingTimer();
+            } else {
+                stopRecordingTimer();
+            }
+        }
+
+        function startRecordingTimer() {
+            stopRecordingTimer();
+            recordingStartedAt = Date.now();
+            updateRecordingTimer();
+            recordingTimerId = setInterval(updateRecordingTimer, 250);
+        }
+
+        function stopRecordingTimer() {
+            if (recordingTimerId) {
+                clearInterval(recordingTimerId);
+                recordingTimerId = null;
+            }
+        }
+
+        function updateRecordingTimer() {
+            const timer = document.getElementById('recordingTimer');
+            if (!timer) return;
+            const sec = Math.max(0, Math.floor((Date.now() - recordingStartedAt) / 1000));
+            const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+            const ss = String(sec % 60).padStart(2, '0');
+            timer.textContent = mm + ':' + ss;
+        }
+
+        function setupRecorderUi() {
+            const button = document.getElementById('recordButton');
+            const hint = document.getElementById('recordingHint');
+            if (!button) return;
+            if (hasNativeRecorder()) {
+                button.disabled = false;
+                if (hint) hint.textContent = '将使用手机麦克风录音，停录后自动上传。';
+                return;
+            }
+            if (canBrowserRecord()) {
+                button.disabled = false;
+                if (hint) hint.textContent = '';
+                return;
+            }
+            button.disabled = true;
+            button.textContent = '网页无法在线录音';
+            if (hint) {
+                hint.textContent = '当前网页不是安全连接（HTTPS），浏览器不允许在线录音。请使用下方「上传音频文件」，或在书然 App 内录音。';
+            }
         }
 
         function homeUrl() {
@@ -558,6 +710,10 @@
         }
 
         window.handleAppBack = function () {
+            if (isRecording || pendingNativeStart) {
+                cancelRecording();
+                return 'consumed';
+            }
             goBack();
             return 'consumed';
         };
@@ -577,10 +733,138 @@
             }
         }
 
-        // 开始录音
         async function startRecording() {
+            if (hasNativeRecorder()) {
+                await startNativeRecording();
+                return;
+            }
+            if (!canBrowserRecord()) {
+                showStatus('recordingStatus', '当前网页无法在线录音，请上传音频文件或使用书然 App', 'error');
+                return;
+            }
+            await startBrowserRecording();
+        }
+
+        async function startNativeRecording() {
+            const native = window.ShuranNative;
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
+                if (typeof native.hasAudioPermission === 'function' && !native.hasAudioPermission()) {
+                    pendingNativeStart = true;
+                    showStatus('recordingStatus', '需要麦克风权限才能录音', 'info');
+                    native.requestAudioPermission();
+                    return;
+                }
+                const result = parseNativeJson(native.startRecording());
+                if (!result.ok && result.code === 'need_permission') {
+                    pendingNativeStart = true;
+                    showStatus('recordingStatus', '需要麦克风权限才能录音', 'info');
+                    native.requestAudioPermission();
+                    return;
+                }
+                if (!result.ok) {
+                    showStatus('recordingStatus', result.message || '无法开始录音', 'error');
+                    return;
+                }
+                nativeStopHandled = false;
+                isRecording = true;
+                setRecordingUi(true);
+                showStatus('recordingStatus', '正在录音…', 'info');
+            } catch (error) {
+                console.error('原生录音失败:', error);
+                showStatus('recordingStatus', '无法开始录音，请检查麦克风权限', 'error');
+            }
+        }
+
+        window.onNativeAudioPermission = function (info) {
+            const granted = !!(info && info.granted);
+            const canAskAgain = !info || info.canAskAgain !== false;
+            if (granted) {
+                if (pendingNativeStart) {
+                    pendingNativeStart = false;
+                    startNativeRecording();
+                }
+                return;
+            }
+            pendingNativeStart = false;
+            isRecording = false;
+            setRecordingUi(false);
+            if (canAskAgain) {
+                showStatus('recordingStatus', '需要麦克风权限才能录音。请允许后重试，或改用下方上传音频文件。', 'error');
+                return;
+            }
+            showStatus(
+                'recordingStatus',
+                '麦克风权限已被拒绝。请到系统设置允许「书然」使用麦克风，或改用下方上传音频文件。',
+                'error'
+            );
+            try {
+                if (window.ShuranNative && typeof window.ShuranNative.openAppSettings === 'function') {
+                    window.ShuranNative.openAppSettings();
+                }
+            } catch (e) {}
+        };
+
+        window.onNativeRecordingStopped = function (info) {
+            if (nativeStopHandled) return;
+            nativeStopHandled = true;
+            handleNativeStopResult(info);
+        };
+
+        async function handleNativeStopResult(info) {
+            const result = parseNativeJson(info);
+            isRecording = false;
+            setRecordingUi(false);
+            if (!result.ok) {
+                showStatus('recordingStatus', result.message || '录音失败', 'error');
+                return;
+            }
+            nativeRecordingFilename = result.filename || 'recording.m4a';
+            showStatus('recordingStatus', '录音完成，正在上传…', 'info');
+            const button = document.getElementById('recordButton');
+            if (button) button.disabled = true;
+            try {
+                const type = result.mimeType || 'audio/mp4';
+                audioBlob = await readNativeRecordingBlob(result.url, type);
+                await uploadRecording();
+            } catch (error) {
+                console.error('读取原生录音失败:', error);
+                showStatus('recordingStatus', (error && error.message) || '读取录音失败', 'error');
+            } finally {
+                if (button && hasNativeRecorder()) button.disabled = false;
+            }
+        }
+
+        function base64ToBlob(b64, mimeType) {
+            const binary = atob(b64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return new Blob([bytes], { type: mimeType || 'audio/mp4' });
+        }
+
+        async function readNativeRecordingBlob(url, mimeType) {
+            try {
+                const resp = await fetch((url || '/__shuran_native_recording') + '?t=' + Date.now());
+                if (resp.ok) {
+                    const blob = await resp.blob();
+                    if (blob && blob.size > 0) {
+                        return blob.type === mimeType ? blob : new Blob([blob], { type: mimeType });
+                    }
+                }
+            } catch (e) {
+                console.warn('拦截读取录音失败，改用桥接', e);
+            }
+            if (window.ShuranNative && typeof window.ShuranNative.readRecordingBase64 === 'function') {
+                const b64 = window.ShuranNative.readRecordingBase64();
+                if (b64) return base64ToBlob(b64, mimeType);
+            }
+            throw new Error('读取录音失败');
+        }
+
+        async function startBrowserRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         sampleRate: 16000,
                         channelCount: 1,
@@ -588,8 +872,7 @@
                         noiseSuppression: true
                     }
                 });
-                
-                // 尝试使用 WAV 格式，如果不支持则回退到其他格式
+
                 let mimeType = 'audio/wav';
                 if (!MediaRecorder.isTypeSupported('audio/wav')) {
                     if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
@@ -599,51 +882,81 @@
                     } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
                         mimeType = 'audio/mp4';
                     } else {
-                        mimeType = 'audio/webm'; // 默认回退
+                        mimeType = 'audio/webm';
                     }
                 }
-                
-                console.log('使用录音格式:', mimeType);
-                
+
                 mediaRecorder = new MediaRecorder(stream, {
                     mimeType: mimeType
                 });
                 audioChunks = [];
+                discardRecording = false;
 
                 mediaRecorder.ondataavailable = event => {
                     audioChunks.push(event.data);
                 };
 
                 mediaRecorder.onstop = () => {
+                    if (discardRecording) {
+                        discardRecording = false;
+                        audioChunks = [];
+                        audioBlob = null;
+                        showStatus('recordingStatus', '已取消录音', 'info');
+                        return;
+                    }
                     audioBlob = new Blob(audioChunks, { type: mimeType });
-                    showStatus('recordingStatus', '录音完成！可以上传了', 'success');
-                    
-                    // 自动上传录音
+                    showStatus('recordingStatus', '录音完成，正在上传…', 'info');
                     uploadRecording();
                 };
 
                 mediaRecorder.start();
                 isRecording = true;
-                
-                document.getElementById('recordButton').textContent = '⏹️ 停止录音';
-                document.getElementById('recordButton').classList.add('recording');
-                showStatus('recordingStatus', '正在录音...', 'info');
-                
+                setRecordingUi(true);
+                showStatus('recordingStatus', '正在录音…', 'info');
             } catch (error) {
                 console.error('录音失败:', error);
-                showStatus('recordingStatus', '录音失败，请检查麦克风权限', 'error');
+                showStatus('recordingStatus', '录音失败，请检查麦克风权限，或改用下方上传音频文件', 'error');
             }
         }
 
-        // 停止录音
         function stopRecording() {
+            if (hasNativeRecorder() && isRecording) {
+                try {
+                    const result = parseNativeJson(window.ShuranNative.stopRecording());
+                    nativeStopHandled = true;
+                    handleNativeStopResult(result);
+                } catch (error) {
+                    console.error('停止原生录音失败:', error);
+                    isRecording = false;
+                    setRecordingUi(false);
+                    showStatus('recordingStatus', '停止录音失败', 'error');
+                }
+                return;
+            }
             if (mediaRecorder && isRecording) {
                 mediaRecorder.stop();
                 mediaRecorder.stream.getTracks().forEach(track => track.stop());
-                
                 isRecording = false;
-                document.getElementById('recordButton').textContent = '🎤 开始录音';
-                document.getElementById('recordButton').classList.remove('recording');
+                setRecordingUi(false);
+            }
+        }
+
+        function cancelRecording() {
+            if (hasNativeRecorder() && (isRecording || pendingNativeStart)) {
+                pendingNativeStart = false;
+                nativeStopHandled = true;
+                try {
+                    window.ShuranNative.cancelRecording();
+                } catch (e) {}
+                isRecording = false;
+                audioBlob = null;
+                setRecordingUi(false);
+                showStatus('recordingStatus', '已取消录音', 'info');
+                return;
+            }
+            if (mediaRecorder && isRecording) {
+                discardRecording = true;
+                stopRecording();
             }
         }
 
@@ -717,17 +1030,15 @@
         }
 
         function recordingFilename() {
-            let filename = 'recording';
-            if (audioBlob.type.includes('wav')) {
-                filename += '.wav';
-            } else if (audioBlob.type.includes('webm')) {
-                filename += '.webm';
-            } else if (audioBlob.type.includes('mp4') || audioBlob.type.includes('m4a') || audioBlob.type.includes('aac')) {
-                filename += '.m4a';
-            } else {
-                filename += '.webm';
+            const type = (audioBlob && audioBlob.type) || '';
+            if (type.includes('wav')) return 'recording.wav';
+            if (type.includes('webm')) return 'recording.webm';
+            if (type.includes('mpeg') || type.includes('mp3')) return 'recording.mp3';
+            if (type.includes('ogg')) return 'recording.ogg';
+            if (type.includes('mp4') || type.includes('m4a') || type.includes('aac')) {
+                return nativeRecordingFilename || 'recording.m4a';
             }
-            return filename;
+            return nativeRecordingFilename || 'recording.m4a';
         }
 
         async function postSelfTalk(formData, statusId) {
@@ -1130,6 +1441,7 @@
 
         // 页面加载时获取历史记录
         document.addEventListener('DOMContentLoaded', async function() {
+            setupRecorderUi();
             if (!checkAuthToken()) {
                 redirectToLogin('请先登录');
                 return;
