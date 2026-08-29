@@ -107,6 +107,53 @@ public class ReminderJsBridge {
     }
 
     @JavascriptInterface
+    public String reminderReliabilityStatus() {
+        return ReminderReliability.statusJson(activity.getApplicationContext());
+    }
+
+    @JavascriptInterface
+    public void openNotificationSettings() {
+        activity.runOnUiThread(() -> ReminderReliability.openNotificationSettings(activity));
+    }
+
+    @JavascriptInterface
+    public void openBatteryOptimizationSettings() {
+        activity.runOnUiThread(() -> ReminderReliability.openBatteryOptimizationSettings(activity));
+    }
+
+    @JavascriptInterface
+    public void openAutostartSettings() {
+        activity.runOnUiThread(() -> ReminderReliability.openAutostartSettings(activity));
+    }
+
+    @JavascriptInterface
+    public boolean isIgnoringBatteryOptimizations() {
+        return ReminderReliability.isIgnoringBattery(activity.getApplicationContext());
+    }
+
+    @JavascriptInterface
+    public String scheduleTestAlarm(String secondsRaw) {
+        try {
+            if (!ReminderNotifications.areEnabled(activity)) {
+                activity.runOnUiThread(activity::requestNotificationPermission);
+                return "no_permission";
+            }
+            int seconds = 120;
+            try {
+                if (secondsRaw != null && !secondsRaw.isEmpty()) {
+                    seconds = (int) Double.parseDouble(secondsRaw);
+                }
+            } catch (Exception ignored) {
+            }
+            boolean ok = ReminderScheduler.scheduleTest(activity.getApplicationContext(), seconds);
+            return ok ? "ok" : "error";
+        } catch (Exception e) {
+            Log.e(TAG, "scheduleTestAlarm failed", e);
+            return "error";
+        }
+    }
+
+    @JavascriptInterface
     public void pollNow() {
         ReminderScheduler.pollNow(activity.getApplicationContext());
     }

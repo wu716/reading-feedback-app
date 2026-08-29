@@ -370,6 +370,7 @@ public class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == NOTIFICATION_PERMISSION_REQUEST) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                ReminderScheduler.restore(getApplicationContext());
                 ReminderScheduler.pollNow(getApplicationContext());
             }
             return;
@@ -402,6 +403,11 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         webView.onResume();
+        ReminderScheduler.restore(this);
+        webView.evaluateJavascript(
+                "(function(){try{if(window.reminderNotificationService&&window.reminderNotificationService.refreshReliabilityHints){window.reminderNotificationService.refreshReliabilityHints();}}catch(e){}})()",
+                null
+        );
     }
 
     @Override

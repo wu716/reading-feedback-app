@@ -116,11 +116,13 @@ public final class ReminderNotifications {
                 .setContentText(safeBody)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(safeBody))
                 .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setColor(ContextCompat.getColor(context, R.color.primary))
                 .setContentIntent(contentIntent)
+                .setTicker(safeTitle)
                 .build();
 
         try {

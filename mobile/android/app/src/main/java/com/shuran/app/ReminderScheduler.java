@@ -44,13 +44,19 @@ public final class ReminderScheduler {
     static final String ACTION_POLL = "com.shuran.app.REMINDER_POLL";
     static final String ACTION_READING = "com.shuran.app.REMINDER_READING";
     static final String ACTION_TODO = "com.shuran.app.REMINDER_TODO";
+    static final String ACTION_TEST = "com.shuran.app.REMINDER_TEST";
     static final String EXTRA_TODO_ID = "todo_id";
     static final String EXTRA_TODO_TEXT = "todo_text";
 
     private static final int REQ_DAILY = 41;
     private static final int REQ_POLL = 42;
     private static final int REQ_READING = 43;
+    private static final int REQ_TEST = 44;
+    private static final int REQ_DAILY_SHOW = 141;
+    private static final int REQ_READING_SHOW = 143;
+    private static final int REQ_TEST_SHOW = 144;
     private static final int TODO_REQ_BASE = 10000;
+    private static final int TODO_SHOW_BASE = 30000;
     private static final long POLL_INTERVAL_MS = 15 * 60 * 1000L;
     private static final Object LOCK = new Object();
 
@@ -182,7 +188,6 @@ public final class ReminderScheduler {
             if (!canNotify(context) || !isDailyDay(context)) {
                 return;
             }
-            pollPending(context);
             String today = todayStamp();
             if (!today.equals(prefs(context).getString(KEY_DAILY_SHOWN, ""))) {
                 ReminderNotifications.show(
@@ -194,6 +199,7 @@ public final class ReminderScheduler {
                 );
                 prefs(context).edit().putString(KEY_DAILY_SHOWN, today).apply();
             }
+            pollPending(context);
         } catch (Exception e) {
             Log.e(TAG, "daily alarm failed", e);
         } finally {
@@ -222,6 +228,32 @@ public final class ReminderScheduler {
         } finally {
             scheduleReading(context);
         }
+    }
+
+    static void onTestAlarm(Context context) {
+        try {
+            ReminderNotifications.show(
+                    context,
+                    ReminderNotifications.TEST_NOTIFICATION_ID,
+                    context.getString(R.string.notification_test_title),
+                    context.getString(R.string.notification_exit_test_body),
+                    "/static/index.html#user-center"
+            );
+        } catch (Exception e) {
+            Log.e(TAG, "test alarm failed", e);
+        }
+    }
+
+    public static boolean scheduleTest(Context context, int seconds) {
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) {
+            return false;
+        }
+        int delay = Math.max(30, Math.min(600, seconds));
+        long at = System.currentTimeMillis() + delay * 1000L;
+        setWakeup(context, am, at, pending(context, ACTION_TEST, REQ_TEST), REQ_TEST_SHOW, true);
+        Log.i(TAG, "scheduled exit test in " + delay + "s");
+        return true;
     }
 
     static void onTodoAlarm(Context context, android.content.Intent intent) {
@@ -373,7 +405,7 @@ public final class ReminderScheduler {
             return;
         }
         long at = nextDailyMillis(context);
-        setWakeup(am, at, pi);
+        setWakeup(context, am, at, pi, REQ_DAILY_SHOW, true);
     }
 
     private static void schedulePoll(Context context) {
@@ -389,7 +421,7 @@ public final class ReminderScheduler {
             return;
         }
         long at = System.currentTimeMillis() + POLL_INTERVAL_MS;
-        setWakeup(am, at, pi);
+        setWakeup(context, am, at, pi, REQ_POLL, false);
     }
 
     private static void scheduleReading(Context context) {
@@ -404,7 +436,14 @@ public final class ReminderScheduler {
             am.cancel(pi);
             return;
         }
-        setWakeup(am, nextClockMillis(prefs(context).getString(KEY_READING_TIME, "21:00")), pi);
+        setWakeup(
+                context,
+                am,
+                nextClockMillis(prefs(context).getString(KEY_READING_TIME, "21:00")),
+                pi,
+                REQ_READING_SHOW,
+                true
+        );
     }
 
     private static void scheduleTodos(Context context) {
@@ -436,7 +475,14 @@ public final class ReminderScheduler {
             if (at <= 0) {
                 continue;
             }
-            setWakeup(am, at, pendingTodo(context, id, text));
+            setWakeup(
+                    context,
+                    am,
+                    at,
+                    pendingTodo(context, id, text),
+                    TODO_SHOW_BASE + id,
+                    true
+            );
         }
     }
 
@@ -469,24 +515,66 @@ public final class ReminderScheduler {
         am.cancel(pending(context, ACTION_DAILY, REQ_DAILY));
         am.cancel(pending(context, ACTION_POLL, REQ_POLL));
         am.cancel(pending(context, ACTION_READING, REQ_READING));
+        am.cancel(pending(context, ACTION_TEST, REQ_TEST));
         cancelTodoAlarms(context);
     }
 
-    private static void setWakeup(AlarmManager am, long at, PendingIntent pi) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (am.canScheduleExactAlarms()) {
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
-                return;
-            }
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+    private static void setWakeup(
+            Context context,
+            AlarmManager am,
+            long at,
+            PendingIntent pi,
+            int showRequestCode,
+            boolean userVisible
+    ) {
+        if (at <= 0) {
             return;
         }
-        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+        if (userVisible) {
+            try {
+                AlarmManager.AlarmClockInfo info = new AlarmManager.AlarmClockInfo(
+                        at,
+                        showActivity(context, showRequestCode)
+                );
+                am.setAlarmClock(info, pi);
+                Log.i(TAG, "setAlarmClock at " + at);
+                return;
+            } catch (SecurityException e) {
+                Log.w(TAG, "setAlarmClock denied, falling back", e);
+            } catch (Exception e) {
+                Log.w(TAG, "setAlarmClock failed, falling back", e);
+            }
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !am.canScheduleExactAlarms()) {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+                Log.w(TAG, "inexact alarm at " + at);
+                return;
+            }
+            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+            Log.i(TAG, "setExactAndAllowWhileIdle at " + at);
+        } catch (SecurityException e) {
+            Log.w(TAG, "exact alarm denied, using inexact", e);
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+        }
+    }
+
+    private static PendingIntent showActivity(Context context, int requestCode) {
+        Intent show = new Intent(context, MainActivity.class);
+        show.setAction(Intent.ACTION_MAIN);
+        show.addCategory(Intent.CATEGORY_LAUNCHER);
+        show.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        return PendingIntent.getActivity(context, requestCode, show, flags);
     }
 
     private static PendingIntent pending(Context context, String action, int requestCode) {
         Intent intent = new Intent(context, ReminderAlarmReceiver.class);
         intent.setAction(action);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             flags |= PendingIntent.FLAG_IMMUTABLE;
@@ -497,6 +585,7 @@ public final class ReminderScheduler {
     private static PendingIntent pendingTodo(Context context, int todoId, String text) {
         Intent intent = new Intent(context, ReminderAlarmReceiver.class);
         intent.setAction(ACTION_TODO);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         intent.putExtra(EXTRA_TODO_ID, todoId);
         intent.putExtra(EXTRA_TODO_TEXT, text == null ? "" : text);
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
