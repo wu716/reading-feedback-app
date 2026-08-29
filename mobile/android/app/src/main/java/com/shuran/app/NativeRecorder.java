@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -67,7 +68,7 @@ public class NativeRecorder {
             if (!dir.exists() && !dir.mkdirs()) {
                 json.put("ok", false);
                 json.put("code", "error");
-                json.put("message", "无法创建录音目录");
+                json.put("message", "现在没法录音，请再试一次");
                 return json.toString();
             }
 
@@ -106,7 +107,8 @@ public class NativeRecorder {
                 Log.e(TAG, "MediaRecorder error what=" + what + " extra=" + extra);
                 activity.runOnUiThread(() -> {
                     cancel();
-                    activity.notifyNativeRecordingStopped(errorJson("录音出错，请重试"));
+                    activity.notifyNativeRecordingStopped(
+                            errorJson("recorder_error", "录音中断了，请再试一次"));
                 });
             });
             next.prepare();
@@ -121,10 +123,11 @@ public class NativeRecorder {
             releaseRecorder();
             recording = false;
             deleteQuiet(outputFile);
+            String[] classified = classifyStartError(e);
             try {
                 json.put("ok", false);
-                json.put("code", "error");
-                json.put("message", "无法开始录音，请检查麦克风是否被占用");
+                json.put("code", classified[0]);
+                json.put("message", classified[1]);
             } catch (Exception ignored) {
             }
             return json.toString();
@@ -133,7 +136,7 @@ public class NativeRecorder {
 
     synchronized String stop() {
         if (!recording && readyFile == null) {
-            return errorJson("当前没有录音");
+            return errorJson("idle", "当前没有录音");
         }
         if (!recording && readyFile != null) {
             return successJson(readyFile);
@@ -144,13 +147,13 @@ public class NativeRecorder {
             deleteQuiet(outputFile);
             outputFile = null;
             readyFile = null;
-            return errorJson("没有录到声音");
+            return errorJson("empty", "没有录到声音，请靠近麦克风再试");
         }
         if (outputFile.length() > MAX_BYTES) {
             deleteQuiet(outputFile);
             outputFile = null;
             readyFile = null;
-            return errorJson("录音文件超过 50MB");
+            return errorJson("too_large", "录音太长了，请录短一点再试");
         }
         readyFile = outputFile;
         return successJson(readyFile);
@@ -302,11 +305,29 @@ public class NativeRecorder {
         return json.toString();
     }
 
-    private static String errorJson(String message) {
+    private String[] classifyStartError(Exception e) {
+        String detail = e.getMessage() == null ? "" : e.getMessage();
+        String lower = detail.toLowerCase(Locale.US);
+        boolean permissionLike = e instanceof SecurityException
+                || lower.contains("permission")
+                || lower.contains("denied");
+        if (permissionLike) {
+            if (hasPermission()) {
+                return new String[]{"blocked", "系统拦截了录音，请到设置里打开麦克风"};
+            }
+            return new String[]{"need_permission", "需要麦克风才能录音"};
+        }
+        if (e instanceof RuntimeException) {
+            return new String[]{"mic_busy", "麦克风正被占用，请关掉其他正在录音的应用后再试"};
+        }
+        return new String[]{"recorder_error", "现在没法录音，请再试一次"};
+    }
+
+    private static String errorJson(String code, String message) {
         JSONObject json = new JSONObject();
         try {
             json.put("ok", false);
-            json.put("code", "error");
+            json.put("code", code == null ? "error" : code);
             json.put("message", message);
         } catch (Exception ignored) {
         }

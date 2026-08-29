@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Self-talk - 读书反馈应用</title>
-    <link rel="stylesheet" href="/static/css/self-talk-player.css?v=20260825todo1">
+    <link rel="stylesheet" href="/static/css/self-talk-player.css?v=20260829mic1">
     <style>
         * {
             margin: 0;
@@ -15,11 +15,30 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --st-green: #07C160;
+            --st-green-press: #06AD56;
+            --st-red: #FA5151;
+            --st-text: #191919;
+            --st-sub: #888888;
+            --st-line: #E5E5E5;
+            --st-bg: #EDEDED;
+            --st-card: #FFFFFF;
+            --st-link: #576B95;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: var(--st-bg);
             min-height: 100vh;
-            color: #333;
+            color: var(--st-text);
+        }
+
+        .st-ico {
+            width: 1.15em;
+            height: 1.15em;
+            display: block;
+            flex-shrink: 0;
         }
 
         .container {
@@ -30,21 +49,21 @@
 
         .header {
             text-align: center;
-            margin-bottom: 40px;
-            color: #4c51bf;
+            margin-bottom: 28px;
+            color: var(--st-text);
             position: relative;
             padding-top: 8px;
         }
 
         .header h1 {
-            font-size: 1.6rem;
-            margin-bottom: 8px;
+            font-size: 1.45rem;
+            margin-bottom: 6px;
+            font-weight: 600;
         }
 
         .header p {
-            font-size: 0.95rem;
-            color: #667eea;
-            opacity: 0.9;
+            font-size: 0.9rem;
+            color: var(--st-sub);
         }
 
         .main-content {
@@ -55,21 +74,22 @@
         }
 
         .card {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            border: 1px solid rgba(102, 126, 234, 0.12);
-            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+            background: var(--st-card);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--st-line);
+            box-shadow: none;
         }
 
         .card:hover {
-            box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+            box-shadow: none;
         }
 
         .card h2 {
-            color: #4a5568;
-            margin-bottom: 20px;
-            font-size: 1.5rem;
+            color: var(--st-text);
+            margin-bottom: 16px;
+            font-size: 1.15rem;
+            font-weight: 600;
         }
 
         .recording-section {
@@ -77,35 +97,47 @@
         }
 
         .record-button {
-            width: 120px;
-            height: 120px;
+            width: 112px;
+            height: 112px;
             border-radius: 50%;
             border: none;
-            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            background: var(--st-green);
             color: white;
-            font-size: 1.2rem;
+            font-size: 0.92rem;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 20px 0;
-            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+            transition: background 0.15s ease, opacity 0.15s ease;
+            margin: 16px 0 8px;
+            box-shadow: none;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .record-button .st-ico {
+            width: 28px;
+            height: 28px;
         }
 
         .record-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.6);
+            background: var(--st-green-press);
         }
 
         .record-button.recording {
-            background: linear-gradient(135deg, #ff4757, #c44569);
-            animation: pulse 1.5s infinite;
+            background: var(--st-red);
+            animation: none;
+        }
+
+        .record-button.recording:hover {
+            background: #e44545;
         }
 
         .record-button:disabled {
-            opacity: 0.55;
+            opacity: 0.45;
             cursor: not-allowed;
-            transform: none;
-            animation: none;
-            box-shadow: none;
+            background: #B2B2B2;
         }
 
         .recording-timer {
@@ -114,7 +146,7 @@
             font-size: 1.5rem;
             font-variant-numeric: tabular-nums;
             font-weight: 600;
-            color: #c53030;
+            color: var(--st-red);
             letter-spacing: 0.04em;
         }
 
@@ -134,17 +166,20 @@
 
         .cancel-record-button {
             min-height: 44px;
-            padding: 10px 22px;
+            padding: 10px 18px;
             border: none;
             border-radius: 8px;
-            background: #e2e8f0;
-            color: #4a5568;
-            font-size: 1rem;
+            background: #F7F7F7;
+            color: var(--st-sub);
+            font-size: 0.95rem;
             cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .cancel-record-button:hover {
-            background: #cbd5e0;
+            background: #EFEFEF;
         }
 
         .recording-hint {
@@ -164,43 +199,54 @@
             margin-top: 20px;
         }
 
+        .upload-section h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--st-text);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
         .file-input {
             width: 100%;
             padding: 12px;
-            border: 2px dashed #cbd5e0;
+            border: 1px dashed var(--st-line);
             border-radius: 8px;
-            background: #f7fafc;
+            background: #F7F7F7;
             cursor: pointer;
-            transition: all 0.3s ease;
             margin-bottom: 15px;
         }
 
         .file-input:hover {
-            border-color: #667eea;
-            background: #edf2f7;
+            border-color: var(--st-green);
+            background: #F7F7F7;
         }
 
         .upload-button {
             width: 100%;
             padding: 12px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: var(--st-green);
             color: white;
             border: none;
             border-radius: 8px;
             font-size: 1rem;
             cursor: pointer;
-            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .upload-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            background: var(--st-green-press);
         }
 
         .upload-button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-            transform: none;
         }
 
         .recognize-option {
@@ -222,7 +268,7 @@
             width: 18px;
             height: 18px;
             flex-shrink: 0;
-            accent-color: #667eea;
+            accent-color: var(--st-green);
         }
 
         .recognize-option-title {
@@ -239,6 +285,107 @@
             font-weight: 400;
             color: #718096;
             line-height: 1.4;
+        }
+
+        .mic-help {
+            display: none;
+            margin-top: 16px;
+            padding: 16px;
+            background: #FAFAFA;
+            border: 1px solid var(--st-line);
+            border-radius: 12px;
+            text-align: left;
+        }
+
+        .mic-help.visible {
+            display: block;
+        }
+
+        .mic-help-head {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .mic-help-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #F2F2F2;
+            color: var(--st-text);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .mic-help-icon .st-ico {
+            width: 20px;
+            height: 20px;
+        }
+
+        .mic-help-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--st-text);
+            line-height: 1.4;
+        }
+
+        .mic-help-text {
+            margin-top: 4px;
+            font-size: 0.88rem;
+            color: var(--st-sub);
+            line-height: 1.5;
+        }
+
+        .mic-help-steps {
+            display: none;
+            margin-top: 10px;
+            padding: 10px 12px;
+            background: #fff;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            color: var(--st-text);
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        .mic-help-steps.visible {
+            display: block;
+        }
+
+        .mic-help-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .mic-help-primary {
+            flex: 1;
+            min-height: 44px;
+            border: none;
+            border-radius: 8px;
+            background: var(--st-green);
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .mic-help-primary:hover {
+            background: var(--st-green-press);
+        }
+
+        .mic-help-cancel {
+            min-height: 44px;
+            min-width: 72px;
+            padding: 0 16px;
+            border: none;
+            border-radius: 8px;
+            background: #F2F2F2;
+            color: var(--st-sub);
+            font-size: 1rem;
+            cursor: pointer;
         }
 
         .status {
@@ -275,14 +422,13 @@
             background: white;
             border-radius: 12px;
             padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-            transition: all 0.3s ease;
+            margin-bottom: 16px;
+            border: 1px solid var(--st-line);
+            box-shadow: none;
         }
 
         .self-talk-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+            box-shadow: none;
         }
 
         .self-talk-header {
@@ -304,29 +450,39 @@
 
         .action-button {
             padding: 6px 12px;
-            border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
+            font-size: 0.88rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: transparent;
+        }
+
+        .action-button .st-ico {
+            width: 16px;
+            height: 16px;
         }
 
         .play-button {
-            background: #48bb78;
-            color: white;
+            background: transparent;
+            color: var(--st-green);
+            border: 1px solid var(--st-green);
         }
 
         .play-button:hover {
-            background: #38a169;
+            background: #F0FFF6;
         }
 
         .delete-button {
-            background: #f56565;
-            color: white;
+            background: transparent;
+            color: var(--st-sub);
+            border: 1px solid var(--st-line);
         }
 
         .delete-button:hover {
-            background: #e53e3e;
+            color: var(--st-red);
+            border-color: #F0C0C0;
         }
 
         .transcript-block {
@@ -372,9 +528,9 @@
 
         .transcript-editor:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--st-green);
             background: #fff;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+            box-shadow: 0 0 0 3px rgba(7, 193, 96, 0.15);
         }
 
         .transcript-actions {
@@ -385,12 +541,13 @@
         }
 
         .save-transcript-button {
-            background: #667eea;
+            background: var(--st-green);
             color: white;
+            border: none;
         }
 
         .save-transcript-button:hover {
-            background: #5a67d8;
+            background: var(--st-green-press);
         }
 
         .save-transcript-button:disabled {
@@ -423,7 +580,7 @@
             width: 20px;
             height: 20px;
             border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
+            border-top: 3px solid var(--st-green);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -441,10 +598,11 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            padding: 12px 16px;
-            padding-top: max(12px, env(safe-area-inset-top, 12px));
+            padding: 8px 8px;
+            padding-top: max(8px, env(safe-area-inset-top, 8px));
             margin: 0 -20px 16px;
-            background: #5b6fd6;
+            background: #fff;
+            border-bottom: 1px solid var(--st-line);
         }
 
         .back-button,
@@ -452,9 +610,10 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 4px;
             min-height: 44px;
-            padding: 10px 18px;
-            border-radius: 25px;
+            padding: 10px 12px;
+            border-radius: 8px;
             font-size: 1rem;
             text-decoration: none;
             cursor: pointer;
@@ -464,21 +623,26 @@
             border: none;
         }
 
+        .back-button .st-ico,
+        .settings-button .st-ico {
+            width: 20px;
+            height: 20px;
+        }
+
         .back-button {
-            background: #eef2ff;
-            color: #667eea;
+            background: transparent;
+            color: var(--st-text);
             z-index: 10001;
         }
 
         .back-button:hover,
         .back-button:active {
-            background: rgba(255, 255, 255, 0.35);
+            background: #F7F7F7;
         }
 
         .settings-button {
-            background: rgba(255, 255, 255, 0.9);
-            color: #667eea;
-            border: 2px solid #667eea;
+            background: transparent;
+            color: var(--st-link);
             white-space: nowrap;
         }
 
@@ -517,7 +681,7 @@
 
         html.embed-mode body {
             min-height: 100%;
-            background: #f5f7fa;
+            background: var(--st-bg);
         }
     </style>
     <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260825todo1">
@@ -530,7 +694,10 @@
     </script>
     <div class="container">
         <div class="st-topbar">
-            <a href="/static/index.html" class="back-button" id="selfTalkBackBtn">← 返回</a>
+            <a href="/static/index.html" class="back-button" id="selfTalkBackBtn">
+                <svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+                <span>返回</span>
+            </a>
             <a href="/static/index.html#user-center" class="settings-button">提醒设置</a>
         </div>
         <div class="header">
@@ -543,19 +710,38 @@
             <div class="card recording-section">
                 <h2>开始录音</h2>
                 <button id="recordButton" class="record-button" type="button" onclick="toggleRecording()">
-                    🎤 开始录音
+                    <svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21M9 21h6"/></svg>
+                    <span>开始录音</span>
                 </button>
                 <div id="recordingTimer" class="recording-timer" aria-live="polite">00:00</div>
                 <div id="recordingActions" class="recording-actions">
                     <button type="button" id="cancelRecordButton" class="cancel-record-button" onclick="cancelRecording()">
-                        取消
+                        <svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                        <span>取消</span>
                     </button>
                 </div>
                 <p id="recordingHint" class="recording-hint"></p>
                 <div id="recordingStatus" class="status" style="display: none;"></div>
+                <div id="micHelpBanner" class="mic-help" hidden>
+                    <div class="mic-help-head">
+                        <div class="mic-help-icon" id="micHelpIcon" aria-hidden="true"></div>
+                        <div>
+                            <p class="mic-help-title" id="micHelpTitle"></p>
+                            <p class="mic-help-text" id="micHelpText"></p>
+                        </div>
+                    </div>
+                    <p class="mic-help-steps" id="micHelpSteps"></p>
+                    <div class="mic-help-actions">
+                        <button type="button" class="mic-help-primary" id="micHelpPrimary"></button>
+                        <button type="button" class="mic-help-cancel" id="micHelpCancel">取消</button>
+                    </div>
+                </div>
                 
                 <div class="upload-section">
-                    <h3>或上传音频文件</h3>
+                    <h3>
+                        <svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5"/><path d="M8 9l4-4 4 4"/><path d="M5 19h14"/></svg>
+                        或上传音频文件
+                    </h3>
                     <label class="recognize-option" for="recognizeTextCheckbox">
                         <input type="checkbox" id="recognizeTextCheckbox">
                         <span>
@@ -565,7 +751,8 @@
                     </label>
                     <input type="file" id="audioFile" class="file-input" accept="audio/*,.m4a,.mp3,.wav,.ogg,.webm,.mp4">
                     <button id="uploadButton" class="upload-button" onclick="uploadAudio()">
-                        上传音频
+                        <svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5"/><path d="M8 9l4-4 4 4"/><path d="M5 19h14"/></svg>
+                        <span>上传音频</span>
                     </button>
                     <div id="uploadStatus" class="status" style="display: none;"></div>
                 </div>
@@ -599,16 +786,56 @@
         let discardRecording = false;
         let nativeStopHandled = false;
         let pendingNativeStart = false;
+        let pendingSettingsReturn = false;
+        let micHelpKind = null;
         let recordingTimerId = null;
         let recordingStartedAt = 0;
         let nativeRecordingFilename = 'recording.m4a';
 
-        function hasNativeRecorder() {
+        const ST_ICON = {
+            mic: '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21M9 21h6"/></svg>',
+            stop: '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>',
+            play: '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6.2v11.6L18.5 12 8 6.2z"/></svg>',
+            upload: '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5"/><path d="M8 9l4-4 4 4"/><path d="M5 19h14"/></svg>',
+            trash: '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/></svg>',
+            save: '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>',
+            close: '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+            micOff: '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 8.2 6.3"/><path d="M12 17.5V21M9 21h6"/><path d="M4 4l16 16"/></svg>'
+        };
+
+        function nativeBridge() {
             try {
-                return !!(window.ShuranNative && typeof window.ShuranNative.startRecording === 'function');
-            } catch (e) {
-                return false;
-            }
+                if (window.ShuranNative && typeof window.ShuranNative.startRecording === 'function') {
+                    return window.ShuranNative;
+                }
+            } catch (e) {}
+            try {
+                if (window.parent && window.parent !== window
+                    && window.parent.ShuranNative
+                    && typeof window.parent.ShuranNative.startRecording === 'function') {
+                    return window.parent.ShuranNative;
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        function hasNativeRecorder() {
+            return !!nativeBridge();
+        }
+
+        function installNativeCallbacks() {
+            const assign = (target) => {
+                if (!target) return;
+                try {
+                    target.onNativeAudioPermission = window.onNativeAudioPermission;
+                    target.onNativeAppResume = window.onNativeAppResume;
+                    target.onNativeRecordingStopped = window.onNativeRecordingStopped;
+                } catch (e) {}
+            };
+            assign(window);
+            try {
+                if (window.parent && window.parent !== window) assign(window.parent);
+            } catch (e) {}
         }
 
         function canBrowserRecord() {
@@ -626,12 +853,23 @@
             }
         }
 
+        function setRecordButtonLabel(active, disabledLabel) {
+            const button = document.getElementById('recordButton');
+            if (!button) return;
+            if (disabledLabel) {
+                button.innerHTML = ST_ICON.mic + '<span>' + disabledLabel + '</span>';
+                return;
+            }
+            button.innerHTML = (active ? ST_ICON.stop : ST_ICON.mic)
+                + '<span>' + (active ? '停止' : '开始录音') + '</span>';
+        }
+
         function setRecordingUi(active) {
             const button = document.getElementById('recordButton');
             const timer = document.getElementById('recordingTimer');
             const actions = document.getElementById('recordingActions');
             if (button) {
-                button.textContent = active ? '⏹️ 停止录音' : '🎤 开始录音';
+                setRecordButtonLabel(active);
                 button.classList.toggle('recording', active);
                 button.disabled = false;
             }
@@ -643,10 +881,136 @@
                 actions.classList.toggle('visible', active);
             }
             if (active) {
+                hideMicHelp();
                 startRecordingTimer();
             } else {
                 stopRecordingTimer();
             }
+        }
+
+        function hideMicHelp() {
+            const banner = document.getElementById('micHelpBanner');
+            if (banner) {
+                banner.hidden = true;
+                banner.classList.remove('visible');
+            }
+            micHelpKind = null;
+        }
+
+        function showMicHelp(kind, customMessage) {
+            const copy = {
+                ask: {
+                    title: '需要麦克风才能录音',
+                    text: '刚才没有允许。点下面再试一次，弹出窗口时选「允许」。',
+                    primary: '允许麦克风',
+                    steps: ''
+                },
+                settings: {
+                    title: '请到设置里打开麦克风',
+                    text: '麦克风被关掉了。点「去开启」，按下面步骤打开。',
+                    primary: '去开启',
+                    steps: '设置 → 权限 → 麦克风 → 允许'
+                },
+                busy: {
+                    title: '麦克风正被占用',
+                    text: '请先关掉正在录音的其他应用，再点重试。',
+                    primary: '再试一次',
+                    steps: ''
+                },
+                blocked: {
+                    title: '系统拦截了录音',
+                    text: '有的手机还会额外拦截。请到设置里允许「书然」使用麦克风。',
+                    primary: '去开启',
+                    steps: '设置 → 权限 → 麦克风 → 允许'
+                },
+                browser: {
+                    title: '需要麦克风才能录音',
+                    text: '点地址栏左边的锁，把麦克风设为允许，再点重试。',
+                    primary: '我已允许，再试一次',
+                    steps: ''
+                },
+                generic: {
+                    title: '现在没法录音',
+                    text: customMessage || '请稍后重试，或改用下方上传音频。',
+                    primary: '再试一次',
+                    steps: ''
+                }
+            };
+            const item = copy[kind] || copy.generic;
+            micHelpKind = kind;
+            const banner = document.getElementById('micHelpBanner');
+            const title = document.getElementById('micHelpTitle');
+            const text = document.getElementById('micHelpText');
+            const steps = document.getElementById('micHelpSteps');
+            const primary = document.getElementById('micHelpPrimary');
+            const icon = document.getElementById('micHelpIcon');
+            if (title) title.textContent = item.title;
+            if (text) text.textContent = item.text;
+            if (primary) primary.textContent = item.primary;
+            if (icon) icon.innerHTML = ST_ICON.micOff;
+            if (steps) {
+                steps.textContent = item.steps || '';
+                steps.classList.toggle('visible', !!item.steps);
+            }
+            if (banner) {
+                banner.hidden = false;
+                banner.classList.add('visible');
+            }
+            const statusEl = document.getElementById('recordingStatus');
+            if (statusEl) statusEl.style.display = 'none';
+        }
+
+        function handleMicHelpPrimary() {
+            if (micHelpKind === 'ask') {
+                pendingNativeStart = true;
+                if (hasNativeRecorder()) {
+                    nativeBridge().requestAudioPermission();
+                } else {
+                    startBrowserRecording();
+                }
+                return;
+            }
+            if (micHelpKind === 'settings' || micHelpKind === 'blocked') {
+                const native = nativeBridge();
+                if (native && typeof native.openAppSettings === 'function') {
+                    pendingSettingsReturn = true;
+                    pendingNativeStart = true;
+                    native.openAppSettings();
+                    return;
+                }
+                showMicHelp('browser');
+                return;
+            }
+            if (micHelpKind === 'busy' || micHelpKind === 'generic' || micHelpKind === 'browser') {
+                hideMicHelp();
+                startRecording();
+            }
+        }
+
+        function bindMicHelpUi() {
+            const primary = document.getElementById('micHelpPrimary');
+            const cancel = document.getElementById('micHelpCancel');
+            if (primary) primary.addEventListener('click', handleMicHelpPrimary);
+            if (cancel) cancel.addEventListener('click', hideMicHelp);
+        }
+
+        function showRecordFail(code, message) {
+            if (code === 'busy' || code === 'idle') {
+                return;
+            }
+            if (code === 'need_permission') {
+                showMicHelp('ask');
+                return;
+            }
+            if (code === 'mic_busy') {
+                showMicHelp('busy');
+                return;
+            }
+            if (code === 'blocked') {
+                showMicHelp('blocked');
+                return;
+            }
+            showMicHelp('generic', message);
         }
 
         function startRecordingTimer() {
@@ -678,18 +1042,20 @@
             if (!button) return;
             if (hasNativeRecorder()) {
                 button.disabled = false;
-                if (hint) hint.textContent = '将使用手机麦克风录音，停录后自动上传。';
+                setRecordButtonLabel(false);
+                if (hint) hint.textContent = '点绿色按钮开始，停录后会自动保存。';
                 return;
             }
             if (canBrowserRecord()) {
                 button.disabled = false;
+                setRecordButtonLabel(false);
                 if (hint) hint.textContent = '';
                 return;
             }
             button.disabled = true;
-            button.textContent = '网页无法在线录音';
+            setRecordButtonLabel(false, '无法在线录音');
             if (hint) {
-                hint.textContent = '当前网页不是安全连接（HTTPS），浏览器不允许在线录音。请使用下方「上传音频文件」，或在书然 App 内录音。';
+                hint.textContent = '当前网页不是安全连接，没法在线录音。请用下方上传，或打开书然 App 录音。';
             }
         }
 
@@ -712,6 +1078,10 @@
         window.handleAppBack = function () {
             if (isRecording || pendingNativeStart) {
                 cancelRecording();
+                return 'consumed';
+            }
+            if (micHelpKind) {
+                hideMicHelp();
                 return 'consumed';
             }
             goBack();
@@ -739,30 +1109,38 @@
                 return;
             }
             if (!canBrowserRecord()) {
-                showStatus('recordingStatus', '当前网页无法在线录音，请上传音频文件或使用书然 App', 'error');
+                showMicHelp('generic', '当前网页没法在线录音。请用下方上传，或打开书然 App。');
                 return;
             }
             await startBrowserRecording();
         }
 
         async function startNativeRecording() {
-            const native = window.ShuranNative;
+            if (isRecording) return;
+            const native = nativeBridge();
+            if (!native) return;
             try {
                 if (typeof native.hasAudioPermission === 'function' && !native.hasAudioPermission()) {
+                    const canAsk = typeof native.canAskAudioPermissionAgain !== 'function'
+                        || native.canAskAudioPermissionAgain();
+                    if (!canAsk) {
+                        showMicHelp('settings');
+                        return;
+                    }
                     pendingNativeStart = true;
-                    showStatus('recordingStatus', '需要麦克风权限才能录音', 'info');
+                    showStatus('recordingStatus', '请在弹出的窗口点「允许」', 'info');
                     native.requestAudioPermission();
                     return;
                 }
                 const result = parseNativeJson(native.startRecording());
                 if (!result.ok && result.code === 'need_permission') {
                     pendingNativeStart = true;
-                    showStatus('recordingStatus', '需要麦克风权限才能录音', 'info');
+                    showStatus('recordingStatus', '请在弹出的窗口点「允许」', 'info');
                     native.requestAudioPermission();
                     return;
                 }
                 if (!result.ok) {
-                    showStatus('recordingStatus', result.message || '无法开始录音', 'error');
+                    showRecordFail(result.code, result.message);
                     return;
                 }
                 nativeStopHandled = false;
@@ -771,7 +1149,7 @@
                 showStatus('recordingStatus', '正在录音…', 'info');
             } catch (error) {
                 console.error('原生录音失败:', error);
-                showStatus('recordingStatus', '无法开始录音，请检查麦克风权限', 'error');
+                showRecordFail('generic', '现在没法录音，请再试一次');
             }
         }
 
@@ -779,6 +1157,7 @@
             const granted = !!(info && info.granted);
             const canAskAgain = !info || info.canAskAgain !== false;
             if (granted) {
+                hideMicHelp();
                 if (pendingNativeStart) {
                     pendingNativeStart = false;
                     startNativeRecording();
@@ -789,19 +1168,28 @@
             isRecording = false;
             setRecordingUi(false);
             if (canAskAgain) {
-                showStatus('recordingStatus', '需要麦克风权限才能录音。请允许后重试，或改用下方上传音频文件。', 'error');
+                showMicHelp('ask');
                 return;
             }
-            showStatus(
-                'recordingStatus',
-                '麦克风权限已被拒绝。请到系统设置允许「书然」使用麦克风，或改用下方上传音频文件。',
-                'error'
-            );
-            try {
-                if (window.ShuranNative && typeof window.ShuranNative.openAppSettings === 'function') {
-                    window.ShuranNative.openAppSettings();
+            showMicHelp('settings');
+        };
+
+        window.onNativeAppResume = function (info) {
+            const granted = !!(info && info.granted);
+            if (granted) {
+                const shouldStart = pendingNativeStart || pendingSettingsReturn
+                    || micHelpKind === 'settings' || micHelpKind === 'blocked' || micHelpKind === 'ask';
+                hideMicHelp();
+                pendingSettingsReturn = false;
+                if (shouldStart && !isRecording) {
+                    pendingNativeStart = false;
+                    startNativeRecording();
                 }
-            } catch (e) {}
+                return;
+            }
+            if (pendingSettingsReturn) {
+                showMicHelp('settings');
+            }
         };
 
         window.onNativeRecordingStopped = function (info) {
@@ -810,12 +1198,14 @@
             handleNativeStopResult(info);
         };
 
+        installNativeCallbacks();
+
         async function handleNativeStopResult(info) {
             const result = parseNativeJson(info);
             isRecording = false;
             setRecordingUi(false);
             if (!result.ok) {
-                showStatus('recordingStatus', result.message || '录音失败', 'error');
+                showRecordFail(result.code, result.message || '录音失败');
                 return;
             }
             nativeRecordingFilename = result.filename || 'recording.m4a';
@@ -828,7 +1218,7 @@
                 await uploadRecording();
             } catch (error) {
                 console.error('读取原生录音失败:', error);
-                showStatus('recordingStatus', (error && error.message) || '读取录音失败', 'error');
+                showStatus('recordingStatus', (error && error.message) || '刚才的录音没读到，请再录一次', 'error');
             } finally {
                 if (button && hasNativeRecorder()) button.disabled = false;
             }
@@ -855,11 +1245,12 @@
             } catch (e) {
                 console.warn('拦截读取录音失败，改用桥接', e);
             }
-            if (window.ShuranNative && typeof window.ShuranNative.readRecordingBase64 === 'function') {
-                const b64 = window.ShuranNative.readRecordingBase64();
+            const native = nativeBridge();
+            if (native && typeof native.readRecordingBase64 === 'function') {
+                const b64 = native.readRecordingBase64();
                 if (b64) return base64ToBlob(b64, mimeType);
             }
-            throw new Error('读取录音失败');
+            throw new Error('刚才的录音没读到，请再录一次');
         }
 
         async function startBrowserRecording() {
@@ -915,21 +1306,35 @@
                 showStatus('recordingStatus', '正在录音…', 'info');
             } catch (error) {
                 console.error('录音失败:', error);
-                showStatus('recordingStatus', '录音失败，请检查麦克风权限，或改用下方上传音频文件', 'error');
+                const name = (error && error.name) || '';
+                if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+                    showMicHelp(hasNativeRecorder() ? 'ask' : 'browser');
+                    return;
+                }
+                if (name === 'NotReadableError' || name === 'AbortError') {
+                    showMicHelp('busy');
+                    return;
+                }
+                if (name === 'NotFoundError') {
+                    showMicHelp('generic', '找不到麦克风。请检查设备后再试，或改用下方上传。');
+                    return;
+                }
+                showMicHelp('generic', '现在没法录音，请再试一次，或改用下方上传。');
             }
         }
 
         function stopRecording() {
-            if (hasNativeRecorder() && isRecording) {
+            const native = nativeBridge();
+            if (native && isRecording) {
                 try {
-                    const result = parseNativeJson(window.ShuranNative.stopRecording());
+                    const result = parseNativeJson(native.stopRecording());
                     nativeStopHandled = true;
                     handleNativeStopResult(result);
                 } catch (error) {
                     console.error('停止原生录音失败:', error);
                     isRecording = false;
                     setRecordingUi(false);
-                    showStatus('recordingStatus', '停止录音失败', 'error');
+                    showStatus('recordingStatus', '停止失败，请再试一次', 'error');
                 }
                 return;
             }
@@ -942,11 +1347,14 @@
         }
 
         function cancelRecording() {
-            if (hasNativeRecorder() && (isRecording || pendingNativeStart)) {
+            hideMicHelp();
+            pendingSettingsReturn = false;
+            const native = nativeBridge();
+            if (native && (isRecording || pendingNativeStart)) {
                 pendingNativeStart = false;
                 nativeStopHandled = true;
                 try {
-                    window.ShuranNative.cancelRecording();
+                    native.cancelRecording();
                 } catch (e) {}
                 isRecording = false;
                 audioBlob = null;
@@ -1217,10 +1625,10 @@
                         <span class="self-talk-date">${new Date(selfTalk.created_at).toLocaleString('zh-CN')}</span>
                         <div class="self-talk-actions">
                             <button type="button" class="action-button play-button" onclick="playAudio(${selfTalk.id})">
-                                ▶️ 播放
+                                ${ST_ICON.play}<span>播放</span>
                             </button>
                             <button type="button" class="action-button delete-button" onclick="deleteSelfTalk(${selfTalk.id})">
-                                🗑️ 删除
+                                ${ST_ICON.trash}<span>删除</span>
                             </button>
                         </div>
                     </div>
@@ -1262,7 +1670,7 @@
                                 class="action-button save-transcript-button"
                                 onclick="saveTranscript(this)"
                             >
-                                💾 保存到服务器
+                                ${ST_ICON.save}<span>保存</span>
                             </button>
                         </div>
                     </div>
@@ -1331,7 +1739,7 @@
                 return;
             }
 
-            const originalLabel = saveBtn ? saveBtn.textContent : '';
+            const originalHtml = saveBtn ? saveBtn.innerHTML : '';
             if (saveBtn) {
                 saveBtn.disabled = true;
                 saveBtn.textContent = '保存中...';
@@ -1375,7 +1783,7 @@
             } finally {
                 if (saveBtn) {
                     saveBtn.disabled = false;
-                    saveBtn.textContent = originalLabel;
+                    saveBtn.innerHTML = originalHtml;
                 }
             }
         }
@@ -1441,6 +1849,7 @@
 
         // 页面加载时获取历史记录
         document.addEventListener('DOMContentLoaded', async function() {
+            bindMicHelpUi();
             setupRecorderUi();
             if (!checkAuthToken()) {
                 redirectToLogin('请先登录');
@@ -1464,8 +1873,8 @@
             }
         });
     </script>
-    <script src="/static/js/wheel-picker.js?v=20260825todo1"></script>
-    <script src="/static/js/self-talk-player.js?v=20260825todo1"></script>
+    <script src="/static/js/wheel-picker.js?v=20260829mic1"></script>
+    <script src="/static/js/self-talk-player.js?v=20260829mic1"></script>
     <script src="/static/reminder_notification.js?v=20260825todo1"></script>
     <script src="/static/js/app-tabbar.js?v=20260825todo1"></script>
 </body>

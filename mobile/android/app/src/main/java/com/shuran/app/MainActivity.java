@@ -34,6 +34,8 @@ public class MainActivity extends Activity {
     private static final int AUDIO_PERMISSION_REQUEST = 1002;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1003;
     private static final int NATIVE_AUDIO_PERMISSION_REQUEST = 1004;
+    private static final String PREFS_NAME = "shuran_prefs";
+    private static final String PREF_ASKED_AUDIO = "asked_audio_permission";
 
     private WebView webView;
     private ProgressBar progressBar;
@@ -253,7 +255,30 @@ public class MainActivity extends Activity {
             notifyNativeAudioPermission(true, true);
             return;
         }
+        boolean askedBefore = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getBoolean(PREF_ASKED_AUDIO, false);
+        boolean canShowRationale = shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO);
+        if (askedBefore && !canShowRationale) {
+            notifyNativeAudioPermission(false, false);
+            return;
+        }
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .putBoolean(PREF_ASKED_AUDIO, true)
+                .apply();
         requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, NATIVE_AUDIO_PERMISSION_REQUEST);
+    }
+
+    boolean canAskAudioPermissionAgain() {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            return true;
+        }
+        boolean askedBefore = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getBoolean(PREF_ASKED_AUDIO, false);
+        if (!askedBefore) {
+            return true;
+        }
+        return shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO);
     }
 
     void notifyNativeAudioPermission(boolean granted, boolean canAskAgain) {
@@ -274,6 +299,20 @@ public class MainActivity extends Activity {
         }
         webView.evaluateJavascript(
                 "(function(){try{if(typeof onNativeRecordingStopped==='function')onNativeRecordingStopped("
+                        + json + ");}catch(e){}})()",
+                null
+        );
+    }
+
+    void notifyNativeAppResume() {
+        if (webView == null) {
+            return;
+        }
+        boolean granted = nativeRecorder != null && nativeRecorder.hasPermission();
+        boolean canAskAgain = canAskAudioPermissionAgain();
+        String json = "{\"granted\":" + granted + ",\"canAskAgain\":" + canAskAgain + "}";
+        webView.evaluateJavascript(
+                "(function(){try{if(typeof onNativeAppResume==='function')onNativeAppResume("
                         + json + ");}catch(e){}})()",
                 null
         );
@@ -476,6 +515,7 @@ public class MainActivity extends Activity {
                 "(function(){try{if(window.reminderNotificationService&&window.reminderNotificationService.refreshReliabilityHints){window.reminderNotificationService.refreshReliabilityHints();}}catch(e){}})()",
                 null
         );
+        notifyNativeAppResume();
     }
 
     @Override
