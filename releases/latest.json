@@ -1,6 +1,6 @@
 {
-  "versionCode": 8,
-  "versionName": "1.3.3",
+  "versionCode": 9,
+  "versionName": "1.3.4",
   "filename": "shuran.apk",
-  "notes": "App 内自我对话改用原生录音，并保留退出后也能到点提醒。"
+  "notes": "自我对话图标改为简洁线性图标，录音权限失败会留下引导并送到系统设置。"
 }

@@ -194,6 +194,11 @@ public class ReminderJsBridge {
     }
 
     @JavascriptInterface
+    public boolean canAskAudioPermissionAgain() {
+        return activity.canAskAudioPermissionAgain();
+    }
+
+    @JavascriptInterface
     public void openAppSettings() {
         activity.runOnUiThread(activity::openAppSettings);
     }

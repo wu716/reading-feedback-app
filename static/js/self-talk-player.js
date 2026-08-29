@@ -23,6 +23,16 @@
         unloadBound: false,
     };
 
+    const ICON_PLAY = '<svg class="st-ico st-ico-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6.2v11.6L18.5 12 8 6.2z"/></svg>';
+    const ICON_PAUSE = '<svg class="st-ico st-ico-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="6" width="3.5" height="12" rx="0.8"/><rect x="13.5" y="6" width="3.5" height="12" rx="0.8"/></svg>';
+
+    function setPlayButton(paused) {
+        const btn = document.getElementById('stPlayerPlay');
+        if (!btn) return;
+        btn.innerHTML = paused ? ICON_PLAY : ICON_PAUSE;
+        btn.setAttribute('aria-label', paused ? '播放' : '暂停');
+    }
+
     function formatTime(sec) {
         const s = Math.max(0, Math.floor(sec));
         const m = Math.floor(s / 60);
@@ -150,7 +160,9 @@
             <div class="st-player-card">
                 <div class="st-player-header">
                     <span class="st-player-title" id="stPlayerTitle">Self-talk 播放</span>
-                    <button type="button" class="st-player-close" id="stPlayerClose" aria-label="关闭">×</button>
+                    <button type="button" class="st-player-close" id="stPlayerClose" aria-label="关闭">
+                        <svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                    </button>
                 </div>
                 <div class="st-player-visual" id="stPlayerVisual">
                     <div class="st-player-bar"></div><div class="st-player-bar"></div>
@@ -162,7 +174,9 @@
                 </div>
                 <div class="st-player-controls">
                     <button type="button" class="st-player-btn-sub" id="stPlayerStop">停止</button>
-                    <button type="button" class="st-player-btn-main" id="stPlayerPlay">▶</button>
+                    <button type="button" class="st-player-btn-main" id="stPlayerPlay" aria-label="播放">
+                        <svg class="st-ico st-ico-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6.2v11.6L18.5 12 8 6.2z"/></svg>
+                    </button>
                     <button type="button" class="st-player-btn-sub" id="stPlayerLoopHint">单次</button>
                 </div>
                 <div class="st-player-loop">
@@ -305,7 +319,7 @@
 
         setStatus('播放完成');
         document.getElementById('stPlayerDock')?.classList.add('paused');
-        document.getElementById('stPlayerPlay').textContent = '▶';
+        setPlayButton(true);
     }
 
     function setStatus(msg) {
@@ -338,7 +352,6 @@
 
     async function togglePlay() {
         if (!state.audio) return;
-        const btn = document.getElementById('stPlayerPlay');
         const dock = document.getElementById('stPlayerDock');
         if (state.audio.paused) {
             if (state.loopsDone === 0 && state.totalListenedSec === 0) {
@@ -353,12 +366,12 @@
             }
             await state.audio.play();
             dock.classList.remove('paused');
-            btn.textContent = '⏸';
+            setPlayButton(false);
             setStatus('播放中…');
         } else {
             state.audio.pause();
             dock.classList.add('paused');
-            btn.textContent = '▶';
+            setPlayButton(true);
             setStatus('已暂停');
             updateProgress();
             if (canLogPlayback()) {
