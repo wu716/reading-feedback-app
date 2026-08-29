@@ -26,13 +26,16 @@ class ReminderNotificationService {
         }
         this.requestNotificationPermission();
         this.syncNativeSchedule();
-        this.refreshExactAlarmHint();
+        this.refreshReliabilityHints();
         this.checkPendingReminders();
         this.timer = setInterval(() => this.checkPendingReminders(), this.pollInterval);
         this.isPolling = true;
 
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') this.checkPendingReminders();
+            if (document.visibilityState === 'visible') {
+                this.checkPendingReminders();
+                this.refreshReliabilityHints();
+            }
         });
         window.addEventListener('focus', () => this.checkPendingReminders());
     }
@@ -279,7 +282,7 @@ class ReminderNotificationService {
             window.ShuranNative.requestPermission();
             window.ShuranNative.pollNow();
             this.syncNativeTodos();
-            this.refreshExactAlarmHint();
+            this.refreshReliabilityHints();
         } catch (e) {
             console.error('同步原生提醒失败:', e);
         }
@@ -326,11 +329,154 @@ class ReminderNotificationService {
         }
     }
 
+    openNotificationSettings() {
+        if (this.hasNativeMethod('openNotificationSettings')) {
+            try {
+                window.ShuranNative.openNotificationSettings();
+                return;
+            } catch (e) {
+                console.error('打开通知设置失败:', e);
+            }
+        }
+        if (this.hasNativeMethod('requestPermission')) {
+            try { window.ShuranNative.requestPermission(); } catch (e) {}
+        }
+    }
+
+    openBatteryOptimizationSettings() {
+        if (!this.hasNativeMethod('openBatteryOptimizationSettings')) return;
+        try {
+            window.ShuranNative.openBatteryOptimizationSettings();
+        } catch (e) {
+            console.error('打开电池优化设置失败:', e);
+        }
+    }
+
+    openAutostartSettings() {
+        if (!this.hasNativeMethod('openAutostartSettings')) return;
+        try {
+            window.ShuranNative.openAutostartSettings();
+        } catch (e) {
+            console.error('打开自启动设置失败:', e);
+        }
+    }
+
+    reliabilityStatus() {
+        if (!this.isNativeApp() || !this.hasNativeMethod('reminderReliabilityStatus')) return null;
+        try {
+            const raw = window.ShuranNative.reminderReliabilityStatus();
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
     refreshExactAlarmHint() {
-        const row = document.getElementById('exactAlarmRow');
-        if (!row) return;
-        const show = this.isNativeApp() && !this.canScheduleExactAlarms();
-        row.hidden = !show;
+        this.refreshReliabilityHints();
+    }
+
+    refreshReliabilityHints() {
+        const box = document.getElementById('reminderReliabilityBox');
+        const exitBtn = document.getElementById('exitReminderTestBtn');
+        const native = this.isNativeApp();
+        if (box) box.hidden = !native;
+        if (exitBtn) exitBtn.hidden = !native || !this.hasNativeMethod('scheduleTestAlarm');
+        if (!native) return;
+
+        const status = this.reliabilityStatus() || {
+            notifications: this.hasNativeMethod('hasPermission') ? !!window.ShuranNative.hasPermission() : false,
+            exactAlarms: this.canScheduleExactAlarms(),
+            batteryIgnored: this.hasNativeMethod('isIgnoringBatteryOptimizations')
+                ? !!window.ShuranNative.isIgnoringBatteryOptimizations()
+                : true,
+        };
+
+        const setRow = (descId, btnId, ok, okText, badText) => {
+            const desc = document.getElementById(descId);
+            const btn = document.getElementById(btnId);
+            if (desc) desc.textContent = ok ? okText : badText;
+            if (btn) {
+                btn.textContent = ok ? '已开启' : '去开启';
+                btn.disabled = !!ok;
+            }
+        };
+        setRow(
+            'notifyPermDesc',
+            'notifyPermBtn',
+            !!status.notifications,
+            '已允许，提醒会显示在状态栏',
+            '未允许时到点也不会弹出'
+        );
+        setRow(
+            'exactAlarmDesc',
+            'exactAlarmBtn',
+            !!status.exactAlarms,
+            '已允许，到点会准时触发',
+            '未开启时，到点提醒可能被推迟到打开应用才出现'
+        );
+        const batteryDesc = document.getElementById('batteryOptDesc');
+        const batteryBtn = document.getElementById('batteryOptBtn');
+        if (batteryDesc) {
+            batteryDesc.textContent = status.batteryIgnored
+                ? '已忽略电池优化，后台被杀后仍更可能响'
+                : '系统省电会取消已设定的闹钟，请关闭优化';
+        }
+        if (batteryBtn) {
+            batteryBtn.textContent = status.batteryIgnored ? '已关闭' : '去关闭';
+            batteryBtn.disabled = !!status.batteryIgnored;
+        }
+    }
+
+    promptReliabilityIfNeeded() {
+        this.refreshReliabilityHints();
+        if (!this.isNativeApp()) return;
+        const status = this.reliabilityStatus();
+        if (!status) return;
+        if (!status.notifications) {
+            this.showFeedback('请先允许通知权限，否则到点无法弹出状态栏提醒。', 'error');
+            this.openNotificationSettings();
+            return;
+        }
+        if (!status.exactAlarms) {
+            this.showFeedback('请开启精确闹钟，否则退出 App 后可能不准时提醒。', 'info');
+            return;
+        }
+        if (!status.batteryIgnored) {
+            this.showFeedback('请关闭电池优化并允许自启动。国产手机划掉后台后，不关省电就不会响。', 'info');
+        }
+    }
+
+    async scheduleExitTest(seconds) {
+        this.ensureUi();
+        if (!this.isNativeApp() || !this.hasNativeMethod('scheduleTestAlarm')) {
+            this.showFeedback('请先安装并更新到最新书然 App，才能测试退出后提醒。', 'error');
+            return { ok: false };
+        }
+        if (this.hasNativeMethod('requestPermission')) {
+            try { window.ShuranNative.requestPermission(); } catch (e) {}
+        }
+        let result = '';
+        try {
+            result = String(window.ShuranNative.scheduleTestAlarm(seconds || 120) || '');
+        } catch (e) {
+            console.error('scheduleTestAlarm failed', e);
+            this.showFeedback('当前 App 版本过旧，请检查更新后再试。', 'error');
+            return { ok: false };
+        }
+        if (result === 'no_permission') {
+            this.showFeedback('尚未获得通知权限。请先点允许，再测退出提醒。', 'error');
+            return { ok: false };
+        }
+        if (result !== 'ok') {
+            this.showFeedback('预约失败。请确认已允许精确闹钟后重试。', 'error');
+            return { ok: false };
+        }
+        const wait = Math.max(30, seconds || 120);
+        this.showFeedback(
+            `已预约 ${Math.round(wait / 60)} 分钟后提醒。请立即完全退出书然（划掉后台），锁屏等待，看状态栏是否弹出。`,
+            'success'
+        );
+        return { ok: true };
     }
 
     ensureUi() {

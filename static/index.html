@@ -3699,12 +3699,36 @@
                 <div class="me-group">
                     <div class="me-group-title">通知</div>
                     <p class="me-hint">系统通知出现在状态栏与锁屏。网页版会在应用内提示。</p>
-                    <div class="me-row me-row-static" id="exactAlarmRow" hidden>
-                        <div class="me-row-main">
-                            <div class="me-row-title">精确闹钟</div>
-                            <div class="me-row-desc">未开启时，到点提醒可能被推迟到打开应用才出现</div>
+                    <div id="reminderReliabilityBox" hidden>
+                        <p class="me-hint">退出 App 后也要到点提醒，请完成下面几项。荣耀 / 华为 / 小米等国产系统默认会杀掉后台闹钟。</p>
+                        <div class="me-row me-row-static" id="notifyPermRow">
+                            <div class="me-row-main">
+                                <div class="me-row-title">通知权限</div>
+                                <div class="me-row-desc" id="notifyPermDesc">检测中…</div>
+                            </div>
+                            <button type="button" class="me-link-btn" id="notifyPermBtn" onclick="openNotificationSettings()">去开启</button>
                         </div>
-                        <button type="button" class="me-link-btn" onclick="openExactAlarmSettings()">去开启</button>
+                        <div class="me-row me-row-static" id="exactAlarmRow">
+                            <div class="me-row-main">
+                                <div class="me-row-title">精确闹钟</div>
+                                <div class="me-row-desc" id="exactAlarmDesc">未开启时，到点提醒可能被推迟到打开应用才出现</div>
+                            </div>
+                            <button type="button" class="me-link-btn" id="exactAlarmBtn" onclick="openExactAlarmSettings()">去开启</button>
+                        </div>
+                        <div class="me-row me-row-static" id="batteryOptRow">
+                            <div class="me-row-main">
+                                <div class="me-row-title">关闭电池优化</div>
+                                <div class="me-row-desc" id="batteryOptDesc">系统省电会取消已设定的闹钟</div>
+                            </div>
+                            <button type="button" class="me-link-btn" id="batteryOptBtn" onclick="openBatteryOptimizationSettings()">去关闭</button>
+                        </div>
+                        <div class="me-row me-row-static" id="autostartRow">
+                            <div class="me-row-main">
+                                <div class="me-row-title">允许自启动</div>
+                                <div class="me-row-desc">划掉后台后仍要响：允许书然自启动 / 关联启动</div>
+                            </div>
+                            <button type="button" class="me-link-btn" onclick="openAutostartSettings()">去设置</button>
+                        </div>
                     </div>
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
@@ -3726,7 +3750,8 @@
                     </div>
                     <div class="me-actions">
                         <button type="button" class="me-btn me-btn-primary" onclick="saveReminderSettings()">保存</button>
-                        <button type="button" class="me-btn me-btn-ghost" onclick="testInAppReminder()">测试通知</button>
+                        <button type="button" class="me-btn me-btn-ghost" onclick="testInAppReminder()">立即测试</button>
+                        <button type="button" class="me-btn me-btn-ghost" id="exitReminderTestBtn" hidden onclick="testExitReminder()">2分钟后测试</button>
                     </div>
                 </div>
 
@@ -3809,7 +3834,7 @@
                 <ol>
                     <li>打开应用先看今天要做的事。</li>
                     <li>点日历上的某一天，可以为那天添加待办。</li>
-                    <li>添加时可选提醒时间；也可设置每日阅读时间。到点后会收到系统通知（请允许通知与精确闹钟）。</li>
+                    <li>添加时可选提醒时间；也可设置每日阅读时间。到点后会收到系统通知。请在「我的」允许通知、精确闹钟，并关闭电池优化。</li>
                 </ol>
             </div>
             <div class="guide-card">
@@ -6470,7 +6495,7 @@
             // 设置联动逻辑
             updateReminderSwitchStates();
             if (window.reminderNotificationService) {
-                window.reminderNotificationService.refreshExactAlarmHint();
+                window.reminderNotificationService.refreshReliabilityHints();
             }
         }
 
@@ -6479,6 +6504,36 @@
                 window.reminderNotificationService.openExactAlarmSettings();
             }
         }
+
+        function openNotificationSettings() {
+            if (window.reminderNotificationService) {
+                window.reminderNotificationService.openNotificationSettings();
+            }
+        }
+
+        function openBatteryOptimizationSettings() {
+            if (window.reminderNotificationService) {
+                window.reminderNotificationService.openBatteryOptimizationSettings();
+            }
+        }
+
+        function openAutostartSettings() {
+            if (window.reminderNotificationService) {
+                window.reminderNotificationService.openAutostartSettings();
+            }
+        }
+
+        async function testExitReminder() {
+            if (!window.reminderNotificationService) {
+                showMessage('通知模块未加载，请刷新页面后再试', 'error');
+                return;
+            }
+            await window.reminderNotificationService.scheduleExitTest(120);
+        }
+        window.openNotificationSettings = openNotificationSettings;
+        window.openBatteryOptimizationSettings = openBatteryOptimizationSettings;
+        window.openAutostartSettings = openAutostartSettings;
+        window.testExitReminder = testExitReminder;
         
         // 更新提醒开关状态（联动逻辑）
         function updateReminderSwitchStates() {
@@ -6534,6 +6589,7 @@
                     showMessage('提醒设置保存成功！', 'success');
                     if (window.reminderNotificationService) {
                         window.reminderNotificationService.syncNativeSchedule();
+                        window.reminderNotificationService.promptReliabilityIfNeeded();
                     }
                 } else {
                     throw new Error('保存失败');

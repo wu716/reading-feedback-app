@@ -13,6 +13,7 @@
     <string name="notification_test_title">书然测试通知</string>
     <string name="notification_test_body">看到这条就说明系统通知已打通。到点提醒会出现在状态栏、锁屏和下拉通知栏。</string>
     <string name="notification_test_toast">已发送测试通知，请下拉状态栏查看</string>
+    <string name="notification_exit_test_body">这是退出 App 后的到点测试。看到这条说明后台被杀掉时也能提醒。</string>
     <string name="notification_need_permission">请允许通知权限后再点测试</string>
     <string name="notification_reading_title">该阅读了</string>
     <string name="notification_reading_body">到每日阅读时间了，打开今日记录一下。</string>
