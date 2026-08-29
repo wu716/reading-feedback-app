@@ -18,6 +18,7 @@ import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -32,6 +33,7 @@ public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int AUDIO_PERMISSION_REQUEST = 1002;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1003;
+    private static final int NATIVE_AUDIO_PERMISSION_REQUEST = 1004;
 
     private WebView webView;
     private ProgressBar progressBar;
@@ -42,6 +44,7 @@ public class MainActivity extends Activity {
     private boolean notificationPermissionRequested;
     private boolean updateChecked;
     private AppUpdater appUpdater;
+    private NativeRecorder nativeRecorder;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -77,6 +80,7 @@ public class MainActivity extends Activity {
         );
 
         appUpdater = new AppUpdater(this);
+        nativeRecorder = new NativeRecorder(this);
         ReminderNotifications.ensureChannel(this);
         webView.addJavascriptInterface(new ReminderJsBridge(this), "ShuranNative");
         webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
@@ -147,6 +151,17 @@ public class MainActivity extends Activity {
                     errorView.setVisibility(View.VISIBLE);
                     progressBar.setVisibility(View.GONE);
                 }
+            }
+
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                WebResourceResponse intercepted = nativeRecorder != null
+                        ? nativeRecorder.intercept(request)
+                        : null;
+                if (intercepted != null) {
+                    return intercepted;
+                }
+                return super.shouldInterceptRequest(view, request);
             }
         });
 
@@ -224,6 +239,52 @@ public class MainActivity extends Activity {
                 new String[]{Manifest.permission.POST_NOTIFICATIONS},
                 NOTIFICATION_PERMISSION_REQUEST
         );
+    }
+
+    NativeRecorder getNativeRecorder() {
+        if (nativeRecorder == null) {
+            nativeRecorder = new NativeRecorder(this);
+        }
+        return nativeRecorder;
+    }
+
+    void requestNativeAudioPermission() {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            notifyNativeAudioPermission(true, true);
+            return;
+        }
+        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, NATIVE_AUDIO_PERMISSION_REQUEST);
+    }
+
+    void notifyNativeAudioPermission(boolean granted, boolean canAskAgain) {
+        if (webView == null) {
+            return;
+        }
+        String json = "{\"granted\":" + granted + ",\"canAskAgain\":" + canAskAgain + "}";
+        webView.evaluateJavascript(
+                "(function(){try{if(typeof onNativeAudioPermission==='function')onNativeAudioPermission("
+                        + json + ");}catch(e){}})()",
+                null
+        );
+    }
+
+    void notifyNativeRecordingStopped(String json) {
+        if (webView == null || json == null) {
+            return;
+        }
+        webView.evaluateJavascript(
+                "(function(){try{if(typeof onNativeRecordingStopped==='function')onNativeRecordingStopped("
+                        + json + ");}catch(e){}})()",
+                null
+        );
+    }
+
+    void openAppSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(Uri.parse("package:" + getPackageName())));
+        } catch (Exception ignored) {
+        }
     }
 
     void openExactAlarmSettings() {
@@ -375,6 +436,13 @@ public class MainActivity extends Activity {
             }
             return;
         }
+        if (requestCode == NATIVE_AUDIO_PERMISSION_REQUEST) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            boolean canAskAgain = granted
+                    || shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO);
+            notifyNativeAudioPermission(granted, canAskAgain);
+            return;
+        }
         if (requestCode != AUDIO_PERMISSION_REQUEST || pendingPermissionRequest == null) {
             return;
         }
@@ -412,6 +480,9 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (nativeRecorder != null) {
+            nativeRecorder.release();
+        }
         webView.loadUrl("about:blank");
         webView.stopLoading();
         webView.destroy();
