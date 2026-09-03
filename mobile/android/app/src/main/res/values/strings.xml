@@ -5,8 +5,8 @@
     <string name="loading">正在打开书然…</string>
     <string name="network_error">无法连接服务器，请检查网络后重试</string>
     <string name="retry">重试</string>
-    <string name="notification_channel_name">自我提醒</string>
-    <string name="notification_channel_desc">Self-talk 与行动践行会显示在状态栏、锁屏和下拉通知栏</string>
+    <string name="notification_channel_name">到点提醒</string>
+    <string name="notification_channel_desc">每日提醒、待办和阅读到点会出现在通知栏与顶部横幅</string>
     <string name="notification_default_title">书然提醒</string>
     <string name="notification_daily_title">每日提醒</string>
     <string name="notification_daily_body">该做今天的 Self-talk 啦~ 记录下你的思考和感悟吧！</string>

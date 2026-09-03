@@ -501,6 +501,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onPause() {
+        ReminderScheduler.restore(getApplicationContext());
         super.onPause();
         webView.onPause();
         CookieManager.getInstance().flush();

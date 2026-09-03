@@ -3750,8 +3750,6 @@
                     </div>
                     <div class="me-actions">
                         <button type="button" class="me-btn me-btn-primary" onclick="saveReminderSettings()">保存</button>
-                        <button type="button" class="me-btn me-btn-ghost" onclick="testInAppReminder()">立即测试</button>
-                        <button type="button" class="me-btn me-btn-ghost" id="exitReminderTestBtn" hidden onclick="testExitReminder()">2分钟后测试</button>
                     </div>
                 </div>
 
@@ -6522,18 +6520,9 @@
                 window.reminderNotificationService.openAutostartSettings();
             }
         }
-
-        async function testExitReminder() {
-            if (!window.reminderNotificationService) {
-                showMessage('通知模块未加载，请刷新页面后再试', 'error');
-                return;
-            }
-            await window.reminderNotificationService.scheduleExitTest(120);
-        }
         window.openNotificationSettings = openNotificationSettings;
         window.openBatteryOptimizationSettings = openBatteryOptimizationSettings;
         window.openAutostartSettings = openAutostartSettings;
-        window.testExitReminder = testExitReminder;
         
         // 更新提醒开关状态（联动逻辑）
         function updateReminderSwitchStates() {
@@ -6576,6 +6565,15 @@
             };
 
             try {
+                if (window.reminderNotificationService) {
+                    window.reminderNotificationService.applyLocalSchedule({
+                        enabled: !!settings.is_enabled,
+                        dailyEnabled: !!settings.daily_reminder_enabled,
+                        dailyTime: settings.daily_reminder_time || '20:00',
+                        reminderDays: reminderDays,
+                        systemNotification: settings.browser_notification !== false,
+                    });
+                }
                 const response = await fetch(`${API_BASE}/api/self_talk_reminders/settings`, {
                     method: 'POST',
                     headers: {
@@ -6599,29 +6597,6 @@
                 showMessage('保存提醒设置失败', 'error');
             }
         }
-
-        async function testInAppReminder() {
-            const token = localStorage.getItem('authToken');
-            if (!token) {
-                showMessage('请先登录', 'error');
-                return;
-            }
-            const btn = document.querySelector('button[onclick="testInAppReminder()"]');
-            if (btn) btn.disabled = true;
-            try {
-                if (window.reminderNotificationService) {
-                    await window.reminderNotificationService.testNow();
-                } else {
-                    showMessage('通知模块未加载，请刷新页面后再试', 'error');
-                }
-            } catch (error) {
-                console.error('测试提醒失败:', error);
-                showMessage('测试通知失败：' + (error && error.message ? error.message : '未知错误'), 'error');
-            } finally {
-                if (btn) btn.disabled = false;
-            }
-        }
-        window.testInAppReminder = testInAppReminder;
         
         // 显示编辑昵称模态框
         function showEditNameModal() {

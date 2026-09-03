@@ -633,6 +633,12 @@
         const time = (timeEl.value || '21:00').slice(0, 5);
         timeEl.disabled = !enabled;
         try {
+            if (window.reminderNotificationService) {
+                window.reminderNotificationService.applyLocalSchedule({
+                    readingEnabled: enabled,
+                    readingTime: time,
+                });
+            }
             await apiRequest('/api/self_talk_reminders/settings', {
                 method: 'PATCH',
                 body: JSON.stringify({
