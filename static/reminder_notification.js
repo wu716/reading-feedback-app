@@ -59,6 +59,14 @@ class ReminderNotificationService {
         this.clearNativeSession();
     }
 
+    stopPollingOnly() {
+        if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+        }
+        this.isPolling = false;
+    }
+
     nativeBridge() {
         try {
             return window.ShuranNative || null;
@@ -256,12 +264,21 @@ class ReminderNotificationService {
         }
     }
 
+    applyLocalSchedule(settings) {
+        if (!this.isNativeApp() || !this.hasNativeMethod('scheduleReminders')) return;
+        this.syncNativeSession();
+        try {
+            window.ShuranNative.scheduleReminders(JSON.stringify(settings || {}));
+        } catch (e) {
+            console.error('写入本地闹钟失败:', e);
+        }
+    }
+
     async syncNativeSchedule() {
         if (!this.isNativeApp()) return;
         const token = this.authToken();
         this.syncNativeSession();
         if (!token) {
-            this.clearNativeSession();
             return;
         }
         try {
@@ -377,10 +394,8 @@ class ReminderNotificationService {
 
     refreshReliabilityHints() {
         const box = document.getElementById('reminderReliabilityBox');
-        const exitBtn = document.getElementById('exitReminderTestBtn');
         const native = this.isNativeApp();
         if (box) box.hidden = !native;
-        if (exitBtn) exitBtn.hidden = !native || !this.hasNativeMethod('scheduleTestAlarm');
         if (!native) return;
 
         const status = this.reliabilityStatus() || {
@@ -710,7 +725,7 @@ class ReminderNotificationService {
                     list.filter((n) => !prevIds.has(n.log_id)).forEach((n) => this.announceNew(n));
                 }
             } else if (response.status === 401) {
-                this.stop();
+                this.stopPollingOnly();
             }
         } catch (error) {
             console.error('检查待处理提醒失败:', error);
