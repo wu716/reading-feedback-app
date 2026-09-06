@@ -91,6 +91,9 @@ uploads/
 uploads/**
 scripts/app.db.backup
 
+# 软著交存 PDF（本地生成，不入库）
+docs/ruanzhu/*.pdf
+
 # Android 安装包（通过 /download 提供，不入库）
 releases/*.apk
 
