@@ -13,6 +13,13 @@ from app.models import AiCallLog, User
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
 EXTRACT_KINDS = ("upload-notes",)
 ADVICE_KINDS = ("ai-advice", "ai-advice-stream")
+# 仅站长本人不限额度，其它账号仍走每日限额。
+UNLIMITED_EMAILS = frozenset({"2721095772@qq.com"})
+
+
+def _is_unlimited_user(user: User) -> bool:
+    email = (getattr(user, "email", None) or "").strip().lower()
+    return email in UNLIMITED_EMAILS
 
 
 def _today():
@@ -40,6 +47,9 @@ def _limit_and_kinds(kind: str) -> tuple[int, tuple[str, ...], str]:
 
 
 def enforce_ai_quota(db: Session, user: User, kind: str = "generic") -> None:
+    if _is_unlimited_user(user):
+        return
+
     limit, kinds, label = _limit_and_kinds(kind)
     if limit <= 0:
         return
@@ -55,10 +65,20 @@ def enforce_ai_quota(db: Session, user: User, kind: str = "generic") -> None:
 
 
 def get_quota_status(db: Session, user: User) -> dict:
-    extract_limit = settings.ai_extract_daily_limit
-    advice_limit = settings.ai_daily_limit
     extract_used = _count_used(db, user.id, EXTRACT_KINDS)
     advice_used = _count_used(db, user.id, ADVICE_KINDS)
+    if _is_unlimited_user(user):
+        return {
+            "extract_limit": 0,
+            "extract_used": extract_used,
+            "extract_remaining": None,
+            "advice_limit": 0,
+            "advice_used": advice_used,
+            "advice_remaining": None,
+        }
+
+    extract_limit = settings.ai_extract_daily_limit
+    advice_limit = settings.ai_daily_limit
     return {
         "extract_limit": extract_limit,
         "extract_used": extract_used,
