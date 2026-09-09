@@ -43,6 +43,11 @@ def resolve_user_from_access_token(token: str, db: Session) -> User:
         logger = __import__("logging").getLogger(__name__)
         logger.warning("用户不存在或已被删除: %s %s", token_data.user_id, token_data.email)
         raise credentials_exception
+    current_version = int(getattr(user, "token_version", 0) or 0)
+    if token_data.token_version != current_version:
+        logger = __import__("logging").getLogger(__name__)
+        logger.info("登录已失效（改密或撤销）: user_id=%s", user.id)
+        raise credentials_exception
     return user
 
 
@@ -103,7 +108,12 @@ def verify_token(token: str, credentials_exception):
             user_id = int(subject)
         else:
             email = str(subject)
-        return TokenData(user_id=user_id, email=email)
+        version = payload.get("ver", 0)
+        try:
+            token_version = int(version or 0)
+        except (TypeError, ValueError):
+            token_version = 0
+        return TokenData(user_id=user_id, email=email, token_version=token_version)
     except JWTError as e:
         # 记录具体的JWT错误类型
         import logging
@@ -125,7 +135,15 @@ def authenticate_user(db: Session, account: str, password: str) -> Optional[User
 
 
 def issue_user_token(user: User, expires_delta: Optional[timedelta] = None) -> str:
-    return create_access_token(data={"sub": str(user.id)}, expires_delta=expires_delta)
+    version = int(getattr(user, "token_version", 0) or 0)
+    return create_access_token(
+        data={"sub": str(user.id), "ver": version},
+        expires_delta=expires_delta,
+    )
+
+
+def bump_token_version(user: User) -> None:
+    user.token_version = int(getattr(user, "token_version", 0) or 0) + 1
 
 
 def get_current_user(

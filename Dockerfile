@@ -30,7 +30,7 @@ COPY . .
 
 # 录音上传目录。不要 USER app：compose 会把 named volume 挂到 /app/uploads，
 # 非 root 进程写不进去，Self-talk 上传会直接 500。
-RUN mkdir -p /app/uploads/self_talks
+RUN mkdir -p /app/uploads/self_talks /app/backups
 
 # 暴露端口
 EXPOSE 8000

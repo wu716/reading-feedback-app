@@ -2,18 +2,21 @@
 """站长：邀请码与套餐开通。"""
 import secrets
 from datetime import datetime, timedelta, timezone
-
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.accounts import public_email, user_to_public_dict
-from app.auth import get_current_owner
+from app.audit import write_audit
+from app.auth import bump_token_version, get_current_owner
+from app.backup import build_backup_zip, latest_backup_path, run_daily_backup
 from app.database import get_db
-from app.models import InviteCode, User
+from app.models import AuditLog, InviteCode, User
 from app.plans import PLANS, apply_plan, plan_label, sync_subscription
+from app.rate_limit import client_ip
 
 router = APIRouter(prefix="/owner", tags=["站长"])
 
@@ -94,6 +97,12 @@ async def generate_invite_codes(
         db.flush()
         created.append(_invite_payload(row))
     db.commit()
+    write_audit(
+        db,
+        "invite_generate",
+        actor_user_id=_owner.id,
+        detail=f"{plan_key} x{payload.count}",
+    )
     return {"items": created}
 
 
@@ -146,4 +155,83 @@ async def update_user_plan(
     sync_subscription(db, user, plan_key)
     db.commit()
     db.refresh(user)
+    write_audit(
+        db,
+        "plan_update",
+        actor_user_id=_owner.id,
+        target_user_id=user.id,
+        detail=plan_key,
+    )
     return user_to_public_dict(user)
+
+
+@router.post("/users/{user_id}/revoke-sessions")
+async def revoke_user_sessions(
+    user_id: int,
+    db: Session = Depends(get_db),
+    _owner: User = Depends(get_current_owner),
+):
+    user = db.query(User).filter(User.id == user_id, User.deleted_at.is_(None)).first()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+    bump_token_version(user)
+    db.commit()
+    write_audit(db, "revoke_sessions", actor_user_id=_owner.id, target_user_id=user.id)
+    return {"message": "已作废该用户现有登录"}
+
+
+@router.get("/export")
+async def export_user_details(
+    request: Request,
+    db: Session = Depends(get_db),
+    _owner: User = Depends(get_current_owner),
+):
+    payload = build_backup_zip(db)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+    write_audit(db, "export", actor_user_id=_owner.id, ip=client_ip(request), detail="zip")
+    return Response(
+        content=payload,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="shuran-users-{stamp}.zip"'},
+    )
+
+
+@router.get("/audit-logs")
+async def list_audit_logs(
+    db: Session = Depends(get_db),
+    _owner: User = Depends(get_current_owner),
+):
+    rows = db.query(AuditLog).order_by(AuditLog.id.desc()).limit(200).all()
+    return {
+        "items": [
+            {
+                "id": row.id,
+                "action": row.action,
+                "actor_user_id": row.actor_user_id,
+                "target_user_id": row.target_user_id,
+                "ip": row.ip,
+                "detail": row.detail,
+                "created_at": row.created_at,
+            }
+            for row in rows
+        ]
+    }
+
+
+@router.get("/backups/latest")
+async def download_latest_backup(
+    request: Request,
+    db: Session = Depends(get_db),
+    _owner: User = Depends(get_current_owner),
+):
+    path = latest_backup_path()
+    if path is None or not path.exists():
+        path = run_daily_backup()
+    if path is None or not path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="还没有备份")
+    write_audit(db, "backup_download", actor_user_id=_owner.id, ip=client_ip(request))
+    return Response(
+        content=path.read_bytes(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{path.name}"'},
+    )

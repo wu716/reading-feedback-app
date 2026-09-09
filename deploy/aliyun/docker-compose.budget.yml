@@ -30,6 +30,7 @@ services:
     volumes:
       - sqlite_data:/data
       - uploads_data:/app/uploads
+      - backups_data:/app/backups
       - ../../releases:/app/releases
     command: ["python", "start_aliyun.py"]
     healthcheck:
@@ -42,3 +43,4 @@ services:
 volumes:
   sqlite_data:
   uploads_data:
+  backups_data:

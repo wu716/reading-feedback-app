@@ -73,6 +73,11 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
     @property
+    def is_insecure_secret(self) -> bool:
+        key = (self.secret_key or "").strip()
+        return (not key) or key == "K7mN2pQ9rS8tU3vW5xY1zA4bC6dE0fG" or len(key) < 24
+
+    @property
     def is_registration_allowed(self) -> bool:
         if self.registration_open:
             return True
