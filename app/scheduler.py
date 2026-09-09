@@ -3,6 +3,7 @@
 import logging
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import settings
@@ -57,6 +58,14 @@ def create_scheduler() -> BackgroundScheduler:
         lambda: _run_with_db(check_reading_reminders),
         IntervalTrigger(minutes=1),
         id="reading_reminders",
+        replace_existing=True,
+    )
+    from app.backup import run_daily_backup
+
+    scheduler.add_job(
+        run_daily_backup,
+        CronTrigger(hour=3, minute=15),
+        id="daily_backup",
         replace_existing=True,
     )
 

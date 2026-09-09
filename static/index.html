@@ -3887,6 +3887,16 @@
                     </div>
                 </div>
 
+                <div class="me-group">
+                    <div class="me-group-title">修改密码</div>
+                    <p class="me-hint">改密后，其它已登录设备会退出。</p>
+                    <div class="owner-form">
+                        <input type="password" id="oldPasswordInput" placeholder="当前密码" autocomplete="current-password">
+                        <input type="password" id="newPasswordInput" placeholder="新密码（至少 6 位）" autocomplete="new-password">
+                        <button type="button" class="me-link-btn" onclick="changeUserPassword()">更新</button>
+                    </div>
+                </div>
+
                 <button type="button" class="me-logout" onclick="confirmLogout()">退出登录</button>
             </div>
         </section>
@@ -3927,6 +3937,14 @@
                     </div>
                 </div>
                 <div class="me-group">
+                    <div class="me-group-title">导出与备份</div>
+                    <p class="me-hint">ZIP 里是给 Excel 打开的 CSV（带姓名、手机号、笔记和 Self-talk 转写）。只存在你自己的电脑，不要转发。</p>
+                    <div class="me-actions">
+                        <button type="button" class="me-btn me-btn-primary" onclick="downloadOwnerFile('/owner/export', 'shuran-users.zip')">导出明细</button>
+                        <button type="button" class="me-btn me-btn-ghost" onclick="downloadOwnerFile('/owner/backups/latest', 'shuran-backup.zip')">下载最近备份</button>
+                    </div>
+                </div>
+                <div class="me-group">
                     <div class="me-group-title">用户套餐</div>
                     <div class="owner-table-wrap">
                         <table class="owner-table">
@@ -3941,6 +3959,23 @@
                                 </tr>
                             </thead>
                             <tbody id="ownerUserBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="me-group">
+                    <div class="me-group-title">操作日志</div>
+                    <div class="owner-table-wrap">
+                        <table class="owner-table">
+                            <thead>
+                                <tr>
+                                    <th>时间</th>
+                                    <th>动作</th>
+                                    <th>操作者</th>
+                                    <th>对象</th>
+                                    <th>详情</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ownerAuditBody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -6724,14 +6759,78 @@
             }
         }
 
+        async function downloadOwnerFile(path, filename) {
+            const token = localStorage.getItem('authToken');
+            try {
+                const response = await fetch(`${API_BASE}${path}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    const text = await response.text();
+                    let message = '下载失败';
+                    try {
+                        message = JSON.parse(text).detail || message;
+                    } catch (e) {}
+                    throw new Error(message);
+                }
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(url);
+                showMessage('已开始下载', 'success');
+            } catch (error) {
+                showMessage(error.message || '下载失败', 'error');
+            }
+        }
+
+        async function changeUserPassword() {
+            const oldPassword = (document.getElementById('oldPasswordInput').value || '');
+            const newPassword = (document.getElementById('newPasswordInput').value || '');
+            if (!oldPassword || newPassword.length < 6) {
+                showMessage('请填写当前密码，且新密码至少 6 位', 'error');
+                return;
+            }
+            try {
+                const data = await apiRequest('/auth/password', {
+                    method: 'PUT',
+                    body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
+                });
+                if (data && data.access_token) {
+                    saveAuthSession(data.access_token, localStorage.getItem('userEmail'), data.expires_in);
+                }
+                document.getElementById('oldPasswordInput').value = '';
+                document.getElementById('newPasswordInput').value = '';
+                showMessage(data.message || '密码已更新', 'success');
+            } catch (error) {
+                showMessage(error.message || '改密失败', 'error');
+            }
+        }
+
+        async function revokeOwnerUserSessions(userId) {
+            if (!userId) return;
+            try {
+                await apiRequest(`/owner/users/${userId}/revoke-sessions`, { method: 'POST' });
+                showMessage('已作废该用户现有登录', 'success');
+                await loadOwnerConsole();
+            } catch (error) {
+                showMessage(error.message || '操作失败', 'error');
+            }
+        }
+
         async function loadOwnerConsole() {
             const inviteBody = document.getElementById('ownerInviteBody');
             const userBody = document.getElementById('ownerUserBody');
             if (!inviteBody || !userBody) return;
             try {
-                const [codes, users] = await Promise.all([
+                const [codes, users, audits] = await Promise.all([
                     apiRequest('/owner/invite-codes'),
-                    apiRequest('/owner/users')
+                    apiRequest('/owner/users'),
+                    apiRequest('/owner/audit-logs')
                 ]);
                 const statusText = { unused: '未用', used: '已用', expired: '过期' };
                 inviteBody.innerHTML = (codes.items || []).map((row) => `
@@ -6756,9 +6855,33 @@
                                 <option value="monthly" ${row.plan === 'monthly' ? 'selected' : ''}>月卡</option>
                                 <option value="semester" ${row.plan === 'semester' ? 'selected' : ''}>学期卡</option>
                             </select>
+                            <button type="button" class="me-link-btn" onclick="revokeOwnerUserSessions(${row.id})">踢下线</button>
                         </td>
                     </tr>
                 `).join('') || '<tr><td colspan="6">暂无用户</td></tr>';
+                const auditBody = document.getElementById('ownerAuditBody');
+                const actionText = {
+                    login: '登录',
+                    login_fail: '登录失败',
+                    register: '注册',
+                    password_change: '改密',
+                    invite_generate: '生成邀请码',
+                    plan_update: '改套餐',
+                    revoke_sessions: '踢下线',
+                    export: '导出明细',
+                    backup_download: '下载备份'
+                };
+                if (auditBody) {
+                    auditBody.innerHTML = (audits.items || []).map((row) => `
+                        <tr>
+                            <td>${row.created_at ? String(row.created_at).replace('T', ' ').slice(0, 19) : '—'}</td>
+                            <td>${actionText[row.action] || row.action}</td>
+                            <td>${row.actor_user_id || '—'}</td>
+                            <td>${row.target_user_id || '—'}</td>
+                            <td>${row.detail || row.ip || '—'}</td>
+                        </tr>
+                    `).join('') || '<tr><td colspan="5">暂无记录</td></tr>';
+                }
             } catch (error) {
                 showMessage(error.message || '加载站长页失败', 'error');
             }

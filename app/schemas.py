@@ -83,6 +83,11 @@ class PhoneBind(BaseModel):
     phone: str = Field(..., min_length=11, max_length=20)
 
 
+class PasswordChange(BaseModel):
+    old_password: str = Field(..., min_length=1, max_length=100)
+    new_password: str = Field(..., min_length=6, max_length=100)
+
+
 class UserUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=6)
     
@@ -238,6 +243,7 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     user_id: Optional[int] = None
     email: Optional[str] = None
+    token_version: int = 0
 
 
 # 仪表盘相关模型

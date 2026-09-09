@@ -32,6 +32,7 @@ secrets/
 *.sqlite
 *.sqlite3
 scripts/account_backup.json
+backups/*.zip
 
 # Python
 __pycache__/

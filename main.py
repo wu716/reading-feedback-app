@@ -27,8 +27,13 @@ async def lifespan(app: FastAPI):
     """应用生命周期：启动 / 关闭"""
     logger.info("正在启动应用...")
     os.makedirs("uploads/self_talks", exist_ok=True)
+    os.makedirs("backups", exist_ok=True)
     ensure_schema()
     logger.info("数据库表创建完成")
+    if settings.is_production and settings.is_insecure_secret:
+        logger.error("生产环境 SECRET_KEY 过弱或仍是默认值，请立刻换成至少 32 位随机串")
+    if settings.is_production and settings.CORS_ORIGINS == "*":
+        logger.warning("生产环境 CORS_ORIGINS=* ，上线后应改成你的域名")
     start_scheduler(app)
     logger.info("应用启动完成")
     try:
@@ -44,13 +49,18 @@ async def lifespan(app: FastAPI):
         logger.info("应用已关闭")
 
 
+_docs_enabled = None if settings.is_production else "/docs"
+_redoc_enabled = None if settings.is_production else "/redoc"
+_openapi_enabled = None if settings.is_production else "/openapi.json"
+
 # 创建 FastAPI 应用
 app = FastAPI(
     title=settings.app_name,
     description="读书笔记实践反馈系统 - 从学习到行动的完整闭环",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=_docs_enabled,
+    redoc_url=_redoc_enabled,
+    openapi_url=_openapi_enabled,
     lifespan=lifespan,
 )
 
@@ -64,7 +74,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20260909invite2"
+STATIC_UI_VERSION = "20260909sec1"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
@@ -81,6 +91,10 @@ async def disable_page_cache(request: Request, call_next):
         response.headers["Cache-Control"] = NO_STORE_HEADERS["Cache-Control"]
         response.headers["Pragma"] = NO_STORE_HEADERS["Pragma"]
         response.headers["Expires"] = NO_STORE_HEADERS["Expires"]
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "same-origin"
+    response.headers["Permissions-Policy"] = "camera=(), geolocation=(), microphone=(self)"
     return response
 
 # 注册路由

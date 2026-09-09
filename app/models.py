@@ -23,6 +23,7 @@ class User(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True)  # 软删除
     plan = Column(String(50), default="free")
     plan_expires_at = Column(Date, nullable=True)
+    token_version = Column(Integer, default=0)
     
     # 关系
     actions = relationship("Action", back_populates="user", cascade="all, delete-orphan")
@@ -307,3 +308,16 @@ class AiCallLog(Base):
     kind = Column(String(50), nullable=False, default="generic")
     call_date = Column(Date, nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class AuditLog(Base):
+    """登录、开通、导出等操作记录。"""
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    action = Column(String(50), nullable=False, index=True)
+    actor_user_id = Column(Integer, nullable=True, index=True)
+    target_user_id = Column(Integer, nullable=True)
+    ip = Column(String(64), nullable=True)
+    detail = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
