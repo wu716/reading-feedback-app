@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, validator, ConfigDict
+from pydantic import BaseModel, Field, validator, ConfigDict
 from typing import List, Optional
 from datetime import datetime, date
 from enum import Enum
@@ -38,15 +38,12 @@ class TargetFrequency(str, Enum):
 
 
 # 用户相关模型
-class UserBase(BaseModel):
-    email: EmailStr
-    name: str = Field(..., min_length=2, max_length=100)
-
-
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
+    phone: str = Field(..., min_length=11, max_length=20)
+    name: str = Field(..., min_length=2, max_length=20)
     password: str = Field(..., min_length=6, max_length=100)
-    invite_code: Optional[str] = None
-    
+    invite_code: str = Field(..., min_length=4, max_length=8)
+
     @validator('password')
     def validate_password(cls, v):
         if len(v) < 6:
@@ -55,17 +52,35 @@ class UserCreate(UserBase):
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
     password: str
+    account: Optional[str] = None
+    email: Optional[str] = None
+
+    @property
+    def login_id(self) -> str:
+        return (self.account or self.email or "").strip()
 
 
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
     id: int
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    real_name: Optional[str] = None
     is_active: bool
     created_at: datetime
     plan: str
-    
+    plan_label: str = "体验"
+    plan_expires_at: Optional[date] = None
+    phone_verified: bool = False
+    is_owner: bool = False
+    phone_bound: bool = False
+
     model_config = ConfigDict(from_attributes=True)
+
+
+class PhoneBind(BaseModel):
+    phone: str = Field(..., min_length=11, max_length=20)
 
 
 class UserUpdate(BaseModel):
@@ -221,6 +236,7 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
+    user_id: Optional[int] = None
     email: Optional[str] = None
 
 

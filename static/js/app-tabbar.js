@@ -12,7 +12,7 @@
         if (path.includes('dashboard') || path.includes('user_center')) return 'user-center';
         const hash = (location.hash || '').replace('#', '');
         if (hash === 'upload' || hash === 'actions') return 'actions';
-        if (hash === 'stats' || hash === 'guide' || hash === 'user-center') return 'user-center';
+        if (hash === 'stats' || hash === 'guide' || hash === 'user-center' || hash === 'owner') return 'user-center';
         if (hash === 'self-talk') return 'self-talk';
         return 'overview';
     }

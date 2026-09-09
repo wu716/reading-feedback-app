@@ -25,16 +25,23 @@ def _auth_exception() -> HTTPException:
 
 
 def resolve_user_from_access_token(token: str, db: Session) -> User:
-    """用 JWT 解析当前用户。"""
+    """用 JWT 解析当前用户。新 token 用 user id，旧 token 仍可用邮箱。"""
     credentials_exception = _auth_exception()
     token_data = verify_token(token, credentials_exception)
-    user = db.query(User).filter(
-        User.email == token_data.email,
-        User.deleted_at.is_(None),
-    ).first()
+    user = None
+    if token_data.user_id is not None:
+        user = db.query(User).filter(
+            User.id == token_data.user_id,
+            User.deleted_at.is_(None),
+        ).first()
+    if user is None and token_data.email:
+        user = db.query(User).filter(
+            User.email == token_data.email,
+            User.deleted_at.is_(None),
+        ).first()
     if user is None:
         logger = __import__("logging").getLogger(__name__)
-        logger.warning("用户不存在或已被删除: %s", token_data.email)
+        logger.warning("用户不存在或已被删除: %s %s", token_data.user_id, token_data.email)
         raise credentials_exception
     return user
 
@@ -87,11 +94,16 @@ def verify_token(token: str, credentials_exception):
     """验证令牌"""
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        email: str = payload.get("sub")
-        if email is None:
+        subject = payload.get("sub")
+        if subject is None:
             raise credentials_exception
-        token_data = TokenData(email=email)
-        return token_data
+        user_id = None
+        email = None
+        if isinstance(subject, int) or (isinstance(subject, str) and subject.isdigit()):
+            user_id = int(subject)
+        else:
+            email = str(subject)
+        return TokenData(user_id=user_id, email=email)
     except JWTError as e:
         # 记录具体的JWT错误类型
         import logging
@@ -100,14 +112,20 @@ def verify_token(token: str, credentials_exception):
         raise credentials_exception
 
 
-def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
-    """验证用户"""
-    user = db.query(User).filter(User.email == email, User.deleted_at.is_(None)).first()
+def authenticate_user(db: Session, account: str, password: str) -> Optional[User]:
+    """用手机号或邮箱验证用户"""
+    from app.accounts import find_user_by_account
+
+    user = find_user_by_account(db, account)
     if not user:
         return None
     if not verify_password(password, user.password_hash):
         return None
     return user
+
+
+def issue_user_token(user: User, expires_delta: Optional[timedelta] = None) -> str:
+    return create_access_token(data={"sub": str(user.id)}, expires_delta=expires_delta)
 
 
 def get_current_user(
@@ -145,6 +163,14 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
     """获取当前活跃用户"""
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+def get_current_owner(current_user: User = Depends(get_current_active_user)) -> User:
+    from app.plans import is_owner_user
+
+    if not is_owner_user(current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="仅站长可访问")
     return current_user
 
 

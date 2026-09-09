@@ -354,6 +354,11 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        .me-row[hidden],
+        .me-group[hidden] {
+            display: none !important;
+        }
+
         .me-row:last-child,
         .me-row.me-row-last {
             border-bottom: none;
@@ -568,6 +573,93 @@
 
         .me-logout:active {
             background: #fff5f5;
+        }
+
+        .me-plan-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .me-plan-table th,
+        .me-plan-table td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid #f1f3f8;
+            color: #4b5563;
+        }
+
+        .me-plan-table th {
+            color: #8b93a7;
+            font-weight: 650;
+            font-size: 0.72rem;
+        }
+
+        .me-plan-table tr.is-current td {
+            color: #4c1d95;
+            background: #f5f3ff;
+        }
+
+        .me-inline-form {
+            display: flex;
+            gap: 8px;
+            padding: 0 16px 14px;
+            align-items: center;
+        }
+
+        .me-inline-form input,
+        .owner-form input,
+        .owner-form select {
+            flex: 1;
+            min-height: 40px;
+            border: 1px solid #d7def0;
+            border-radius: 10px;
+            padding: 0 12px;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+
+        .owner-page {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 4px 0 28px;
+        }
+
+        .owner-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 0 16px 14px;
+        }
+
+        .owner-form input,
+        .owner-form select {
+            min-width: 120px;
+        }
+
+        .owner-table-wrap {
+            overflow-x: auto;
+            padding: 0 8px 12px;
+        }
+
+        .owner-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+        }
+
+        .owner-table th,
+        .owner-table td {
+            padding: 8px 6px;
+            border-bottom: 1px solid #f1f3f8;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .owner-code {
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            color: #4c1d95;
         }
 
         .guide-card {
@@ -3569,11 +3661,53 @@
                         <div class="me-profile-name" id="userDisplayName">加载中…</div>
                         <div class="me-profile-email" id="userDisplayEmail"></div>
                         <span class="me-plan" id="userDisplayPlan"></span>
+                        <div class="me-profile-email" id="userDisplayPlanExpire"></div>
                     </div>
                     <button type="button" class="me-edit" onclick="showEditNameModal()">修改昵称</button>
                 </div>
 
+                <div class="me-group" id="meAccountGroup">
+                    <div class="me-group-title">账户与套餐</div>
+                    <div class="me-row me-row-static">
+                        <div class="me-row-main">
+                            <div class="me-row-title">今日额度</div>
+                            <div class="me-row-desc" id="meQuotaHint">登录后显示今日剩余次数</div>
+                        </div>
+                    </div>
+                    <p class="me-hint">付费和续期在微信产品群找站长开通，开通后当天额度按新套餐生效。</p>
+                    <div class="owner-table-wrap">
+                        <table class="me-plan-table" id="mePlanTable">
+                            <thead>
+                                <tr>
+                                    <th>套餐</th>
+                                    <th>价格</th>
+                                    <th>抽取 / 天</th>
+                                    <th>建议 / 天</th>
+                                    <th>时长</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mePlanTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="me-group" id="meBindPhoneGroup" hidden>
+                    <div class="me-group-title">绑定手机号</div>
+                    <p class="me-hint">绑定后可用手机号登录。一个号码只能绑定一个账户。验证码绑定稍后开放。</p>
+                    <div class="me-inline-form">
+                        <input type="tel" id="bindPhoneInput" maxlength="11" placeholder="11 位手机号" autocomplete="tel">
+                        <button type="button" class="me-link-btn" onclick="bindUserPhone()">绑定</button>
+                    </div>
+                </div>
+
                 <div class="me-group">
+                    <button type="button" class="me-row" id="ownerEntryRow" hidden onclick="navigateTo('owner')">
+                        <span class="me-row-icon" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h6"/></svg>
+                        </span>
+                        <span class="me-row-main"><span class="me-row-title">站长开通</span></span>
+                        <span class="me-chevron">›</span>
+                    </button>
                     <button type="button" class="me-row" onclick="navigateTo('stats')">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V3"/></svg>
@@ -3756,6 +3890,62 @@
                 <button type="button" class="me-logout" onclick="confirmLogout()">退出登录</button>
             </div>
         </section>
+
+        <section id="owner" class="content-section">
+            <div class="section-header">
+                <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
+                <h1>站长开通</h1>
+                <p>生成邀请码，给用户开通套餐</p>
+            </div>
+            <div class="owner-page">
+                <div class="me-group">
+                    <div class="me-group-title">生成邀请码</div>
+                    <p class="me-hint">四位数字，一次性，7 天有效。一次最多 5 个，不要囤积。</p>
+                    <div class="owner-form">
+                        <select id="ownerInvitePlan">
+                            <option value="free">体验</option>
+                            <option value="monthly">月卡</option>
+                            <option value="semester">学期卡</option>
+                        </select>
+                        <input type="number" id="ownerInviteCount" min="1" max="5" value="1">
+                        <input type="text" id="ownerInviteNote" maxlength="40" placeholder="备注，如微信名">
+                        <button type="button" class="me-link-btn" onclick="generateOwnerInviteCodes()">生成</button>
+                    </div>
+                    <div class="owner-table-wrap">
+                        <table class="owner-table">
+                            <thead>
+                                <tr>
+                                    <th>邀请码</th>
+                                    <th>套餐</th>
+                                    <th>状态</th>
+                                    <th>备注</th>
+                                    <th>使用者</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ownerInviteBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="me-group">
+                    <div class="me-group-title">用户套餐</div>
+                    <div class="owner-table-wrap">
+                        <table class="owner-table">
+                            <thead>
+                                <tr>
+                                    <th>姓名</th>
+                                    <th>手机</th>
+                                    <th>邮箱</th>
+                                    <th>套餐</th>
+                                    <th>到期</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="ownerUserBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
         
         <!-- 实践统计区 -->
         <section id="stats" class="content-section">
@@ -3924,33 +4114,33 @@
 
                 <form class="auth-form active" id="loginForm">
                     <div class="form-group">
-                        <label for="loginEmail">邮箱</label>
-                        <input type="email" id="loginEmail" required placeholder="请输入邮箱">
+                        <label for="loginEmail">手机号或邮箱</label>
+                        <input type="text" id="loginEmail" required placeholder="请输入手机号或邮箱" autocomplete="username">
                     </div>
                     <div class="form-group">
                         <label for="loginPassword">密码</label>
-                        <input type="password" id="loginPassword" required placeholder="请输入密码">
+                        <input type="password" id="loginPassword" required placeholder="请输入密码" autocomplete="current-password">
                     </div>
                     <button type="submit" class="auth-btn">登录</button>
                 </form>
 
                 <form class="auth-form" id="registerForm">
                     <div class="form-group">
-                        <label for="registerEmail">邮箱</label>
-                        <input type="email" id="registerEmail" required placeholder="请输入邮箱">
+                        <label for="registerPhone">手机号</label>
+                        <input type="tel" id="registerPhone" required maxlength="11" placeholder="11 位手机号" autocomplete="tel">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerName">真实姓名</label>
+                        <input type="text" id="registerName" required maxlength="20" placeholder="请填写真实姓名" autocomplete="name">
                     </div>
                     <div class="form-group">
                         <label for="registerPassword">密码</label>
-                        <input type="password" id="registerPassword" required placeholder="请输入密码">
+                        <input type="password" id="registerPassword" required placeholder="请输入密码" autocomplete="new-password">
                         <div class="password-hint">至少 6 位，建议字母与数字搭配</div>
-                    </div>
-                    <div class="form-group">
-                        <label for="registerName">姓名（可选）</label>
-                        <input type="text" id="registerName" placeholder="怎么称呼你">
                     </div>
                     <div class="form-group" id="inviteCodeGroup">
                         <label for="registerInvite">邀请码</label>
-                        <input type="text" id="registerInvite" placeholder="请输入邀请码">
+                        <input type="text" id="registerInvite" required maxlength="4" inputmode="numeric" placeholder="4 位数字邀请码">
                     </div>
                     <button type="submit" class="auth-btn">注册</button>
                 </form>
@@ -4299,7 +4489,7 @@
         }
 
         const PRIMARY_TABS = new Set(['overview', 'actions', 'self-talk', 'user-center']);
-        const SECTION_PARENT = { upload: 'actions', stats: 'user-center', guide: 'user-center' };
+        const SECTION_PARENT = { upload: 'actions', stats: 'user-center', guide: 'user-center', owner: 'user-center' };
 
         function primaryTabFor(sectionId) {
             return SECTION_PARENT[sectionId] || sectionId;
@@ -4396,6 +4586,9 @@
                     loadUserInfo();
                     loadReminderSettings();
                 }
+                if (sectionId === 'owner') {
+                    loadOwnerConsole();
+                }
                 if (sectionId === 'upload') {
                     refreshAiExtractQuota();
                 }
@@ -4456,7 +4649,7 @@
             if (loginForm) {
                 loginForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
-                    const email = document.getElementById('loginEmail').value;
+                    const email = document.getElementById('loginEmail').value.trim();
                     const password = document.getElementById('loginPassword').value;
                     
                     if (!email || !password) {
@@ -5430,10 +5623,10 @@
             if (title && desc) {
                 if (tab === 'register') {
                     title.textContent = '开卷';
-                    desc.textContent = '注册新账户，开始你的知行';
+                    desc.textContent = '用手机号和邀请码注册';
                 } else {
                     title.textContent = '入册';
-                    desc.textContent = '登录已有账户，或注册开启书然';
+                    desc.textContent = '手机号或邮箱登录，新用户需邀请码';
                 }
             }
         }
@@ -5444,7 +5637,7 @@
                 console.log('开始登录...', email);
                 const response = await apiRequest('/auth/login', {
                     method: 'POST',
-                    body: JSON.stringify({ email, password }),
+                    body: JSON.stringify({ account: email, email, password }),
                     skipAuthRedirect: true,
                 });
                 
@@ -5480,22 +5673,22 @@
         }
         
         // 用户注册
-        async function register(email, password, name, inviteCode) {
+        async function register(phone, password, name, inviteCode) {
             try {
                 await apiRequest('/auth/register', {
                     method: 'POST',
-                    body: JSON.stringify({ 
-                        email, 
-                        password, 
-                        name: name || email.split('@')[0],
-                        invite_code: inviteCode || undefined
+                    body: JSON.stringify({
+                        phone,
+                        password,
+                        name,
+                        invite_code: inviteCode
                     })
                 });
                 
                 showMessage('注册成功！正在自动登录...', 'success');
                 
                 // 注册成功后自动登录
-                return await login(email, password);
+                return await login(phone, password);
             } catch (error) {
                 showMessage('注册失败: ' + error.message, 'error');
                 return false;
@@ -5516,8 +5709,9 @@
                     
                     if (response.ok) {
                         const userData = await response.json();
-                        saveAuthSession(token, userData.email);
-                        updateUserInfo(userData.email);
+                        const account = displayAccount(userData);
+                        saveAuthSession(token, userData.phone || userData.email || account);
+                        updateUserInfo(account);
                         console.log('认证状态已刷新');
                         return true;
                     }
@@ -5595,8 +5789,9 @@
 
                 if (response.ok) {
                     const userData = await response.json();
-                    saveAuthSession(authToken, userData.email);
-                    updateUserInfo(userData.email);
+                    const account = displayAccount(userData);
+                    saveAuthSession(authToken, userData.phone || userData.email || account);
+                    updateUserInfo(account);
                     closeAuthModal();
                     await refreshAppData();
                     authCheckInProgress = false;
@@ -6294,13 +6489,21 @@
         // 注册表单事件
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('registerEmail').value;
+            const phone = (document.getElementById('registerPhone').value || '').trim();
             const password = document.getElementById('registerPassword').value;
-            const name = document.getElementById('registerName').value;
-            const inviteCode = document.getElementById('registerInvite').value;
+            const name = (document.getElementById('registerName').value || '').trim();
+            const inviteCode = (document.getElementById('registerInvite').value || '').trim();
             
-            if (!email || !password) {
-                showMessage('请填写邮箱和密码', 'error');
+            if (!phone || !password || !name || !inviteCode) {
+                showMessage('请填写手机号、真实姓名、密码和邀请码', 'error');
+                return;
+            }
+            if (!/^1[3-9]\d{9}$/.test(phone)) {
+                showMessage('请填写有效的大陆手机号', 'error');
+                return;
+            }
+            if (!/^\d{4}$/.test(inviteCode)) {
+                showMessage('邀请码为 4 位数字', 'error');
                 return;
             }
             
@@ -6313,7 +6516,7 @@
             btn.disabled = true;
             btn.textContent = '注册中...';
             
-            await register(email, password, name, inviteCode);
+            await register(phone, password, name, inviteCode);
             
             btn.disabled = false;
             btn.textContent = '注册';
@@ -6353,14 +6556,58 @@
         
         // 初始化个人中心事件监听器
         function initializeUserCenter() {
-            // 提醒开关联动逻辑
-            document.getElementById('reminderMasterSwitch').addEventListener('change', updateReminderSwitchStates);
+            const master = document.getElementById('reminderMasterSwitch');
+            const daily = document.getElementById('reminderDailySwitch');
+            const timeEl = document.getElementById('dailyReminderTime');
+            const systemEl = document.getElementById('reminderBrowserSwitch');
+            master.addEventListener('change', function () {
+                if (master.checked && daily && !daily.checked) {
+                    daily.checked = true;
+                }
+                updateReminderSwitchStates();
+                persistLocalReminderSchedule();
+            });
+            if (daily) daily.addEventListener('change', persistLocalReminderSchedule);
+            if (timeEl) {
+                timeEl.addEventListener('change', persistLocalReminderSchedule);
+                timeEl.addEventListener('input', persistLocalReminderSchedule);
+            }
+            if (systemEl) systemEl.addEventListener('change', persistLocalReminderSchedule);
+            for (let i = 0; i < 7; i++) {
+                const dayEl = document.getElementById('reminderDay' + i);
+                if (dayEl) dayEl.addEventListener('change', persistLocalReminderSchedule);
+            }
             
-            // 昵称编辑表单提交
             document.getElementById('editNameForm').addEventListener('submit', handleEditNameSubmit);
-            
-            // 新昵称输入验证
             document.getElementById('newName').addEventListener('input', validateNickname);
+        }
+
+        function collectReminderDays() {
+            const reminderDays = [];
+            for (let i = 0; i < 7; i++) {
+                const el = document.getElementById('reminderDay' + i);
+                if (el && el.checked) reminderDays.push(i);
+            }
+            return reminderDays.length ? reminderDays : [0, 1, 2, 3, 4, 5, 6];
+        }
+
+        function persistLocalReminderSchedule() {
+            if (!window.reminderNotificationService || !window.reminderNotificationService.applyLocalSchedule) {
+                return;
+            }
+            const master = document.getElementById('reminderMasterSwitch');
+            const daily = document.getElementById('reminderDailySwitch');
+            const timeEl = document.getElementById('dailyReminderTime');
+            const systemEl = document.getElementById('reminderBrowserSwitch');
+            if (!master || !timeEl) return;
+            const enabled = !!master.checked;
+            window.reminderNotificationService.applyLocalSchedule({
+                enabled: enabled,
+                dailyEnabled: enabled && !!(daily ? daily.checked || enabled : true),
+                dailyTime: (timeEl.value || '20:00').slice(0, 5),
+                reminderDays: collectReminderDays(),
+                systemNotification: !systemEl || systemEl.checked !== false,
+            });
         }
         
         // 显示个人中心弹窗（已废弃，现在使用navigateTo）
@@ -6375,25 +6622,179 @@
             navigateTo('overview');
         }
         
-        function formatUserPlan(plan) {
-            const raw = plan || 'Free';
-            const map = { Free: '免费版', Pro: '专业版', Plus: '进阶版', Premium: '高级版' };
-            return map[raw] || raw;
+        function formatUserPlan(plan, label) {
+            if (label) return label;
+            const raw = (plan || 'free').toString().toLowerCase();
+            const map = {
+                free: '体验',
+                monthly: '月卡',
+                semester: '学期卡',
+                Free: '体验',
+                Pro: '专业版',
+                Plus: '进阶版',
+                Premium: '高级版'
+            };
+            return map[plan] || map[raw] || raw;
+        }
+
+        function displayAccount(user) {
+            if (user && user.phone) return user.phone;
+            const email = user && user.email ? String(user.email) : '';
+            if (email && !email.endsWith('@phone.invalid')) return email;
+            return '—';
         }
 
         function refreshMeProfile(user) {
             const name = (user && user.name) || '未设置';
-            const email = (user && user.email) || '';
+            const account = displayAccount(user);
             const nameEl = document.getElementById('userDisplayName');
             const emailEl = document.getElementById('userDisplayEmail');
             const planEl = document.getElementById('userDisplayPlan');
+            const expireEl = document.getElementById('userDisplayPlanExpire');
             const avatarEl = document.getElementById('userAvatarInitial');
+            const ownerRow = document.getElementById('ownerEntryRow');
+            const bindGroup = document.getElementById('meBindPhoneGroup');
             if (nameEl) nameEl.textContent = name;
-            if (emailEl) emailEl.textContent = email || '—';
-            if (planEl) planEl.textContent = formatUserPlan(user && user.plan);
+            if (emailEl) emailEl.textContent = account;
+            if (planEl) planEl.textContent = formatUserPlan(user && user.plan, user && user.plan_label);
+            if (expireEl) {
+                expireEl.textContent = user && user.plan_expires_at ? `到期 ${user.plan_expires_at}` : '';
+            }
             if (avatarEl) {
-                const src = ((user && user.name) || (user && user.email) || '我').trim();
+                const src = ((user && user.name) || account || '我').trim();
                 avatarEl.textContent = src.charAt(0) || '我';
+            }
+            if (ownerRow) ownerRow.hidden = !(user && user.is_owner);
+            if (bindGroup) bindGroup.hidden = !!(user && user.phone);
+            refreshMeQuotaAndPlans(user);
+        }
+
+        async function refreshMeQuotaAndPlans(user) {
+            const hint = document.getElementById('meQuotaHint');
+            try {
+                const quota = await apiRequest('/api/actions/ai-quota');
+                if (hint) {
+                    if (quota.extract_remaining == null && quota.advice_remaining == null) {
+                        hint.textContent = '今日抽取与 AI 建议次数不限';
+                    } else {
+                        hint.textContent = `今日还可抽取 ${quota.extract_remaining} / ${quota.extract_limit} 次，AI 建议 ${quota.advice_remaining} / ${quota.advice_limit} 次`;
+                    }
+                }
+            } catch (e) {
+                if (hint) hint.textContent = '额度加载失败';
+            }
+            try {
+                const data = await apiRequest('/auth/plans');
+                const body = document.getElementById('mePlanTableBody');
+                if (!body) return;
+                const current = (user && (user.plan || '')).toLowerCase();
+                body.innerHTML = (data.plans || []).map((plan) => `
+                    <tr class="${plan.key === current ? 'is-current' : ''}">
+                        <td>${plan.label}${plan.key === current ? '（当前）' : ''}</td>
+                        <td>${plan.price_text}</td>
+                        <td>${plan.extract_limit}</td>
+                        <td>${plan.advice_limit}</td>
+                        <td>${plan.duration_text}</td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.warn('加载套餐说明失败', e);
+            }
+        }
+
+        async function bindUserPhone() {
+            const input = document.getElementById('bindPhoneInput');
+            const phone = ((input && input.value) || '').trim();
+            if (!/^1[3-9]\d{9}$/.test(phone)) {
+                showMessage('请填写有效的大陆手机号', 'error');
+                return;
+            }
+            try {
+                currentUser = await apiRequest('/auth/phone', {
+                    method: 'PUT',
+                    body: JSON.stringify({ phone })
+                });
+                if (input) input.value = '';
+                refreshMeProfile(currentUser);
+                saveAuthSession(localStorage.getItem('authToken'), currentUser.phone || currentUser.email);
+                updateUserInfo(displayAccount(currentUser));
+                showMessage('手机号已绑定，之后可用它登录', 'success');
+            } catch (error) {
+                showMessage(error.message || '绑定失败', 'error');
+            }
+        }
+
+        async function loadOwnerConsole() {
+            const inviteBody = document.getElementById('ownerInviteBody');
+            const userBody = document.getElementById('ownerUserBody');
+            if (!inviteBody || !userBody) return;
+            try {
+                const [codes, users] = await Promise.all([
+                    apiRequest('/owner/invite-codes'),
+                    apiRequest('/owner/users')
+                ]);
+                const statusText = { unused: '未用', used: '已用', expired: '过期' };
+                inviteBody.innerHTML = (codes.items || []).map((row) => `
+                    <tr>
+                        <td class="owner-code">${row.code}</td>
+                        <td>${row.plan_label}</td>
+                        <td>${statusText[row.status] || row.status}</td>
+                        <td>${row.note || '—'}</td>
+                        <td>${row.used_by_name || row.used_by_phone || '—'}</td>
+                    </tr>
+                `).join('') || '<tr><td colspan="5">还没有邀请码</td></tr>';
+                userBody.innerHTML = (users.items || []).map((row) => `
+                    <tr>
+                        <td>${row.name || '—'}</td>
+                        <td>${row.phone || '—'}</td>
+                        <td>${row.email || '—'}</td>
+                        <td>${row.plan_label || formatUserPlan(row.plan)}</td>
+                        <td>${row.plan_expires_at || '—'}</td>
+                        <td>
+                            <select data-user-id="${row.id}" onchange="changeOwnerUserPlan(this)">
+                                <option value="free" ${row.plan === 'free' ? 'selected' : ''}>体验</option>
+                                <option value="monthly" ${row.plan === 'monthly' ? 'selected' : ''}>月卡</option>
+                                <option value="semester" ${row.plan === 'semester' ? 'selected' : ''}>学期卡</option>
+                            </select>
+                        </td>
+                    </tr>
+                `).join('') || '<tr><td colspan="6">暂无用户</td></tr>';
+            } catch (error) {
+                showMessage(error.message || '加载站长页失败', 'error');
+            }
+        }
+
+        async function generateOwnerInviteCodes() {
+            const plan = document.getElementById('ownerInvitePlan').value;
+            const count = parseInt(document.getElementById('ownerInviteCount').value, 10) || 1;
+            const note = (document.getElementById('ownerInviteNote').value || '').trim();
+            try {
+                const data = await apiRequest('/owner/invite-codes', {
+                    method: 'POST',
+                    body: JSON.stringify({ plan, count, note: note || null })
+                });
+                const codes = (data.items || []).map((item) => item.code).join('、');
+                showMessage(`已生成邀请码：${codes}`, 'success');
+                document.getElementById('ownerInviteNote').value = '';
+                await loadOwnerConsole();
+            } catch (error) {
+                showMessage(error.message || '生成失败', 'error');
+            }
+        }
+
+        async function changeOwnerUserPlan(selectEl) {
+            const userId = selectEl && selectEl.dataset.userId;
+            const plan = selectEl && selectEl.value;
+            if (!userId || !plan) return;
+            try {
+                await apiRequest(`/owner/users/${userId}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ plan })
+                });
+                showMessage('套餐已更新', 'success');
+                await loadOwnerConsole();
+            } catch (error) {
+                showMessage(error.message || '更新失败', 'error');
             }
         }
 
@@ -6492,6 +6893,7 @@
 
             // 设置联动逻辑
             updateReminderSwitchStates();
+            persistLocalReminderSchedule();
             if (window.reminderNotificationService) {
                 window.reminderNotificationService.refreshReliabilityHints();
             }
@@ -6545,16 +6947,12 @@
             const token = localStorage.getItem('authToken');
 
             // 收集日期设置
-            const reminderDays = [];
-            for (let i = 0; i < 7; i++) {
-                if (document.getElementById(`reminderDay${i}`).checked) {
-                    reminderDays.push(i);
-                }
-            }
+            const reminderDays = collectReminderDays();
 
             const settings = {
                 is_enabled: document.getElementById('reminderMasterSwitch').checked,
-                daily_reminder_enabled: document.getElementById('reminderDailySwitch').checked,
+                daily_reminder_enabled: document.getElementById('reminderDailySwitch').checked
+                    || document.getElementById('reminderMasterSwitch').checked,
                 daily_reminder_time: document.getElementById('dailyReminderTime').value,
                 reminder_days: reminderDays,
                 after_action_reminder: document.getElementById('reminderActionSwitch').checked,
@@ -6565,15 +6963,7 @@
             };
 
             try {
-                if (window.reminderNotificationService) {
-                    window.reminderNotificationService.applyLocalSchedule({
-                        enabled: !!settings.is_enabled,
-                        dailyEnabled: !!settings.daily_reminder_enabled,
-                        dailyTime: settings.daily_reminder_time || '20:00',
-                        reminderDays: reminderDays,
-                        systemNotification: settings.browser_notification !== false,
-                    });
-                }
+                persistLocalReminderSchedule();
                 const response = await fetch(`${API_BASE}/api/self_talk_reminders/settings`, {
                     method: 'POST',
                     headers: {
@@ -7101,8 +7491,8 @@
     
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260825time1"></script>
-    <script src="/static/reminder_notification.js?v=20260825todo1"></script>
-    <script src="/static/js/app-tabbar.js?v=20260825todo1"></script>
+    <script src="/static/reminder_notification.js?v=20260903alarm2"></script>
+    <script src="/static/js/app-tabbar.js?v=20260909invite2"></script>
     <script src="/static/js/today-dashboard.js?v=20260825time1"></script>
 </body>
 </html>

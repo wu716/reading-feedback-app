@@ -1,6 +1,6 @@
 import os
 from pydantic_settings import BaseSettings
-from pydantic import ConfigDict, field_validator
+from pydantic import ConfigDict
 
 
 def _is_production() -> bool:
@@ -74,9 +74,10 @@ class Settings(BaseSettings):
 
     @property
     def is_registration_allowed(self) -> bool:
-        if (self.invite_code or "").strip():
+        if self.registration_open:
             return True
-        return self.registration_open
+        # 旧环境靠 INVITE_CODE 打开入口；新逻辑不再校验这个固定码本身
+        return bool((self.invite_code or "").strip())
 
 
 def get_settings() -> Settings:
@@ -95,7 +96,7 @@ class ProductionSettings(Settings):
     DEBUG: bool = False
     REQUIRE_AUTH: bool = True
     environment: str = "production"
-    registration_open: bool = False
+    registration_open: bool = True
     ai_daily_limit: int = 3
     ai_extract_daily_limit: int = 2
 

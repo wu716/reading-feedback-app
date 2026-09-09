@@ -82,3 +82,13 @@ def ensure_schema():
         "reading_reminder_time",
         "reading_reminder_time VARCHAR(8)",
     )
+    add_column("users", "phone", "phone VARCHAR(20)")
+    add_column("users", "phone_verified", f"phone_verified BOOLEAN DEFAULT {bool_default}")
+    add_column("users", "real_name", "real_name VARCHAR(100)")
+    add_column("users", "plan_expires_at", "plan_expires_at DATE")
+    if "users" in existing_tables:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_phone ON users (phone)"))
+        except Exception as exc:
+            logger.warning("创建 users.phone 唯一索引失败: %s", exc)

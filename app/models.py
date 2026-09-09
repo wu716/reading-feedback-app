@@ -13,12 +13,16 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
     name = Column(String(100), nullable=False)
+    real_name = Column(String(100), nullable=True)
+    phone = Column(String(20), unique=True, index=True, nullable=True)
+    phone_verified = Column(Boolean, default=False)
     password_hash = Column(Text, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)  # 软删除
     plan = Column(String(50), default="free")
+    plan_expires_at = Column(Date, nullable=True)
     
     # 关系
     actions = relationship("Action", back_populates="user", cascade="all, delete-orphan")
@@ -30,6 +34,7 @@ class User(Base):
     self_talk_playback_logs = relationship(
         "SelfTalkPlaybackLog", back_populates="user", cascade="all, delete-orphan"
     )
+    used_invite_codes = relationship("InviteCode", back_populates="used_by_user")
 
 
 class Action(Base):
@@ -90,7 +95,7 @@ class Subscription(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    plan = Column(String(50), nullable=False)  # free, premium, pro
+    plan = Column(String(50), nullable=False)  # free, monthly, semester
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=True)
     is_active = Column(Boolean, default=True)
@@ -99,6 +104,22 @@ class Subscription(Base):
     
     # 关系
     user = relationship("User", back_populates="subscription")
+
+
+class InviteCode(Base):
+    """一次性四位邀请码。"""
+    __tablename__ = "invite_codes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(4), unique=True, index=True, nullable=False)
+    plan = Column(String(50), nullable=False, default="free")
+    note = Column(String(100), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    used_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    used_by_user = relationship("User", back_populates="used_invite_codes")
 
 
 class AnonymizedData(Base):
