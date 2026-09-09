@@ -13,7 +13,7 @@ import uvicorn
 from app.config import settings
 from app.database import ensure_schema, get_db
 from app.scheduler import start_scheduler
-from app.routers import auth, actions, practice, dashboard, ai_advice, today, app_download
+from app.routers import auth, actions, practice, dashboard, ai_advice, today, app_download, owner
 from app.self_talk.router import router as self_talk_router
 from app.routers.self_talk_reminders import router as self_talk_reminders_router
 from app.ai_service import test_ai_connection
@@ -64,7 +64,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20260826time1"
+STATIC_UI_VERSION = "20260909invite2"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
@@ -85,6 +85,7 @@ async def disable_page_cache(request: Request, call_next):
 
 # 注册路由
 app.include_router(auth.router)
+app.include_router(owner.router)
 app.include_router(actions.router, prefix="/api")
 app.include_router(practice.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")

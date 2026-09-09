@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""AI 调用额度：抽取与建议分池限制。"""
+"""AI 调用额度：抽取与建议分池限制，按套餐读取。"""
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -7,19 +7,16 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.models import AiCallLog, User
+from app.plans import is_owner_user, quota_limits_for_user, resolve_user_plan
 
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
 EXTRACT_KINDS = ("upload-notes",)
 ADVICE_KINDS = ("ai-advice", "ai-advice-stream")
-# 仅站长本人不限额度，其它账号仍走每日限额。
-UNLIMITED_EMAILS = frozenset({"2721095772@qq.com"})
 
 
 def _is_unlimited_user(user: User) -> bool:
-    email = (getattr(user, "email", None) or "").strip().lower()
-    return email in UNLIMITED_EMAILS
+    return is_owner_user(user)
 
 
 def _today():
@@ -40,17 +37,19 @@ def _count_used(db: Session, user_id: int, kinds: tuple[str, ...]) -> int:
     )
 
 
-def _limit_and_kinds(kind: str) -> tuple[int, tuple[str, ...], str]:
+def _limit_and_kinds(user: User, kind: str) -> tuple[int, tuple[str, ...], str]:
+    extract_limit, advice_limit = quota_limits_for_user(user)
     if kind in EXTRACT_KINDS:
-        return settings.ai_extract_daily_limit, EXTRACT_KINDS, "抽取行动项"
-    return settings.ai_daily_limit, ADVICE_KINDS, "AI 建议"
+        return extract_limit, EXTRACT_KINDS, "抽取行动项"
+    return advice_limit, ADVICE_KINDS, "AI 建议"
 
 
 def enforce_ai_quota(db: Session, user: User, kind: str = "generic") -> None:
+    resolve_user_plan(db, user)
     if _is_unlimited_user(user):
         return
 
-    limit, kinds, label = _limit_and_kinds(kind)
+    limit, kinds, label = _limit_and_kinds(user, kind)
     if limit <= 0:
         return
 
@@ -65,6 +64,7 @@ def enforce_ai_quota(db: Session, user: User, kind: str = "generic") -> None:
 
 
 def get_quota_status(db: Session, user: User) -> dict:
+    resolve_user_plan(db, user)
     extract_used = _count_used(db, user.id, EXTRACT_KINDS)
     advice_used = _count_used(db, user.id, ADVICE_KINDS)
     if _is_unlimited_user(user):
@@ -77,8 +77,7 @@ def get_quota_status(db: Session, user: User) -> dict:
             "advice_remaining": None,
         }
 
-    extract_limit = settings.ai_extract_daily_limit
-    advice_limit = settings.ai_daily_limit
+    extract_limit, advice_limit = quota_limits_for_user(user)
     return {
         "extract_limit": extract_limit,
         "extract_used": extract_used,
