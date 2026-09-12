@@ -3771,9 +3771,9 @@
                             <div class="me-row-title">版本更新</div>
                             <div class="me-row-desc" id="appVersionLabel">正在识别版本…</div>
                         </div>
-                        <button type="button" class="me-link-btn" onclick="shuranStartAppUpdate()">检查更新</button>
+                        <button type="button" class="me-link-btn" id="appUpdateBtn" onclick="shuranStartAppUpdate()">检查更新</button>
                     </div>
-                    <p class="me-hint">覆盖安装即可，账号与数据会保留。</p>
+                    <p class="me-hint" id="appVersionHint">电脑打开网页即用，不必安装。这项检查更新只给安卓手机。</p>
                 </div>
 
                 <div class="me-group reminder-settings-section">
@@ -7937,7 +7937,7 @@
     
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260825time1"></script>
-    <script src="/static/reminder_notification.js?v=20260903alarm2"></script>
+    <script src="/static/reminder_notification.js?v=20260912flow2"></script>
     <script src="/static/js/app-tabbar.js?v=20260909invite2"></script>
     <script src="/static/js/today-dashboard.js?v=20260825time1"></script>
     <script src="/static/js/daily-schedule.js?v=20260912flow1"></script>

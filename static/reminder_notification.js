@@ -289,7 +289,7 @@ class ReminderNotificationService {
             const settings = await response.json();
             window.ShuranNative.scheduleReminders(JSON.stringify({
                 enabled: !!settings.is_enabled,
-                dailyEnabled: !!settings.daily_reminder_enabled,
+                dailyEnabled: !!settings.daily_reminder_enabled || !!settings.is_enabled,
                 dailyTime: settings.daily_reminder_time || '20:00',
                 reminderDays: settings.reminder_days || [0, 1, 2, 3, 4, 5, 6],
                 systemNotification: settings.browser_notification !== false,
@@ -459,39 +459,6 @@ class ReminderNotificationService {
         if (!status.batteryIgnored) {
             this.showFeedback('请关闭电池优化并允许自启动。国产手机划掉后台后，不关省电就不会响。', 'info');
         }
-    }
-
-    async scheduleExitTest(seconds) {
-        this.ensureUi();
-        if (!this.isNativeApp() || !this.hasNativeMethod('scheduleTestAlarm')) {
-            this.showFeedback('请先安装并更新到最新书然 App，才能测试退出后提醒。', 'error');
-            return { ok: false };
-        }
-        if (this.hasNativeMethod('requestPermission')) {
-            try { window.ShuranNative.requestPermission(); } catch (e) {}
-        }
-        let result = '';
-        try {
-            result = String(window.ShuranNative.scheduleTestAlarm(seconds || 120) || '');
-        } catch (e) {
-            console.error('scheduleTestAlarm failed', e);
-            this.showFeedback('当前 App 版本过旧，请检查更新后再试。', 'error');
-            return { ok: false };
-        }
-        if (result === 'no_permission') {
-            this.showFeedback('尚未获得通知权限。请先点允许，再测退出提醒。', 'error');
-            return { ok: false };
-        }
-        if (result !== 'ok') {
-            this.showFeedback('预约失败。请确认已允许精确闹钟后重试。', 'error');
-            return { ok: false };
-        }
-        const wait = Math.max(30, seconds || 120);
-        this.showFeedback(
-            `已预约 ${Math.round(wait / 60)} 分钟后提醒。请立即完全退出书然（划掉后台），锁屏等待，看状态栏是否弹出。`,
-            'success'
-        );
-        return { ok: true };
     }
 
     ensureUi() {
@@ -1012,6 +979,9 @@ function shuranStartAppUpdate() {
         });
         return;
     }
+    if (typeof showMessage === 'function') {
+        showMessage('电脑端不用安装，刷新本页就是最新网页。安卓才需要下载安装包。', 'info');
+    }
     window.location.href = pageUrl;
 }
 
@@ -1020,7 +990,9 @@ function fillAppVersionLabel() {
     if (!label) return;
     const shell = shuranShellInfo();
     const group = label.closest ? label.closest('.me-group') : null;
-    const hint = group ? group.querySelector('.me-hint') : null;
+    const hint = document.getElementById('appVersionHint')
+        || (group ? group.querySelector('.me-hint') : null);
+    const btn = document.getElementById('appUpdateBtn');
     if (shell.inApp && !shell.hasUpdater && hint) {
         hint.textContent = '请复制下载链接，用手机自带的浏览器打开后安装。安装时选择「更新」，不要卸载。';
     }
@@ -1033,7 +1005,11 @@ function fillAppVersionLabel() {
         label.textContent = '当前 1.0.0 · 建议更新';
         return;
     }
-    label.textContent = '网页版';
+    label.textContent = '网页版，打开即是最新';
+    if (hint) {
+        hint.textContent = '电脑不用安装客户端。日程安排和时间日志在今日和「我的」里。检查更新只给安卓手机。';
+    }
+    if (btn) btn.textContent = '安卓下载';
 }
 
 window.shuranStartAppUpdate = shuranStartAppUpdate;

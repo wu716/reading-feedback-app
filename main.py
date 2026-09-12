@@ -74,7 +74,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20260912flow1"
+STATIC_UI_VERSION = "20260912flow2"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
