@@ -1,11 +1,13 @@
-.homepage-dashboard .dashboard-row.home-schedule-row {
-    grid-template-columns: 1fr;
-}
-
-.homepage-dashboard .dashboard-row.home-schedule-row .widget-card.home-schedule {
+#schedule .home-schedule {
     background: #fffcf6;
     border: 1px solid #e6e1d6;
-    padding: 22px 22px 18px;
+    padding: 8px 4px 24px;
+}
+
+@media (min-width: 769px) {
+    #schedule .home-schedule {
+        padding: 8px 8px 28px;
+    }
 }
 
 .home-schedule-head {

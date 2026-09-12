@@ -26,7 +26,7 @@
         background: none;
         border: none;
         color: #8a8478;
-        font-size: 0.7rem;
+        font-size: 0.64rem;
         cursor: pointer;
         padding: 4px 0;
         -webkit-tap-highlight-color: transparent;
@@ -35,6 +35,10 @@
     .app-tabbar .tab-item.active {
         color: #1c1b19;
         font-weight: 600;
+    }
+
+    .app-tabbar .tab-text {
+        white-space: nowrap;
     }
 
     .app-tabbar .tab-icon {

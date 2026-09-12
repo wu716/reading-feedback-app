@@ -178,13 +178,13 @@ class ReminderNotificationService {
                 native.showReminder(JSON.stringify({
                     log_id: Date.now() % 100000000,
                     title: '书然测试通知',
-                    message: '看到这条就说明系统通知已打通。若状态栏没有出现，请检查更新到最新 App。',
+                    message: '看到这条就说明系统通知已打通。若状态栏没有出现，到系统设置里打开书然的通知权限。',
                     reminder_type: 'test',
                     force: true,
                     action_url: '/static/index.html#user-center',
                     triggered_at: new Date().toISOString(),
                 }));
-                this.showFeedback('已请求系统通知。若状态栏没有出现，请到「我的」检查更新并安装 1.2.1。', 'success');
+                this.showFeedback('已请求系统通知。若状态栏没有出现，到系统设置里打开书然的通知权限。', 'success');
                 return { ok: true, native: true };
             } catch (e) {
                 console.error('showReminder test failed', e);
@@ -997,23 +997,32 @@ function fillAppVersionLabel() {
     const hint = document.getElementById('appVersionHint')
         || (group ? group.querySelector('.me-hint') : null);
     const btn = document.getElementById('appUpdateBtn');
-    if (shell.inApp && !shell.hasUpdater && hint) {
-        hint.textContent = '请复制下载链接，用手机自带的浏览器打开后安装。安装时选择「更新」，不要卸载。';
+    const title = group ? group.querySelector('.me-row-title') : null;
+    if (title && title.textContent === '版本更新') {
+        title.textContent = '当前内容';
     }
-    if (shell.versionName) {
-        const extra = shell.hasUpdater ? '' : ' · 建议更新';
-        label.textContent = '当前 ' + shell.versionName + extra;
+    if (btn) {
+        btn.hidden = true;
+        btn.textContent = '换安装包';
+    }
+
+    const pageHint = '书然的界面在服务器上。打开或刷新就是新的，不必像别的软件那样先更新安装包。';
+    if (!shuranIsPhoneApp() && !shell.inApp) {
+        label.textContent = '打开即是最新';
+        if (hint) hint.textContent = '电脑用浏览器打开的就是服务器上的页面，刷新即可。不必安装，也不会下载安装包。';
         return;
     }
-    if (shell.inApp) {
-        label.textContent = '当前 1.0.0 · 建议更新';
-        return;
+
+    const shellText = shell.versionName ? '（外壳 ' + shell.versionName + '）' : '';
+    label.textContent = '页面已是最新' + shellText;
+    if (hint) hint.textContent = pageHint + '只有通知、悬浮窗这类系统能力变了，才需要换安装包。';
+
+    if (shell.inApp && !shell.hasUpdater) {
+        if (hint) {
+            hint.textContent = '当前外壳过旧，系统通知可能弹不出来。用手机自带浏览器打开下载页，选择更新、不要卸载。';
+        }
+        if (btn) btn.hidden = false;
     }
-    label.textContent = '网页版，打开即是最新';
-    if (hint) {
-        hint.textContent = '电脑用浏览器打开就是最新页，不必安装。检查更新只出现在安卓手机上。';
-    }
-    if (btn) btn.hidden = true;
 }
 
 window.shuranStartAppUpdate = shuranStartAppUpdate;
