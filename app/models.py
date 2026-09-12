@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, Date, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime, date
@@ -31,6 +31,9 @@ class User(Base):
     subscription = relationship("Subscription", back_populates="user", uselist=False, cascade="all, delete-orphan")
     ai_advice_sessions = relationship("AIAdviceSession", back_populates="user", cascade="all, delete-orphan")
     daily_todos = relationship("DailyTodo", back_populates="user", cascade="all, delete-orphan")
+    daily_tasks = relationship("DailyTask", back_populates="user", cascade="all, delete-orphan")
+    daily_schedules = relationship("DailySchedule", back_populates="user", cascade="all, delete-orphan")
+    time_log_nodes = relationship("TimeLogNode", back_populates="user", cascade="all, delete-orphan")
     reading_entries = relationship("ReadingEntry", back_populates="user", cascade="all, delete-orphan")
     self_talk_playback_logs = relationship(
         "SelfTalkPlaybackLog", back_populates="user", cascade="all, delete-orphan"
@@ -151,6 +154,63 @@ class DailyTodo(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", back_populates="daily_todos")
+
+
+class DailyTask(Base):
+    """每日行动：清单底稿，也可进入流程设计。"""
+    __tablename__ = "daily_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    parent_id = Column(Integer, ForeignKey("daily_tasks.id", ondelete="CASCADE"), nullable=True, index=True)
+    task_date = Column(Date, nullable=False, index=True)
+    text = Column(Text, nullable=False)
+    completed = Column(Boolean, default=False)
+    sort_order = Column(Integer, default=0)
+    familiarity = Column(String(20), nullable=True)
+    estimated_minutes = Column(Integer, nullable=True)
+    parallel_group = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="daily_tasks")
+    parent = relationship("DailyTask", remote_side=[id], backref="children")
+
+
+class DailySchedule(Base):
+    """某日是否已走出当日流程。"""
+    __tablename__ = "daily_schedules"
+    __table_args__ = (
+        UniqueConstraint("user_id", "schedule_date", name="uq_daily_schedule_user_date"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    schedule_date = Column(Date, nullable=False, index=True)
+    designed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="daily_schedules")
+
+
+class TimeLogNode(Base):
+    """时间节点：点击记下此刻，并填写上一段做了什么。"""
+    __tablename__ = "time_log_nodes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    log_date = Column(Date, nullable=False, index=True)
+    logged_at = Column(DateTime(timezone=True), nullable=False)
+    label = Column(Text, nullable=True)
+    duration_seconds = Column(Integer, default=0)
+    task_id = Column(Integer, ForeignKey("daily_tasks.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="time_log_nodes")
 
 
 class ReadingEntry(Base):

@@ -8,5 +8,6 @@ public class ShuranApp extends Application {
         super.onCreate();
         ReminderNotifications.ensureChannel(this);
         ReminderScheduler.restore(this);
+        TimeLogOverlay.restore(this);
     }
 }

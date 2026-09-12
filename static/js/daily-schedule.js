@@ -1,0 +1,430 @@
+/**
+ * 日程安排：先写下具体行动，再可选进入流程设计。
+ */
+(function () {
+    let day = null;
+    let data = { date: null, designed_at: null, tasks: [] };
+    let mode = 'list';
+    let splitFor = null;
+
+    function todayISO() {
+        const now = new Date();
+        const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+        return local.toISOString().slice(0, 10);
+    }
+
+    function shiftDay(iso, delta) {
+        const d = new Date(iso + 'T00:00:00');
+        d.setDate(d.getDate() + delta);
+        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+        return local.toISOString().slice(0, 10);
+    }
+
+    function escapeHtml(s) {
+        return String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function flatten(tasks, acc) {
+        (tasks || []).forEach((task) => {
+            acc.push(task);
+            flatten(task.children || [], acc);
+        });
+        return acc;
+    }
+
+    function familiarityLabel(value) {
+        if (value === 'familiar') return '熟悉';
+        if (value === 'unfamiliar') return '陌生';
+        return '';
+    }
+
+    function minutesLabel(mins) {
+        if (mins == null) return '';
+        const m = parseInt(mins, 10);
+        if (!m) return '未估时';
+        if (m < 60) return `${m} 分钟`;
+        const h = Math.floor(m / 60);
+        const r = m % 60;
+        return r ? `${h} 小时 ${r} 分` : `${h} 小时`;
+    }
+
+    async function api(path, options) {
+        if (typeof apiRequest !== 'function') throw new Error('请先登录');
+        return apiRequest(`/api/schedule${path}`, options || {});
+    }
+
+    function currentDay() {
+        return day || todayISO();
+    }
+
+    function setHint() {
+        const hint = document.getElementById('scheduleHint');
+        if (!hint) return;
+        if (mode === 'design') {
+            hint.textContent = '熟悉、预估、顺序和并行都可以空着。写完想写的，点「做成当日流程」。';
+            return;
+        }
+        if (mode === 'flow' && data.designed_at) {
+            hint.textContent = '这是今天的流程。需要改时，再回到设计。';
+            return;
+        }
+        hint.textContent = '直接写下今天要做的具体行动。想排成流程时，再进入设计。';
+    }
+
+    function renderToolbar() {
+        const label = document.getElementById('scheduleDateLabel');
+        if (label) label.textContent = currentDay();
+        const designBtn = document.getElementById('scheduleDesignBtn');
+        const doneBtn = document.getElementById('scheduleDoneBtn');
+        const backBtn = document.getElementById('scheduleBackBtn');
+        const addRow = document.getElementById('scheduleAddRow');
+        if (designBtn) designBtn.hidden = mode !== 'list' || !(data.tasks || []).length;
+        if (doneBtn) doneBtn.hidden = mode !== 'design';
+        if (backBtn) {
+            backBtn.hidden = mode === 'list';
+            backBtn.textContent = mode === 'flow' ? '回到清单' : '回到清单';
+        }
+        if (addRow) addRow.hidden = mode !== 'list';
+    }
+
+    function renderTask(task, isChild) {
+        const meta = [];
+        const fam = familiarityLabel(task.familiarity);
+        if (fam) meta.push(`<span class="flow-chip active">${escapeHtml(fam)}</span>`);
+        if (task.estimated_minutes != null) {
+            meta.push(`<span class="flow-chip active">${escapeHtml(minutesLabel(task.estimated_minutes))}</span>`);
+        }
+        const splitOpen = splitFor === task.id;
+        return `
+            <article class="flow-task${isChild ? ' is-child' : ''}${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
+                <div class="flow-task-main">
+                    <input type="checkbox" class="flow-check" data-act="toggle" ${task.completed ? 'checked' : ''} aria-label="完成">
+                    <div class="flow-task-text">${escapeHtml(task.text)}</div>
+                </div>
+                ${meta.length ? `<div class="flow-task-meta">${meta.join('')}</div>` : ''}
+                <div class="flow-task-actions">
+                    <button type="button" data-act="split">拆开</button>
+                    <button type="button" data-act="delete">删除</button>
+                </div>
+                ${splitOpen ? `
+                    <div class="flow-split-row">
+                        <input type="text" maxlength="500" placeholder="写下更具体的一步" data-split-input>
+                        <button type="button" class="flow-ghost-btn" data-act="split-save">加入</button>
+                    </div>` : ''}
+            </article>
+            ${(task.children || []).map((child) => renderTask(child, true)).join('')}
+        `;
+    }
+
+    function renderDesignTask(task, siblings, index, isChild) {
+        const prev = index > 0 ? siblings[index - 1] : null;
+        const parallelOn = !!(prev && task.parallel_group && task.parallel_group === prev.parallel_group);
+        return `
+            <article class="flow-task${isChild ? ' is-child' : ''}" data-task-id="${task.id}">
+                <div class="flow-task-main">
+                    <div class="flow-task-text">${escapeHtml(task.text)}</div>
+                </div>
+                <div class="flow-task-meta">
+                    <button type="button" class="flow-chip${task.familiarity === 'familiar' ? ' active' : ''}" data-act="fam" data-value="familiar">熟悉</button>
+                    <button type="button" class="flow-chip${task.familiarity === 'unfamiliar' ? ' active' : ''}" data-act="fam" data-value="unfamiliar">陌生</button>
+                    <input type="number" class="flow-minutes" min="0" max="1440" placeholder="分钟" value="${task.estimated_minutes ?? ''}" data-act="minutes" aria-label="预估分钟">
+                    <button type="button" class="flow-mini-btn" data-act="up">上移</button>
+                    <button type="button" class="flow-mini-btn" data-act="down">下移</button>
+                    ${index > 0 ? `<button type="button" class="flow-chip${parallelOn ? ' active' : ''}" data-act="parallel">与上一项并行</button>` : ''}
+                </div>
+            </article>
+            ${(task.children || []).map((child, i, arr) => renderDesignTask(child, arr, i, true)).join('')}
+        `;
+    }
+
+    function groupSiblings(tasks) {
+        const groups = [];
+        (tasks || []).forEach((task) => {
+            const last = groups[groups.length - 1];
+            if (
+                last
+                && last.parallel
+                && task.parallel_group
+                && last.group === task.parallel_group
+            ) {
+                last.items.push(task);
+                return;
+            }
+            groups.push({
+                parallel: !!task.parallel_group,
+                group: task.parallel_group,
+                items: [task],
+            });
+        });
+        groups.forEach((group) => {
+            if (group.items.length === 1) group.parallel = false;
+        });
+        return groups;
+    }
+
+    function renderFlowNode(task) {
+        const bits = [escapeHtml(task.text)];
+        const fam = familiarityLabel(task.familiarity);
+        const extra = [];
+        if (fam) extra.push(fam);
+        if (task.estimated_minutes != null) extra.push(minutesLabel(task.estimated_minutes));
+        return `
+            <article class="flow-task${task.completed ? ' is-done' : ''}">
+                <div class="flow-task-text">${bits.join('')}</div>
+                ${extra.length ? `<div class="flow-task-meta">${extra.map((x) => `<span class="flow-chip active">${escapeHtml(x)}</span>`).join('')}</div>` : ''}
+                ${task.children && task.children.length ? renderFlowGroups(task.children) : ''}
+            </article>
+        `;
+    }
+
+    function renderFlowGroups(tasks) {
+        return groupSiblings(tasks).map((group, i) => {
+            const inner = group.items.map(renderFlowNode).join('');
+            if (group.parallel) {
+                return `
+                    <div class="flow-lane">
+                        <div class="flow-step-label">并行</div>
+                        <div class="flow-parallel${group.items.length > 1 ? ' has-many' : ''}">${inner}</div>
+                    </div>`;
+            }
+            return `
+                <div class="flow-lane">
+                    <div class="flow-step-label">第 ${i + 1} 步</div>
+                    ${inner}
+                </div>`;
+        }).join('');
+    }
+
+    function render() {
+        const list = document.getElementById('scheduleList');
+        if (!list) return;
+        renderToolbar();
+        setHint();
+        if (!(data.tasks || []).length) {
+            list.innerHTML = '<p class="flow-empty">还没有写下今天的行动。</p>';
+            return;
+        }
+        if (mode === 'design') {
+            list.innerHTML = data.tasks.map((task, i, arr) => renderDesignTask(task, arr, i, false)).join('');
+            return;
+        }
+        if (mode === 'flow') {
+            list.innerHTML = renderFlowGroups(data.tasks);
+            return;
+        }
+        list.innerHTML = data.tasks.map((task) => renderTask(task, false)).join('');
+    }
+
+    async function load(nextDay) {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            data = { date: currentDay(), designed_at: null, tasks: [] };
+            render();
+            return;
+        }
+        day = nextDay || currentDay();
+        data = await api(`?task_date=${encodeURIComponent(day)}`);
+        if (mode === 'flow' && !data.designed_at) mode = 'list';
+        render();
+    }
+
+    async function addTask(text, parentId) {
+        const value = (text || '').trim();
+        if (!value) return;
+        data = await api('/tasks', {
+            method: 'POST',
+            body: JSON.stringify({
+                text: value,
+                task_date: currentDay(),
+                parent_id: parentId || null,
+            }),
+        });
+        splitFor = null;
+        render();
+    }
+
+    async function patchTask(id, body) {
+        data = await api(`/tasks/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(body),
+        });
+        render();
+    }
+
+    function siblingsOf(taskId) {
+        const walk = (nodes) => {
+            for (let i = 0; i < nodes.length; i += 1) {
+                if (nodes[i].id === taskId) return { list: nodes, index: i };
+                const found = walk(nodes[i].children || []);
+                if (found) return found;
+            }
+            return null;
+        };
+        return walk(data.tasks || []);
+    }
+
+    function nextParallelGroup() {
+        const all = flatten(data.tasks || [], []);
+        const used = all.map((t) => t.parallel_group).filter((v) => v != null);
+        return (used.length ? Math.max.apply(null, used) : 0) + 1;
+    }
+
+    async function moveTask(taskId, dir) {
+        const found = siblingsOf(taskId);
+        if (!found) return;
+        const swap = found.index + dir;
+        if (swap < 0 || swap >= found.list.length) return;
+        const a = found.list[found.index];
+        const b = found.list[swap];
+        await api('/reorder', {
+            method: 'POST',
+            body: JSON.stringify({
+                task_date: currentDay(),
+                items: [
+                    { id: a.id, sort_order: b.sort_order, parallel_group: a.parallel_group, parent_id: a.parent_id },
+                    { id: b.id, sort_order: a.sort_order, parallel_group: b.parallel_group, parent_id: b.parent_id },
+                ],
+            }),
+        });
+        await load(currentDay());
+    }
+
+    async function toggleParallel(taskId) {
+        const found = siblingsOf(taskId);
+        if (!found || found.index === 0) return;
+        const current = found.list[found.index];
+        const prev = found.list[found.index - 1];
+        const on = !!(current.parallel_group && prev.parallel_group && current.parallel_group === prev.parallel_group);
+        if (on) {
+            await patchTask(current.id, { clear_parallel: true });
+            return;
+        }
+        const group = prev.parallel_group || nextParallelGroup();
+        if (!prev.parallel_group) {
+            await api(`/tasks/${prev.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ parallel_group: group }),
+            });
+        }
+        await patchTask(current.id, { parallel_group: group });
+    }
+
+    window.loadDailySchedule = function loadDailySchedule() {
+        return load(currentDay()).catch((e) => {
+            const hint = document.getElementById('scheduleHint');
+            if (hint) hint.textContent = e.message || '加载失败';
+        });
+    };
+
+    function onReady() {
+        const root = document.getElementById('schedule');
+        if (!root || root.dataset.bound) return;
+        root.dataset.bound = '1';
+        day = todayISO();
+
+        document.getElementById('schedulePrevDay')?.addEventListener('click', () => {
+            load(shiftDay(currentDay(), -1));
+        });
+        document.getElementById('scheduleNextDay')?.addEventListener('click', () => {
+            load(shiftDay(currentDay(), 1));
+        });
+        document.getElementById('scheduleAddBtn')?.addEventListener('click', () => {
+            const input = document.getElementById('scheduleAddInput');
+            addTask(input?.value).then(() => {
+                if (input) input.value = '';
+            }).catch((e) => {
+                if (typeof showMessage === 'function') showMessage(e.message, 'error');
+            });
+        });
+        document.getElementById('scheduleAddInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('scheduleAddBtn')?.click();
+            }
+        });
+        document.getElementById('scheduleDesignBtn')?.addEventListener('click', () => {
+            mode = 'design';
+            render();
+        });
+        document.getElementById('scheduleDoneBtn')?.addEventListener('click', async () => {
+            try {
+                data = await api('/design', {
+                    method: 'POST',
+                    body: JSON.stringify({ task_date: currentDay() }),
+                });
+                mode = 'flow';
+                render();
+            } catch (e) {
+                if (typeof showMessage === 'function') showMessage(e.message, 'error');
+            }
+        });
+        document.getElementById('scheduleBackBtn')?.addEventListener('click', () => {
+            mode = 'list';
+            render();
+        });
+
+        document.getElementById('scheduleList')?.addEventListener('click', async (e) => {
+            const article = e.target.closest('[data-task-id]');
+            const act = e.target.dataset.act;
+            if (!article || !act) return;
+            const id = parseInt(article.dataset.taskId, 10);
+            try {
+                if (act === 'toggle') {
+                    await patchTask(id, { completed: e.target.checked });
+                } else if (act === 'delete') {
+                    data = await api(`/tasks/${id}`, { method: 'DELETE' });
+                    render();
+                } else if (act === 'split') {
+                    splitFor = splitFor === id ? null : id;
+                    render();
+                } else if (act === 'split-save') {
+                    const input = article.querySelector('[data-split-input]');
+                    await addTask(input?.value, id);
+                } else if (act === 'fam') {
+                    const value = e.target.dataset.value;
+                    const task = flatten(data.tasks || [], []).find((t) => t.id === id);
+                    if (task && task.familiarity === value) {
+                        await patchTask(id, { clear_familiarity: true });
+                    } else {
+                        await patchTask(id, { familiarity: value });
+                    }
+                } else if (act === 'up') {
+                    await moveTask(id, -1);
+                } else if (act === 'down') {
+                    await moveTask(id, 1);
+                } else if (act === 'parallel') {
+                    await toggleParallel(id);
+                }
+            } catch (err) {
+                if (typeof showMessage === 'function') showMessage(err.message, 'error');
+            }
+        });
+
+        document.getElementById('scheduleList')?.addEventListener('change', async (e) => {
+            if (e.target.dataset.act !== 'minutes') return;
+            const article = e.target.closest('[data-task-id]');
+            if (!article) return;
+            const id = parseInt(article.dataset.taskId, 10);
+            const raw = e.target.value;
+            try {
+                if (raw === '') {
+                    await patchTask(id, { clear_estimate: true });
+                } else {
+                    await patchTask(id, { estimated_minutes: parseInt(raw, 10) });
+                }
+            } catch (err) {
+                if (typeof showMessage === 'function') showMessage(err.message, 'error');
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', onReady);
+    } else {
+        onReady();
+    }
+})();

@@ -41,6 +41,9 @@ public final class ReminderScheduler {
     private static final String KEY_READING_TIME = "reading_time";
     private static final String KEY_READING_SHOWN = "reading_shown_date";
     private static final String KEY_TODOS_JSON = "todos_json";
+    private static final String KEY_LAST_DAILY_FIRE = "last_daily_fire_ms";
+    private static final String KEY_LAST_READING_FIRE = "last_reading_fire_ms";
+    private static final String KEY_LAST_TODO_FIRE_PREFIX = "last_todo_fire_";
 
     static final String ACTION_DAILY = "com.shuran.app.REMINDER_DAILY";
     static final String ACTION_POLL = "com.shuran.app.REMINDER_POLL";
@@ -54,11 +57,15 @@ public final class ReminderScheduler {
     private static final int REQ_POLL = 42;
     private static final int REQ_READING = 43;
     private static final int REQ_TEST = 44;
+    private static final int REQ_DAILY_BACKUP = 541;
+    private static final int REQ_READING_BACKUP = 543;
     private static final int REQ_DAILY_SHOW = 141;
     private static final int REQ_READING_SHOW = 143;
     private static final int REQ_TEST_SHOW = 144;
     private static final int TODO_REQ_BASE = 10000;
+    private static final int TODO_BACKUP_BASE = 20000;
     private static final int TODO_SHOW_BASE = 30000;
+    private static final long FIRE_DEBOUNCE_MS = 90_000L;
     private static final long POLL_INTERVAL_MS = 15 * 60 * 1000L;
     private static final Object LOCK = new Object();
 
@@ -73,6 +80,11 @@ public final class ReminderScheduler {
 
     static SharedPreferences prefs(Context context) {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+
+    public static String sessionToken(Context context) {
+        String token = prefs(context).getString(KEY_TOKEN, "");
+        return token == null ? "" : token;
     }
 
     static String apiOrigin(Context context) {
@@ -158,7 +170,13 @@ public final class ReminderScheduler {
         if (settings.has("enabled")) {
             editor.putBoolean(KEY_USER_DISABLED, !enabled);
         }
-        editor.apply();
+        // 打开总开关并设定时间，就应写入每日闹钟；不要求再点「每天提醒」。
+        if (enabled && !settings.has("dailyEnabled")) {
+            editor.putBoolean(KEY_DAILY_ENABLED, true);
+        } else if (enabled && dailyEnabled) {
+            editor.putBoolean(KEY_DAILY_ENABLED, true);
+        }
+        editor.commit();
 
         if (!system) {
             cancelAll(context);
@@ -269,24 +287,24 @@ public final class ReminderScheduler {
                 context.getString(R.string.notification_daily_body),
                 "/static/self_talk/index.html"
         );
-        if (!ReminderNotifications.areEnabled(context)) {
-            Log.w(TAG, "daily alarm fired but notifications disabled");
-            return;
-        }
         Set<Integer> days = parseDays(prefs(context).getString(KEY_DAYS, "0,1,2,3,4,5,6"));
         int ourDay = Calendar.getInstance().get(Calendar.DAY_OF_WEEK) - 1;
         if (!days.contains(ourDay)) {
+            Log.i(TAG, "daily alarm skipped: weekday " + ourDay);
             return;
         }
-        String today = todayStamp();
-        if (!today.equals(prefs(context).getString(KEY_DAILY_SHOWN, ""))) {
-            ReminderNotifications.showPrepared(
-                    context,
-                    delivery.notificationId,
-                    delivery.notification
-            );
-            prefs(context).edit().putString(KEY_DAILY_SHOWN, today).apply();
+        if (recentlyFired(context, KEY_LAST_DAILY_FIRE)) {
+            Log.i(TAG, "daily alarm debounce");
+            return;
         }
+        // 本地闹钟到点必须弹。不要用 JS /pending 写过的「今日已展示」挡住。
+        ReminderNotifications.showPrepared(
+                context,
+                delivery.notificationId,
+                delivery.notification
+        );
+        markFired(context, KEY_LAST_DAILY_FIRE);
+        prefs(context).edit().putString(KEY_DAILY_SHOWN, todayStamp()).commit();
     }
 
     private static void fillReading(Context context, Delivery delivery) {
@@ -298,19 +316,17 @@ public final class ReminderScheduler {
                 context.getString(R.string.notification_reading_body),
                 "/static/index.html#overview"
         );
-        if (!ReminderNotifications.areEnabled(context)) {
-            Log.w(TAG, "reading alarm fired but notifications disabled");
+        if (recentlyFired(context, KEY_LAST_READING_FIRE)) {
+            Log.i(TAG, "reading alarm debounce");
             return;
         }
-        String today = todayStamp();
-        if (!today.equals(prefs(context).getString(KEY_READING_SHOWN, ""))) {
-            ReminderNotifications.showPrepared(
-                    context,
-                    delivery.notificationId,
-                    delivery.notification
-            );
-            prefs(context).edit().putString(KEY_READING_SHOWN, today).apply();
-        }
+        ReminderNotifications.showPrepared(
+                context,
+                delivery.notificationId,
+                delivery.notification
+        );
+        markFired(context, KEY_LAST_READING_FIRE);
+        prefs(context).edit().putString(KEY_READING_SHOWN, todayStamp()).commit();
     }
 
     private static void fillTodo(Context context, Intent intent, Delivery delivery) {
@@ -327,11 +343,15 @@ public final class ReminderScheduler {
                 text,
                 "/static/index.html#overview"
         );
-        if (!ReminderNotifications.areEnabled(context)) {
-            Log.w(TAG, "todo alarm fired but notifications disabled");
+        String fireKey = KEY_LAST_TODO_FIRE_PREFIX + todoId;
+        if (todoId > 0 && recentlyFired(context, fireKey)) {
+            Log.i(TAG, "todo alarm debounce id=" + todoId);
             return;
         }
         ReminderNotifications.showPrepared(context, delivery.notificationId, delivery.notification);
+        if (todoId > 0) {
+            markFired(context, fireKey);
+        }
     }
 
     private static void fillTest(Context context, Delivery delivery) {
@@ -476,14 +496,19 @@ public final class ReminderScheduler {
             return;
         }
         PendingIntent pi = pending(context, ACTION_DAILY, REQ_DAILY);
+        PendingIntent backup = pending(context, ACTION_DAILY, REQ_DAILY_BACKUP);
+        boolean wantDaily = prefs(context).getBoolean(KEY_DAILY_ENABLED, false)
+                || prefs(context).getBoolean(KEY_ENABLED, false);
         if (!masterOn(context)
-                || !prefs(context).getBoolean(KEY_DAILY_ENABLED, false)
+                || !wantDaily
                 || !prefs(context).getBoolean(KEY_SYSTEM, true)) {
             am.cancel(pi);
+            am.cancel(backup);
             return;
         }
         long at = nextDailyMillis(context);
         setWakeup(context, am, at, pi, REQ_DAILY_SHOW, true);
+        setBackupWakeup(am, at, backup);
         Log.i(TAG, "daily alarm " + formatAt(at));
     }
 
@@ -509,14 +534,17 @@ public final class ReminderScheduler {
             return;
         }
         PendingIntent pi = pending(context, ACTION_READING, REQ_READING);
+        PendingIntent backup = pending(context, ACTION_READING, REQ_READING_BACKUP);
         if (!masterOn(context)
                 || !prefs(context).getBoolean(KEY_READING_ENABLED, false)
                 || !prefs(context).getBoolean(KEY_SYSTEM, true)) {
             am.cancel(pi);
+            am.cancel(backup);
             return;
         }
         long at = nextClockMillis(prefs(context).getString(KEY_READING_TIME, "21:00"));
         setWakeup(context, am, at, pi, REQ_READING_SHOW, true);
+        setBackupWakeup(am, at, backup);
         Log.i(TAG, "reading alarm " + formatAt(at));
     }
 
@@ -552,10 +580,11 @@ public final class ReminderScheduler {
                     context,
                     am,
                     at,
-                    pendingTodo(context, id, text),
+                    pendingTodo(context, id, text, TODO_REQ_BASE + id),
                     TODO_SHOW_BASE + id,
                     true
             );
+            setBackupWakeup(am, at, pendingTodo(context, id, text, TODO_BACKUP_BASE + id));
             Log.i(TAG, "todo " + id + " alarm " + formatAt(at));
         }
     }
@@ -574,7 +603,8 @@ public final class ReminderScheduler {
                 }
                 int id = todo.optInt("id", 0);
                 if (id > 0) {
-                    am.cancel(pendingTodo(context, id, ""));
+                    am.cancel(pendingTodo(context, id, "", TODO_REQ_BASE + id));
+                    am.cancel(pendingTodo(context, id, "", TODO_BACKUP_BASE + id));
                 }
             }
         } catch (Exception ignored) {
@@ -587,8 +617,10 @@ public final class ReminderScheduler {
             return;
         }
         am.cancel(pending(context, ACTION_DAILY, REQ_DAILY));
+        am.cancel(pending(context, ACTION_DAILY, REQ_DAILY_BACKUP));
         am.cancel(pending(context, ACTION_POLL, REQ_POLL));
         am.cancel(pending(context, ACTION_READING, REQ_READING));
+        am.cancel(pending(context, ACTION_READING, REQ_READING_BACKUP));
         am.cancel(pending(context, ACTION_TEST, REQ_TEST));
         cancelTodoAlarms(context);
     }
@@ -633,6 +665,41 @@ public final class ReminderScheduler {
         }
     }
 
+    /**
+     * 国产 ROM 可能丢掉 setAlarmClock。隔 2 秒再挂一只精确闹钟，去重靠 debounce。
+     */
+    private static void setBackupWakeup(AlarmManager am, long at, PendingIntent backup) {
+        if (am == null || backup == null || at <= 0) {
+            return;
+        }
+        long backupAt = at + 2_000L;
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !am.canScheduleExactAlarms()) {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, backupAt, backup);
+                return;
+            }
+            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, backupAt, backup);
+            Log.i(TAG, "backup exact alarm at " + formatAt(backupAt));
+        } catch (SecurityException e) {
+            Log.w(TAG, "backup exact denied", e);
+            try {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, backupAt, backup);
+            } catch (Exception ignored) {
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "backup alarm failed", e);
+        }
+    }
+
+    private static boolean recentlyFired(Context context, String key) {
+        long last = prefs(context).getLong(key, 0L);
+        return last > 0 && System.currentTimeMillis() - last < FIRE_DEBOUNCE_MS;
+    }
+
+    private static void markFired(Context context, String key) {
+        prefs(context).edit().putLong(key, System.currentTimeMillis()).commit();
+    }
+
     private static PendingIntent showActivity(Context context, int requestCode) {
         Intent show = new Intent(context, MainActivity.class);
         show.setAction(Intent.ACTION_MAIN);
@@ -656,7 +723,7 @@ public final class ReminderScheduler {
         return PendingIntent.getBroadcast(context, requestCode, intent, flags);
     }
 
-    private static PendingIntent pendingTodo(Context context, int todoId, String text) {
+    private static PendingIntent pendingTodo(Context context, int todoId, String text, int requestCode) {
         Intent intent = new Intent(context, ReminderAlarmReceiver.class);
         intent.setAction(ACTION_TODO);
         intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
@@ -666,7 +733,7 @@ public final class ReminderScheduler {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             flags |= PendingIntent.FLAG_IMMUTABLE;
         }
-        return PendingIntent.getBroadcast(context, TODO_REQ_BASE + todoId, intent, flags);
+        return PendingIntent.getBroadcast(context, requestCode, intent, flags);
     }
 
     private static long nextClockMillis(String rawTime) {

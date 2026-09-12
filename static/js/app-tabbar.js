@@ -13,6 +13,7 @@
         const hash = (location.hash || '').replace('#', '');
         if (hash === 'upload' || hash === 'actions') return 'actions';
         if (hash === 'stats' || hash === 'guide' || hash === 'user-center' || hash === 'owner') return 'user-center';
+        if (hash === 'schedule' || hash === 'time-log') return 'overview';
         if (hash === 'self-talk') return 'self-talk';
         return 'overview';
     }

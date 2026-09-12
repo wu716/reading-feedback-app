@@ -13,14 +13,19 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
 public final class ReminderNotifications {
-    /** 新渠道：旧渠道 importance 一旦建成就改不了，必须换 id 才能 heads-up。 */
+    private static final String TAG = "ShuranReminder";
+
+    /** 用户可见到点提醒。新 id：旧渠道 importance 一旦建成就改不了。 */
     public static final String CHANNEL_ID = "shuran_alarms_v2";
     public static final String LEGACY_CHANNEL_ID = "shuran_system_reminders";
+    /** 仅给投递用的前台服务，绝不能和用户通知共用，否则国产 ROM 停服务时会把通知一起撤掉。 */
+    public static final String DELIVERY_CHANNEL_ID = "shuran_delivery_silent";
     public static final String EXTRA_OPEN_PATH = "open_path";
     public static final int DAILY_NOTIFICATION_ID = 9001;
     public static final int TEST_NOTIFICATION_ID = 9002;
@@ -51,12 +56,9 @@ public final class ReminderNotifications {
             channel.setShowBadge(true);
             channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
             channel.setBypassDnd(true);
-            Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-            if (sound == null) {
-                sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-            }
+            Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
             AudioAttributes audio = new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build();
             if (sound != null) {
@@ -64,10 +66,23 @@ public final class ReminderNotifications {
             }
             manager.createNotificationChannel(channel);
         } else if (existing.getImportance() < NotificationManager.IMPORTANCE_DEFAULT) {
-            // 用户若关掉渠道无法在代码里抬高；仍确保振动等字段存在。
             existing.enableVibration(true);
             manager.createNotificationChannel(existing);
         }
+
+        if (manager.getNotificationChannel(DELIVERY_CHANNEL_ID) == null) {
+            NotificationChannel silent = new NotificationChannel(
+                    DELIVERY_CHANNEL_ID,
+                    context.getString(R.string.notification_delivery_channel_name),
+                    NotificationManager.IMPORTANCE_LOW
+            );
+            silent.setDescription(context.getString(R.string.notification_delivery_channel_desc));
+            silent.enableVibration(false);
+            silent.setSound(null, null);
+            silent.setShowBadge(false);
+            manager.createNotificationChannel(silent);
+        }
+
         try {
             manager.deleteNotificationChannel(LEGACY_CHANNEL_ID);
         } catch (Exception ignored) {
@@ -116,9 +131,6 @@ public final class ReminderNotifications {
     }
 
     public static void show(Context context, int notificationId, String title, String body, String actionPath) {
-        if (!areEnabled(context)) {
-            return;
-        }
         showPrepared(context, notificationId, build(context, title, body, actionPath));
     }
 
@@ -129,12 +141,31 @@ public final class ReminderNotifications {
         ensureChannel(context);
         NotificationManager manager = context.getSystemService(NotificationManager.class);
         if (manager == null) {
+            Log.e(TAG, "NotificationManager missing");
             return;
         }
         try {
             manager.notify(notificationId, notification);
-        } catch (SecurityException ignored) {
+            Log.i(TAG, "notify posted id=" + notificationId);
+        } catch (SecurityException e) {
+            Log.e(TAG, "notify denied", e);
+        } catch (Exception e) {
+            Log.e(TAG, "notify failed", e);
         }
+    }
+
+    public static Notification buildSilent(Context context) {
+        ensureChannel(context);
+        return new NotificationCompat.Builder(context, DELIVERY_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_stat_notify)
+                .setContentTitle(context.getString(R.string.app_name))
+                .setContentText(context.getString(R.string.notification_delivery_body))
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .setOngoing(true)
+                .setSilent(true)
+                .setShowWhen(false)
+                .build();
     }
 
     public static Notification build(Context context, String title, String body, String actionPath) {
@@ -166,7 +197,7 @@ public final class ReminderNotifications {
                 flags
         );
 
-        Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+        Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
         if (sound == null) {
             sound = Settings.System.DEFAULT_NOTIFICATION_URI;
         }
@@ -177,21 +208,17 @@ public final class ReminderNotifications {
                 .setContentText(safeBody)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(safeBody))
                 .setAutoCancel(true)
-                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setColor(ContextCompat.getColor(context, R.color.primary))
                 .setContentIntent(contentIntent)
-                .setFullScreenIntent(contentIntent, true)
                 .setTicker(safeTitle)
                 .setSound(sound)
                 .setVibrate(new long[]{0, 400, 200, 400})
                 .setOnlyAlertOnce(false);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            builder.setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
-        }
         return builder.build();
     }
 }
