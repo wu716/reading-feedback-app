@@ -14,7 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260825todo1">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260825time1">
-    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260912flow1">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260912flow3">
     <style>
         :root {
             --ink: #1c1b19;
@@ -3356,7 +3356,7 @@
         <section id="overview" class="content-section active">
             <div class="section-header">
                 <h1>今日</h1>
-                <p>点日历给某一天加待办，到点会提醒你</p>
+                <p>写下今天要处理的行动，再排成流程</p>
             </div>
 
             <div class="in-app-reminder-bar" id="inAppReminderBar" hidden></div>
@@ -3408,6 +3408,34 @@
                                 <button type="button" class="todo-add-btn" onclick="addDailyTodo()">＋ 添加</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-row home-schedule-row">
+                    <div class="widget-card full-width home-schedule" id="homeSchedule">
+                        <div class="home-schedule-head">
+                            <div>
+                                <h3 class="block-title">日程安排</h3>
+                                <p class="flow-hint" id="scheduleHint">直接写下今天要做的具体行动。想排成流程时，再进入设计。</p>
+                            </div>
+                            <div class="flow-toolbar">
+                                <div class="flow-date-nav">
+                                    <button type="button" id="schedulePrevDay" aria-label="前一天">‹</button>
+                                    <div class="flow-date-label" id="scheduleDateLabel"></div>
+                                    <button type="button" id="scheduleNextDay" aria-label="后一天">›</button>
+                                </div>
+                                <div>
+                                    <button type="button" class="flow-ghost-btn" id="scheduleBackBtn" hidden>回到清单</button>
+                                    <button type="button" class="flow-ghost-btn" id="scheduleDesignBtn" hidden>设计流程</button>
+                                    <button type="button" class="flow-solid-btn" id="scheduleDoneBtn" hidden>做成当日流程</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flow-add-row" id="scheduleAddRow">
+                            <input type="text" id="scheduleAddInput" maxlength="500" placeholder="写下今天要做的一步，例如：把托福词汇第 3 单元听读三遍">
+                            <button type="button" class="flow-solid-btn" id="scheduleAddBtn">写下</button>
+                        </div>
+                        <div id="scheduleList" class="home-schedule-list"></div>
                     </div>
                 </div>
                 
@@ -3486,10 +3514,6 @@
                             <button type="button" class="quick-action-btn" onclick="viewDashboard()">
                                 <div class="action-icon"></div>
                                 <div class="action-text">查看数据</div>
-                            </button>
-                            <button type="button" class="quick-action-btn" onclick="navigateTo('schedule')">
-                                <div class="action-icon"></div>
-                                <div class="action-text">日程安排</div>
                             </button>
                             <button type="button" class="quick-action-btn" onclick="navigateTo('time-log')">
                                 <div class="action-icon"></div>
@@ -4082,34 +4106,6 @@
             <iframe id="selfTalkFrame" class="self-talk-frame" title="Self-talk" allow="microphone"></iframe>
         </section>
 
-        <section id="schedule" class="content-section">
-            <div class="section-header">
-                <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
-                <h1>日程安排</h1>
-                <p>写下今天要处理的具体行动</p>
-            </div>
-            <div class="flow-page">
-                <div class="flow-toolbar">
-                    <div class="flow-date-nav">
-                        <button type="button" id="schedulePrevDay">前一天</button>
-                        <div class="flow-date-label" id="scheduleDateLabel"></div>
-                        <button type="button" id="scheduleNextDay">后一天</button>
-                    </div>
-                    <div>
-                        <button type="button" class="flow-ghost-btn" id="scheduleBackBtn" hidden>回到清单</button>
-                        <button type="button" class="flow-ghost-btn" id="scheduleDesignBtn" hidden>设计今日流程</button>
-                        <button type="button" class="flow-solid-btn" id="scheduleDoneBtn" hidden>做成当日流程</button>
-                    </div>
-                </div>
-                <p class="flow-hint" id="scheduleHint">直接写下今天要做的具体行动。想排成流程时，再进入设计。</p>
-                <div class="flow-add-row" id="scheduleAddRow">
-                    <input type="text" id="scheduleAddInput" maxlength="500" placeholder="例如：把托福词汇第 3 单元听读三遍">
-                    <button type="button" class="flow-solid-btn" id="scheduleAddBtn">写下</button>
-                </div>
-                <div id="scheduleList"></div>
-            </div>
-        </section>
-
         <section id="time-log" class="content-section">
             <div class="section-header">
                 <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
@@ -4153,9 +4149,9 @@
             <div class="guide-card">
                 <h3>1. 今日</h3>
                 <ol>
-                    <li>打开应用先看今天要做的事。</li>
-                    <li>点日历上的某一天，可以为那天添加待办。</li>
-                    <li>添加时可选提醒时间；也可设置每日阅读时间。到点后会收到系统通知。请在「我的」允许通知、精确闹钟，并关闭电池优化。</li>
+                    <li>打开应用先看今天要做的事。日程安排就在日历下面，是今天的核心。</li>
+                    <li>直接写下具体行动。太大就拆开；想排成流程时，再标熟悉或陌生、预估时间、定顺序和并行。</li>
+                    <li>点日历上的某一天，可以为那天添加待办。添加时可选提醒时间；也可设置每日阅读时间。到点后会收到系统通知。</li>
                 </ol>
             </div>
             <div class="guide-card">
@@ -4171,16 +4167,7 @@
                 <p>用录音记下内心对话。完成行动或到了提醒时间，可以来这里复盘。</p>
             </div>
             <div class="guide-card">
-                <h3>4. 日程安排</h3>
-                <ol>
-                    <li>先写下今天要做的具体行动，不必先写一条很粗的再拆。</li>
-                    <li>某条仍然太大，再拆成更小的一步。拆出来的每一层都可以标熟悉或陌生、写预估时间。</li>
-                    <li>想把今天做成流程时，再进入设计：分类、估时、定顺序、标哪些可以并行。这些都可以空着。</li>
-                    <li>点「做成当日流程」，得到今天的流程。时间日志是另一件事，不必先排流程才能记时间。</li>
-                </ol>
-            </div>
-            <div class="guide-card">
-                <h3>5. 时间日志</h3>
+                <h3>4. 时间日志</h3>
                 <ol>
                     <li>点「记」或「记下此刻」，先落下时间点。</li>
                     <li>再写这一段做了什么。也可以从当天的行动里点选。</li>
@@ -4188,7 +4175,7 @@
                 </ol>
             </div>
             <div class="guide-card">
-                <h3>6. 我的</h3>
+                <h3>5. 我的</h3>
                 <p>改昵称、开关提醒、查看实践统计和数据看板。这份说明随时可以再打开。</p>
             </div>
         </section>
@@ -4724,6 +4711,12 @@
         }
 
         function navigateTo(sectionId) {
+            let scrollSchedule = false;
+            if (sectionId === 'schedule') {
+                sectionId = 'overview';
+                scrollSchedule = true;
+            }
+
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
             });
@@ -4745,7 +4738,7 @@
                 if (sectionId === 'self-talk') {
                     ensureSelfTalkFrame();
                 }
-                if (sectionId === 'schedule' && typeof loadDailySchedule === 'function') {
+                if (sectionId === 'overview' && typeof loadDailySchedule === 'function') {
                     loadDailySchedule();
                 }
                 if (sectionId === 'time-log' && typeof loadTimeLog === 'function') {
@@ -4762,7 +4755,13 @@
             closeMobileSidebar();
             updateHeaderBackButton();
             if (typeof syncAppTabbar === 'function') syncAppTabbar();
-            window.scrollTo(0, 0);
+            if (scrollSchedule) {
+                requestAnimationFrame(() => {
+                    document.getElementById('homeSchedule')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            } else {
+                window.scrollTo(0, 0);
+            }
         }
 
         function openNotesFromActions() {
@@ -4773,7 +4772,13 @@
         // 支持浏览器前进/后退
         window.addEventListener('hashchange', () => {
             const hash = location.hash.slice(1);
-            if (hash && document.getElementById(hash)) {
+            if (hash === 'schedule') {
+                if (currentSectionId() !== 'overview') {
+                    navigateTo('schedule');
+                } else {
+                    document.getElementById('homeSchedule')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } else if (hash && document.getElementById(hash)) {
                 if (currentSectionId() !== hash) {
                     navigateTo(hash);
                 }
@@ -4789,7 +4794,9 @@
         // 页面加载时根据hash显示对应区域
         window.addEventListener('DOMContentLoaded', async () => {
             const hash = location.hash.slice(1);
-            if (hash && document.getElementById(hash)) {
+            if (hash === 'schedule') {
+                navigateTo('schedule');
+            } else if (hash && document.getElementById(hash)) {
                 navigateTo(hash);
             }
             
@@ -5597,6 +5604,7 @@
             const tasks = [];
             if (typeof loadActions === 'function') tasks.push(loadActions());
             if (typeof loadTodayDashboard === 'function') tasks.push(loadTodayDashboard());
+            if (typeof loadDailySchedule === 'function') tasks.push(loadDailySchedule());
             if (typeof syncTimeLogChrome === 'function') syncTimeLogChrome();
             if (typeof loadPersonalStats === 'function') tasks.push(loadPersonalStats());
             if (typeof loadCurrentViewData === 'function') tasks.push(loadCurrentViewData());
@@ -7940,7 +7948,7 @@
     <script src="/static/reminder_notification.js?v=20260912flow2"></script>
     <script src="/static/js/app-tabbar.js?v=20260909invite2"></script>
     <script src="/static/js/today-dashboard.js?v=20260825time1"></script>
-    <script src="/static/js/daily-schedule.js?v=20260912flow1"></script>
+    <script src="/static/js/daily-schedule.js?v=20260912flow3"></script>
     <script src="/static/js/time-log.js?v=20260912flow1"></script>
 </body>
 </html>

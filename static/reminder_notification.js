@@ -1007,7 +1007,7 @@ function fillAppVersionLabel() {
     }
     label.textContent = '网页版，打开即是最新';
     if (hint) {
-        hint.textContent = '电脑不用安装客户端。日程安排和时间日志在今日和「我的」里。检查更新只给安卓手机。';
+        hint.textContent = '电脑不用安装客户端。日程安排在今日页日历下方。检查更新只给安卓手机。';
     }
     if (btn) btn.textContent = '安卓下载';
 }
