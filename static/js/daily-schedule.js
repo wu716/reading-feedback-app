@@ -61,6 +61,14 @@
         return day || todayISO();
     }
 
+    function dayLabel(iso) {
+        const today = todayISO();
+        if (iso === today) return '今天';
+        const parts = String(iso).split('-');
+        if (parts.length < 3) return iso;
+        return `${Number(parts[1])}月${Number(parts[2])}日`;
+    }
+
     function setHint() {
         const hint = document.getElementById('scheduleHint');
         if (!hint) return;
@@ -77,7 +85,7 @@
 
     function renderToolbar() {
         const label = document.getElementById('scheduleDateLabel');
-        if (label) label.textContent = currentDay();
+        if (label) label.textContent = dayLabel(currentDay());
         const designBtn = document.getElementById('scheduleDesignBtn');
         const doneBtn = document.getElementById('scheduleDoneBtn');
         const backBtn = document.getElementById('scheduleBackBtn');
@@ -94,9 +102,9 @@
     function renderTask(task, isChild) {
         const meta = [];
         const fam = familiarityLabel(task.familiarity);
-        if (fam) meta.push(`<span class="flow-chip active">${escapeHtml(fam)}</span>`);
+        if (fam) meta.push(`<span class="flow-mark">${escapeHtml(fam)}</span>`);
         if (task.estimated_minutes != null) {
-            meta.push(`<span class="flow-chip active">${escapeHtml(minutesLabel(task.estimated_minutes))}</span>`);
+            meta.push(`<span class="flow-mark">${escapeHtml(minutesLabel(task.estimated_minutes))}</span>`);
         }
         const splitOpen = splitFor === task.id;
         return `
@@ -175,7 +183,7 @@
         return `
             <article class="flow-task${task.completed ? ' is-done' : ''}">
                 <div class="flow-task-text">${bits.join('')}</div>
-                ${extra.length ? `<div class="flow-task-meta">${extra.map((x) => `<span class="flow-chip active">${escapeHtml(x)}</span>`).join('')}</div>` : ''}
+                ${extra.length ? `<div class="flow-task-meta">${extra.map((x) => `<span class="flow-mark">${escapeHtml(x)}</span>`).join('')}</div>` : ''}
                 ${task.children && task.children.length ? renderFlowGroups(task.children) : ''}
             </article>
         `;
@@ -205,7 +213,7 @@
         renderToolbar();
         setHint();
         if (!(data.tasks || []).length) {
-            list.innerHTML = '<p class="flow-empty">还没有写下今天的行动。</p>';
+            list.innerHTML = '<p class="flow-empty">还没有写下今天的行动。从上面那一行开始。</p>';
             return;
         }
         if (mode === 'design') {
@@ -321,7 +329,7 @@
     };
 
     function onReady() {
-        const root = document.getElementById('schedule');
+        const root = document.getElementById('homeSchedule') || document.getElementById('schedule');
         if (!root || root.dataset.bound) return;
         root.dataset.bound = '1';
         day = todayISO();
