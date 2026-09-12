@@ -326,6 +326,16 @@ public class MainActivity extends Activity {
         }
     }
 
+    void openOverlaySettings() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } catch (Exception e) {
+            openAppSettings();
+        }
+    }
+
     void openExactAlarmSettings() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             return;
@@ -512,6 +522,7 @@ public class MainActivity extends Activity {
         super.onResume();
         webView.onResume();
         ReminderScheduler.restore(this);
+        TimeLogOverlay.restore(this);
         webView.evaluateJavascript(
                 "(function(){try{if(window.reminderNotificationService&&window.reminderNotificationService.refreshReliabilityHints){window.reminderNotificationService.refreshReliabilityHints();}}catch(e){}})()",
                 null

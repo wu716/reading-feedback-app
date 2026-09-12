@@ -73,6 +73,7 @@ public class ReminderJsBridge {
                     data.optString("token", ""),
                     data.optString("origin", "")
             );
+            TimeLogOverlay.restore(activity.getApplicationContext());
         } catch (Exception e) {
             Log.e(TAG, "syncSession failed", e);
         }
@@ -226,5 +227,25 @@ public class ReminderJsBridge {
     @JavascriptInterface
     public String readRecordingBase64() {
         return activity.getNativeRecorder().readBase64();
+    }
+
+    @JavascriptInterface
+    public boolean hasOverlayPermission() {
+        return TimeLogOverlay.hasPermission(activity);
+    }
+
+    @JavascriptInterface
+    public void requestOverlayPermission() {
+        activity.runOnUiThread(activity::openOverlaySettings);
+    }
+
+    @JavascriptInterface
+    public boolean isTimeLogOverlayEnabled() {
+        return TimeLogOverlay.isEnabled(activity);
+    }
+
+    @JavascriptInterface
+    public void setTimeLogOverlayEnabled(boolean enabled) {
+        activity.runOnUiThread(() -> TimeLogOverlay.setEnabled(activity, enabled));
     }
 }

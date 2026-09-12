@@ -24,6 +24,7 @@ public class BootReceiver extends BroadcastReceiver {
             try {
                 ReminderNotifications.ensureChannel(context);
                 ReminderScheduler.restore(context.getApplicationContext());
+                TimeLogOverlay.restore(context.getApplicationContext());
             } catch (Exception ignored) {
             }
         }

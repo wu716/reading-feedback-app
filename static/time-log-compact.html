@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>书然 · 时间节点</title>
+    <link rel="icon" href="/static/icons/app-icon-1024.png">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260912flow1">
+    <style>
+        body {
+            margin: 0;
+            background: #f3efe6;
+            color: #1c1b19;
+            font-family: "Noto Serif SC", "Songti SC", serif;
+            padding: 18px 16px 24px;
+        }
+        h1 {
+            font-size: 1.15rem;
+            margin: 0 0 8px;
+        }
+        .flow-page { max-width: none; }
+        .tl-compact-page .tl-fab { display: none; }
+    </style>
+</head>
+<body class="tl-compact-page">
+    <div class="flow-page">
+        <h1>时间节点</h1>
+        <p class="flow-hint">把这个小窗留在桌面上。做完一段，点「记下此刻」。时间先落下，再写这段做了什么。</p>
+        <div class="flow-toolbar">
+            <div class="flow-date-nav">
+                <button type="button" id="timeLogPrevDay">前一天</button>
+                <div class="flow-date-label" id="timeLogDateLabel"></div>
+                <button type="button" id="timeLogNextDay">后一天</button>
+            </div>
+            <button type="button" class="flow-solid-btn" id="timeLogPunchBtn">记下此刻</button>
+        </div>
+        <div id="timeLogList" class="tl-list"></div>
+        <div class="tl-total" id="timeLogTotal"></div>
+    </div>
+    <script>
+        async function apiRequest(endpoint, options = {}) {
+            const token = localStorage.getItem('authToken');
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers.Authorization = 'Bearer ' + token;
+            const response = await fetch(endpoint, { ...options, headers });
+            const text = await response.text();
+            let data = null;
+            try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+            if (!response.ok) {
+                const detail = data && data.detail ? data.detail : '请求失败';
+                throw new Error(typeof detail === 'string' ? detail : '请求失败');
+            }
+            return data;
+        }
+        function showMessage(message) {
+            const total = document.getElementById('timeLogTotal');
+            if (total) total.textContent = message;
+        }
+    </script>
+    <script src="/static/js/time-log.js?v=20260912flow1"></script>
+</body>
+</html>

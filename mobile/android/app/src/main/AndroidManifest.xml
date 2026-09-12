@@ -15,6 +15,7 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
@@ -52,10 +53,23 @@
         <receiver
             android:name=".ReminderAlarmReceiver"
             android:exported="false"
-            android:enabled="true" />
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="com.shuran.app.REMINDER_DAILY" />
+                <action android:name="com.shuran.app.REMINDER_READING" />
+                <action android:name="com.shuran.app.REMINDER_TODO" />
+                <action android:name="com.shuran.app.REMINDER_POLL" />
+                <action android:name="com.shuran.app.REMINDER_TEST" />
+            </intent-filter>
+        </receiver>
 
         <service
             android:name=".ReminderDeliveryService"
+            android:exported="false"
+            android:stopWithTask="false" />
+
+        <service
+            android:name=".TimeLogOverlayService"
             android:exported="false"
             android:stopWithTask="false" />
 

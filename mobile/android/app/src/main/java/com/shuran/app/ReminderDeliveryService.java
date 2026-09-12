@@ -1,6 +1,5 @@
 package com.shuran.app;
 
-import android.app.Notification;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Build;
@@ -9,12 +8,13 @@ import android.os.PowerManager;
 import android.util.Log;
 
 /**
- * AlarmManager 触发后用短前台服务投递通知。
- * 国产 ROM 上纯 BroadcastReceiver 后台 notify 经常被丢掉；FGS 通知一定会进通知栏。
+ * 闹钟到点后用短前台服务保住进程，再单独 notify 用户通知。
+ * 占位通知和用户通知必须不同 id / 不同渠道，停服务时不能把用户通知撤掉。
  */
 public class ReminderDeliveryService extends Service {
     private static final String TAG = "ShuranReminder";
     private static final long WAKE_MS = 60_000L;
+    private static final long KEEP_ALIVE_MS = 4_000L;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -32,24 +32,21 @@ public class ReminderDeliveryService extends Service {
             }
         }
 
-        ReminderScheduler.Delivery delivery = ReminderScheduler.deliverLocal(this, intent);
-        Notification notification = delivery.notification;
-        if (notification == null) {
-            notification = ReminderNotifications.build(
-                    this,
-                    getString(R.string.notification_default_title),
-                    getString(R.string.notification_daily_body),
-                    "/static/index.html"
-            );
-        }
-        int notifyId = delivery.notificationId != 0
-                ? delivery.notificationId
-                : ReminderNotifications.DELIVERY_NOTIFICATION_ID;
         try {
-            startForeground(notifyId, notification);
+            startForeground(
+                    ReminderNotifications.DELIVERY_NOTIFICATION_ID,
+                    ReminderNotifications.buildSilent(this)
+            );
         } catch (Exception e) {
             Log.e(TAG, "startForeground failed", e);
-            ReminderNotifications.showPrepared(this, notifyId, notification);
+        }
+
+        ReminderScheduler.Delivery delivery;
+        try {
+            delivery = ReminderScheduler.deliverLocal(this, intent);
+        } catch (Exception e) {
+            Log.e(TAG, "delivery deliverLocal failed", e);
+            delivery = new ReminderScheduler.Delivery();
         }
 
         final boolean poll = delivery.poll;
@@ -58,14 +55,19 @@ public class ReminderDeliveryService extends Service {
                 if (poll) {
                     ReminderScheduler.pollNowBlocking(this);
                 }
+                try {
+                    Thread.sleep(KEEP_ALIVE_MS);
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
             } catch (Exception e) {
                 Log.e(TAG, "delivery poll failed", e);
             } finally {
                 try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        stopForeground(STOP_FOREGROUND_DETACH);
+                        stopForeground(STOP_FOREGROUND_REMOVE);
                     } else {
-                        stopForeground(false);
+                        stopForeground(true);
                     }
                 } catch (Exception ignored) {
                 }
