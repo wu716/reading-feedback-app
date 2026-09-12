@@ -965,24 +965,28 @@ function shuranCopyText(text) {
     return Promise.resolve(fallback());
 }
 
+function shuranIsPhoneApp() {
+    const shell = shuranShellInfo();
+    return !!(shell.hasUpdater || /ShuranApp/i.test(navigator.userAgent || ''));
+}
+
 function shuranStartAppUpdate() {
     const shell = shuranShellInfo();
     const origin = window.location.origin || 'http://47.236.122.207:8000';
     const pageUrl = origin + '/download';
+    if (!shuranIsPhoneApp()) {
+        if (typeof showMessage === 'function') {
+            showMessage('电脑用的是网页，刷新即可。安装包只给安卓手机，这里不会下载。', 'info');
+        }
+        return;
+    }
     if (shell.hasUpdater) {
         window.ShuranNative.checkUpdate();
         return;
     }
-    if (shell.inApp) {
-        shuranCopyText(pageUrl).then(function (ok) {
-            window.location.href = pageUrl + '?from=app' + (ok ? '&copied=1' : '');
-        });
-        return;
-    }
-    if (typeof showMessage === 'function') {
-        showMessage('电脑端不用安装，刷新本页就是最新网页。安卓才需要下载安装包。', 'info');
-    }
-    window.location.href = pageUrl;
+    shuranCopyText(pageUrl).then(function (ok) {
+        window.location.href = pageUrl + '?from=app' + (ok ? '&copied=1' : '');
+    });
 }
 
 function fillAppVersionLabel() {
@@ -1007,9 +1011,9 @@ function fillAppVersionLabel() {
     }
     label.textContent = '网页版，打开即是最新';
     if (hint) {
-        hint.textContent = '电脑不用安装客户端。日程安排在今日页日历下方。检查更新只给安卓手机。';
+        hint.textContent = '电脑用浏览器打开就是最新页，不必安装。检查更新只出现在安卓手机上。';
     }
-    if (btn) btn.textContent = '安卓下载';
+    if (btn) btn.hidden = true;
 }
 
 window.shuranStartAppUpdate = shuranStartAppUpdate;

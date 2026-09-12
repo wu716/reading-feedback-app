@@ -175,7 +175,9 @@
     <script>
         const ua = navigator.userAgent || "";
         const inWeChat = /MicroMessenger/i.test(ua);
+        const inAndroid = /Android/i.test(ua);
         const inShuranApp = /ShuranApp/i.test(ua) || !!window.ShuranNative;
+        const onDesktop = !inAndroid && !inShuranApp;
         const hasNativeUpdater = !!(window.ShuranNative && typeof window.ShuranNative.checkUpdate === "function");
         const needsBrowserInstall = inShuranApp && !hasNativeUpdater;
         const alreadyCopied = /(?:^|[?&])copied=1(?:&|$)/.test(window.location.search);
@@ -252,6 +254,20 @@
             return ok;
         }
 
+        if (onDesktop) {
+            document.getElementById("subText").textContent = "电脑请继续用网页，不必安装";
+            meta.textContent = "安装包只给安卓手机。在电脑上下载会弹出「未安装应用」。";
+            btn.removeAttribute("href");
+            btn.textContent = "请用手机打开本页";
+            btn.style.pointerEvents = "none";
+            btn.style.opacity = "0.45";
+            apkLink.removeAttribute("href");
+            apkLink.style.display = "none";
+            tipsList.innerHTML = ""
+                + "<li>电脑刷新书然网页即可，没有电脑安装包</li>"
+                + "<li>需要更新手机 App 时，用安卓浏览器打开本页</li>";
+        }
+
         if (inWeChat) {
             mask.classList.add("show");
         }
@@ -296,7 +312,7 @@
                 }
                 const version = data.versionName ? ("v" + data.versionName + " · ") : "";
                 meta.textContent = version + "约 " + data.size_mb + " MB";
-                if (!needsBrowserInstall) {
+                if (!needsBrowserInstall && !onDesktop) {
                     btn.style.pointerEvents = "auto";
                     btn.style.opacity = "1";
                 }
@@ -306,6 +322,10 @@
         }
 
         btn.addEventListener("click", function (event) {
+            if (onDesktop) {
+                event.preventDefault();
+                return;
+            }
             if (inWeChat) {
                 event.preventDefault();
                 mask.classList.add("show");
