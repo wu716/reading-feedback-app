@@ -2,5 +2,6 @@
   "versionCode": 12,
   "versionName": "1.4.0",
   "filename": "shuran.apk",
-  "notes": "新增日程安排与时间日志；手机可开悬浮窗记下时间节点。"
+  "require_shell": false,
+  "notes": "页面功能随服务器更新，打开即是最新。此安装包只增加悬浮窗等系统能力，不为新界面而换。"
 }

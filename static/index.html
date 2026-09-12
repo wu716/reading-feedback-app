@@ -12,9 +12,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260825todo1">
+    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260912nav1">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260825time1">
-    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260912flow3">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260912nav1">
     <style>
         :root {
             --ink: #1c1b19;
@@ -3332,6 +3332,10 @@
                 <span class="nav-icon">今</span>
                 <span class="nav-text">今日</span>
             </div>
+            <div class="nav-item" data-section="schedule" onclick="navigateTo('schedule')">
+                <span class="nav-icon">程</span>
+                <span class="nav-text">日程</span>
+            </div>
             <div class="nav-item" data-section="actions" onclick="navigateTo('actions')">
                 <span class="nav-icon">行</span>
                 <span class="nav-text">行动</span>
@@ -3356,7 +3360,7 @@
         <section id="overview" class="content-section active">
             <div class="section-header">
                 <h1>今日</h1>
-                <p>写下今天要处理的行动，再排成流程</p>
+                <p>看日历、待办和今天的进展</p>
             </div>
 
             <div class="in-app-reminder-bar" id="inAppReminderBar" hidden></div>
@@ -3408,34 +3412,6 @@
                                 <button type="button" class="todo-add-btn" onclick="addDailyTodo()">＋ 添加</button>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="dashboard-row home-schedule-row">
-                    <div class="widget-card full-width home-schedule" id="homeSchedule">
-                        <div class="home-schedule-head">
-                            <div>
-                                <h3 class="block-title">日程安排</h3>
-                                <p class="flow-hint" id="scheduleHint">直接写下今天要做的具体行动。想排成流程时，再进入设计。</p>
-                            </div>
-                            <div class="flow-toolbar">
-                                <div class="flow-date-nav">
-                                    <button type="button" id="schedulePrevDay" aria-label="前一天">‹</button>
-                                    <div class="flow-date-label" id="scheduleDateLabel"></div>
-                                    <button type="button" id="scheduleNextDay" aria-label="后一天">›</button>
-                                </div>
-                                <div>
-                                    <button type="button" class="flow-ghost-btn" id="scheduleBackBtn" hidden>回到清单</button>
-                                    <button type="button" class="flow-ghost-btn" id="scheduleDesignBtn" hidden>设计流程</button>
-                                    <button type="button" class="flow-solid-btn" id="scheduleDoneBtn" hidden>做成当日流程</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flow-add-row" id="scheduleAddRow">
-                            <input type="text" id="scheduleAddInput" maxlength="500" placeholder="写下今天要做的一步，例如：把托福词汇第 3 单元听读三遍">
-                            <button type="button" class="flow-solid-btn" id="scheduleAddBtn">写下</button>
-                        </div>
-                        <div id="scheduleList" class="home-schedule-list"></div>
                     </div>
                 </div>
                 
@@ -3565,6 +3541,35 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <section id="schedule" class="content-section">
+            <div class="section-header">
+                <h1>日程安排</h1>
+                <p>直接写下今天要做的具体行动。想排成流程时，再进入设计。</p>
+            </div>
+            <div class="home-schedule flow-page" id="homeSchedule">
+                <div class="home-schedule-head">
+                    <p class="flow-hint" id="scheduleHint">太大就拆开。熟悉、预估、顺序和并行都可以先空着。</p>
+                    <div class="flow-toolbar">
+                        <div class="flow-date-nav">
+                            <button type="button" id="schedulePrevDay" aria-label="前一天">‹</button>
+                            <div class="flow-date-label" id="scheduleDateLabel"></div>
+                            <button type="button" id="scheduleNextDay" aria-label="后一天">›</button>
+                        </div>
+                        <div>
+                            <button type="button" class="flow-ghost-btn" id="scheduleBackBtn" hidden>回到清单</button>
+                            <button type="button" class="flow-ghost-btn" id="scheduleDesignBtn" hidden>设计流程</button>
+                            <button type="button" class="flow-solid-btn" id="scheduleDoneBtn" hidden>做成当日流程</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="flow-add-row" id="scheduleAddRow">
+                    <input type="text" id="scheduleAddInput" maxlength="500" placeholder="写下今天要做的一步，例如：把托福词汇第 3 单元听读三遍">
+                    <button type="button" class="flow-solid-btn" id="scheduleAddBtn">写下</button>
+                </div>
+                <div id="scheduleList" class="home-schedule-list"></div>
             </div>
         </section>
         
@@ -3749,13 +3754,6 @@
                         <span class="me-row-main"><span class="me-row-title">站长开通</span></span>
                         <span class="me-chevron">›</span>
                     </button>
-                    <button type="button" class="me-row" onclick="navigateTo('schedule')">
-                        <span class="me-row-icon" aria-hidden="true">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h13"/></svg>
-                        </span>
-                        <span class="me-row-main"><span class="me-row-title">日程安排</span></span>
-                        <span class="me-chevron">›</span>
-                    </button>
                     <button type="button" class="me-row" onclick="navigateTo('time-log')">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
@@ -3792,12 +3790,12 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M5 21h14"/></svg>
                         </span>
                         <div class="me-row-main">
-                            <div class="me-row-title">版本更新</div>
-                            <div class="me-row-desc" id="appVersionLabel">正在识别版本…</div>
+                            <div class="me-row-title">当前内容</div>
+                            <div class="me-row-desc" id="appVersionLabel">正在识别…</div>
                         </div>
-                        <button type="button" class="me-link-btn" id="appUpdateBtn" onclick="shuranStartAppUpdate()">检查更新</button>
+                        <button type="button" class="me-link-btn" id="appUpdateBtn" hidden onclick="shuranStartAppUpdate()">换安装包</button>
                     </div>
-                    <p class="me-hint" id="appVersionHint">电脑打开网页即用，不必安装。这项检查更新只给安卓手机。</p>
+                    <p class="me-hint" id="appVersionHint">打开看到的就是服务器上的页面，不必点更新。</p>
                 </div>
 
                 <div class="me-group reminder-settings-section">
@@ -4149,13 +4147,19 @@
             <div class="guide-card">
                 <h3>1. 今日</h3>
                 <ol>
-                    <li>打开应用先看今天要做的事。日程安排就在日历下面，是今天的核心。</li>
-                    <li>直接写下具体行动。太大就拆开；想排成流程时，再标熟悉或陌生、预估时间、定顺序和并行。</li>
+                    <li>打开先看日历、待办和今天的进展。</li>
                     <li>点日历上的某一天，可以为那天添加待办。添加时可选提醒时间；也可设置每日阅读时间。到点后会收到系统通知。</li>
                 </ol>
             </div>
             <div class="guide-card">
-                <h3>2. 行动</h3>
+                <h3>2. 日程</h3>
+                <ol>
+                    <li>和「今日」「行动」一样，在下面的导航里。用来写下今天要处理的具体行动，再排成流程。</li>
+                    <li>直接写下即可。太大就拆开；想排成流程时，再标熟悉或陌生、预估时间、定顺序和并行。</li>
+                </ol>
+            </div>
+            <div class="guide-card">
+                <h3>3. 行动</h3>
                 <ol>
                     <li>这里管理从书里抽出的行动项，按情境或习惯筛选。</li>
                     <li>点「读书笔记」记录阅读内容，或让 AI 从笔记抽取行动项。</li>
@@ -4163,11 +4167,11 @@
                 </ol>
             </div>
             <div class="guide-card">
-                <h3>3. Self-talk</h3>
+                <h3>4. Self-talk</h3>
                 <p>用录音记下内心对话。完成行动或到了提醒时间，可以来这里复盘。</p>
             </div>
             <div class="guide-card">
-                <h3>4. 时间日志</h3>
+                <h3>5. 时间日志</h3>
                 <ol>
                     <li>点「记」或「记下此刻」，先落下时间点。</li>
                     <li>再写这一段做了什么。也可以从当天的行动里点选。</li>
@@ -4175,7 +4179,7 @@
                 </ol>
             </div>
             <div class="guide-card">
-                <h3>5. 我的</h3>
+                <h3>6. 我的</h3>
                 <p>改昵称、开关提醒、查看实践统计和数据看板。这份说明随时可以再打开。</p>
             </div>
         </section>
@@ -4625,8 +4629,8 @@
             if (overlay) overlay.classList.toggle('visible', open);
         }
 
-        const PRIMARY_TABS = new Set(['overview', 'actions', 'self-talk', 'user-center']);
-        const SECTION_PARENT = { upload: 'actions', stats: 'user-center', guide: 'user-center', owner: 'user-center', schedule: 'overview', 'time-log': 'overview' };
+        const PRIMARY_TABS = new Set(['overview', 'schedule', 'actions', 'self-talk', 'user-center']);
+        const SECTION_PARENT = { upload: 'actions', stats: 'user-center', guide: 'user-center', owner: 'user-center', 'time-log': 'user-center' };
 
         function primaryTabFor(sectionId) {
             return SECTION_PARENT[sectionId] || sectionId;
@@ -4711,12 +4715,6 @@
         }
 
         function navigateTo(sectionId) {
-            let scrollSchedule = false;
-            if (sectionId === 'schedule') {
-                sectionId = 'overview';
-                scrollSchedule = true;
-            }
-
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
             });
@@ -4738,7 +4736,7 @@
                 if (sectionId === 'self-talk') {
                     ensureSelfTalkFrame();
                 }
-                if (sectionId === 'overview' && typeof loadDailySchedule === 'function') {
+                if (sectionId === 'schedule' && typeof loadDailySchedule === 'function') {
                     loadDailySchedule();
                 }
                 if (sectionId === 'time-log' && typeof loadTimeLog === 'function') {
@@ -4755,13 +4753,7 @@
             closeMobileSidebar();
             updateHeaderBackButton();
             if (typeof syncAppTabbar === 'function') syncAppTabbar();
-            if (scrollSchedule) {
-                requestAnimationFrame(() => {
-                    document.getElementById('homeSchedule')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                });
-            } else {
-                window.scrollTo(0, 0);
-            }
+            window.scrollTo(0, 0);
         }
 
         function openNotesFromActions() {
@@ -4772,13 +4764,7 @@
         // 支持浏览器前进/后退
         window.addEventListener('hashchange', () => {
             const hash = location.hash.slice(1);
-            if (hash === 'schedule') {
-                if (currentSectionId() !== 'overview') {
-                    navigateTo('schedule');
-                } else {
-                    document.getElementById('homeSchedule')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            } else if (hash && document.getElementById(hash)) {
+            if (hash && document.getElementById(hash)) {
                 if (currentSectionId() !== hash) {
                     navigateTo(hash);
                 }
@@ -4794,9 +4780,7 @@
         // 页面加载时根据hash显示对应区域
         window.addEventListener('DOMContentLoaded', async () => {
             const hash = location.hash.slice(1);
-            if (hash === 'schedule') {
-                navigateTo('schedule');
-            } else if (hash && document.getElementById(hash)) {
+            if (hash && document.getElementById(hash)) {
                 navigateTo(hash);
             }
             
@@ -7945,8 +7929,8 @@
     
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260825time1"></script>
-    <script src="/static/reminder_notification.js?v=20260912flow4"></script>
-    <script src="/static/js/app-tabbar.js?v=20260909invite2"></script>
+    <script src="/static/reminder_notification.js?v=20260912nav1"></script>
+    <script src="/static/js/app-tabbar.js?v=20260912nav1"></script>
     <script src="/static/js/today-dashboard.js?v=20260825time1"></script>
     <script src="/static/js/daily-schedule.js?v=20260912flow3"></script>
     <script src="/static/js/time-log.js?v=20260912flow1"></script>

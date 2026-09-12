@@ -1,6 +1,7 @@
 (function () {
     const TABS = [
         { id: 'overview', label: '今日', icon: '今', href: '/static/index.html#overview' },
+        { id: 'schedule', label: '日程', icon: '程', href: '/static/index.html#schedule' },
         { id: 'actions', label: '行动', icon: '行', href: '/static/index.html#actions' },
         { id: 'self-talk', label: 'Self-talk', icon: '谈', href: '/static/index.html#self-talk' },
         { id: 'user-center', label: '我的', icon: '我', href: '/static/index.html#user-center' },
@@ -12,8 +13,8 @@
         if (path.includes('dashboard') || path.includes('user_center')) return 'user-center';
         const hash = (location.hash || '').replace('#', '');
         if (hash === 'upload' || hash === 'actions') return 'actions';
-        if (hash === 'stats' || hash === 'guide' || hash === 'user-center' || hash === 'owner') return 'user-center';
-        if (hash === 'schedule' || hash === 'time-log') return 'overview';
+        if (hash === 'stats' || hash === 'guide' || hash === 'user-center' || hash === 'owner' || hash === 'time-log') return 'user-center';
+        if (hash === 'schedule') return 'schedule';
         if (hash === 'self-talk') return 'self-talk';
         return 'overview';
     }

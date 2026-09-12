@@ -39,6 +39,7 @@ def load_latest_meta() -> dict:
         "versionName": "",
         "filename": "shuran.apk",
         "notes": "覆盖安装即可更新，登录数据会保留，不必卸载重装。",
+        "require_shell": False,
     }
     if not LATEST_META.is_file():
         return defaults
@@ -57,6 +58,7 @@ def load_latest_meta() -> dict:
             "versionName": str(data.get("versionName") or ""),
             "filename": str(data.get("filename") or defaults["filename"]),
             "notes": str(notes),
+            "require_shell": bool(data.get("require_shell")),
         }
     except Exception:
         return defaults
@@ -68,12 +70,16 @@ def build_info(request: Request | None = None) -> dict:
     download_url = "/download/apk"
     if request is not None:
         download_url = str(request.base_url).rstrip("/") + "/download/apk"
+    # 界面在网页里，打开即最新。默认不把安装包标成「有新版本」，
+    # 避免手机外壳启动时误弹更新。真正要换系统能力时，把 require_shell 打开。
+    reported_code = meta["versionCode"] if meta.get("require_shell") else 0
     info = {
         "available": apk is not None,
         "filename": meta["filename"],
-        "versionCode": meta["versionCode"],
+        "versionCode": reported_code,
         "versionName": meta["versionName"],
         "notes": meta["notes"],
+        "require_shell": bool(meta.get("require_shell")),
         "download_url": download_url,
         "update_in_place": True,
     }
