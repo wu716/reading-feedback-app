@@ -1,13 +1,18 @@
-#schedule .home-schedule {
-    background: #fffcf6;
-    border: 1px solid #e6e1d6;
-    padding: 8px 4px 24px;
+#schedule .section-header h1 {
+    font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
+    letter-spacing: 0.08em;
 }
 
-@media (min-width: 769px) {
-    #schedule .home-schedule {
-        padding: 8px 8px 28px;
-    }
+#schedule .section-header .flow-hint {
+    max-width: 40em;
+}
+
+#schedule .home-schedule {
+    width: 100%;
+    max-width: none;
+    background: #fffcf6;
+    border: 1px solid #e6e1d6;
+    padding: 22px 22px 28px;
 }
 
 .home-schedule-head {
