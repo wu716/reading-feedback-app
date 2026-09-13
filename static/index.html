@@ -14,7 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260912nav1">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260825time1">
-    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260912nav1">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260913wide1">
     <style>
         :root {
             --ink: #1c1b19;
@@ -3547,11 +3547,10 @@
         <section id="schedule" class="content-section">
             <div class="section-header">
                 <h1>日程安排</h1>
-                <p>直接写下今天要做的具体行动。想排成流程时，再进入设计。</p>
+                <p class="flow-hint" id="scheduleHint">直接写下今天要做的具体行动。想排成流程时，再进入设计。</p>
             </div>
-            <div class="home-schedule flow-page" id="homeSchedule">
+            <div class="home-schedule" id="homeSchedule">
                 <div class="home-schedule-head">
-                    <p class="flow-hint" id="scheduleHint">太大就拆开。熟悉、预估、顺序和并行都可以先空着。</p>
                     <div class="flow-toolbar">
                         <div class="flow-date-nav">
                             <button type="button" id="schedulePrevDay" aria-label="前一天">‹</button>
