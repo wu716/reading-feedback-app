@@ -38,6 +38,8 @@ INVITE_FAIL_LIMIT = 5
 INVITE_FAIL_WINDOW = 3600
 LOGIN_FAIL_LIMIT = 8
 LOGIN_FAIL_WINDOW = 900
+LOGIN_HOURLY_LIMIT = 20
+LOGIN_HOURLY_WINDOW = 3600
 REGISTER_LIMIT = 8
 REGISTER_WINDOW = 3600
 
@@ -163,10 +165,41 @@ async def list_plans():
     return {"plans": plan_catalog()}
 
 
-def _login_too_many_message(ip: str) -> str:
-    wait = seconds_until_slot(f"login:{ip}", LOGIN_FAIL_WINDOW)
+def _login_too_many_message(key: str, window_sec: int = LOGIN_FAIL_WINDOW) -> str:
+    wait = seconds_until_slot(key, window_sec)
     minutes = max(1, (wait + 59) // 60)
     return f"登录尝试过多，请 {minutes} 分钟后再试"
+
+
+def _login_rate_keys(ip: str, account: str) -> tuple[str, str, str]:
+    normalized = account.strip().lower()[:80]
+    return f"login:{ip}", f"login-acct:{normalized}", f"login-hour:{ip}"
+
+
+def _guard_login_attempts(ip: str, account: str) -> None:
+    ip_key, acct_key, hour_key = _login_rate_keys(ip, account)
+    guard_rate_limit(ip_key, LOGIN_FAIL_LIMIT, LOGIN_FAIL_WINDOW, _login_too_many_message(ip_key))
+    guard_rate_limit(acct_key, LOGIN_FAIL_LIMIT, LOGIN_FAIL_WINDOW, _login_too_many_message(acct_key))
+    guard_rate_limit(
+        hour_key,
+        LOGIN_HOURLY_LIMIT,
+        LOGIN_HOURLY_WINDOW,
+        _login_too_many_message(hour_key, LOGIN_HOURLY_WINDOW),
+    )
+
+
+def _record_login_fail(ip: str, account: str) -> None:
+    ip_key, acct_key, hour_key = _login_rate_keys(ip, account)
+    record_rate_hit(ip_key)
+    record_rate_hit(acct_key)
+    record_rate_hit(hour_key)
+
+
+def _clear_login_fails(ip: str, account: str) -> None:
+    ip_key, acct_key, hour_key = _login_rate_keys(ip, account)
+    clear_rate_hits(ip_key)
+    clear_rate_hits(acct_key)
+    clear_rate_hits(hour_key)
 
 
 @router.post("/login", response_model=Token)
@@ -179,17 +212,11 @@ async def login(user_credentials: UserLogin, request: Request, db: Session = Dep
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请填写手机号或邮箱",
         )
-    # 先验密码：输对了就放行，避免连错几次后被锁在正确密码门外。
+    # 先限流再验密：同一 IP / 同一账号短时间试太多次，正确密码也被拦住。
+    _guard_login_attempts(ip, account)
     user = authenticate_user(db, account, user_credentials.password)
     if not user:
-        login_key = f"login:{ip}"
-        guard_rate_limit(
-            login_key,
-            LOGIN_FAIL_LIMIT,
-            LOGIN_FAIL_WINDOW,
-            _login_too_many_message(ip),
-        )
-        record_rate_hit(login_key)
+        _record_login_fail(ip, account)
         write_audit(db, "login_fail", ip=ip, detail=account[:32])
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -198,7 +225,7 @@ async def login(user_credentials: UserLogin, request: Request, db: Session = Dep
         )
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该账户已停用")
-    clear_rate_hits(f"login:{ip}")
+    _clear_login_fails(ip, account)
 
     resolve_user_plan(db, user)
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
