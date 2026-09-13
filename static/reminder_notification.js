@@ -517,8 +517,9 @@ class ReminderNotificationService {
         style.textContent = `
             .header-actions { display: flex; align-items: center; gap: 12px; }
             .reminder-bell-wrap { position: relative; flex-shrink: 0; }
-            .reminder-bell-btn { position: relative; width: 40px; height: 40px; border: none; border-radius: 12px; background: rgba(255,255,255,0.2); color: white; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-            .reminder-bell-badge { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; background: #ff4757; color: #fff; border-radius: 9px; font-size: 11px; line-height: 18px; font-weight: 700; }
+            .reminder-bell-btn { position: relative; width: 40px; height: 40px; border: none; border-radius: 0; background: transparent; color: #f3efe6; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+            .reminder-bell-icon { width: 22px; height: 22px; display: block; }
+            .reminder-bell-badge { position: absolute; top: 7px; right: 8px; width: 7px; height: 7px; min-width: 0; padding: 0; background: #9c3b32; color: transparent; font-size: 0; line-height: 0; border-radius: 50%; box-shadow: 0 0 0 2px #6b63c4; }
             .reminder-dropdown { position: absolute; top: calc(100% + 8px); right: 0; left: auto; width: 360px; max-width: calc(100vw - 24px); box-sizing: border-box; background: #fff; color: #333; border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,0.18); z-index: 1200; overflow: hidden; display: flex; flex-direction: column; }
             .reminder-dropdown[hidden] { display: none !important; }
             .reminder-dropdown-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #eee; font-size: 0.95rem; flex-shrink: 0; }
@@ -567,7 +568,7 @@ class ReminderNotificationService {
         wrap.className = 'reminder-bell-wrap';
         wrap.id = 'reminderBellWrap';
         wrap.innerHTML = `
-            <button type="button" class="header-icon-btn reminder-bell-btn" id="reminderBellBtn" aria-label="应用内提醒" title="应用内提醒">🔔<span class="reminder-bell-badge" id="reminderBellBadge" hidden>0</span></button>
+            <button type="button" class="header-icon-btn reminder-bell-btn" id="reminderBellBtn" aria-label="提醒" title="提醒"><svg class="reminder-bell-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" d="M7 17h10l-1.15-1.35V11a4.85 4.85 0 0 0-3.6-4.7V5.6a1.25 1.25 0 0 0-2.5 0v.7A4.85 4.85 0 0 0 6.15 11v4.65L5 17"/><path fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" d="M10.2 17.4a1.8 1.8 0 0 0 3.6 0"/></svg><span class="reminder-bell-badge" id="reminderBellBadge" hidden></span></button>
             <div class="reminder-dropdown" id="reminderDropdown" hidden>
                 <div class="reminder-dropdown-head">
                     <strong>提醒</strong>
@@ -789,12 +790,15 @@ class ReminderNotificationService {
         if (!badge || !wrap) return;
         const n = this.pending.length;
         wrap.hidden = false;
-        if (n > 0) {
-            badge.hidden = false;
-            badge.textContent = n > 99 ? '99+' : String(n);
-        } else {
-            badge.hidden = true;
+        badge.hidden = n === 0;
+        badge.textContent = '';
+        const btn = document.getElementById('reminderBellBtn');
+        if (btn) {
+            btn.setAttribute('aria-label', n > 0 ? `提醒，${n} 条未读` : '提醒');
+            btn.title = n > 0 ? `提醒 · ${n}` : '提醒';
         }
+        const head = document.querySelector('#reminderDropdown .reminder-dropdown-head strong');
+        if (head) head.textContent = n > 0 ? `提醒 ${n}` : '提醒';
     }
 
     renderDropdown() {
@@ -841,7 +845,7 @@ class ReminderNotificationService {
         bar.classList.add('show');
         bar.innerHTML = `
             <div class="bar-body">
-                <strong>🔔 ${this.escapeHtml(first.title)}${extra}</strong>
+                <strong>${this.escapeHtml(first.title)}${extra}</strong>
                 <p>${this.escapeHtml(this.stripHtml(first.message))}</p>
             </div>
             <div class="bar-actions">
