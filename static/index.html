@@ -786,6 +786,40 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        .reminder-bell-btn {
+            background: transparent;
+            border-radius: 0;
+            color: #f3efe6;
+        }
+
+        .reminder-bell-btn:hover,
+        .reminder-bell-btn:focus-visible {
+            color: #fff;
+            outline: none;
+        }
+
+        .reminder-bell-icon {
+            width: 22px;
+            height: 22px;
+            display: block;
+        }
+
+        .reminder-bell-badge {
+            position: absolute;
+            top: 7px;
+            right: 8px;
+            width: 7px;
+            height: 7px;
+            min-width: 0;
+            padding: 0;
+            background: #9c3b32;
+            color: transparent;
+            font-size: 0;
+            line-height: 0;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px #6b63c4;
+        }
+
         .sidebar-overlay {
             display: none;
         }
@@ -3379,7 +3413,13 @@
         </div>
         <div class="header-actions">
             <div class="reminder-bell-wrap" id="reminderBellWrap" hidden>
-                <button type="button" class="header-icon-btn reminder-bell-btn" id="reminderBellBtn" aria-label="应用内提醒" title="应用内提醒">🔔<span class="reminder-bell-badge" id="reminderBellBadge" hidden>0</span></button>
+                <button type="button" class="header-icon-btn reminder-bell-btn" id="reminderBellBtn" aria-label="提醒" title="提醒">
+                    <svg class="reminder-bell-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" d="M7 17h10l-1.15-1.35V11a4.85 4.85 0 0 0-3.6-4.7V5.6a1.25 1.25 0 0 0-2.5 0v.7A4.85 4.85 0 0 0 6.15 11v4.65L5 17"/>
+                        <path fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" d="M10.2 17.4a1.8 1.8 0 0 0 3.6 0"/>
+                    </svg>
+                    <span class="reminder-bell-badge" id="reminderBellBadge" hidden></span>
+                </button>
                 <div class="reminder-dropdown" id="reminderDropdown" hidden>
                     <div class="reminder-dropdown-head">
                         <strong>提醒</strong>
@@ -8032,7 +8072,7 @@
     
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260825time1"></script>
-    <script src="/static/reminder_notification.js?v=20260912nav1"></script>
+    <script src="/static/reminder_notification.js?v=20260913bell1"></script>
     <script src="/static/js/app-tabbar.js?v=20260912nav1"></script>
     <script src="/static/js/today-dashboard.js?v=20260825time1"></script>
     <script src="/static/js/daily-schedule.js?v=20260913split1"></script>
