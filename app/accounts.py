@@ -3,6 +3,7 @@
 import re
 from typing import Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models import User
@@ -59,7 +60,7 @@ def find_user_by_account(db: Session, account: str) -> Optional[User]:
         user = query.filter(User.phone == phone).first()
         if user:
             return user
-    return query.filter(User.email == value).first()
+    return query.filter(func.lower(func.trim(User.email)) == value.lower()).first()
 
 
 def find_active_phone(db: Session, phone: str, exclude_user_id: Optional[int] = None) -> Optional[User]:

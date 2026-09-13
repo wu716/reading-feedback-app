@@ -34,3 +34,14 @@ def guard_rate_limit(key: str, limit: int, window_sec: int, message: str) -> Non
 
 def record_rate_hit(key: str) -> None:
     _hits.setdefault(key, []).append(time.time())
+
+
+def clear_rate_hits(key: str) -> None:
+    _hits.pop(key, None)
+
+
+def seconds_until_slot(key: str, window_sec: int) -> int:
+    hits = _prune(key, window_sec)
+    if not hits:
+        return 0
+    return max(1, int(window_sec - (time.time() - min(hits))))
