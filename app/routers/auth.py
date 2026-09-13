@@ -23,7 +23,13 @@ from app.config import settings
 from app.database import get_db
 from app.models import InviteCode, Subscription, User
 from app.plans import PLAN_FREE, apply_plan, plan_catalog, resolve_user_plan
-from app.rate_limit import client_ip, guard_rate_limit, record_rate_hit
+from app.rate_limit import (
+    clear_rate_hits,
+    client_ip,
+    guard_rate_limit,
+    record_rate_hit,
+    seconds_until_slot,
+)
 from app.schemas import PasswordChange, PhoneBind, Token, UserCreate, UserLogin, UserResponse, UserUpdate
 
 router = APIRouter(prefix="/auth", tags=["认证"])
@@ -157,6 +163,12 @@ async def list_plans():
     return {"plans": plan_catalog()}
 
 
+def _login_too_many_message(ip: str) -> str:
+    wait = seconds_until_slot(f"login:{ip}", LOGIN_FAIL_WINDOW)
+    minutes = max(1, (wait + 59) // 60)
+    return f"登录尝试过多，请 {minutes} 分钟后再试"
+
+
 @router.post("/login", response_model=Token)
 async def login(user_credentials: UserLogin, request: Request, db: Session = Depends(get_db)):
     """手机号或邮箱 + 密码登录"""
@@ -167,21 +179,26 @@ async def login(user_credentials: UserLogin, request: Request, db: Session = Dep
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请填写手机号或邮箱",
         )
-    guard_rate_limit(
-        f"login:{ip}",
-        LOGIN_FAIL_LIMIT,
-        LOGIN_FAIL_WINDOW,
-        "登录尝试过多，请稍后再试",
-    )
+    # 先验密码：输对了就放行，避免连错几次后被锁在正确密码门外。
     user = authenticate_user(db, account, user_credentials.password)
     if not user:
-        record_rate_hit(f"login:{ip}")
+        login_key = f"login:{ip}"
+        guard_rate_limit(
+            login_key,
+            LOGIN_FAIL_LIMIT,
+            LOGIN_FAIL_WINDOW,
+            _login_too_many_message(ip),
+        )
+        record_rate_hit(login_key)
         write_audit(db, "login_fail", ip=ip, detail=account[:32])
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="账号或密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该账户已停用")
+    clear_rate_hits(f"login:{ip}")
 
     resolve_user_plan(db, user)
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
