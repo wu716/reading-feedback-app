@@ -225,6 +225,7 @@
             return;
         }
         list.innerHTML = data.tasks.map((task) => renderTask(task, false)).join('');
+        list.querySelector('[data-split-input]')?.focus();
     }
 
     async function load(nextDay) {
@@ -407,6 +408,21 @@
                 } else if (act === 'parallel') {
                     await toggleParallel(id);
                 }
+            } catch (err) {
+                if (typeof showMessage === 'function') showMessage(err.message, 'error');
+            }
+        });
+
+        document.getElementById('scheduleList')?.addEventListener('keydown', async (e) => {
+            if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+            const input = e.target.closest('[data-split-input]');
+            if (!input) return;
+            e.preventDefault();
+            const article = input.closest('[data-task-id]');
+            if (!article) return;
+            const id = parseInt(article.dataset.taskId, 10);
+            try {
+                await addTask(input.value, id);
             } catch (err) {
                 if (typeof showMessage === 'function') showMessage(err.message, 'error');
             }
