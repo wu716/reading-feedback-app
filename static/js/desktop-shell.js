@@ -40,7 +40,9 @@
             document.documentElement.style.removeProperty('--shuran-frame');
             return;
         }
-        document.documentElement.style.setProperty('--shuran-frame', window.innerHeight + 'px');
+        const viewport = window.visualViewport;
+        const height = viewport ? Math.round(viewport.height) : window.innerHeight;
+        document.documentElement.style.setProperty('--shuran-frame', height + 'px');
     }
 
     function apply() {
@@ -80,6 +82,9 @@
         if (btn) btn.addEventListener('click', toggle);
         apply();
         window.addEventListener('resize', onResize);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', apply);
+        }
     }
 
     if (document.readyState === 'loading') {
