@@ -357,12 +357,37 @@
     color: #f3efe6;
     font-size: 0.95rem;
     letter-spacing: 0.08em;
-    cursor: pointer;
+    cursor: grab;
     box-shadow: none;
 }
 
 body:not(.has-app-tabbar) .tl-fab {
     bottom: 24px;
+}
+
+@media (max-width: 768px) {
+    .tl-fab {
+        cursor: pointer;
+    }
+}
+
+@media (min-width: 769px) {
+    body:not(.tl-compact-page) .tl-sheet-desktop {
+        left: auto;
+        right: auto;
+        bottom: auto;
+        transform: none;
+        width: min(380px, calc(100vw - 24px));
+        border-radius: 16px;
+        border-bottom: 1px solid #e6e1d6;
+        max-height: calc(100vh - 24px);
+        overflow: auto;
+        padding: 18px;
+    }
+
+    body:not(.tl-compact-page) .tl-sheet-backdrop {
+        background: rgba(28, 27, 25, 0.16);
+    }
 }
 
 .tl-sheet-backdrop {

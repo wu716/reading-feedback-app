@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_timelog"
+        android:shortcutId="timelog_punch"
+        android:shortcutLongLabel="@string/timelog_shortcut_long"
+        android:shortcutShortLabel="@string/timelog_shortcut_short">
+        <intent
+            android:action="com.shuran.app.PUNCH_TIME_LOG"
+            android:targetClass="com.shuran.app.TimeLogPunchActivity"
+            android:targetPackage="com.shuran.app" />
+    </shortcut>
+</shortcuts>

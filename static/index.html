@@ -14,7 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260912nav1">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260825time1">
-    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260913wide1">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260914desk2">
     <style>
         :root {
             --ink: #1c1b19;
@@ -784,6 +784,10 @@
             align-items: center;
             justify-content: center;
             -webkit-tap-highlight-color: transparent;
+        }
+
+        .sidebar-toggle-btn {
+            display: none;
         }
 
         .reminder-bell-btn {
@@ -3400,11 +3404,25 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260914desk2">
 </head>
 <body>
+    <script>
+        (function () {
+            if (window.innerWidth > 768 && window.innerWidth <= 980
+                && localStorage.getItem('shuran.sidebarMode') !== 'full') {
+                document.body.classList.add('sidebar-rail');
+            }
+        })();
+    </script>
     <!-- 顶部导航栏 -->
     <header class="app-header">
         <div class="app-logo">
+            <button type="button" class="header-icon-btn sidebar-toggle-btn" id="sidebarToggleBtn" aria-label="收起导航" title="收起导航">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M5 7h14M5 12h14M5 17h9"/>
+                </svg>
+            </button>
             <div class="header-nav-controls">
                 <button type="button" class="header-icon-btn" id="headerBackBtn" onclick="handlePageBack()" aria-label="返回" hidden>←</button>
             </div>
@@ -3443,23 +3461,23 @@
     <!-- 侧边导航栏 -->
     <aside class="app-sidebar">
         <nav class="sidebar-nav">
-            <div class="nav-item active" data-section="overview" onclick="navigateTo('overview')">
+            <div class="nav-item active" data-section="overview" onclick="navigateTo('overview')" title="今日">
                 <span class="nav-icon">今</span>
                 <span class="nav-text">今日</span>
             </div>
-            <div class="nav-item" data-section="schedule" onclick="navigateTo('schedule')">
+            <div class="nav-item" data-section="schedule" onclick="navigateTo('schedule')" title="日程">
                 <span class="nav-icon">程</span>
                 <span class="nav-text">日程</span>
             </div>
-            <div class="nav-item" data-section="actions" onclick="navigateTo('actions')">
+            <div class="nav-item" data-section="actions" onclick="navigateTo('actions')" title="行动">
                 <span class="nav-icon">行</span>
                 <span class="nav-text">行动</span>
             </div>
-            <div class="nav-item" data-section="self-talk" onclick="navigateTo('self-talk')">
+            <div class="nav-item" data-section="self-talk" onclick="navigateTo('self-talk')" title="Self-talk">
                 <span class="nav-icon">谈</span>
                 <span class="nav-text">Self-talk</span>
             </div>
-            <div class="nav-item" data-section="user-center" onclick="navigateTo('user-center')">
+            <div class="nav-item" data-section="user-center" onclick="navigateTo('user-center')" title="我的">
                 <span class="nav-icon">我</span>
                 <span class="nav-text">我的</span>
             </div>
@@ -3875,6 +3893,7 @@
                         <span class="me-row-main"><span class="me-row-title">时间日志</span></span>
                         <span class="me-chevron">›</span>
                     </button>
+                    <p class="me-hint">手机长按电源键唤起「记」：荣耀/华为可在系统设置把电源键长按指定为书然。做不到的机型用快捷设置磁贴或桌面「记」快捷方式。第三方应用无法真正抢走电源键。</p>
                     <button type="button" class="me-row" onclick="navigateTo('stats')">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V3"/></svg>
@@ -4222,7 +4241,7 @@
             <div class="section-header">
                 <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
                 <h1>时间日志</h1>
-                <p>点一下，记下此刻</p>
+                <p>写下之后，才会记入今天</p>
             </div>
             <div class="flow-page">
                 <div class="flow-toolbar">
@@ -4232,11 +4251,11 @@
                         <button type="button" id="timeLogNextDay">后一天</button>
                     </div>
                     <div>
-                        <button type="button" class="flow-ghost-btn" id="timeLogCompactBtn">小窗打开</button>
+                        <button type="button" class="flow-ghost-btn" id="timeLogCompactBtn">弹出悬浮记</button>
                         <button type="button" class="flow-solid-btn" id="timeLogPunchBtn">记下此刻</button>
                     </div>
                 </div>
-                <p class="flow-hint">时间日志和日程安排是分开的。不必先排流程，也可以记下自己实际过了哪些时间。</p>
+                <p class="flow-hint">时间日志和日程安排是分开的。点「记」会先抓住此刻；只有写下这段在做什么（或选了当天行动）才会出现在日志里。稍后、点空白处或 Esc 都不会落空记录。</p>
                 <div class="me-row me-row-static me-native-only" id="timeLogOverlayRow" hidden>
                     <div class="me-row-main">
                         <div class="me-row-title">手机悬浮窗</div>
@@ -4246,6 +4265,18 @@
                         <input type="checkbox" id="timeLogOverlaySwitch">
                         <span class="me-switch-ui"></span>
                     </label>
+                </div>
+                <div id="timeLogAssistRow" hidden>
+                    <div class="me-row me-row-static me-native-only">
+                        <div class="me-row-main">
+                            <div class="me-row-title">电源键与快捷入口</div>
+                            <div class="me-row-desc" id="timeLogAssistStatus">第三方应用不能真正抢走电源键。部分荣耀/华为机可把电源键长按指定为默认数字助理，从而打开书然「记」。</div>
+                        </div>
+                    </div>
+                    <div class="flow-toolbar" style="justify-content:flex-start;margin:0 0 16px;">
+                        <button type="button" class="flow-ghost-btn" id="timeLogAssistBtn">设为数字助理</button>
+                        <button type="button" class="flow-ghost-btn" id="timeLogShortcutBtn">添加到桌面</button>
+                    </div>
                 </div>
                 <div id="timeLogList" class="tl-list"></div>
                 <div class="tl-total" id="timeLogTotal"></div>
@@ -4287,9 +4318,9 @@
             <div class="guide-card">
                 <h3>5. 时间日志</h3>
                 <ol>
-                    <li>点「记」或「记下此刻」，先落下时间点。</li>
-                    <li>再写这一段做了什么。也可以从当天的行动里点选。</li>
-                    <li>电脑可以把「小窗打开」留在桌面上。手机 App 可打开悬浮窗，离开书然也能点。</li>
+                    <li>点「记」或「记下此刻」，会先抓住点击时刻。写下这段做了什么（或选了当天行动）之后，才会出现在日志里。</li>
+                    <li>稍后、点空白处或 Esc 都不会留下空记录。电脑上可把「记」拖到窗口左右边缘停靠。</li>
+                    <li>电脑可点「弹出悬浮记」，收成小球挂在桌面上。手机 App 可打开悬浮窗；荣耀/华为可将电源键长按指定为书然数字助理。</li>
                 </ol>
             </div>
             <div class="guide-card">
@@ -8076,6 +8107,7 @@
     <script src="/static/js/app-tabbar.js?v=20260912nav1"></script>
     <script src="/static/js/today-dashboard.js?v=20260825time1"></script>
     <script src="/static/js/daily-schedule.js?v=20260913split1"></script>
-    <script src="/static/js/time-log.js?v=20260912flow1"></script>
+    <script src="/static/js/time-log.js?v=20260914desk2"></script>
+    <script src="/static/js/desktop-shell.js?v=20260914desk2"></script>
 </body>
 </html>

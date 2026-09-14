@@ -248,4 +248,19 @@ public class ReminderJsBridge {
     public void setTimeLogOverlayEnabled(boolean enabled) {
         activity.runOnUiThread(() -> TimeLogOverlay.setEnabled(activity, enabled));
     }
+
+    @JavascriptInterface
+    public boolean isAssistantRoleHeld() {
+        return TimeLogAssist.isAssistantHeld(activity);
+    }
+
+    @JavascriptInterface
+    public void requestAssistantRole() {
+        activity.runOnUiThread(() -> TimeLogAssist.requestAssistantRole(activity));
+    }
+
+    @JavascriptInterface
+    public void pinTimeLogShortcut() {
+        activity.runOnUiThread(() -> TimeLogAssist.pinShortcut(activity));
+    }
 }

@@ -32,6 +32,7 @@ class NodeCreate(BaseModel):
     label: Optional[str] = Field(None, max_length=500)
     task_id: Optional[int] = None
     log_date: Optional[date] = None
+    logged_at: Optional[datetime] = None
 
     @field_validator("label")
     @classmethod
@@ -72,7 +73,12 @@ class DayLogOut(BaseModel):
     nodes: List[NodeOut]
 
 
-def visible_nodes(db: Session, user_id: int, day: date) -> List[TimeLogNode]:
+def is_written_node(node: TimeLogNode) -> bool:
+    """没写下内容、也没关联行动的节点不进入每日日志。"""
+    return bool((node.label or "").strip()) or node.task_id is not None
+
+
+def live_nodes(db: Session, user_id: int, day: date) -> List[TimeLogNode]:
     return (
         db.query(TimeLogNode)
         .filter(
@@ -83,6 +89,10 @@ def visible_nodes(db: Session, user_id: int, day: date) -> List[TimeLogNode]:
         .order_by(TimeLogNode.logged_at.asc(), TimeLogNode.id.asc())
         .all()
     )
+
+
+def visible_nodes(db: Session, user_id: int, day: date) -> List[TimeLogNode]:
+    return [node for node in live_nodes(db, user_id, day) if is_written_node(node)]
 
 
 def get_node_or_404(db: Session, user_id: int, node_id: int) -> TimeLogNode:
@@ -134,6 +144,15 @@ def ensure_aware(value: datetime) -> datetime:
     return value.astimezone(BEIJING_TZ)
 
 
+def resolve_logged_at(value: Optional[datetime], now: datetime) -> datetime:
+    if value is None:
+        return now
+    at = ensure_aware(value)
+    if at > now:
+        return now
+    return at
+
+
 @router.get("", response_model=DayLogOut)
 async def get_day_log(
     log_date: Optional[date] = Query(None),
@@ -151,19 +170,20 @@ async def punch_node(
 ):
     now = beijing_now()
     day = parse_day(body.log_date)
-    if day != now.date() and body.log_date is not None:
-        # 允许补记当天以外的日期时，仍以此刻为节点，但日期按用户指定的自然日归档
-        pass
+    stamped = resolve_logged_at(body.logged_at, now)
+    for draft in live_nodes(db, current_user.id, day):
+        if not is_written_node(draft):
+            draft.deleted_at = now
     last = visible_nodes(db, current_user.id, day)
     previous = last[-1] if last else None
     duration = 0
     if previous:
-        delta = now - ensure_aware(previous.logged_at)
+        delta = stamped - ensure_aware(previous.logged_at)
         duration = max(0, int(delta.total_seconds()))
     node = TimeLogNode(
         user_id=current_user.id,
         log_date=day,
-        logged_at=now,
+        logged_at=stamped,
         label=body.label,
         duration_seconds=duration,
         task_id=resolve_task_id(db, current_user.id, body.task_id, day),
@@ -189,6 +209,10 @@ async def update_node(
         node.task_id = None
     elif body.task_id is not None:
         node.task_id = resolve_task_id(db, current_user.id, body.task_id, node.log_date)
+    if not is_written_node(node):
+        node.deleted_at = beijing_now()
+        db.commit()
+        raise HTTPException(status_code=400, detail="没有写下内容，未记入日志")
     db.commit()
     db.refresh(node)
     return node
