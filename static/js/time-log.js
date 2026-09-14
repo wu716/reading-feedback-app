@@ -96,7 +96,10 @@
                         <div>${escapeHtml(title)}</div>
                         ${related ? `<div class="tl-duration">${escapeHtml(related)}</div>` : ''}
                     </div>
-                    <button type="button" class="flow-mini-btn" data-act="edit">改</button>
+                    <div class="tl-node-actions">
+                        <button type="button" class="flow-mini-btn" data-act="edit">改</button>
+                        <button type="button" class="flow-mini-btn" data-act="delete">删</button>
+                    </div>
                 </article>
             `;
         }).join('');
@@ -139,6 +142,22 @@
         pendingNode = null;
     }
 
+    async function removeNode(nodeId) {
+        const id = parseInt(nodeId, 10);
+        if (!id) return false;
+        if (!window.confirm('确定删除这段记录？会从日志里拿掉，无法恢复。')) {
+            return false;
+        }
+        try {
+            data = await logApi(`/nodes/${id}`, { method: 'DELETE' });
+            renderList();
+            return true;
+        } catch (e) {
+            if (typeof showMessage === 'function') showMessage(e.message, 'error');
+            return false;
+        }
+    }
+
     async function discardSheet() {
         const node = pendingNode;
         closeSheet();
@@ -174,8 +193,11 @@
             <textarea id="timeLogSheetInput" maxlength="500" placeholder="分类昆虫学：鉴定袋蛾">${escapeHtml(node.label || '')}</textarea>
             ${picks ? `<div class="tl-task-picks">${picks}</div>` : ''}
             <div class="tl-sheet-actions">
-                <button type="button" class="flow-ghost-btn" id="timeLogSheetCancel">稍后</button>
-                <button type="button" class="flow-solid-btn" id="timeLogSheetSave">写下</button>
+                ${node.id && !isUnwritten(node) ? '<button type="button" class="flow-ghost-btn" id="timeLogSheetDelete">删除这段</button>' : '<span></span>'}
+                <div class="tl-sheet-actions-end">
+                    <button type="button" class="flow-ghost-btn" id="timeLogSheetCancel">稍后</button>
+                    <button type="button" class="flow-solid-btn" id="timeLogSheetSave">写下</button>
+                </div>
             </div>
         `;
         document.body.appendChild(backdrop);
@@ -183,6 +205,11 @@
         placeDesktopSheet(sheet);
         backdrop.addEventListener('click', () => discardSheet());
         sheet.querySelector('#timeLogSheetCancel').addEventListener('click', () => discardSheet());
+        sheet.querySelector('#timeLogSheetDelete')?.addEventListener('click', async () => {
+            if (!node.id) return;
+            const removed = await removeNode(node.id);
+            if (removed) closeSheet();
+        });
         sheet.querySelectorAll('[data-task-id]').forEach((btn) => {
             btn.addEventListener('click', () => {
                 sheet.querySelectorAll('[data-task-id]').forEach((el) => el.classList.remove('active'));
@@ -606,10 +633,15 @@
             }
         });
         document.getElementById('timeLogList')?.addEventListener('click', (e) => {
-            if (e.target.dataset.act !== 'edit') return;
+            const act = e.target.dataset.act;
             const article = e.target.closest('[data-node-id]');
-            if (!article) return;
+            if (!article || !act) return;
             const id = parseInt(article.dataset.nodeId, 10);
+            if (act === 'delete') {
+                removeNode(id);
+                return;
+            }
+            if (act !== 'edit') return;
             const node = (data.nodes || []).find((n) => n.id === id);
             if (node) openSheet(node, !node.duration_seconds && data.nodes[0]?.id === id);
         });
