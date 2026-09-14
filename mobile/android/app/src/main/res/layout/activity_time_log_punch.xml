@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#F3EFE6"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/timelog_punch_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/timelog_overlay_hint"
+        android:textColor="#1C1B19"
+        android:textSize="14sp" />
+
+    <EditText
+        android:id="@+id/timelog_punch_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:hint="@string/timelog_overlay_hint"
+        android:inputType="textCapSentences|textMultiLine"
+        android:maxLength="500"
+        android:minLines="2"
+        android:textColor="#1C1B19"
+        android:textColorHint="#8A8478" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/timelog_punch_later"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/timelog_overlay_later" />
+
+        <Button
+            android:id="@+id/timelog_punch_save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/timelog_overlay_save" />
+    </LinearLayout>
+</LinearLayout>

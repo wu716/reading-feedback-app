@@ -35,7 +35,8 @@ public class TimeLogOverlayService extends Service {
     private WindowManager.LayoutParams panelParams;
     private EditText labelInput;
     private TextView panelHint;
-    private int pendingNodeId;
+    private String pendingLoggedAt;
+    private int pendingDuration;
     private boolean punching;
 
     @Override
@@ -61,6 +62,9 @@ public class TimeLogOverlayService extends Service {
         if (!TimeLogOverlay.hasPermission(this) || !TimeLogOverlay.isEnabled(this)) {
             stopSelf();
             return START_NOT_STICKY;
+        }
+        if (intent != null && TimeLogAssist.ACTION_PUNCH.equals(intent.getAction())) {
+            onPunch();
         }
         return START_STICKY;
     }
@@ -240,15 +244,17 @@ public class TimeLogOverlayService extends Service {
             return;
         }
         punching = true;
-        showPanel(getString(R.string.timelog_overlay_saving), "");
+        pendingLoggedAt = TimeLogClient.nowIso();
+        pendingDuration = 0;
+        showPanel(getString(R.string.timelog_overlay_preparing), "");
+        final long clickedAt = System.currentTimeMillis();
         new Thread(() -> {
             try {
-                JSONObject node = TimeLogClient.punch(this, null);
-                int id = node.optInt("id");
-                int duration = node.optInt("duration_seconds");
+                JSONObject day = TimeLogClient.dayLog(this);
+                int duration = TimeLogClient.durationSinceLast(day, clickedAt);
                 main.post(() -> {
-                    pendingNodeId = id;
                     punching = false;
+                    pendingDuration = duration;
                     String hint = duration <= 0
                             ? getString(R.string.timelog_overlay_start)
                             : getString(R.string.timelog_overlay_elapsed, formatDuration(duration));
@@ -257,23 +263,23 @@ public class TimeLogOverlayService extends Service {
             } catch (Exception e) {
                 main.post(() -> {
                     punching = false;
-                    hidePanel();
-                    toast(e.getMessage() == null ? getString(R.string.timelog_overlay_failed) : e.getMessage());
+                    showPanel(getString(R.string.timelog_overlay_start), "");
                 });
             }
-        }, "timelog-punch").start();
+        }, "timelog-preview").start();
     }
 
     private void saveLabel() {
-        if (pendingNodeId <= 0) {
+        final String label = labelInput.getText() == null ? "" : labelInput.getText().toString().trim();
+        if (label.isEmpty()) {
             hidePanel();
             return;
         }
-        final String label = labelInput.getText() == null ? "" : labelInput.getText().toString();
-        final int nodeId = pendingNodeId;
+        final String loggedAt = pendingLoggedAt;
+        showPanel(getString(R.string.timelog_overlay_saving), label);
         new Thread(() -> {
             try {
-                TimeLogClient.updateLabel(this, nodeId, label);
+                TimeLogClient.punch(this, label, loggedAt);
                 main.post(() -> {
                     hidePanel();
                     toast(getString(R.string.timelog_overlay_saved));
@@ -283,7 +289,7 @@ public class TimeLogOverlayService extends Service {
                         ? getString(R.string.timelog_overlay_failed)
                         : e.getMessage()));
             }
-        }, "timelog-label").start();
+        }, "timelog-save").start();
     }
 
     private void showPanel(String hint, String label) {
@@ -300,7 +306,8 @@ public class TimeLogOverlayService extends Service {
     }
 
     private void hidePanel() {
-        pendingNodeId = 0;
+        pendingLoggedAt = null;
+        pendingDuration = 0;
         if (panel != null) {
             panel.setVisibility(View.GONE);
         }

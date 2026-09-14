@@ -36,14 +36,19 @@
     <string name="update_allow_install">请允许「书然」安装应用，以便覆盖更新（不必卸载）</string>
     <string name="update_install_failed">无法打开安装界面，请到下载页手动更新</string>
     <string name="timelog_overlay_title">时间节点</string>
-    <string name="timelog_overlay_body">悬浮按钮已打开，点一下记下此刻。</string>
+    <string name="timelog_overlay_body">悬浮按钮已打开。点一下抓住此刻，写下才会记入日志。</string>
     <string name="timelog_overlay_hint">这段在做什么</string>
     <string name="timelog_overlay_later">稍后</string>
     <string name="timelog_overlay_save">写下</string>
     <string name="timelog_overlay_saving">正在记下…</string>
-    <string name="timelog_overlay_start">已记下开始。也可以写一句此刻在做什么。</string>
-    <string name="timelog_overlay_elapsed">距上一个节点 %1$s。写下这段做了什么。</string>
+    <string name="timelog_overlay_start">写下此刻在做什么，才会记入今天的日志。</string>
+    <string name="timelog_overlay_elapsed">距上一段 %1$s。写下之后才会记入日志。</string>
     <string name="timelog_overlay_saved">已写下</string>
     <string name="timelog_overlay_failed">记录失败</string>
+    <string name="timelog_overlay_preparing">先抓住此刻，写下才会记入日志。</string>
     <string name="timelog_need_login">请先在书然里登录</string>
+    <string name="timelog_shortcut_short">记</string>
+    <string name="timelog_shortcut_long">书然 · 记</string>
+    <string name="timelog_shortcut_unsupported">当前系统不支持添加桌面快捷方式，请用快捷设置磁贴</string>
+    <string name="timelog_tile_label">记</string>
 </resources>

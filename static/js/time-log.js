@@ -6,7 +6,7 @@
     let data = { date: null, total_seconds: 0, nodes: [] };
     let tasks = [];
     let pendingNode = null;
-    let compact = false;
+    let compact = document.body.classList.contains('tl-compact-page');
 
     function todayISO() {
         const now = new Date();
@@ -76,17 +76,15 @@
         if (total) {
             total.textContent = data.nodes?.length
                 ? `已记录 ${formatDuration(data.total_seconds)}`
-                : '今天还没有时间节点';
+                : '今天还没有写下任何一段';
         }
         if (!list) return;
         if (!(data.nodes || []).length) {
-            list.innerHTML = '<p class="flow-empty">点右下角「记」，先落下一个时间点。</p>';
+            list.innerHTML = '<p class="flow-empty">点「记」会先抓住此刻。写下这段在做什么之后，才会出现在日志里。</p>';
             return;
         }
         list.innerHTML = data.nodes.map((node, index) => {
-            const title = index === 0 && !node.label
-                ? '开始'
-                : (node.label || '未写下这段在做什么');
+            const title = node.label || taskText(node.task_id) || '这段';
             const related = node.task_id ? taskText(node.task_id) : '';
             return `
                 <article class="tl-node" data-node-id="${node.id}">
@@ -131,10 +129,31 @@
         syncOverlaySwitch();
     }
 
+    function isUnwritten(node) {
+        return !!(node && !(node.label || '').trim() && !node.task_id);
+    }
+
     function closeSheet() {
         document.getElementById('timeLogSheet')?.remove();
         document.getElementById('timeLogSheetBackdrop')?.remove();
         pendingNode = null;
+    }
+
+    async function discardSheet() {
+        const node = pendingNode;
+        closeSheet();
+        if (node && node.id && isUnwritten(node)) {
+            try {
+                await logApi(`/nodes/${node.id}`, { method: 'DELETE' });
+            } catch (e) {
+                /* 草稿未写入日志时删掉即可 */
+            }
+            try {
+                await load(currentDay());
+            } catch (e) {
+                /* ignore */
+            }
+        }
     }
 
     function openSheet(node, isStart) {
@@ -151,7 +170,7 @@
         )).join('');
         sheet.innerHTML = `
             <h3>${isStart ? '记下开始' : '这段在做什么'}</h3>
-            <p>${isStart ? '今天的第一个节点。也可以写一句此刻在做什么。' : `距上一个节点 ${formatDuration(node.duration_seconds)}`}</p>
+            <p>${isStart ? '写下此刻在做什么，才会记入今天的日志。' : `距上一段 ${formatDuration(node.duration_seconds)}。写下之后才会记入日志。`}</p>
             <textarea id="timeLogSheetInput" maxlength="500" placeholder="分类昆虫学：鉴定袋蛾">${escapeHtml(node.label || '')}</textarea>
             ${picks ? `<div class="tl-task-picks">${picks}</div>` : ''}
             <div class="tl-sheet-actions">
@@ -161,8 +180,9 @@
         `;
         document.body.appendChild(backdrop);
         document.body.appendChild(sheet);
-        backdrop.addEventListener('click', closeSheet);
-        sheet.querySelector('#timeLogSheetCancel').addEventListener('click', closeSheet);
+        placeDesktopSheet(sheet);
+        backdrop.addEventListener('click', () => discardSheet());
+        sheet.querySelector('#timeLogSheetCancel').addEventListener('click', () => discardSheet());
         sheet.querySelectorAll('[data-task-id]').forEach((btn) => {
             btn.addEventListener('click', () => {
                 sheet.querySelectorAll('[data-task-id]').forEach((el) => el.classList.remove('active'));
@@ -174,15 +194,33 @@
         sheet.querySelector('#timeLogSheetSave').addEventListener('click', async () => {
             const input = sheet.querySelector('#timeLogSheetInput');
             const picked = sheet.querySelector('[data-task-id].active');
+            const label = (input?.value || '').trim();
+            const taskId = picked ? parseInt(picked.dataset.taskId, 10) : undefined;
+            if (!label && !taskId) {
+                await discardSheet();
+                return;
+            }
             try {
-                await logApi(`/nodes/${node.id}`, {
-                    method: 'PATCH',
-                    body: JSON.stringify({
-                        label: input?.value || '',
-                        task_id: picked ? parseInt(picked.dataset.taskId, 10) : undefined,
-                        clear_task: !picked,
-                    }),
-                });
+                if (node.id) {
+                    await logApi(`/nodes/${node.id}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({
+                            label,
+                            task_id: taskId,
+                            clear_task: !taskId,
+                        }),
+                    });
+                } else {
+                    await logApi('/nodes', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            log_date: node.log_date || currentDay(),
+                            logged_at: node.logged_at,
+                            label,
+                            task_id: taskId,
+                        }),
+                    });
+                }
                 closeSheet();
                 await load(currentDay());
             } catch (e) {
@@ -192,21 +230,187 @@
         sheet.querySelector('#timeLogSheetInput')?.focus();
     }
 
+    function isDesktopShell() {
+        return window.matchMedia('(min-width: 769px)').matches;
+    }
+
+    function placeDesktopSheet(sheet) {
+        if (!isDesktopShell() || compact) return;
+        sheet.classList.add('tl-sheet-desktop');
+        const width = Math.min(380, window.innerWidth - 24);
+        requestAnimationFrame(() => {
+            const height = Math.min(sheet.offsetHeight || 320, window.innerHeight - 24);
+            const fab = document.getElementById('timeLogFab');
+            const rect = fab && !fab.hidden ? fab.getBoundingClientRect() : null;
+            let left = Math.max(12, (window.innerWidth - width) / 2);
+            let top = Math.max(12, (window.innerHeight - height) / 2);
+            if (rect) {
+                const onLeft = rect.left < window.innerWidth / 2;
+                left = onLeft
+                    ? Math.min(window.innerWidth - width - 12, rect.right + 12)
+                    : rect.left - width - 12;
+                left = Math.max(12, left);
+                top = Math.min(window.innerHeight - height - 12, Math.max(12, rect.top - 24));
+            }
+            sheet.style.width = `${width}px`;
+            sheet.style.left = `${left}px`;
+            sheet.style.top = `${top}px`;
+            sheet.style.right = 'auto';
+            sheet.style.bottom = 'auto';
+            sheet.style.transform = 'none';
+        });
+    }
+
+    const FAB_POS_KEY = 'shuran.fabDock';
+    const BALL_SIZE = { width: 132, height: 148 };
+    const COMPACT_SIZE = { width: 380, height: 560 };
+
+    function readFabPos() {
+        try {
+            const raw = JSON.parse(localStorage.getItem(FAB_POS_KEY) || 'null');
+            if (!raw || (raw.side !== 'left' && raw.side !== 'right')) {
+                return { side: 'right', y: 0.62 };
+            }
+            const y = Number(raw.y);
+            return { side: raw.side, y: Number.isFinite(y) ? Math.min(0.9, Math.max(0.12, y)) : 0.62 };
+        } catch (e) {
+            return { side: 'right', y: 0.62 };
+        }
+    }
+
+    function saveFabPos(pos) {
+        localStorage.setItem(FAB_POS_KEY, JSON.stringify(pos));
+    }
+
+    function applyFabDock(btn) {
+        if (!btn) return;
+        if (!isDesktopShell()) {
+            btn.classList.remove('is-dock-left', 'is-dock-right', 'is-dragging');
+            btn.style.left = '';
+            btn.style.right = '';
+            btn.style.top = '';
+            btn.style.bottom = '';
+            return;
+        }
+        const pos = readFabPos();
+        const size = btn.offsetHeight || 48;
+        const top = Math.round(window.innerHeight * pos.y - size / 2);
+        btn.classList.toggle('is-dock-left', pos.side === 'left');
+        btn.classList.toggle('is-dock-right', pos.side !== 'left');
+        btn.style.top = `${Math.min(window.innerHeight - size - 16, Math.max(64, top))}px`;
+        btn.style.bottom = 'auto';
+        btn.style.left = pos.side === 'left' ? '8px' : 'auto';
+        btn.style.right = pos.side === 'left' ? 'auto' : '8px';
+    }
+
+    function bindFabDock(btn) {
+        if (!btn || btn.dataset.dockBound === '1') {
+            applyFabDock(btn);
+            return;
+        }
+        btn.dataset.dockBound = '1';
+        let dragging = false;
+        let moved = false;
+        let startX = 0;
+        let startY = 0;
+        let origLeft = 0;
+        let origTop = 0;
+
+        btn.addEventListener('pointerdown', (e) => {
+            if (!isDesktopShell() || e.button) return;
+            dragging = true;
+            moved = false;
+            const rect = btn.getBoundingClientRect();
+            startX = e.clientX;
+            startY = e.clientY;
+            origLeft = rect.left;
+            origTop = rect.top;
+            btn.classList.add('is-dragging');
+            btn.setPointerCapture(e.pointerId);
+        });
+        btn.addEventListener('pointermove', (e) => {
+            if (!dragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) moved = true;
+            if (!moved) return;
+            btn.classList.remove('is-dock-left', 'is-dock-right');
+            btn.style.left = `${origLeft + dx}px`;
+            btn.style.top = `${origTop + dy}px`;
+            btn.style.right = 'auto';
+            btn.style.bottom = 'auto';
+        });
+        const endDrag = () => {
+            if (!dragging) return;
+            dragging = false;
+            btn.classList.remove('is-dragging');
+            if (!moved) return;
+            btn.dataset.dragged = '1';
+            const rect = btn.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            saveFabPos({
+                side: cx < window.innerWidth / 2 ? 'left' : 'right',
+                y: (rect.top + rect.height / 2) / window.innerHeight,
+            });
+            applyFabDock(btn);
+        };
+        btn.addEventListener('pointerup', endDrag);
+        btn.addEventListener('pointercancel', endDrag);
+        window.addEventListener('resize', () => applyFabDock(btn));
+        applyFabDock(btn);
+    }
+
+    window.syncTimeLogFabDock = function syncTimeLogFabDock() {
+        applyFabDock(document.getElementById('timeLogFab'));
+    };
+
+    function setCompactCollapsed(collapsed) {
+        if (!compact) return;
+        document.body.classList.toggle('tl-collapsed', collapsed);
+        const size = collapsed ? BALL_SIZE : COMPACT_SIZE;
+        [window, window.parent, window.top].forEach((host) => {
+            try {
+                host.resizeTo(size.width, size.height);
+            } catch (e) {
+                /* 标签页或跨域窗口无法改尺寸 */
+            }
+        });
+    }
+
+    function durationSinceLast(clickedAt) {
+        const nodes = data.nodes || [];
+        if (!nodes.length) return 0;
+        const prev = new Date(nodes[nodes.length - 1].logged_at).getTime();
+        if (Number.isNaN(prev)) return 0;
+        return Math.max(0, Math.round((clickedAt - prev) / 1000));
+    }
+
     async function punch(forSelectedDay) {
+        if (compact) setCompactCollapsed(false);
         const token = localStorage.getItem('authToken');
         if (!token) {
             if (typeof showMessage === 'function') showMessage('请先登录', 'error');
             return;
         }
         const punchDay = forSelectedDay ? currentDay() : todayISO();
+        const clickedAt = Date.now();
         try {
-            const node = await logApi('/nodes', {
-                method: 'POST',
-                body: JSON.stringify({ log_date: punchDay }),
-            });
             day = punchDay;
-            await load(punchDay);
-            openSheet(node, !node.duration_seconds && (data.nodes || []).length <= 1);
+            if (!data.nodes || data.date !== punchDay) {
+                await load(punchDay);
+            } else {
+                await loadTasks();
+            }
+            const duration = durationSinceLast(clickedAt);
+            const node = {
+                id: null,
+                log_date: punchDay,
+                logged_at: new Date(clickedAt).toISOString(),
+                label: '',
+                duration_seconds: duration,
+                task_id: null,
+            };
+            openSheet(node, duration <= 0 && !(data.nodes || []).length);
         } catch (e) {
             if (typeof showMessage === 'function') showMessage(e.message, 'error');
         }
@@ -214,15 +418,25 @@
 
     function ensureFab() {
         if (compact) return;
-        if (document.getElementById('timeLogFab')) return;
-        const btn = document.createElement('button');
-        btn.id = 'timeLogFab';
-        btn.className = 'tl-fab';
-        btn.type = 'button';
-        btn.textContent = '记';
-        btn.title = '记下时间节点';
-        btn.addEventListener('click', () => punch(false));
-        document.body.appendChild(btn);
+        let btn = document.getElementById('timeLogFab');
+        if (!btn) {
+            btn = document.createElement('button');
+            btn.id = 'timeLogFab';
+            btn.className = 'tl-fab';
+            btn.type = 'button';
+            btn.textContent = '记';
+            btn.title = '记下此刻。写下内容才会记入日志。电脑上可拖到左右边缘停靠。';
+            btn.addEventListener('click', (e) => {
+                if (btn.dataset.dragged === '1') {
+                    e.preventDefault();
+                    btn.dataset.dragged = '0';
+                    return;
+                }
+                punch(false);
+            });
+            document.body.appendChild(btn);
+        }
+        bindFabDock(btn);
     }
 
     function native() {
@@ -251,7 +465,7 @@
                 allowed = true;
             }
             hint.textContent = allowed
-                ? '打开后，离开书然也能点悬浮按钮记下时间。'
+                ? '打开后，离开书然也能点悬浮按钮。写下内容才会记入日志。'
                 : '需要先允许「显示在其他应用上层」。';
         }
     }
@@ -273,8 +487,15 @@
     }
 
     function openCompactWindow() {
-        const url = '/static/time-log-compact.html';
-        window.open(url, 'shuran-timelog', 'width=400,height=620,resizable=yes,scrollbars=yes');
+        const url = '/static/time-log-compact.html?ball=1';
+        const w = window.open(
+            url,
+            'shuran-timelog',
+            `popup=yes,width=${BALL_SIZE.width},height=${BALL_SIZE.height},resizable=yes,scrollbars=no,menubar=no,toolbar=no,location=no,status=no`
+        );
+        if (!w && typeof showMessage === 'function') {
+            showMessage('浏览器拦截了悬浮窗，请允许弹出式窗口', 'error');
+        }
     }
 
     window.syncTimeLogChrome = function syncTimeLogChrome() {
@@ -282,6 +503,7 @@
         const fab = document.getElementById('timeLogFab');
         if (fab) fab.hidden = !localStorage.getItem('authToken');
         syncOverlaySwitch();
+        syncAssistRow();
     };
 
     window.loadTimeLog = function loadTimeLog() {
@@ -293,7 +515,26 @@
 
     window.punchTimeLog = punch;
 
-    window.closeTimeLogSheet = closeSheet;
+    window.closeTimeLogSheet = discardSheet;
+
+    function syncAssistRow() {
+        const row = document.getElementById('timeLogAssistRow');
+        const n = native();
+        if (!row) return;
+        const show = !!(n && (typeof n.requestAssistantRole === 'function' || typeof n.pinTimeLogShortcut === 'function'));
+        row.hidden = !show;
+        const status = document.getElementById('timeLogAssistStatus');
+        if (!status || !n) return;
+        let held = false;
+        try {
+            held = typeof n.isAssistantRoleHeld === 'function' && !!n.isAssistantRoleHeld();
+        } catch (e) {
+            held = false;
+        }
+        status.textContent = held
+            ? '书然已是默认数字助理。荣耀/华为可在系统设置把电源键长按指定为书然。'
+            : '第三方应用不能真正抢走电源键。能做的是：设为默认数字助理后，部分荣耀/华为机会把电源键长按打开书然「记」。所有机型都可用快捷设置磁贴或桌面快捷方式。';
+    }
 
     function onReady() {
         compact = document.body.classList.contains('tl-compact-page');
@@ -307,8 +548,38 @@
         });
         document.getElementById('timeLogPunchBtn')?.addEventListener('click', () => punch(true));
         document.getElementById('timeLogCompactBtn')?.addEventListener('click', openCompactWindow);
+        document.getElementById('timeLogDockBall')?.addEventListener('click', () => punch(false));
+        document.getElementById('timeLogMinimizeBtn')?.addEventListener('click', () => {
+            discardSheet();
+            setCompactCollapsed(true);
+        });
+        if (compact && new URLSearchParams(location.search).get('ball') === '1') {
+            setCompactCollapsed(true);
+        }
         document.getElementById('timeLogOverlaySwitch')?.addEventListener('change', (e) => {
             applyOverlay(e.target.checked);
+        });
+        document.getElementById('timeLogAssistBtn')?.addEventListener('click', () => {
+            const n = native();
+            try {
+                if (n && typeof n.requestAssistantRole === 'function') n.requestAssistantRole();
+            } catch (e) {
+                if (typeof showMessage === 'function') showMessage('无法打开系统助理设置', 'error');
+            }
+        });
+        document.getElementById('timeLogShortcutBtn')?.addEventListener('click', () => {
+            const n = native();
+            try {
+                if (n && typeof n.pinTimeLogShortcut === 'function') n.pinTimeLogShortcut();
+            } catch (e) {
+                if (typeof showMessage === 'function') showMessage('无法添加桌面快捷方式', 'error');
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.getElementById('timeLogSheet')) {
+                e.preventDefault();
+                discardSheet();
+            }
         });
         document.getElementById('timeLogList')?.addEventListener('click', (e) => {
             if (e.target.dataset.act !== 'edit') return;
@@ -323,7 +594,7 @@
         if (typeof originalHandle === 'function') {
             window.handleAppBack = function () {
                 if (document.getElementById('timeLogSheet')) {
-                    closeSheet();
+                    discardSheet();
                     return 'consumed';
                 }
                 return originalHandle();
@@ -334,6 +605,7 @@
             load(currentDay()).catch(() => {});
         }
         syncOverlaySwitch();
+        syncAssistRow();
     }
 
     if (document.readyState === 'loading') {

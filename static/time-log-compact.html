@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>书然 · 时间节点</title>
+    <title>书然 · 记</title>
     <link rel="icon" href="/static/icons/app-icon-1024.png">
-    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260912flow1">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260914desk2">
     <style>
-        body {
+        html, body {
             margin: 0;
             background: #f3efe6;
             color: #1c1b19;
             font-family: "Noto Serif SC", "Songti SC", serif;
+        }
+        body {
             padding: 18px 16px 24px;
         }
         h1 {
@@ -20,12 +22,61 @@
         }
         .flow-page { max-width: none; }
         .tl-compact-page .tl-fab { display: none; }
+        .tl-dock-ball {
+            display: none;
+        }
+        .tl-compact-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        body.tl-collapsed {
+            padding: 0;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        body.tl-collapsed .flow-page,
+        body.tl-collapsed .tl-sheet,
+        body.tl-collapsed .tl-sheet-backdrop {
+            display: none !important;
+        }
+        body.tl-collapsed .tl-dock-ball {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 72px;
+            height: 72px;
+            border: 1px solid #1c1b19;
+            border-radius: 50%;
+            background: #1c1b19;
+            color: #f3efe6;
+            font-size: 1.15rem;
+            letter-spacing: 0.12em;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="tl-compact-page">
+    <script>
+        if (new URLSearchParams(location.search).get('ball') === '1') {
+            document.body.classList.add('tl-collapsed');
+        }
+    </script>
+    <button type="button" class="tl-dock-ball" id="timeLogDockBall" title="记下此刻">记</button>
     <div class="flow-page">
-        <h1>时间节点</h1>
-        <p class="flow-hint">把这个小窗留在桌面上。做完一段，点「记下此刻」。时间先落下，再写这段做了什么。</p>
+        <div class="tl-compact-head">
+            <div>
+                <h1>时间节点</h1>
+                <p class="flow-hint">点「记」先抓住此刻，写下之后才会记入日志。不用时点「收成小球」，把窗口挂在桌面边上。</p>
+            </div>
+            <button type="button" class="flow-ghost-btn" id="timeLogMinimizeBtn">收成小球</button>
+        </div>
         <div class="flow-toolbar">
             <div class="flow-date-nav">
                 <button type="button" id="timeLogPrevDay">前一天</button>
@@ -57,6 +108,6 @@
             if (total) total.textContent = message;
         }
     </script>
-    <script src="/static/js/time-log.js?v=20260912flow1"></script>
+    <script src="/static/js/time-log.js?v=20260914desk2"></script>
 </body>
 </html>

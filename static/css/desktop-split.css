@@ -1,0 +1,139 @@
+/* 电脑端半屏 / 分屏：收成图标轨，主区铺满，不改手机底栏。 */
+
+@media (min-width: 769px) {
+    body {
+        --shuran-sidebar: 240px;
+        --shuran-header: 56px;
+        --shuran-main-pad-y: 20px;
+        --shuran-main-pad-x: 22px;
+    }
+
+    body.sidebar-rail {
+        --shuran-sidebar: 72px;
+    }
+
+    .sidebar-toggle-btn {
+        display: flex;
+        width: 36px;
+        height: 36px;
+        margin-right: 8px;
+        flex-shrink: 0;
+        background: rgba(255, 255, 255, 0.16);
+        border-radius: 10px;
+    }
+
+    .app-header {
+        height: var(--shuran-header);
+        min-height: var(--shuran-header);
+        padding: 0 16px;
+    }
+
+    .app-sidebar {
+        top: var(--shuran-header);
+        width: var(--shuran-sidebar);
+        height: calc(100vh - var(--shuran-header));
+        overflow-x: hidden;
+        transition: width 0.18s ease;
+    }
+
+    .app-main {
+        margin-left: var(--shuran-sidebar);
+        margin-top: var(--shuran-header);
+        min-height: calc(100vh - var(--shuran-header));
+        padding: var(--shuran-main-pad-y) var(--shuran-main-pad-x);
+        transition: margin-left 0.18s ease;
+    }
+
+    .self-talk-frame {
+        height: calc(100vh - var(--shuran-header));
+    }
+
+    #self-talk.content-section.active {
+        margin: calc(-1 * var(--shuran-main-pad-y)) calc(-1 * var(--shuran-main-pad-x));
+    }
+
+    .section-header {
+        margin-bottom: 16px;
+    }
+
+    .section-header h1 {
+        font-size: 1.55rem;
+    }
+
+    .actions-list {
+        max-height: none;
+    }
+
+    .nav-item {
+        white-space: nowrap;
+    }
+
+    body.sidebar-rail .nav-text {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+    }
+
+    body.sidebar-rail .nav-item {
+        position: relative;
+        justify-content: center;
+        padding: 14px 0;
+        gap: 0;
+    }
+
+    body.sidebar-rail .nav-item.active {
+        padding-left: 0;
+        border-left: none;
+        background: rgba(102, 126, 234, 0.12);
+    }
+
+    body.sidebar-rail .nav-divider {
+        margin: 12px 16px;
+    }
+
+    .tl-fab {
+        top: 62vh;
+        right: 8px;
+        bottom: auto;
+        touch-action: none;
+        user-select: none;
+        box-shadow: 0 8px 22px rgba(28, 27, 25, 0.16);
+    }
+
+    .tl-fab.is-dragging {
+        cursor: grabbing;
+        opacity: 0.92;
+    }
+
+    .tl-fab.is-dock-left {
+        left: 8px;
+        right: auto;
+    }
+
+    .tl-fab.is-dock-right {
+        right: 8px;
+        left: auto;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 980px) {
+    .app-logo .app-title {
+        font-size: 1.05rem;
+    }
+
+    .app-header .user-email {
+        display: none;
+    }
+
+    .home-schedule {
+        padding: 16px 16px 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar-toggle-btn {
+        display: none !important;
+    }
+}
