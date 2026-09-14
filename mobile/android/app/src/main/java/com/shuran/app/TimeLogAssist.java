@@ -20,7 +20,9 @@ public final class TimeLogAssist {
     public static Intent punchIntent(Context context) {
         Intent intent = new Intent(context, TimeLogPunchActivity.class);
         intent.setAction(ACTION_PUNCH);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
         return intent;
     }
 
@@ -44,6 +46,15 @@ public final class TimeLogAssist {
     }
 
     public static void requestAssistantRole(Activity activity) {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
+        builder.setTitle(R.string.timelog_honor_dialog_title);
+        builder.setMessage(R.string.timelog_honor_dialog_body);
+        builder.setPositiveButton(R.string.timelog_go_settings, (dialog, which) -> startAssistantSettings(activity));
+        builder.setNegativeButton(android.R.string.cancel, null);
+        builder.show();
+    }
+
+    private static void startAssistantSettings(Activity activity) {
         if (Build.VERSION.SDK_INT >= 29) {
             try {
                 RoleManager manager = activity.getSystemService(RoleManager.class);
@@ -76,6 +87,55 @@ public final class TimeLogAssist {
             } catch (Exception ignored) {
             }
         }
+    }
+
+    public static boolean isVolumeKeyServiceEnabled(Context context) {
+        String enabled = Settings.Secure.getString(
+                context.getContentResolver(),
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        );
+        if (enabled == null || enabled.isEmpty()) {
+            return false;
+        }
+        String full = context.getPackageName() + "/" + TimeLogVolumeKeyService.class.getName();
+        String compact = context.getPackageName() + "/.TimeLogVolumeKeyService";
+        for (String item : enabled.split(":")) {
+            if (full.equalsIgnoreCase(item) || compact.equalsIgnoreCase(item)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static void openAccessibilitySettings(Context context) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) {
+            try {
+                context.startActivity(new Intent(Settings.ACTION_SETTINGS)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    public static void requestVolumeKeyAccess(Activity activity) {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
+        builder.setTitle(R.string.timelog_volume_dialog_title);
+        builder.setMessage(R.string.timelog_volume_dialog_body);
+        builder.setPositiveButton(R.string.timelog_go_settings, (dialog, which) -> {
+            Toast.makeText(activity, R.string.timelog_volume_settings_toast, Toast.LENGTH_LONG).show();
+            openAccessibilitySettings(activity);
+        });
+        builder.setNegativeButton(android.R.string.cancel, null);
+        builder.show();
+    }
+
+    public static void requestDisableVolumeKey(Activity activity) {
+        Toast.makeText(activity, R.string.timelog_volume_disable_toast, Toast.LENGTH_LONG).show();
+        openAccessibilitySettings(activity);
     }
 
     public static void pinShortcut(Activity activity) {

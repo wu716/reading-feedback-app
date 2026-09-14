@@ -263,4 +263,20 @@ public class ReminderJsBridge {
     public void pinTimeLogShortcut() {
         activity.runOnUiThread(() -> TimeLogAssist.pinShortcut(activity));
     }
+
+    @JavascriptInterface
+    public boolean isVolumeTripleEnabled() {
+        return TimeLogAssist.isVolumeKeyServiceEnabled(activity);
+    }
+
+    @JavascriptInterface
+    public void setVolumeTripleEnabled(boolean enabled) {
+        activity.runOnUiThread(() -> {
+            if (enabled) {
+                TimeLogAssist.requestVolumeKeyAccess(activity);
+            } else {
+                TimeLogAssist.requestDisableVolumeKey(activity);
+            }
+        });
+    }
 }
