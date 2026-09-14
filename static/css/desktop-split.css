@@ -4,6 +4,9 @@
     html {
         height: 100%;
         background: #f5f7fa;
+        zoom: 1;
+        text-size-adjust: 100%;
+        -webkit-text-size-adjust: 100%;
     }
 
     body {

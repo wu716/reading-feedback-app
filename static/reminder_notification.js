@@ -1013,7 +1013,7 @@ function fillAppVersionLabel() {
     const pageHint = '书然的界面在服务器上。打开或刷新就是新的，不必像别的软件那样先更新安装包。';
     if (!shuranIsPhoneApp() && !shell.inApp) {
         label.textContent = '打开即是最新';
-        if (hint) hint.textContent = '电脑用浏览器打开的就是服务器上的页面，刷新即可。不必安装，也不会下载安装包。';
+        if (hint) hint.textContent = '电脑请用 Edge 或 Chrome 打开同一网址，窗口会按像素重新排版，清晰且能分屏铺满。不要用电脑管家里的「书然」手机应用窗口。';
         return;
     }
 

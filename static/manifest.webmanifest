@@ -1,0 +1,19 @@
+{
+  "name": "书然",
+  "short_name": "书然",
+  "description": "把读书笔记，变成真正在做的行动",
+  "start_url": "/static/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#667eea",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/static/icons/app-icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
