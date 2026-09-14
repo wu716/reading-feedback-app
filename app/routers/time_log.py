@@ -153,6 +153,34 @@ def resolve_logged_at(value: Optional[datetime], now: datetime) -> datetime:
     return at
 
 
+def purge_unwritten_drafts(db: Session, user_id: int, day: date) -> None:
+    for draft in live_nodes(db, user_id, day):
+        if not is_written_node(draft):
+            db.delete(draft)
+    db.flush()
+
+
+def recompute_day_durations(db: Session, user_id: int, day: date) -> None:
+    """删除中间节点后，按剩余节点重算每段时长，让合计仍连续。"""
+    previous = None
+    for node in visible_nodes(db, user_id, day):
+        if previous is None:
+            node.duration_seconds = 0
+        else:
+            delta = ensure_aware(node.logged_at) - ensure_aware(previous.logged_at)
+            node.duration_seconds = max(0, int(delta.total_seconds()))
+        previous = node
+    db.flush()
+
+
+def remove_node(db: Session, node: TimeLogNode, user_id: int) -> date:
+    day = node.log_date
+    db.delete(node)
+    db.flush()
+    recompute_day_durations(db, user_id, day)
+    return day
+
+
 @router.get("", response_model=DayLogOut)
 async def get_day_log(
     log_date: Optional[date] = Query(None),
@@ -171,9 +199,7 @@ async def punch_node(
     now = beijing_now()
     day = parse_day(body.log_date)
     stamped = resolve_logged_at(body.logged_at, now)
-    for draft in live_nodes(db, current_user.id, day):
-        if not is_written_node(draft):
-            draft.deleted_at = now
+    purge_unwritten_drafts(db, current_user.id, day)
     last = visible_nodes(db, current_user.id, day)
     previous = last[-1] if last else None
     duration = 0
@@ -210,7 +236,7 @@ async def update_node(
     elif body.task_id is not None:
         node.task_id = resolve_task_id(db, current_user.id, body.task_id, node.log_date)
     if not is_written_node(node):
-        node.deleted_at = beijing_now()
+        remove_node(db, node, current_user.id)
         db.commit()
         raise HTTPException(status_code=400, detail="没有写下内容，未记入日志")
     db.commit()
@@ -225,7 +251,6 @@ async def delete_node(
     db: Session = Depends(get_db),
 ):
     node = get_node_or_404(db, current_user.id, node_id)
-    day = node.log_date
-    node.deleted_at = beijing_now()
+    day = remove_node(db, node, current_user.id)
     db.commit()
     return day_payload(db, current_user, day)
