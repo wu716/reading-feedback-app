@@ -1,11 +1,20 @@
 /* 电脑端半屏 / 分屏：收成图标轨，主区铺满，不改手机底栏。 */
 
 @media (min-width: 769px) {
+    html {
+        height: 100%;
+        background: #f5f7fa;
+    }
+
     body {
         --shuran-sidebar: 240px;
         --shuran-header: 56px;
         --shuran-main-pad-y: 20px;
         --shuran-main-pad-x: 22px;
+        height: 100%;
+        min-height: 100%;
+        overflow: hidden;
+        background: #f5f7fa;
     }
 
     body.sidebar-rail {
@@ -30,8 +39,10 @@
 
     .app-sidebar {
         top: var(--shuran-header);
+        right: auto;
+        bottom: 0;
         width: var(--shuran-sidebar);
-        height: calc(100vh - var(--shuran-header));
+        height: auto;
         overflow-x: hidden;
         transition: width 0.18s ease;
     }
@@ -39,17 +50,117 @@
     .app-main {
         margin-left: var(--shuran-sidebar);
         margin-top: var(--shuran-header);
-        min-height: calc(100vh - var(--shuran-header));
+        height: calc(100% - var(--shuran-header));
+        min-height: calc(100% - var(--shuran-header));
+        max-height: calc(100% - var(--shuran-header));
         padding: var(--shuran-main-pad-y) var(--shuran-main-pad-x);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        background: #f5f7fa;
         transition: margin-left 0.18s ease;
     }
 
+    .app-main > #message:empty {
+        display: none;
+    }
+
+    .content-section.active {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+        animation: none;
+        transform: none;
+    }
+
+    .content-section.active > .section-header {
+        flex-shrink: 0;
+        margin-bottom: 12px;
+    }
+
+    #schedule.content-section.active > .home-schedule,
+    #actions.content-section.active > .card {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    #upload.content-section.active > .card,
+    #stats.content-section.active > .card,
+    #owner.content-section.active > .owner-page {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+    }
+
+    #schedule .home-schedule-head,
+    #schedule .flow-add-row,
+    #actions.content-section.active > .notes-entry-card {
+        flex-shrink: 0;
+    }
+
+    #schedule .home-schedule-list,
+    #actions .actions-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+        max-height: none;
+    }
+
+    #overview.content-section.active > .homepage-dashboard,
+    #user-center.content-section.active > .me-page,
+    #time-log.content-section.active > .flow-page,
+    #guide.content-section.active {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+    }
+
+    #overview.content-section.active > .homepage-dashboard {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin-bottom: 0;
+    }
+
+    #overview .today-calendar-row,
+    #overview .today-calendar-row .widget-card {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #overview .today-calendar-row {
+        margin-bottom: 0;
+        grid-template-columns: 1fr;
+    }
+
+    #time-log.content-section.active > .flow-page {
+        max-width: none;
+    }
+
     .self-talk-frame {
-        height: calc(100vh - var(--shuran-header));
+        height: 100%;
+        min-height: calc(100% - var(--shuran-header));
+    }
+
+    #self-talk.content-section {
+        flex: 0 0 0;
     }
 
     #self-talk.content-section.active {
+        display: flex;
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 0;
+        overflow: hidden;
         margin: calc(-1 * var(--shuran-main-pad-y)) calc(-1 * var(--shuran-main-pad-x));
+        visibility: visible;
     }
 
     .section-header {
