@@ -255,17 +255,20 @@
         }
 
         if (onDesktop) {
-            document.getElementById("subText").textContent = "电脑请继续用网页，不必安装";
-            meta.textContent = "安装包只给安卓手机。在电脑上下载会弹出「未安装应用」。";
-            btn.removeAttribute("href");
-            btn.textContent = "请用手机打开本页";
-            btn.style.pointerEvents = "none";
-            btn.style.opacity = "0.45";
+            document.getElementById("subText").textContent = "电脑请用 Windows 应用，不要用电脑管家打开 APK";
+            meta.textContent = "正在检查 Windows 应用…";
+            btn.href = "/download/windows";
+            btn.textContent = "下载 Windows 应用";
+            btn.style.pointerEvents = "auto";
+            btn.style.opacity = "1";
             apkLink.removeAttribute("href");
             apkLink.style.display = "none";
+            copyBtn.style.display = "none";
             tipsList.innerHTML = ""
-                + "<li>电脑刷新书然网页即可，没有电脑安装包</li>"
-                + "<li>需要更新手机 App 时，用安卓浏览器打开本页</li>";
+                + "<li>下载后双击打开，窗口标题是「书然」</li>"
+                + "<li>可用 Win+← / Win+→ 吸附半屏</li>"
+                + "<li>需已安装 Edge WebView2（Win11 通常已有）</li>"
+                + "<li>不要用电脑管家打开安卓安装包，会糊</li>";
         }
 
         if (inWeChat) {
@@ -300,6 +303,20 @@
             try {
                 const res = await fetch("/download/info", { cache: "no-store" });
                 const data = await res.json();
+                if (onDesktop) {
+                    if (!data.windows_available) {
+                        meta.textContent = "Windows 应用尚未上传";
+                        btn.style.pointerEvents = "none";
+                        btn.style.opacity = "0.45";
+                    } else {
+                        meta.textContent = data.windows_size_mb
+                            ? ("约 " + data.windows_size_mb + " MB")
+                            : "可下载";
+                        btn.style.pointerEvents = "auto";
+                        btn.style.opacity = "1";
+                    }
+                    return;
+                }
                 if (!data.available) {
                     meta.textContent = "安装包暂不可用，请稍后重试";
                     apkLink.style.pointerEvents = "none";
@@ -323,7 +340,6 @@
 
         btn.addEventListener("click", function (event) {
             if (onDesktop) {
-                event.preventDefault();
                 return;
             }
             if (inWeChat) {

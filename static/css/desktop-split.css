@@ -138,7 +138,11 @@
     }
 
     #overview.content-section.active {
+        display: block;
         overflow: auto;
+        flex: 1 1 auto;
+        min-height: 0;
+        height: auto;
     }
 
     #overview.content-section.active > .homepage-dashboard,
@@ -164,31 +168,44 @@
     }
 
     #overview.content-section.active > .homepage-dashboard {
-        display: flex;
-        flex-direction: column;
-        flex: 0 0 auto;
-        gap: 16px;
+        display: block;
+        flex: none;
+        min-height: 0;
+        height: auto;
+        overflow: visible;
         margin-bottom: 0;
     }
 
     #overview .today-calendar-row,
-    #overview .dashboard-row,
-    #overview .today-calendar-row .widget-card {
-        flex: 0 0 auto;
-        min-height: auto;
+    #overview .dashboard-row {
+        display: block;
+        flex: none;
+        min-height: 0;
+        height: auto;
+        margin-bottom: 16px;
         position: relative;
-        z-index: 0;
+        z-index: 1;
+        overflow: visible;
     }
 
-    #overview .today-calendar-row {
-        display: grid;
-        grid-template-columns: 1fr;
-        margin-bottom: 0;
-    }
-
+    #overview .today-calendar-row .widget-card,
     #overview .widget-card {
-        background-color: #fffcf6;
+        display: block;
+        flex: none;
+        min-height: 0;
+        height: auto;
+        position: relative;
+        z-index: 1;
+        overflow: hidden;
+        isolation: isolate;
+        background: #fffcf6;
         opacity: 1;
+        animation: none;
+        transform: none;
+    }
+
+    #overview .calendar-grid {
+        min-height: 180px;
     }
 
     #time-log.content-section.active > .flow-page {
