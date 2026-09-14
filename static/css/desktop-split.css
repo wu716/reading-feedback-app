@@ -4,22 +4,15 @@
     html {
         height: 100%;
         background: #f5f7fa;
-        zoom: 1;
-        text-size-adjust: 100%;
-        -webkit-text-size-adjust: 100%;
     }
 
     body {
         --shuran-sidebar: 240px;
         --shuran-header: 56px;
-        --shuran-main-pad-y: 16px;
-        --shuran-main-pad-x: 18px;
-        position: fixed;
-        inset: 0;
-        width: 100%;
+        --shuran-main-pad-y: 20px;
+        --shuran-main-pad-x: 22px;
         height: 100%;
-        min-height: 0;
-        max-height: none;
+        min-height: 100%;
         overflow: hidden;
         background: #f5f7fa;
         background-attachment: scroll;
@@ -51,7 +44,6 @@
     }
 
     .app-sidebar {
-        position: fixed;
         top: var(--shuran-header);
         left: 0;
         right: auto;
@@ -63,21 +55,18 @@
     }
 
     .app-main {
-        position: fixed;
-        top: var(--shuran-header);
-        left: var(--shuran-sidebar);
-        right: 0;
-        bottom: 0;
-        margin: 0;
-        height: auto;
-        min-height: 0;
-        max-height: none;
+        margin-left: var(--shuran-sidebar);
+        margin-top: var(--shuran-header);
+        margin-bottom: 0;
+        height: calc(100% - var(--shuran-header));
+        min-height: calc(100% - var(--shuran-header));
+        max-height: calc(100% - var(--shuran-header));
         padding: var(--shuran-main-pad-y) var(--shuran-main-pad-x);
         overflow: hidden;
         display: flex;
         flex-direction: column;
         background: #f5f7fa;
-        transition: left 0.18s ease;
+        transition: margin-left 0.18s ease;
     }
 
     .app-main > #message:empty {
@@ -131,12 +120,22 @@
         max-height: none;
     }
 
+    #overview.content-section.active {
+        overflow: auto;
+    }
+
     #overview.content-section.active > .homepage-dashboard,
     #user-center.content-section.active > .me-page,
     #time-log.content-section.active > .flow-page,
     #guide.content-section.active {
         flex: 1 1 auto;
         min-height: 0;
+        overflow: visible;
+    }
+
+    #user-center.content-section.active > .me-page,
+    #time-log.content-section.active > .flow-page,
+    #guide.content-section.active {
         overflow: auto;
     }
 
@@ -150,21 +149,29 @@
     #overview.content-section.active > .homepage-dashboard {
         display: flex;
         flex-direction: column;
+        flex: 0 0 auto;
         gap: 16px;
         margin-bottom: 0;
     }
 
     #overview .today-calendar-row,
+    #overview .dashboard-row,
     #overview .today-calendar-row .widget-card {
-        flex: 1 1 auto;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
+        flex: 0 0 auto;
+        min-height: auto;
+        position: relative;
+        z-index: 0;
     }
 
     #overview .today-calendar-row {
-        margin-bottom: 0;
+        display: grid;
         grid-template-columns: 1fr;
+        margin-bottom: 0;
+    }
+
+    #overview .widget-card {
+        background-color: #fffcf6;
+        opacity: 1;
     }
 
     #time-log.content-section.active > .flow-page {
