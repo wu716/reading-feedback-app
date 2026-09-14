@@ -35,11 +35,21 @@
         btn.classList.toggle('is-rail', rail);
     }
 
+    function syncFrameHeight() {
+        if (!isDesktop()) {
+            document.documentElement.style.removeProperty('--shuran-frame');
+            return;
+        }
+        document.documentElement.style.setProperty('--shuran-frame', window.innerHeight + 'px');
+    }
+
     function apply() {
         if (!isDesktop()) {
+            document.documentElement.style.removeProperty('--shuran-frame');
             document.body.classList.remove('sidebar-rail', 'sidebar-full');
             return;
         }
+        syncFrameHeight();
         const rail = preferredRail();
         document.body.classList.toggle('sidebar-rail', rail);
         document.body.classList.toggle('sidebar-full', !rail);
