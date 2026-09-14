@@ -521,8 +521,22 @@
         const row = document.getElementById('timeLogAssistRow');
         const n = native();
         if (!row) return;
-        const show = !!(n && (typeof n.requestAssistantRole === 'function' || typeof n.pinTimeLogShortcut === 'function'));
+        const show = !!(n && typeof n.pinTimeLogShortcut === 'function');
         row.hidden = !show;
+        const volumeHint = document.getElementById('timeLogVolumeHint');
+        const volumeSwitch = document.getElementById('timeLogVolumeSwitch');
+        let volumeOn = false;
+        try {
+            volumeOn = !!(n && typeof n.isVolumeTripleEnabled === 'function' && n.isVolumeTripleEnabled());
+        } catch (e) {
+            volumeOn = false;
+        }
+        if (volumeSwitch) volumeSwitch.checked = volumeOn;
+        if (volumeHint) {
+            volumeHint.textContent = volumeOn
+                ? '已打开。锁屏或其他应用上连续三击音量减会弹出「记」。前两击仍会调低音量，第三次才唤起。单击调音量和截屏不受影响。'
+                : '推荐打开。连续快按三下音量减唤起「记」，不占用单击调音量和截屏。需系统无障碍授权，只监听这个手势，不读屏幕。';
+        }
         const status = document.getElementById('timeLogAssistStatus');
         if (!status || !n) return;
         let held = false;
@@ -532,8 +546,8 @@
             held = false;
         }
         status.textContent = held
-            ? '书然已是默认数字助理。荣耀/华为可在系统设置把电源键长按指定为书然。'
-            : '第三方应用不能真正抢走电源键。能做的是：设为默认数字助理后，部分荣耀/华为机会把电源键长按打开书然「记」。所有机型都可用快捷设置磁贴或桌面快捷方式。';
+            ? '书然已是默认数字助理。请再到荣耀/华为系统设置把电源键长按指定为书然。'
+            : '先把书然设为默认数字助理，再到荣耀「辅助功能 / 快捷启动与手势」或华为「智慧助手 / 按键与手势」里，把电源键长按指过来。';
     }
 
     function onReady() {
@@ -558,6 +572,16 @@
         }
         document.getElementById('timeLogOverlaySwitch')?.addEventListener('change', (e) => {
             applyOverlay(e.target.checked);
+        });
+        document.getElementById('timeLogVolumeSwitch')?.addEventListener('change', (e) => {
+            const n = native();
+            const want = !!e.target.checked;
+            try {
+                if (n && typeof n.setVolumeTripleEnabled === 'function') n.setVolumeTripleEnabled(want);
+            } catch (err) {
+                if (typeof showMessage === 'function') showMessage('无法打开系统无障碍设置', 'error');
+            }
+            setTimeout(syncAssistRow, 300);
         });
         document.getElementById('timeLogAssistBtn')?.addEventListener('click', () => {
             const n = native();
@@ -606,6 +630,11 @@
         }
         syncOverlaySwitch();
         syncAssistRow();
+        const previousResume = window.onNativeAppResume;
+        window.onNativeAppResume = function (info) {
+            if (typeof previousResume === 'function') previousResume(info);
+            syncAssistRow();
+        };
     }
 
     if (document.readyState === 'loading') {
