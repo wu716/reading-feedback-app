@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
@@ -66,11 +67,16 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
-        settings.setLoadWithOverviewMode(true);
+        // Honor/Windows Android windows bitmap-scale a phone canvas if overview
+        // mode treats the page as a fitted image. Keep viewport meta, never stretch.
         settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(false);
         settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
+        settings.setTextZoom(100);
+        settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NORMAL);
+        webView.setInitialScale(0);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
@@ -111,6 +117,12 @@ public class MainActivity extends Activity {
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
         cookieManager.setAcceptThirdPartyCookies(webView, true);
+
+        webView.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
+                notifyWebViewSizeChanged();
+            }
+        });
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -420,6 +432,22 @@ public class MainActivity extends Activity {
         errorView.setVisibility(View.GONE);
         webView.setVisibility(View.VISIBLE);
         webView.loadUrl(withCacheBust(ReminderNotifications.resolveUrl(this, path)));
+    }
+
+    private void notifyWebViewSizeChanged() {
+        if (webView == null) {
+            return;
+        }
+        webView.evaluateJavascript(
+                "(function(){try{window.dispatchEvent(new Event('resize'));}catch(e){}})()",
+                null
+        );
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        notifyWebViewSizeChanged();
     }
 
     private void handleBackNavigation() {
