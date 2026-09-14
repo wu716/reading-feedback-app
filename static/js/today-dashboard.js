@@ -54,7 +54,7 @@
         const token = localStorage.getItem('authToken');
         if (!token) {
             const hint = document.getElementById('todayOverviewHint');
-            if (hint) hint.textContent = '登录后查看今日数据';
+            if (hint) hint.textContent = '';
             renderDailyTodos([]);
             return;
         }
@@ -67,7 +67,7 @@
                 window.reminderNotificationService.syncNativeTodos();
             }
             const hint = document.getElementById('todayOverviewHint');
-            if (hint) hint.textContent = `数据已更新 · ${todayOverviewData.date}`;
+            if (hint) hint.textContent = '';
             startTodayAutoRefresh();
         } catch (e) {
             console.error('加载今日概览失败', e);
@@ -137,7 +137,7 @@
                         ${e.reflection ? `<p><strong>笔记/感悟：</strong>${escapeHtml(e.reflection)}</p>` : ''}
                         <button type="button" class="todo-btn" onclick="openReadingNoteForm(${e.id})">编辑</button>
                     </div>`).join('')
-                : '<p style="color:#999;font-size:0.85rem;">暂无阅读记录，可在「上传笔记」中添加，或滚轮调整时长后自动创建。</p>';
+                : '<p style="color:#999;font-size:0.85rem;">暂无阅读记录</p>';
             rp.innerHTML += `<p style="margin-top:8px;"><button type="button" class="todo-add-btn" onclick="openReadingNoteForm()">＋ 添加阅读内容与笔记</button></p>`;
         }
 
@@ -152,7 +152,7 @@
                             ? ''
                             : `<p style="margin-top:8px;"><button type="button" class="todo-btn" onclick="showPracticeModal(${a.id})">记录实践</button></p>`}
                     </div>`).join('')
-                : '<p style="color:#999;font-size:0.85rem;">暂无行动项，可先添加一条。</p>';
+                : '<p style="color:#999;font-size:0.85rem;">还没有行动项</p>';
             ap.innerHTML += `<p style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;">
                 <button type="button" class="todo-add-btn" onclick="recordTodayPractice()">记录今日实践</button>
                 <button type="button" class="todo-btn" onclick="addAction()">＋ 添加行动项</button>
@@ -266,7 +266,7 @@
     function applyReadingDelta(delta) {
         if (!delta) return;
         if (!localStorage.getItem('authToken')) {
-            if (typeof showMessage === 'function') showMessage('请先登录后再调整时长', 'error');
+            if (typeof showMessage === 'function') showMessage('请先登录', 'error');
             return;
         }
         const current = currentReadingMinutes();
@@ -317,7 +317,7 @@
                     method: 'POST',
                     body: JSON.stringify({
                         book_title: '今日阅读',
-                        content: '（点击展开可填写阅读内容）',
+                        content: '',
                         duration_minutes: target,
                     }),
                 });

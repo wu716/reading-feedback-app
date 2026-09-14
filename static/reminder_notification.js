@@ -980,7 +980,7 @@ function shuranStartAppUpdate() {
     const pageUrl = origin + '/download';
     if (!shuranIsPhoneApp()) {
         if (typeof showMessage === 'function') {
-            showMessage('电脑用的是网页，刷新即可。安装包只给安卓手机，这里不会下载。', 'info');
+            showMessage('电脑用的是网页，刷新即可。安装包只给安卓手机。', 'info');
         }
         return;
     }
@@ -993,39 +993,45 @@ function shuranStartAppUpdate() {
     });
 }
 
+window.SHURAN_VERSION = window.SHURAN_VERSION || '1.5.0';
+
 function fillAppVersionLabel() {
     const label = document.getElementById('appVersionLabel');
     if (!label) return;
+    const version = window.SHURAN_VERSION || '1.5.0';
     const shell = shuranShellInfo();
     const group = label.closest ? label.closest('.me-group') : null;
     const hint = document.getElementById('appVersionHint')
         || (group ? group.querySelector('.me-hint') : null);
     const btn = document.getElementById('appUpdateBtn');
     const title = group ? group.querySelector('.me-row-title') : null;
-    if (title && title.textContent === '版本更新') {
-        title.textContent = '当前内容';
+    if (title && (title.textContent === '版本更新' || title.textContent === '当前内容')) {
+        title.textContent = '版本';
+    }
+    const cardTitle = document.querySelector('#appUpdateCard h2');
+    if (cardTitle && (cardTitle.textContent === '当前内容' || cardTitle.textContent === '版本更新')) {
+        cardTitle.textContent = '版本';
     }
     if (btn) {
         btn.hidden = true;
         btn.textContent = '换安装包';
     }
 
-    const pageHint = '书然的界面在服务器上。打开或刷新就是新的，不必像别的软件那样先更新安装包。';
-    if (!shuranIsPhoneApp() && !shell.inApp) {
-        label.textContent = '打开即是最新';
-        if (hint) hint.textContent = '电脑请用 Edge 或 Chrome 打开同一网址，窗口会按像素重新排版，清晰且能分屏铺满。不要用电脑管家里的「书然」手机应用窗口。';
-        return;
+    if (shell.versionName) {
+        label.textContent = version + ' · 外壳 ' + shell.versionName;
+    } else {
+        label.textContent = version;
     }
 
-    const shellText = shell.versionName ? '（外壳 ' + shell.versionName + '）' : '';
-    label.textContent = '页面已是最新' + shellText;
-    if (hint) hint.textContent = pageHint + '只有通知、悬浮窗这类系统能力变了，才需要换安装包。';
-
-    if (shell.inApp && !shell.hasUpdater) {
-        if (hint) {
-            hint.textContent = '当前外壳过旧，系统通知可能弹不出来。用手机自带浏览器打开下载页，选择更新、不要卸载。';
+    if (hint) {
+        if (shell.inApp && !shell.hasUpdater) {
+            hint.hidden = false;
+            hint.textContent = '当前外壳过旧。用系统浏览器打开下载页更新，不要卸载。';
+            if (btn) btn.hidden = false;
+        } else {
+            hint.textContent = '';
+            hint.hidden = true;
         }
-        if (btn) btn.hidden = false;
     }
 }
 

@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Self-talk 内心对话系统</title>
+    <title>书然</title>
     <link rel="icon" href="/static/icons/app-icon-1024.png">
     <link rel="apple-touch-icon" href="/static/icons/app-icon-1024.png">
     <link rel="manifest" href="/static/manifest.webmanifest">
@@ -1867,8 +1867,29 @@
         }
         
         .actions-list {
-            max-height: 400px;
-            overflow-y: auto;
+            max-height: none;
+            overflow: visible;
+        }
+
+        .actions-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding-right: 56px;
+        }
+
+        .actions-empty {
+            padding: 28px 4px 8px;
+            color: #8a8478;
+            font-size: 0.95rem;
+        }
+
+        .me-hint:empty,
+        #todayOverviewHint:empty {
+            display: none;
         }
         
         .action-item {
@@ -3406,11 +3427,12 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260914fill5">
+    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260914v15">
 </head>
 <body>
     <script>
         (function () {
+            window.SHURAN_VERSION = '1.5.0';
             if (window.innerWidth > 768) {
                 document.documentElement.style.setProperty('--shuran-frame', window.innerHeight + 'px');
             }
@@ -3498,7 +3520,6 @@
         <section id="overview" class="content-section active">
             <div class="section-header">
                 <h1>今日</h1>
-                <p>看日历、待办和今天的进展</p>
             </div>
 
             <div class="in-app-reminder-bar" id="inAppReminderBar" hidden></div>
@@ -3568,7 +3589,7 @@
                                         <button type="button" class="duration-step" data-delta="5" aria-label="增加5分钟" onclick="event.stopPropagation()">+</button>
                                     </div>
                                     <div class="stat-label">今日阅读时长</div>
-                                    <div class="reading-duration-hint">滚轮或 ± 可调时长 · 点击展开阅读内容与笔记</div>
+                                    <div class="reading-duration-hint">可调时长</div>
                                     <div class="stat-progress"><div class="progress-bar" id="readingProgressBar" style="width: 0%;"></div></div>
                                 </div>
                             </div>
@@ -3596,13 +3617,13 @@
                                 <div class="stat-content">
                                     <div class="stat-value" id="selfTalkPlaySummary">--</div>
                                     <div class="stat-label">Self-talk 播放</div>
-                                    <div class="stat-hint" style="font-size:0.75rem;color:#a0aec0;margin-bottom:4px;">播放次数 · 总时长 · 点击展开</div>
+                                    <div class="stat-hint" style="font-size:0.75rem;color:#a0aec0;margin-bottom:4px;">播放次数 · 总时长</div>
                                     <div class="stat-progress"><div class="progress-bar" id="selfTalkProgressBar" style="width: 0%;"></div></div>
                                 </div>
                             </div>
                             <div class="overview-panel hidden" id="selfTalkPanel"></div>
                         </div>
-                        <p id="todayOverviewHint" style="font-size:0.8rem;color:#a0aec0;margin-top:8px;">登录后自动加载今日数据</p>
+                        <p id="todayOverviewHint" style="font-size:0.8rem;color:#a0aec0;margin-top:8px;"></p>
                     </div>
                     
                     <!-- 快速操作 -->
@@ -3648,7 +3669,7 @@
                                 <div class="stat-info">
                                     <div class="stat-value-large" id="weeklyGoal">--</div>
                                     <div class="stat-label-large">本周实践成功率</div>
-                                    <div class="stat-trend" id="weeklyGoalHint">登录后查看</div>
+                                    <div class="stat-trend" id="weeklyGoalHint"></div>
                                 </div>
                                 <div class="stat-chart">
                                     <div class="mini-chart" id="weeklyChart"></div>
@@ -3659,7 +3680,7 @@
                                 <div class="stat-info">
                                     <div class="stat-value-large" id="streakDays">--</div>
                                     <div class="stat-label-large">连续坚持</div>
-                                    <div class="stat-trend" id="streakDaysHint">登录后查看</div>
+                                    <div class="stat-trend" id="streakDaysHint"></div>
                                 </div>
                                 <div class="stat-chart">
                                     <div class="mini-chart" id="streakChart"></div>
@@ -3670,7 +3691,7 @@
                                 <div class="stat-info">
                                     <div class="stat-value-large" id="successRate">--</div>
                                     <div class="stat-label-large">行动完成率</div>
-                                    <div class="stat-trend" id="successRateHint">登录后查看</div>
+                                    <div class="stat-trend" id="successRateHint"></div>
                                 </div>
                                 <div class="stat-chart">
                                     <div class="mini-chart" id="successChart"></div>
@@ -3685,7 +3706,7 @@
         <section id="schedule" class="content-section">
             <div class="section-header">
                 <h1>日程安排</h1>
-                <p class="flow-hint" id="scheduleHint">直接写下今天要做的具体行动。想排成流程时，再进入设计。</p>
+                <p class="flow-hint" id="scheduleHint">写下今天要做的事</p>
             </div>
             <div class="home-schedule" id="homeSchedule">
                 <div class="home-schedule-head">
@@ -3703,7 +3724,7 @@
                     </div>
                 </div>
                 <div class="flow-add-row" id="scheduleAddRow">
-                    <input type="text" id="scheduleAddInput" maxlength="500" placeholder="写下今天要做的一步，例如：把托福词汇第 3 单元听读三遍">
+                    <input type="text" id="scheduleAddInput" maxlength="500" placeholder="写下这一步">
                     <button type="button" class="flow-solid-btn" id="scheduleAddBtn">写下</button>
                 </div>
                 <div id="scheduleList" class="home-schedule-list"></div>
@@ -3714,8 +3735,8 @@
         <section id="upload" class="content-section">
             <div class="section-header">
                 <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
-                <h1>上传读书笔记</h1>
-                <p>上传你的读书笔记，系统将自动抽取可执行的行动项</p>
+                <h1>读书笔记</h1>
+                <p>从笔记生成行动项</p>
             </div>
             
             <div class="card">
@@ -3727,15 +3748,15 @@
 
                 <div class="upload-panel" data-panel="ai">
                     <h2>上传读书笔记（AI 抽取）</h2>
-                    <p id="aiExtractQuotaHint" class="me-hint">登录后显示今日剩余抽取次数</p>
+                    <p id="aiExtractQuotaHint" class="me-hint"></p>
                     <form id="uploadForm">
                         <div class="form-group">
                             <label for="bookTitle">书籍名称</label>
-                            <input type="text" id="bookTitle" placeholder="请输入书籍名称">
+                            <input type="text" id="bookTitle" placeholder="书名">
                         </div>
                         <div class="form-group">
                             <label for="notesContent">笔记内容</label>
-                            <textarea id="notesContent" placeholder="请输入你的读书笔记内容..."></textarea>
+                            <textarea id="notesContent" placeholder="笔记"></textarea>
                         </div>
                         <button type="submit" class="btn" id="uploadBtn">抽取行动项</button>
                     </form>
@@ -3786,19 +3807,18 @@
         <section id="actions" class="content-section">
             <div class="section-header">
                 <h1>行动</h1>
-                <p>管理行动项，并从这里进入读书笔记</p>
             </div>
 
             <div class="notes-entry-card" onclick="openNotesFromActions()">
                 <div>
                     <h3>读书笔记</h3>
-                    <p>记录阅读内容，或用 AI 从笔记抽取行动项</p>
+                    <p>阅读记录与抽取</p>
                 </div>
                 <span aria-hidden="true">→</span>
             </div>
             
             <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+                <div class="actions-toolbar">
                     <h2>我的行动项</h2>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="btn-small" onclick="addAction()">
@@ -3826,7 +3846,7 @@
                 </div>
                 
                 <div id="actionsList" class="actions-list">
-                    <div class="loading">点击"抽取行动项"开始...</div>
+                    <div class="actions-empty">还没有行动项</div>
                 </div>
             </div>
         </section>
@@ -3854,7 +3874,7 @@
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
                             <div class="me-row-title">今日额度</div>
-                            <div class="me-row-desc" id="meQuotaHint">登录后显示今日剩余次数</div>
+                            <div class="me-row-desc" id="meQuotaHint"></div>
                         </div>
                     </div>
                     <p class="me-hint">付费和续期在微信产品群找站长开通，开通后当天额度按新套餐生效。</p>
@@ -3898,7 +3918,7 @@
                         <span class="me-row-main"><span class="me-row-title">时间日志</span></span>
                         <span class="me-chevron">›</span>
                     </button>
-                    <p class="me-hint">推荐在时间日志里打开「三击音量减 → 记」（需系统无障碍授权），锁屏里也能用。荣耀/华为可把电源键长按指定为书然。所有机型保底：快捷设置磁贴 / 桌面「记」。</p>
+                    <p class="me-hint">三击音量减可唤起「记」。</p>
                     <button type="button" class="me-row" onclick="navigateTo('stats')">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V3"/></svg>
@@ -3928,12 +3948,12 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M5 21h14"/></svg>
                         </span>
                         <div class="me-row-main">
-                            <div class="me-row-title">当前内容</div>
-                            <div class="me-row-desc" id="appVersionLabel">正在识别…</div>
+                            <div class="me-row-title">版本</div>
+                            <div class="me-row-desc" id="appVersionLabel">1.5.0</div>
                         </div>
                         <button type="button" class="me-link-btn" id="appUpdateBtn" hidden onclick="shuranStartAppUpdate()">换安装包</button>
                     </div>
-                    <p class="me-hint" id="appVersionHint">电脑请用 Edge 或 Chrome 打开同一网址，不要用电脑管家里的手机应用窗口。</p>
+                    <p class="me-hint" id="appVersionHint"></p>
                 </div>
 
                 <div class="me-group reminder-settings-section">
@@ -4183,7 +4203,6 @@
             <div class="section-header">
                 <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
                 <h1>实践统计</h1>
-                <p>查看你的实践数据和成长轨迹</p>
             </div>
             
             <div class="card dashboard">
@@ -4256,15 +4275,15 @@
                         <button type="button" id="timeLogNextDay">后一天</button>
                     </div>
                     <div>
-                        <button type="button" class="flow-ghost-btn" id="timeLogCompactBtn">弹出悬浮记</button>
+                        <button type="button" class="flow-ghost-btn" id="timeLogCompactBtn">小窗</button>
                         <button type="button" class="flow-solid-btn" id="timeLogPunchBtn">记下此刻</button>
                     </div>
                 </div>
-                <p class="flow-hint">时间日志和日程安排是分开的。点「记」会先抓住此刻；只有写下这段在做什么（或选了当天行动）才会出现在日志里。稍后、点空白处或 Esc 都不会落空记录。写错了可以点「删」，这段会从日志里拿掉。</p>
+                <p class="flow-hint">写下才会记入日志。</p>
                 <div class="me-row me-row-static me-native-only" id="timeLogOverlayRow" hidden>
                     <div class="me-row-main">
                         <div class="me-row-title">手机悬浮窗</div>
-                        <div class="me-row-desc" id="timeLogOverlayHint">离开书然时，用悬浮按钮记下时间节点。</div>
+                            <div class="me-row-desc" id="timeLogOverlayHint">离开应用时用悬浮按钮记下节点。</div>
                     </div>
                     <label class="me-switch">
                         <input type="checkbox" id="timeLogOverlaySwitch">
@@ -4275,7 +4294,7 @@
                     <div class="me-row me-row-static me-native-only">
                         <div class="me-row-main">
                             <div class="me-row-title">三击音量减 → 记</div>
-                            <div class="me-row-desc" id="timeLogVolumeHint">推荐。连续快按三下音量减唤起「记」，不占用单击调音量和截屏。需系统无障碍授权，只监听这个手势，不读屏幕。</div>
+                            <div class="me-row-desc" id="timeLogVolumeHint">连续快按三下音量减唤起「记」。需无障碍授权。</div>
                         </div>
                         <label class="me-switch">
                             <input type="checkbox" id="timeLogVolumeSwitch">
@@ -4285,14 +4304,14 @@
                     <div class="me-row me-row-static me-native-only">
                         <div class="me-row-main">
                             <div class="me-row-title">荣耀 / 华为电源键长按</div>
-                            <div class="me-row-desc" id="timeLogAssistStatus">把书然设为默认数字助理后，再到系统设置把电源键长按指定为书然。抢不了电源键单击。</div>
+                            <div class="me-row-desc" id="timeLogAssistStatus">设为默认数字助理后，再到系统把电源键长按指定为书然。</div>
                         </div>
                     </div>
                     <div class="flow-toolbar" style="justify-content:flex-start;margin:0 0 8px;">
                         <button type="button" class="flow-ghost-btn" id="timeLogAssistBtn">设为数字助理</button>
                         <button type="button" class="flow-ghost-btn" id="timeLogShortcutBtn">添加到桌面</button>
                     </div>
-                    <p class="flow-hint">所有机型保底：下拉快捷设置里的「记」磁贴，或桌面「记」快捷方式。点「记」后仍要写下内容才会入日志。</p>
+                    <p class="flow-hint">快捷设置磁贴或桌面「记」也可唤起。</p>
                 </div>
                 <div id="timeLogList" class="tl-list"></div>
                 <div class="tl-total" id="timeLogTotal"></div>
@@ -4303,7 +4322,6 @@
             <div class="section-header">
                 <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
                 <h1>使用说明</h1>
-                <p>把阅读变成行动，也把一天做成流程</p>
             </div>
             <div class="guide-card">
                 <h3>1. 今日</h3>
@@ -4334,9 +4352,8 @@
             <div class="guide-card">
                 <h3>5. 时间日志</h3>
                 <ol>
-                    <li>点「记」或「记下此刻」，会先抓住点击时刻。写下这段做了什么（或选了当天行动）之后，才会出现在日志里。</li>
-                    <li>稍后、点空白处或 Esc 都不会留下空记录。写错了可以点「删」，这段会从日志里拿掉。电脑上可把「记」拖到窗口左右边缘停靠。</li>
-                    <li>电脑可点「弹出悬浮记」，收成小球挂在桌面上。手机推荐打开「三击音量减 → 记」；荣耀/华为可将电源键长按指定为书然。所有机型也可用磁贴或桌面快捷方式。</li>
+                    <li>点「记」抓住此刻，写下后才会入日志。写错可删。</li>
+                    <li>电脑可开「小窗」，或把「记」拖到窗口边缘停靠。手机可用三击音量减、电源键长按、磁贴或桌面快捷方式。</li>
                 </ol>
             </div>
             <div class="guide-card">
@@ -4417,11 +4434,11 @@
                 <form class="auth-form active" id="loginForm">
                     <div class="form-group">
                         <label for="loginEmail">手机号或邮箱</label>
-                        <input type="text" id="loginEmail" required placeholder="请输入手机号或邮箱" autocomplete="username">
+                        <input type="text" id="loginEmail" required placeholder="手机号或邮箱" autocomplete="username">
                     </div>
                     <div class="form-group">
                         <label for="loginPassword">密码</label>
-                        <input type="password" id="loginPassword" required placeholder="请输入密码" autocomplete="current-password">
+                        <input type="password" id="loginPassword" required placeholder="密码" autocomplete="current-password">
                     </div>
                     <button type="submit" class="auth-btn">登录</button>
                 </form>
@@ -4433,11 +4450,11 @@
                     </div>
                     <div class="form-group">
                         <label for="registerName">真实姓名</label>
-                        <input type="text" id="registerName" required maxlength="20" placeholder="请填写真实姓名" autocomplete="name">
+                        <input type="text" id="registerName" required maxlength="20" placeholder="姓名" autocomplete="name">
                     </div>
                     <div class="form-group">
                         <label for="registerPassword">密码</label>
-                        <input type="password" id="registerPassword" required placeholder="请输入密码" autocomplete="new-password">
+                        <input type="password" id="registerPassword" required placeholder="密码" autocomplete="new-password">
                         <div class="password-hint">至少 6 位，建议字母与数字搭配</div>
                     </div>
                     <div class="form-group" id="inviteCodeGroup">
@@ -4455,8 +4472,8 @@
         <div class="practice-container">
             <button class="close-modal" onclick="closeBatchTimeManagementModal()">&times;</button>
             <div class="practice-header">
-                <h3>⏰ 批量设置时间管理</h3>
-                <p style="color: #666; font-size: 14px; margin-top: 5px;">此设置将应用到所有未完成的行动项</p>
+                <h3>批量设置时间</h3>
+                <p style="color: #666; font-size: 14px; margin-top: 5px;">应用到未完成的行动项</p>
             </div>
             
             <form id="batchTimeManagementForm">
@@ -4499,7 +4516,7 @@
                     <input type="date" id="btmEndDate">
                 </div>
                 
-                <button type="submit" class="btn">💾 批量应用设置</button>
+                <button type="submit" class="btn">批量应用</button>
             </form>
         </div>
     </div>
@@ -4509,7 +4526,7 @@
         <div class="practice-container">
             <button class="close-modal" onclick="closeTimeManagementModal()">&times;</button>
             <div class="practice-header">
-                <h3>⏰ 设置时间管理</h3>
+                <h3>设置时间</h3>
             </div>
             
             <form id="timeManagementForm">
@@ -4552,7 +4569,7 @@
                     <input type="date" id="tmEndDate">
                 </div>
                 
-                <button type="submit" class="btn">💾 保存设置</button>
+                <button type="submit" class="btn">保存</button>
             </form>
         </div>
     </div>
@@ -4562,7 +4579,7 @@
         <div class="practice-container">
             <button class="close-modal" onclick="closeCountAndDaysModal()">&times;</button>
             <div class="practice-header">
-                <h3>📊 设置次数和天数</h3>
+                <h3>设置次数和天数</h3>
             </div>
             
             <form id="countAndDaysForm">
@@ -4586,7 +4603,7 @@
                     <input type="date" id="cdEndDate">
                 </div>
                 
-                <button type="submit" class="btn">💾 保存设置</button>
+                <button type="submit" class="btn">保存</button>
             </form>
         </div>
     </div>
@@ -4596,9 +4613,9 @@
         <div class="practice-container">
             <button class="close-modal" onclick="closePracticePicker()">&times;</button>
             <div class="practice-header">
-                <h3>📝 记录今日实践</h3>
+                <h3>记录今日实践</h3>
             </div>
-            <p style="color:#666;margin-bottom:12px;">选择一条行动项进行记录</p>
+            <p style="color:#666;margin-bottom:12px;">选择一条行动项</p>
             <div id="homePracticePickerList"></div>
         </div>
     </div>
@@ -4608,7 +4625,7 @@
         <div class="practice-container">
             <button class="close-modal" onclick="closePracticeModal()">&times;</button>
             <div class="practice-header">
-                <h3>📝 记录实践反馈</h3>
+                <h3>记录实践</h3>
             </div>
             
             <form id="practiceForm">
@@ -4620,22 +4637,22 @@
                 <!-- 情境型行动显示次数输入 -->
                 <div class="form-group" id="practiceCountGroup" style="display: none;">
                     <label for="practiceCount">第几次行动</label>
-                    <input type="number" id="practiceCount" min="1" placeholder="这是第几次执行此行动">
+                    <input type="number" id="practiceCount" min="1" placeholder="次数">
                 </div>
                 
                 <div class="form-group">
                     <label for="practiceResult">实践结果</label>
                     <select id="practiceResult" required>
                         <option value="">请选择结果</option>
-                        <option value="success">✅ 成功完成</option>
-                        <option value="partial">⚠️ 部分完成</option>
-                        <option value="fail">❌ 未完成</option>
+                        <option value="success">成功</option>
+                        <option value="partial">部分完成</option>
+                        <option value="fail">未完成</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
                     <label for="practiceNotes">实践反馈（可选）</label>
-                    <textarea id="practiceNotes" placeholder="记录你的实践过程和感受..."></textarea>
+                    <textarea id="practiceNotes" placeholder="过程和感受"></textarea>
                 </div>
                 
                 <div class="form-group">
@@ -4677,7 +4694,7 @@
         <div class="practice-container">
             <button class="close-modal" onclick="closeEditActionModal()">&times;</button>
             <div class="practice-header">
-                <h3>✏️ 编辑行动项</h3>
+                <h3>编辑行动项</h3>
             </div>
             
             <form id="editActionForm">
@@ -4689,17 +4706,17 @@
                 <div class="form-group">
                     <label for="editActionType">行动类型</label>
                     <select id="editActionType">
-                        <option value="trigger">🎯 情境触发型</option>
-                        <option value="habit">🔄 习惯养成型</option>
+                        <option value="trigger">情境触发型</option>
+                        <option value="habit">习惯养成型</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
                     <label for="editActionTags">标签（逗号分隔）</label>
-                    <input type="text" id="editActionTags" placeholder="例如: 阅读, 成长, 健康">
+                    <input type="text" id="editActionTags" placeholder="阅读, 成长">
                 </div>
                 
-                <button type="submit" class="auth-btn">💾 保存修改</button>
+                <button type="submit" class="auth-btn">保存</button>
             </form>
         </div>
     </div>
@@ -4711,7 +4728,7 @@
         <div class="practice-container" style="width: 400px;">
             <button class="close-modal" onclick="closeEditNameModal()">&times;</button>
             <div class="practice-header">
-                <h3>✏️ 修改昵称</h3>
+                <h3>修改昵称</h3>
             </div>
             
             <form id="editNameForm">
@@ -4722,7 +4739,7 @@
                 
                 <div class="form-group">
                     <label for="newName">新昵称:</label>
-                    <input type="text" id="newName" required maxlength="6" placeholder="请输入新昵称（最多6个字符）">
+                    <input type="text" id="newName" required maxlength="6" placeholder="最多 6 个字">
                     <small style="color: #666; font-size: 0.8rem;">昵称只能包含中文、英文、数字，最多6个字符</small>
                 </div>
                 
@@ -4738,12 +4755,11 @@
     <div class="practice-modal hidden" id="logoutConfirmModal">
         <div class="practice-container" style="width: 400px;">
             <div class="practice-header">
-                <h3>⚠️ 确认退出</h3>
+                <h3>退出登录</h3>
             </div>
             
             <div style="padding: 20px; text-align: center;">
-                <p style="margin-bottom: 20px; font-size: 1.1rem;">您确定要退出登录吗？</p>
-                <p style="color: #666; margin-bottom: 30px;">退出后需要重新登录才能使用应用功能。</p>
+                <p style="margin-bottom: 20px; font-size: 1.1rem;">退出当前账号？</p>
                 
                 <div style="display: flex; gap: 15px; justify-content: center;">
                     <button onclick="closeLogoutConfirmModal()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">取消</button>
@@ -5547,9 +5563,9 @@
                     weeklyGoal: '--',
                     streakDays: '--',
                     successRate: '--',
-                    weeklyHint: '登录后查看',
-                    streakHint: '登录后查看',
-                    successHint: '登录后查看',
+                    weeklyHint: '',
+                    streakHint: '',
+                    successHint: '',
                 });
                 return;
             }
@@ -5625,7 +5641,7 @@
                 const data = await apiRequest('/api/today/overview');
                 const items = (data.action_items || []).filter((a) => a.status !== 'done');
                 if (!items.length) {
-                    showMessage('还没有行动项，先添加一条吧', 'error');
+                    showMessage('还没有行动项', 'error');
                     addAction();
                     return;
                 }
@@ -6193,7 +6209,7 @@
             if (!hint) return;
             const token = localStorage.getItem('authToken');
             if (!token) {
-                hint.textContent = '登录后显示今日剩余抽取次数';
+                hint.textContent = '';
                 return;
             }
             try {
@@ -6314,7 +6330,7 @@
             const actionsList = document.getElementById('actionsList');
             
             if (allActions.length === 0) {
-                actionsList.innerHTML = '<div class="loading">暂无行动项</div>';
+                actionsList.innerHTML = '<div class="actions-empty">还没有行动项</div>';
                 return;
             }
             
@@ -6325,7 +6341,7 @@
             }
             
             if (filteredActions.length === 0) {
-                actionsList.innerHTML = `<div class="loading">暂无${getActionTypeText(currentFilterType)}行动项</div>`;
+                actionsList.innerHTML = `<div class="actions-empty">没有${getActionTypeText(currentFilterType)}行动项</div>`;
                 return;
             }
             
@@ -8119,11 +8135,11 @@
     
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260825time1"></script>
-    <script src="/static/reminder_notification.js?v=20260914pc1"></script>
+    <script src="/static/reminder_notification.js?v=20260914v15"></script>
     <script src="/static/js/app-tabbar.js?v=20260912nav1"></script>
-    <script src="/static/js/today-dashboard.js?v=20260825time1"></script>
-    <script src="/static/js/daily-schedule.js?v=20260913split1"></script>
-    <script src="/static/js/time-log.js?v=20260914del1"></script>
+    <script src="/static/js/today-dashboard.js?v=20260914v15"></script>
+    <script src="/static/js/daily-schedule.js?v=20260914v15"></script>
+    <script src="/static/js/time-log.js?v=20260914v15"></script>
     <script src="/static/js/desktop-shell.js?v=20260914fill5"></script>
 </body>
 </html>
