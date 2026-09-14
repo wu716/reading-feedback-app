@@ -97,6 +97,15 @@ docs/ruanzhu/*.pdf
 
 # Android 安装包（通过 /download 提供，不入库）
 releases/*.apk
+releases/*.exe
+releases/*.msi
+releases/*.msix
+releases/*.zip
+
+# Windows 桌面壳构建产物
+desktop/windows/**/bin/
+desktop/windows/**/obj/
+desktop/windows/**/publish/
 
 # Android 构建产物与本机 SDK 配置
 mobile/android/.gradle/
