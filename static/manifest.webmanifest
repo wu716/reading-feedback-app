@@ -1,6 +1,7 @@
 {
   "name": "书然",
   "short_name": "书然",
+  "version": "1.5.0",
   "description": "把读书笔记，变成真正在做的行动",
   "start_url": "/static/index.html",
   "scope": "/",

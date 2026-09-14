@@ -73,14 +73,14 @@
         const hint = document.getElementById('scheduleHint');
         if (!hint) return;
         if (mode === 'design') {
-            hint.textContent = '熟悉、预估、顺序和并行都可以空着。写完想写的，点「做成当日流程」。';
+            hint.textContent = '未填项可留空';
             return;
         }
         if (mode === 'flow' && data.designed_at) {
-            hint.textContent = '这是今天的流程。需要改时，再回到设计。';
+            hint.textContent = '需要改时回到设计';
             return;
         }
-        hint.textContent = '直接写下今天要做的具体行动。想排成流程时，再进入设计。';
+        hint.textContent = '写下今天要做的事';
     }
 
     function renderToolbar() {
@@ -213,7 +213,7 @@
         renderToolbar();
         setHint();
         if (!(data.tasks || []).length) {
-            list.innerHTML = '<p class="flow-empty">还没有写下今天的行动。从上面那一行开始。</p>';
+            list.innerHTML = '<p class="flow-empty">还没有行动</p>';
             return;
         }
         if (mode === 'design') {

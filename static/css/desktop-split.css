@@ -88,13 +88,24 @@
         margin-bottom: 12px;
     }
 
-    #schedule.content-section.active > .home-schedule,
-    #actions.content-section.active > .card {
+    #schedule.content-section.active > .home-schedule {
         flex: 1 1 auto;
         min-height: 0;
         display: flex;
         flex-direction: column;
         overflow: hidden;
+    }
+
+    #actions.content-section.active {
+        overflow: auto;
+        padding-bottom: 72px;
+    }
+
+    #actions.content-section.active > .card {
+        flex: 0 0 auto;
+        min-height: auto;
+        overflow: visible;
+        display: block;
     }
 
     #upload.content-section.active > .card,
@@ -112,11 +123,17 @@
         flex-shrink: 0;
     }
 
-    #schedule .home-schedule-list,
-    #actions .actions-list {
+    #schedule .home-schedule-list {
         flex: 1 1 auto;
         min-height: 0;
         overflow: auto;
+        max-height: none;
+    }
+
+    #actions .actions-list {
+        flex: none;
+        min-height: 0;
+        overflow: visible;
         max-height: none;
     }
 
@@ -241,9 +258,9 @@
     }
 
     .tl-fab {
-        top: 62vh;
-        right: 8px;
-        bottom: auto;
+        top: auto;
+        right: 16px;
+        bottom: 24px;
         touch-action: none;
         user-select: none;
         box-shadow: 0 8px 22px rgba(28, 27, 25, 0.16);

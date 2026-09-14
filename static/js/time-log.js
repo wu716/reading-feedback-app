@@ -80,7 +80,7 @@
         }
         if (!list) return;
         if (!(data.nodes || []).length) {
-            list.innerHTML = '<p class="flow-empty">点「记」会先抓住此刻。写下这段在做什么之后，才会出现在日志里。</p>';
+            list.innerHTML = '<p class="flow-empty">写下后才会出现在日志里。</p>';
             return;
         }
         list.innerHTML = data.nodes.map((node, index) => {
@@ -189,8 +189,8 @@
         )).join('');
         sheet.innerHTML = `
             <h3>${isStart ? '记下开始' : '这段在做什么'}</h3>
-            <p>${isStart ? '写下此刻在做什么，才会记入今天的日志。' : `距上一段 ${formatDuration(node.duration_seconds)}。写下之后才会记入日志。`}</p>
-            <textarea id="timeLogSheetInput" maxlength="500" placeholder="分类昆虫学：鉴定袋蛾">${escapeHtml(node.label || '')}</textarea>
+            <p>${isStart ? '写下才会记入。' : `距上一段 ${formatDuration(node.duration_seconds)}`}</p>
+            <textarea id="timeLogSheetInput" maxlength="500" placeholder="这段在做什么">${escapeHtml(node.label || '')}</textarea>
             ${picks ? `<div class="tl-task-picks">${picks}</div>` : ''}
             <div class="tl-sheet-actions">
                 ${node.id && !isUnwritten(node) ? '<button type="button" class="flow-ghost-btn" id="timeLogSheetDelete">删除这段</button>' : '<span></span>'}

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>个人中心 - 读书反馈应用</title>
+    <title>书然</title>
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260825time1">
     <style>
         * {
@@ -309,7 +309,7 @@
 
             <!-- 定时提醒 -->
             <div class="setting-group">
-                <h3>⏰ 定时提醒</h3>
+                <h3>定时提醒</h3>
                 <div class="setting-item">
                     <label>
                         <strong>每日定时提醒</strong>
@@ -377,8 +377,8 @@
 
             <!-- 通知方式 -->
             <div class="setting-group">
-                <h3>📬 通知方式</h3>
-                <p class="description" style="margin:0 0 12px;">到点后会像微信一样出现在手机状态栏、锁屏和下拉通知栏（网页版则显示页面内通知）。请允许通知权限。</p>
+                <h3>通知方式</h3>
+                <p class="description" style="margin:0 0 12px;">到点后出现在状态栏、锁屏和下拉通知栏。需允许通知权限。</p>
                 <div class="setting-item">
                     <label>
                         <strong>系统通知</strong>
@@ -404,20 +404,19 @@
 
             <!-- 操作按钮 -->
             <div class="action-buttons">
-                <button class="btn" onclick="saveSettings()">💾 保存设置</button>
-                <button class="btn btn-secondary" onclick="testReminder()">🔔 测试提醒</button>
+                <button class="btn" onclick="saveSettings()">保存设置</button>
+                <button class="btn btn-secondary" onclick="testReminder()">测试提醒</button>
             </div>
         </div>
 
         <div class="card" id="appUpdateCard">
-            <h2>当前内容</h2>
+            <h2>版本</h2>
             <div class="setting-item">
                 <label>
                     <strong>页面</strong>
-                    <span class="description" id="appVersionLabel">打开即是最新</span>
+                    <span class="description" id="appVersionLabel">1.5.0</span>
                 </label>
             </div>
-            <p style="color:#666;font-size:0.9rem;margin:12px 0 0;">书然的界面在服务器上，打开就是新的。只有通知、悬浮窗这类系统能力变了，才需要换安装包。</p>
             <div class="action-buttons">
                 <button class="btn" type="button" id="appUpdateBtn" hidden onclick="checkAppUpdate()">换安装包</button>
             </div>
@@ -620,10 +619,10 @@
             if (!label) return;
             if (window.ShuranNative && typeof window.ShuranNative.getAppVersion === 'function') {
                 const name = window.ShuranNative.getAppVersion();
-                const code = typeof window.ShuranNative.getVersionCode === 'function'
-                    ? window.ShuranNative.getVersionCode()
-                    : '';
-                label.textContent = code ? (name + '（' + code + '）') : name;
+                const web = window.SHURAN_VERSION || '1.5.0';
+                label.textContent = name ? (web + ' · 外壳 ' + name) : web;
+            } else {
+                label.textContent = window.SHURAN_VERSION || '1.5.0';
             }
         }
 
@@ -659,8 +658,9 @@
             }, 3000);
         }
     </script>
+    <script>window.SHURAN_VERSION = '1.5.0';</script>
     <script src="/static/js/time-picker.js?v=20260825time1"></script>
-    <script src="/static/reminder_notification.js?v=20260913bell1"></script>
+    <script src="/static/reminder_notification.js?v=20260914v15"></script>
 </body>
 </html>
 
