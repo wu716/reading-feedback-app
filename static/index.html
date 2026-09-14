@@ -1481,6 +1481,8 @@
 
         .action-item > .action-buttons {
             order: 1;
+            margin-top: 16px;
+            flex-shrink: 0;
         }
         
         .action-item h3 {
@@ -2089,6 +2091,21 @@
         /* 首页仪表板样式 */
         .homepage-dashboard {
             margin-bottom: 30px;
+            display: block;
+        }
+
+        .homepage-dashboard > .dashboard-row {
+            position: relative;
+            overflow: hidden;
+            background: #f5f7fa;
+        }
+
+        .homepage-dashboard > .today-calendar-row {
+            z-index: 1;
+        }
+
+        .homepage-dashboard > .dashboard-row:not(.today-calendar-row) {
+            z-index: 2;
         }
 
         .dashboard-row {
@@ -3270,8 +3287,8 @@
             }
 
             .action-item {
-                display: flex;
-                flex-direction: column;
+                display: flex !important;
+                flex-direction: column !important;
             }
 
             .action-item-body {
@@ -3280,6 +3297,12 @@
 
             .action-item > .action-buttons {
                 order: 1;
+                margin-top: 16px;
+            }
+
+            .actions-list {
+                max-height: none !important;
+                overflow: visible !important;
             }
 
             .action-buttons {
@@ -3474,7 +3497,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260914win1">
+    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260914win2">
 </head>
 <body>
     <script>
