@@ -3404,11 +3404,14 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260914fill1">
+    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260914fill2">
 </head>
 <body>
     <script>
         (function () {
+            if (window.innerWidth > 768) {
+                document.documentElement.style.setProperty('--shuran-frame', window.innerHeight + 'px');
+            }
             if (window.innerWidth > 768 && window.innerWidth <= 980
                 && localStorage.getItem('shuran.sidebarMode') !== 'full') {
                 document.body.classList.add('sidebar-rail');
@@ -8119,6 +8122,6 @@
     <script src="/static/js/today-dashboard.js?v=20260825time1"></script>
     <script src="/static/js/daily-schedule.js?v=20260913split1"></script>
     <script src="/static/js/time-log.js?v=20260914vol1"></script>
-    <script src="/static/js/desktop-shell.js?v=20260914vol1"></script>
+    <script src="/static/js/desktop-shell.js?v=20260914fill2"></script>
 </body>
 </html>
