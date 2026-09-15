@@ -1062,51 +1062,43 @@ function promptLegacyNativeUpdate() {
     try {
         const shell = shuranShellInfo();
         if (!shell.inApp) return;
-        if (sessionStorage.getItem('shuran_update_banner_dismissed') === '1') return;
+        if (sessionStorage.getItem('shuran_shell_update_152') === '1') return;
         if (document.getElementById('shuranNativeUpdateBanner')) return;
-        fetch('/download/info', { cache: 'no-store' }).then(function (res) { return res.json(); }).then(function (info) {
-            if (!info) return;
-            const latestName = String(info.versionName || '1.5.2');
-            const latestCode = Number(info.versionCode) || 0;
-            const currentName = shell.versionName || '旧版';
-            const currentCode = Number(shell.versionCode) || 0;
-            const outdated = (latestCode > 0 && currentCode > 0 && currentCode < latestCode)
-                || (latestName && shuranVersionLess(currentName, latestName))
-                || (!shell.versionName && !!(info.require_shell || latestName));
-            if (!outdated) return;
-            if (document.getElementById('shuranNativeUpdateBanner')) return;
-            const bar = document.createElement('div');
-            bar.id = 'shuranNativeUpdateBanner';
-            bar.setAttribute('role', 'dialog');
-            bar.style.cssText = [
-                'position:fixed',
-                'left:12px',
-                'right:12px',
-                'bottom:16px',
-                'z-index:9999',
-                'background:#1a1a2e',
-                'color:#fff',
-                'border-radius:14px',
-                'padding:16px',
-                'box-shadow:0 8px 24px rgba(0,0,0,.25)',
-                'font-size:15px',
-                'line-height:1.55'
-            ].join(';');
-            bar.innerHTML = '<strong style="font-size:16px;">需要更新手机外壳</strong>'
-                + '<p style="margin:8px 0 14px;opacity:.92;">当前 ' + currentName + '，最新 ' + latestName + '。网页已经是新的。音量键、「记」这些能力在安装包里，点一次覆盖即可，不用卸载，也不用自己找文件。</p>'
-                + '<div style="display:flex;gap:8px;">'
-                + '<button type="button" id="shuranUpdateNowBtn" style="flex:1;border:none;border-radius:10px;padding:11px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:600;">立即更新</button>'
-                + '<button type="button" id="shuranUpdateLaterBtn" style="border:none;border-radius:10px;padding:11px 16px;background:#333;color:#ddd;">稍后</button>'
-                + '</div>';
-            document.body.appendChild(bar);
-            document.getElementById('shuranUpdateNowBtn').onclick = function () {
-                shuranStartAppUpdate();
-            };
-            document.getElementById('shuranUpdateLaterBtn').onclick = function () {
-                sessionStorage.setItem('shuran_update_banner_dismissed', '1');
-                bar.remove();
-            };
-        }).catch(function () { /* ignore */ });
+        const currentName = shell.versionName || '旧版';
+        const currentCode = Number(shell.versionCode) || 0;
+        const outdated = shuranVersionLess(currentName, '1.5.2') || (currentCode > 0 && currentCode < 18);
+        if (!outdated) return;
+        const bar = document.createElement('div');
+        bar.id = 'shuranNativeUpdateBanner';
+        bar.setAttribute('role', 'dialog');
+        bar.style.cssText = [
+            'position:fixed',
+            'left:12px',
+            'right:12px',
+            'bottom:16px',
+            'z-index:9999',
+            'background:#1a1a2e',
+            'color:#fff',
+            'border-radius:14px',
+            'padding:16px',
+            'box-shadow:0 8px 24px rgba(0,0,0,.25)',
+            'font-size:15px',
+            'line-height:1.55'
+        ].join(';');
+        bar.innerHTML = '<strong style="font-size:16px;">需要更新手机外壳</strong>'
+            + '<p style="margin:8px 0 14px;opacity:.92;">当前 ' + currentName + '，最新 1.5.2。网页已经是新的。音量键和「记」在安装包里，点一次覆盖即可，不用卸载。</p>'
+            + '<div style="display:flex;gap:8px;">'
+            + '<button type="button" id="shuranUpdateNowBtn" style="flex:1;border:none;border-radius:10px;padding:11px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:600;">立即更新</button>'
+            + '<button type="button" id="shuranUpdateLaterBtn" style="border:none;border-radius:10px;padding:11px 16px;background:#333;color:#ddd;">稍后</button>'
+            + '</div>';
+        document.body.appendChild(bar);
+        document.getElementById('shuranUpdateNowBtn').onclick = function () {
+            shuranStartAppUpdate();
+        };
+        document.getElementById('shuranUpdateLaterBtn').onclick = function () {
+            sessionStorage.setItem('shuran_shell_update_152', '1');
+            bar.remove();
+        };
     } catch (e) {
         console.warn('promptLegacyNativeUpdate', e);
     }
@@ -1122,6 +1114,8 @@ if (document.readyState === 'loading') {
     fillAppVersionLabel();
 }
 window.addEventListener('auth-check-settled', startReminderServiceIfLoggedIn);
-[0, 200, 800].forEach(function (ms) {
+window.addEventListener('auth-check-settled', promptLegacyNativeUpdate);
+[0, 200, 800, 2000, 4000].forEach(function (ms) {
     setTimeout(fillAppVersionLabel, ms);
+    setTimeout(promptLegacyNativeUpdate, ms);
 });
