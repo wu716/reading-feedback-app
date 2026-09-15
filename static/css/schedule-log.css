@@ -151,12 +151,34 @@
 
 .flow-task.is-done .flow-task-text {
     text-decoration: line-through;
-    opacity: 0.55;
+    opacity: 0.7;
 }
 
-.flow-task.is-done .flow-check:checked {
-    background: #9c3b32;
+.flow-done-btn {
+    appearance: none;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    min-width: 18px;
+    height: 18px;
+    margin-top: 5px;
+    padding: 0;
+    border: 1px solid #8a8478;
+    border-radius: 2px;
+    background: transparent;
+    color: #9c3b32;
+    font-family: inherit;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    line-height: 16px;
+    cursor: pointer;
+}
+
+.flow-done-btn.is-on {
+    min-width: 2.6em;
+    padding: 0 6px;
     border-color: #9c3b32;
+    height: auto;
+    line-height: 1.4;
 }
 
 .flow-note {
@@ -187,23 +209,6 @@
     display: flex;
     align-items: flex-start;
     gap: 12px;
-}
-
-.flow-check {
-    appearance: none;
-    width: 14px;
-    height: 14px;
-    margin-top: 6px;
-    flex-shrink: 0;
-    border: 1px solid #8a8478;
-    border-radius: 2px;
-    background: transparent;
-    cursor: pointer;
-}
-
-.flow-check:checked {
-    background: #1c1b19;
-    border-color: #1c1b19;
 }
 
 .flow-task-text {

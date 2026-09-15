@@ -88,7 +88,15 @@
         return tasks.length > 0 && tasks.every((task) => task.completed);
     }
 
+    function renderDoneBtn(task) {
+        if (task.completed) {
+            return '<button type="button" class="flow-done-btn is-on" data-act="toggle" aria-pressed="true">完成</button>';
+        }
+        return '<button type="button" class="flow-done-btn" data-act="toggle" aria-pressed="false" aria-label="完成"></button>';
+    }
+
     function renderNote(task) {
+        if (!task.completed && !(task.note || '').trim()) return '';
         return `<input type="text" class="flow-note" maxlength="500" placeholder="执行情况" value="${escapeHtml(task.note || '')}" data-act="note" aria-label="执行情况">`;
     }
 
@@ -119,7 +127,7 @@
         return `
             <article class="flow-task${isChild ? ' is-child' : ''}${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
                 <div class="flow-task-main">
-                    <input type="checkbox" class="flow-check" data-act="toggle" ${task.completed ? 'checked' : ''} aria-label="完成">
+                    ${renderDoneBtn(task)}
                     <div class="flow-task-text">${escapeHtml(task.text)}</div>
                 </div>
                 ${meta.length ? `<div class="flow-task-meta">${meta.join('')}</div>` : ''}
@@ -192,7 +200,7 @@
         return `
             <article class="flow-task${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
                 <div class="flow-task-main">
-                    <input type="checkbox" class="flow-check" data-act="toggle" ${task.completed ? 'checked' : ''} aria-label="完成">
+                    ${renderDoneBtn(task)}
                     <div class="flow-task-text">${escapeHtml(task.text)}</div>
                 </div>
                 ${extra.length ? `<div class="flow-task-meta">${extra.map((x) => `<span class="flow-mark">${escapeHtml(x)}</span>`).join('')}</div>` : ''}
@@ -411,7 +419,8 @@
                     return;
                 }
                 if (act === 'toggle') {
-                    await patchTask(id, { completed: e.target.checked });
+                    const task = flatten(data.tasks || [], []).find((item) => item.id === id);
+                    await patchTask(id, { completed: !(task && task.completed) });
                 } else if (act === 'delete') {
                     data = await api(`/tasks/${id}`, { method: 'DELETE' });
                     render();
