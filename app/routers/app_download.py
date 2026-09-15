@@ -1,10 +1,19 @@
 # -*- coding: utf-8 -*-
 """Android 安装包下载与版本检查：覆盖更新，不必卸载重装。"""
 import json
+import logging
+import urllib.request
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+
+logger = logging.getLogger(__name__)
+
+GITHUB_APK_URL = (
+    "https://github.com/wu716/reading-feedback-app/releases/download/"
+    "android-1.5.2/shuran.apk"
+)
 
 router = APIRouter(tags=["app-download"])
 
@@ -52,6 +61,21 @@ def find_apk() -> Path | None:
     return None
 
 
+def ensure_apk() -> Path | None:
+    local = find_apk()
+    if local:
+        return local
+    dest = RELEASE_DIR / "shuran.apk"
+    try:
+        RELEASE_DIR.mkdir(parents=True, exist_ok=True)
+        logger.info("Downloading Android package from GitHub Releases")
+        urllib.request.urlretrieve(GITHUB_APK_URL, dest)
+    except Exception:
+        logger.exception("Failed to cache APK from GitHub")
+        return None
+    return dest if dest.is_file() else None
+
+
 def load_latest_meta() -> dict:
     defaults = {
         "versionCode": 0,
@@ -84,7 +108,7 @@ def load_latest_meta() -> dict:
 
 
 def build_info(request: Request | None = None) -> dict:
-    apk = find_apk()
+    apk = ensure_apk() or find_apk()
     windows_exe = find_windows_exe()
     meta = load_latest_meta()
     download_url = "/download/apk"
@@ -114,8 +138,10 @@ def build_info(request: Request | None = None) -> dict:
         info["size_bytes"] = size
         info["size_mb"] = round(size / (1024 * 1024), 1)
     else:
-        info["size_bytes"] = 0
-        info["size_mb"] = 0
+        info["available"] = True
+        info["size_bytes"] = 1810063
+        info["size_mb"] = 1.7
+        info["download_url"] = GITHUB_APK_URL
     if windows_exe is not None:
         wsize = windows_exe.stat().st_size
         info["windows_size_bytes"] = wsize
@@ -133,16 +159,15 @@ async def download_info(request: Request):
 
 @router.get("/download/apk")
 async def download_apk():
-    apk = find_apk()
-    if not apk:
-        raise HTTPException(status_code=404, detail="安装包尚未上传")
-
-    return FileResponse(
-        path=str(apk),
-        media_type="application/vnd.android.package-archive",
-        filename="shuran.apk",
-        headers={"Cache-Control": "no-store"},
-    )
+    apk = ensure_apk()
+    if apk:
+        return FileResponse(
+            path=str(apk),
+            media_type="application/vnd.android.package-archive",
+            filename="shuran.apk",
+            headers={"Cache-Control": "no-store"},
+        )
+    return RedirectResponse(GITHUB_APK_URL, status_code=302)
 
 
 @router.get("/download/windows")

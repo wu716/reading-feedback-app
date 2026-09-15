@@ -1076,8 +1076,8 @@ function promptLegacyNativeUpdate() {
         document.body.appendChild(bar);
         document.getElementById('shuranUpdateNowBtn').onclick = function () {
             const btnNow = document.getElementById('shuranUpdateNowBtn');
-            const origin = window.location.origin || 'http://43.161.238.165:8000';
-            shuranCopyText(origin + '/download').then(function (ok) {
+            const apkUrl = 'https://github.com/wu716/reading-feedback-app/releases/download/android-1.5.2/shuran.apk';
+            shuranCopyText(apkUrl).then(function (ok) {
                 if (ok && btnNow) btnNow.textContent = '链接已复制';
                 shuranStartAppUpdate();
             });
