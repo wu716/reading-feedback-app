@@ -77,10 +77,19 @@
             return;
         }
         if (mode === 'flow' && data.designed_at) {
-            hint.textContent = '需要改时回到设计';
+            hint.textContent = allDone() ? '今日已完成' : '勾选完成，也可记下执行情况';
             return;
         }
-        hint.textContent = '写下今天要做的事';
+        hint.textContent = allDone() ? '今日已完成' : '写下今天要做的事';
+    }
+
+    function allDone() {
+        const tasks = flatten(data.tasks || [], []);
+        return tasks.length > 0 && tasks.every((task) => task.completed);
+    }
+
+    function renderNote(task) {
+        return `<input type="text" class="flow-note" maxlength="500" placeholder="执行情况" value="${escapeHtml(task.note || '')}" data-act="note" aria-label="执行情况">`;
     }
 
     function renderToolbar() {
@@ -114,6 +123,7 @@
                     <div class="flow-task-text">${escapeHtml(task.text)}</div>
                 </div>
                 ${meta.length ? `<div class="flow-task-meta">${meta.join('')}</div>` : ''}
+                ${renderNote(task)}
                 <div class="flow-task-actions">
                     <button type="button" data-act="split">拆开</button>
                     <button type="button" data-act="delete">删除</button>
@@ -175,15 +185,18 @@
     }
 
     function renderFlowNode(task) {
-        const bits = [escapeHtml(task.text)];
         const fam = familiarityLabel(task.familiarity);
         const extra = [];
         if (fam) extra.push(fam);
         if (task.estimated_minutes != null) extra.push(minutesLabel(task.estimated_minutes));
         return `
-            <article class="flow-task${task.completed ? ' is-done' : ''}">
-                <div class="flow-task-text">${bits.join('')}</div>
+            <article class="flow-task${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
+                <div class="flow-task-main">
+                    <input type="checkbox" class="flow-check" data-act="toggle" ${task.completed ? 'checked' : ''} aria-label="完成">
+                    <div class="flow-task-text">${escapeHtml(task.text)}</div>
+                </div>
                 ${extra.length ? `<div class="flow-task-meta">${extra.map((x) => `<span class="flow-mark">${escapeHtml(x)}</span>`).join('')}</div>` : ''}
+                ${renderNote(task)}
                 ${task.children && task.children.length ? renderFlowGroups(task.children) : ''}
             </article>
         `;
@@ -262,6 +275,18 @@
             body: JSON.stringify(body),
         });
         render();
+    }
+
+    async function saveNote(id, value) {
+        const task = flatten(data.tasks || [], []).find((item) => item.id === id);
+        const next = (value || '').trim();
+        const prev = (task && task.note ? String(task.note) : '').trim();
+        if (next === prev) return;
+        if (!next) {
+            await patchTask(id, { clear_note: true });
+            return;
+        }
+        await patchTask(id, { note: next });
     }
 
     function siblingsOf(taskId) {
@@ -382,6 +407,9 @@
             if (!article || !act) return;
             const id = parseInt(article.dataset.taskId, 10);
             try {
+                if (act === 'note') {
+                    return;
+                }
                 if (act === 'toggle') {
                     await patchTask(id, { completed: e.target.checked });
                 } else if (act === 'delete') {
@@ -415,6 +443,11 @@
 
         document.getElementById('scheduleList')?.addEventListener('keydown', async (e) => {
             if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+            if (e.target.dataset.act === 'note') {
+                e.preventDefault();
+                e.target.blur();
+                return;
+            }
             const input = e.target.closest('[data-split-input]');
             if (!input) return;
             e.preventDefault();
@@ -429,21 +462,27 @@
         });
 
         document.getElementById('scheduleList')?.addEventListener('change', async (e) => {
-            if (e.target.dataset.act !== 'minutes') return;
             const article = e.target.closest('[data-task-id]');
             if (!article) return;
             const id = parseInt(article.dataset.taskId, 10);
-            const raw = e.target.value;
             try {
-                if (raw === '') {
-                    await patchTask(id, { clear_estimate: true });
-                } else {
-                    await patchTask(id, { estimated_minutes: parseInt(raw, 10) });
+                if (e.target.dataset.act === 'minutes') {
+                    const raw = e.target.value;
+                    if (raw === '') {
+                        await patchTask(id, { clear_estimate: true });
+                    } else {
+                        await patchTask(id, { estimated_minutes: parseInt(raw, 10) });
+                    }
+                    return;
+                }
+                if (e.target.dataset.act === 'note') {
+                    await saveNote(id, e.target.value);
                 }
             } catch (err) {
                 if (typeof showMessage === 'function') showMessage(err.message, 'error');
             }
         });
+
     }
 
     if (document.readyState === 'loading') {

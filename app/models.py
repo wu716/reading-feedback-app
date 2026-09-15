@@ -166,6 +166,7 @@ class DailyTask(Base):
     task_date = Column(Date, nullable=False, index=True)
     text = Column(Text, nullable=False)
     completed = Column(Boolean, default=False)
+    note = Column(Text, nullable=True)
     sort_order = Column(Integer, default=0)
     familiarity = Column(String(20), nullable=True)
     estimated_minutes = Column(Integer, nullable=True)
