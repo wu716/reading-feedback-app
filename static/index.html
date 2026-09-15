@@ -2,21 +2,25 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>书然</title>
-    <link rel="icon" href="/static/icons/app-icon-1024.png">
-    <link rel="apple-touch-icon" href="/static/icons/app-icon-1024.png">
+    <link rel="icon" href="/static/icons/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/app-icon-32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/app-icon-192.png">
+    <link rel="apple-touch-icon" href="/static/icons/app-icon-192.png">
     <link rel="manifest" href="/static/manifest.webmanifest">
-    <meta name="theme-color" content="#667eea">
+    <meta name="theme-color" content="#1a3a6e">
+    <meta name="msapplication-TileImage" content="/static/icons/app-icon-192.png">
+    <meta name="msapplication-TileColor" content="#1a3a6e">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260912nav1">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260825time1">
-    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260914del1">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260915a">
     <style>
         :root {
             --ink: #1c1b19;
@@ -3497,7 +3501,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260914win2">
+    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260915a">
 </head>
 <body>
     <script>
@@ -3523,8 +3527,9 @@
             <div class="header-nav-controls">
                 <button type="button" class="header-icon-btn" id="headerBackBtn" onclick="handlePageBack()" aria-label="返回" hidden>←</button>
             </div>
+            <img class="app-brand-icon" src="/static/icons/app-icon-192.png" alt="书然" width="28" height="28">
             <span class="header-mark" aria-hidden="true">书</span>
-            <span class="app-title">阅读反馈系统</span>
+            <span class="app-title">书然</span>
         </div>
         <div class="header-actions">
             <div class="reminder-bell-wrap" id="reminderBellWrap" hidden>
@@ -6889,7 +6894,7 @@
         }
         
         async function deleteAction(actionId) {
-            if (!confirm('确定要删除这个行动项吗？删除后将无法恢复。')) {
+            if (!confirm('确定删除？')) {
                 return;
             }
             
@@ -8220,9 +8225,9 @@
     <script src="/static/js/time-picker.js?v=20260825time1"></script>
     <script src="/static/reminder_notification.js?v=20260914v15"></script>
     <script src="/static/js/app-tabbar.js?v=20260912nav1"></script>
-    <script src="/static/js/today-dashboard.js?v=20260914v15"></script>
+    <script src="/static/js/today-dashboard.js?v=20260915a"></script>
     <script src="/static/js/daily-schedule.js?v=20260914v15"></script>
-    <script src="/static/js/time-log.js?v=20260914v15"></script>
+    <script src="/static/js/time-log.js?v=20260915a"></script>
     <script src="/static/js/desktop-shell.js?v=20260914fill5"></script>
 </body>
 </html>

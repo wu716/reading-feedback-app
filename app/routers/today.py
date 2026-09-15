@@ -105,7 +105,7 @@ class DailyTodoResponse(BaseModel):
 
 class ReadingEntryCreate(BaseModel):
     book_title: Optional[str] = Field(None, max_length=255)
-    content: str = Field(..., min_length=1, max_length=20000)
+    content: str = Field("", max_length=20000)
     reflection: Optional[str] = Field(None, max_length=20000)
     duration_minutes: int = Field(0, ge=0, le=24 * 60)
     entry_date: Optional[date] = None
@@ -383,7 +383,7 @@ async def create_reading_entry(
     row = ReadingEntry(
         user_id=current_user.id,
         book_title=body.book_title,
-        content=body.content.strip(),
+        content=(body.content or "").strip(),
         reflection=body.reflection.strip() if body.reflection else None,
         duration_minutes=body.duration_minutes,
         entry_date=body.entry_date or beijing_today(),

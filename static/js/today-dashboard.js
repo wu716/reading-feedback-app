@@ -133,7 +133,7 @@
                 ? entries.map((e) => `
                     <div class="overview-panel-item">
                         <h5>${escapeHtml(e.book_title || '阅读记录')} · ${formatMinutes(e.duration_minutes)}</h5>
-                        <p><strong>内容：</strong>${escapeHtml(e.content)}</p>
+                        ${e.content ? `<p><strong>内容：</strong>${escapeHtml(e.content)}</p>` : ''}
                         ${e.reflection ? `<p><strong>笔记/感悟：</strong>${escapeHtml(e.reflection)}</p>` : ''}
                         <button type="button" class="todo-btn" onclick="openReadingNoteForm(${e.id})">编辑</button>
                     </div>`).join('')
@@ -333,7 +333,10 @@
         } catch (err) {
             console.error(err);
             pendingReadingMinutes = null;
-            if (typeof showMessage === 'function') showMessage('更新阅读时长失败', 'error');
+            const detail = typeof humanizeApiError === 'function'
+                ? humanizeApiError(err)
+                : (err && err.message ? err.message : '更新阅读时长失败');
+            if (typeof showMessage === 'function') showMessage(detail || '更新阅读时长失败', 'error');
             if (todayOverviewData) paintReadingMinutes(todayOverviewData.reading_total_minutes || 0);
         } finally {
             readingSaving = false;
@@ -560,7 +563,7 @@
     };
 
     window.deleteDailyTodo = async function (id) {
-        if (!confirm('确定删除这条待办？')) return;
+        if (!confirm('确定删除？')) return;
         try {
             await todayApi(`/todos/${id}`, { method: 'DELETE' });
             await refreshTodosAfterChange();

@@ -1,5 +1,9 @@
 /* 电脑端半屏 / 分屏：收成图标轨，主区铺满，不改手机底栏。 */
 
+.app-brand-icon {
+    display: none;
+}
+
 @media (min-width: 769px) {
     html {
         height: 100%;
@@ -25,6 +29,15 @@
 
     body.sidebar-rail {
         --shuran-sidebar: 72px;
+    }
+
+    .app-brand-icon {
+        display: block;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        object-fit: cover;
+        flex-shrink: 0;
     }
 
     .sidebar-toggle-btn {
