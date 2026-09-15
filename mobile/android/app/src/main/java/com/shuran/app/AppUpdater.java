@@ -94,7 +94,7 @@ public class AppUpdater {
     }
 
     private JSONObject fetchInfo() throws Exception {
-        String base = activity.getString(R.string.app_url).replaceAll("/+$", "");
+        String base = activity.updateBaseUrl();
         HttpURLConnection conn = (HttpURLConnection) new URL(base + META_PATH).openConnection();
         conn.setConnectTimeout(12000);
         conn.setReadTimeout(12000);
@@ -146,8 +146,7 @@ public class AppUpdater {
             return;
         }
 
-        // Always download from the baked-in server URL, not a possibly-internal host.
-        String downloadUrl = activity.getString(R.string.app_url).replaceAll("/+$", "") + "/download/apk";
+        String downloadUrl = activity.updateBaseUrl() + "/download/apk";
 
         String message = activity.getString(
                 R.string.update_message,

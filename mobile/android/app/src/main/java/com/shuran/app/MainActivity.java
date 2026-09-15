@@ -227,6 +227,20 @@ public class MainActivity extends Activity {
         }
     }
 
+    String updateBaseUrl() {
+        try {
+            String live = webView != null ? webView.getUrl() : null;
+            if (live != null && (live.startsWith("http://") || live.startsWith("https://"))) {
+                Uri uri = Uri.parse(live);
+                if (uri.getScheme() != null && uri.getAuthority() != null) {
+                    return uri.getScheme() + "://" + uri.getAuthority();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return getString(R.string.app_url).replaceAll("/+$", "");
+    }
+
     private void maybeCheckAppUpdate() {
         if (updateChecked || appUpdater == null || errorView.getVisibility() == View.VISIBLE) {
             return;
