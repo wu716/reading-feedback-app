@@ -8,6 +8,8 @@ import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.graphics.drawable.Icon;
 import android.os.Build;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.provider.Settings;
 import android.widget.Toast;
 
@@ -29,6 +31,22 @@ public final class TimeLogAssist {
     public static void launchPunch(Context context) {
         try {
             context.startActivity(punchIntent(context));
+        } catch (Exception ignored) {
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    public static void buzz(Context context) {
+        try {
+            Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator == null || !vibrator.hasVibrator()) {
+                return;
+            }
+            if (Build.VERSION.SDK_INT >= 26) {
+                vibrator.vibrate(VibrationEffect.createOneShot(36, VibrationEffect.DEFAULT_AMPLITUDE));
+            } else {
+                vibrator.vibrate(36);
+            }
         } catch (Exception ignored) {
         }
     }

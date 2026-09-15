@@ -10,6 +10,8 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.View;
@@ -48,12 +50,17 @@ public class MainActivity extends Activity {
     private boolean updateChecked;
     private AppUpdater appUpdater;
     private NativeRecorder nativeRecorder;
+    private Handler volumeTapHandler;
+    private VolumeTripleTapController volumeTapController;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        volumeTapHandler = new Handler(Looper.getMainLooper());
+        volumeTapController = new VolumeTripleTapController(this, volumeTapHandler);
 
         webView = findViewById(R.id.webview);
         progressBar = findViewById(R.id.progress);
@@ -482,6 +489,14 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (volumeTapController != null && volumeTapController.onKeyEvent(event)) {
+            return true;
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == AppUpdater.REQUEST_INSTALL_UNKNOWN) {
@@ -555,6 +570,9 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (volumeTapController != null) {
+            volumeTapController.cancel();
+        }
         if (nativeRecorder != null) {
             nativeRecorder.release();
         }

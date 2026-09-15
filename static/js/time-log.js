@@ -579,6 +579,8 @@
         if (!row) return;
         const show = !!(n && typeof n.pinTimeLogShortcut === 'function');
         row.hidden = !show;
+        const meHint = document.getElementById('timeLogVolumeMeHint');
+        if (meHint) meHint.hidden = !show;
         const volumeHint = document.getElementById('timeLogVolumeHint');
         const volumeSwitch = document.getElementById('timeLogVolumeSwitch');
         let volumeOn = false;
@@ -590,8 +592,8 @@
         if (volumeSwitch) volumeSwitch.checked = volumeOn;
         if (volumeHint) {
             volumeHint.textContent = volumeOn
-                ? '已打开。锁屏或其他应用上连续三击音量减会弹出「记」。前两击仍会调低音量，第三次才唤起。单击调音量和截屏不受影响。'
-                : '推荐打开。连续快按三下音量减唤起「记」，不占用单击调音量和截屏。需系统无障碍授权，只监听这个手势，不读屏幕。';
+                ? '锁屏或其他应用上，约 1.5 秒内连按三下音量减会弹出「记」。书然在前台时不必开本开关。单击仍调音量。'
+                : '书然在前台时，约 1.5 秒内连按三下音量减就会打开「记」，不必开本开关。锁屏或其它应用再用，请打开右侧开关（系统无障碍，只监听这个手势）。';
         }
         const status = document.getElementById('timeLogAssistStatus');
         if (!status || !n) return;
