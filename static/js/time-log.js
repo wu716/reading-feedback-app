@@ -7,6 +7,7 @@
     let tasks = [];
     let pendingNode = null;
     let compact = document.body.classList.contains('tl-compact-page');
+    let composerViewportHandler = null;
 
     function todayISO() {
         const now = new Date();
@@ -137,15 +138,17 @@
     }
 
     function closeSheet() {
+        unbindComposerViewport();
         document.getElementById('timeLogSheet')?.remove();
         document.getElementById('timeLogSheetBackdrop')?.remove();
+        document.body.classList.remove('tl-composing');
         pendingNode = null;
     }
 
     async function removeNode(nodeId) {
         const id = parseInt(nodeId, 10);
         if (!id) return false;
-        if (!window.confirm('确定删除这段记录？会从日志里拿掉，无法恢复。')) {
+        if (!window.confirm('确定删除？')) {
             return false;
         }
         try {
@@ -175,25 +178,60 @@
         }
     }
 
+    function unbindComposerViewport() {
+        if (!composerViewportHandler) return;
+        window.visualViewport?.removeEventListener('resize', composerViewportHandler);
+        window.visualViewport?.removeEventListener('scroll', composerViewportHandler);
+        window.removeEventListener('resize', composerViewportHandler);
+        composerViewportHandler = null;
+    }
+
+    function bindComposerViewport(sheet) {
+        unbindComposerViewport();
+        const input = sheet.querySelector('#timeLogSheetInput');
+        const apply = () => {
+            if (isDesktopShell() && !compact) {
+                sheet.style.bottom = '';
+                sheet.style.maxHeight = '';
+                return;
+            }
+            const vv = window.visualViewport;
+            const occluded = vv
+                ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop))
+                : 0;
+            sheet.style.bottom = `${occluded}px`;
+            sheet.style.maxHeight = `${Math.max(220, Math.round((vv ? vv.height : window.innerHeight) - 8))}px`;
+            if (input && document.activeElement === input) {
+                input.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            }
+        };
+        composerViewportHandler = apply;
+        window.visualViewport?.addEventListener('resize', apply);
+        window.visualViewport?.addEventListener('scroll', apply);
+        window.addEventListener('resize', apply);
+        input?.addEventListener('focus', () => {
+            setTimeout(apply, 50);
+            setTimeout(() => input.scrollIntoView({ block: 'center', inline: 'nearest' }), 80);
+        });
+        apply();
+    }
+
     function openSheet(node, isStart) {
         closeSheet();
         pendingNode = node;
+        document.body.classList.add('tl-composing');
         const backdrop = document.createElement('div');
         backdrop.id = 'timeLogSheetBackdrop';
         backdrop.className = 'tl-sheet-backdrop';
         const sheet = document.createElement('div');
         sheet.id = 'timeLogSheet';
         sheet.className = 'tl-sheet';
-        const picks = tasks.map((task) => (
-            `<button type="button" class="flow-chip${node.task_id === task.id ? ' active' : ''}" data-task-id="${task.id}">${escapeHtml(task.text)}</button>`
-        )).join('');
         sheet.innerHTML = `
             <h3>${isStart ? '记下开始' : '这段在做什么'}</h3>
             <p>${isStart ? '写下才会记入。' : `距上一段 ${formatDuration(node.duration_seconds)}`}</p>
-            <textarea id="timeLogSheetInput" maxlength="500" placeholder="这段在做什么">${escapeHtml(node.label || '')}</textarea>
-            ${picks ? `<div class="tl-task-picks">${picks}</div>` : ''}
+            <textarea id="timeLogSheetInput" maxlength="500" placeholder="这段在做什么" enterkeyhint="done">${escapeHtml(node.label || '')}</textarea>
             <div class="tl-sheet-actions">
-                ${node.id && !isUnwritten(node) ? '<button type="button" class="flow-ghost-btn" id="timeLogSheetDelete">删除这段</button>' : '<span></span>'}
+                ${node.id && !isUnwritten(node) ? '<button type="button" class="flow-ghost-btn" id="timeLogSheetDelete">删除</button>' : '<span></span>'}
                 <div class="tl-sheet-actions-end">
                     <button type="button" class="flow-ghost-btn" id="timeLogSheetCancel">稍后</button>
                     <button type="button" class="flow-solid-btn" id="timeLogSheetSave">写下</button>
@@ -203,6 +241,7 @@
         document.body.appendChild(backdrop);
         document.body.appendChild(sheet);
         placeDesktopSheet(sheet);
+        bindComposerViewport(sheet);
         backdrop.addEventListener('click', () => discardSheet());
         sheet.querySelector('#timeLogSheetCancel').addEventListener('click', () => discardSheet());
         sheet.querySelector('#timeLogSheetDelete')?.addEventListener('click', async () => {
@@ -210,20 +249,10 @@
             const removed = await removeNode(node.id);
             if (removed) closeSheet();
         });
-        sheet.querySelectorAll('[data-task-id]').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                sheet.querySelectorAll('[data-task-id]').forEach((el) => el.classList.remove('active'));
-                btn.classList.toggle('active');
-                const input = sheet.querySelector('#timeLogSheetInput');
-                if (input && !input.value.trim()) input.value = btn.textContent || '';
-            });
-        });
         sheet.querySelector('#timeLogSheetSave').addEventListener('click', async () => {
             const input = sheet.querySelector('#timeLogSheetInput');
-            const picked = sheet.querySelector('[data-task-id].active');
             const label = (input?.value || '').trim();
-            const taskId = picked ? parseInt(picked.dataset.taskId, 10) : undefined;
-            if (!label && !taskId) {
+            if (!label && !node.task_id) {
                 await discardSheet();
                 return;
             }
@@ -231,11 +260,7 @@
                 if (node.id) {
                     await logApi(`/nodes/${node.id}`, {
                         method: 'PATCH',
-                        body: JSON.stringify({
-                            label,
-                            task_id: taskId,
-                            clear_task: !taskId,
-                        }),
+                        body: JSON.stringify({ label }),
                     });
                 } else {
                     await logApi('/nodes', {
@@ -244,7 +269,6 @@
                             log_date: node.log_date || currentDay(),
                             logged_at: node.logged_at,
                             label,
-                            task_id: taskId,
                         }),
                     });
                 }
@@ -254,7 +278,12 @@
                 if (typeof showMessage === 'function') showMessage(e.message, 'error');
             }
         });
-        sheet.querySelector('#timeLogSheetInput')?.focus();
+        const input = sheet.querySelector('#timeLogSheetInput');
+        if (input) {
+            input.focus();
+            const len = input.value.length;
+            input.setSelectionRange(len, len);
+        }
     }
 
     function isDesktopShell() {

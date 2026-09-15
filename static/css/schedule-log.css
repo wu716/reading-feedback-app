@@ -442,6 +442,50 @@ body:not(.has-app-tabbar) .tl-fab {
     margin-bottom: 10px;
 }
 
+body.tl-composing {
+    overflow: hidden;
+}
+
+body.tl-composing .tl-fab {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+@media (max-width: 768px) {
+    body.tl-composing .home-schedule,
+    body.tl-composing #schedule,
+    body.tl-composing .app-tabbar,
+    body.tl-composing .flow-page {
+        visibility: hidden !important;
+        pointer-events: none;
+    }
+
+    body.tl-composing .tl-sheet {
+        left: 0;
+        right: 0;
+        transform: none;
+        width: 100%;
+        max-width: none;
+        border-radius: 16px 16px 0 0;
+        display: flex;
+        flex-direction: column;
+        overflow: auto;
+        padding-bottom: 12px;
+    }
+
+    body.tl-composing .tl-sheet textarea {
+        flex: 1 1 auto;
+        min-height: 9em;
+        resize: none;
+        font-size: 16px;
+    }
+
+    body.tl-composing .tl-sheet-actions {
+        flex-shrink: 0;
+        margin-top: auto;
+    }
+}
+
 .tl-task-picks {
     display: flex;
     flex-wrap: wrap;

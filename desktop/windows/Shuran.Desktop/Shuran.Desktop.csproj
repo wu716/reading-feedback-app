@@ -11,6 +11,7 @@
     <RootNamespace>Shuran.Desktop</RootNamespace>
     <Product>书然</Product>
     <AssemblyTitle>书然</AssemblyTitle>
+    <ApplicationIcon>app.ico</ApplicationIcon>
     <Version>1.5.0</Version>
     <NeutralLanguage>zh-CN</NeutralLanguage>
     <InvariantGlobalization>true</InvariantGlobalization>

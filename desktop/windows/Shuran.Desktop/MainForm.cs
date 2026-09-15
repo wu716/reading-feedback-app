@@ -17,6 +17,14 @@ sealed class MainForm : Form
     {
         _startUrl = startUrl;
         Text = "书然";
+        try
+        {
+            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+        }
+        catch
+        {
+            /* ApplicationIcon on the exe is enough for the desktop shortcut */
+        }
         Width = 1100;
         Height = 760;
         MinimumSize = new Size(420, 560);
