@@ -47,6 +47,7 @@ class TaskCreate(BaseModel):
 class TaskUpdate(BaseModel):
     text: Optional[str] = Field(None, min_length=1, max_length=500)
     completed: Optional[bool] = None
+    note: Optional[str] = Field(None, max_length=500)
     familiarity: Optional[str] = None
     estimated_minutes: Optional[int] = Field(None, ge=0, le=24 * 60)
     sort_order: Optional[int] = None
@@ -55,6 +56,7 @@ class TaskUpdate(BaseModel):
     clear_familiarity: bool = False
     clear_estimate: bool = False
     clear_parallel: bool = False
+    clear_note: bool = False
 
     @field_validator("text")
     @classmethod
@@ -65,6 +67,13 @@ class TaskUpdate(BaseModel):
         if not text:
             raise ValueError("行动内容不能为空")
         return text
+
+    @field_validator("note")
+    @classmethod
+    def strip_note(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        return value.strip()
 
     @field_validator("familiarity")
     @classmethod
@@ -97,6 +106,7 @@ class TaskOut(BaseModel):
     parent_id: Optional[int] = None
     text: str
     completed: bool
+    note: Optional[str] = None
     sort_order: int
     familiarity: Optional[str] = None
     estimated_minutes: Optional[int] = None
@@ -189,6 +199,7 @@ def build_tree(tasks: List[DailyTask]) -> List[TaskOut]:
             parent_id=task.parent_id,
             text=task.text,
             completed=bool(task.completed),
+            note=task.note,
             sort_order=task.sort_order or 0,
             familiarity=task.familiarity,
             estimated_minutes=task.estimated_minutes,
@@ -258,6 +269,10 @@ async def update_task(
         task.text = body.text
     if body.completed is not None:
         task.completed = body.completed
+    if body.clear_note:
+        task.note = None
+    elif body.note is not None:
+        task.note = body.note or None
     if body.clear_familiarity:
         task.familiarity = None
     elif body.familiarity is not None:
