@@ -60,11 +60,11 @@ git commit -m "Fix homepage recording flow and live stats."
 GitHub 更新后，先给用户 SSH 登录命令（帮助启动服务器），再给生产机拉代码命令：
 
 ```bash
-ssh root@47.236.122.207
+ssh ubuntu@43.161.238.165
 ```
 
 ```bash
 cd /opt/shuran-app && git pull origin main && cd deploy/aliyun && docker compose up -d --build
 ```
 
-线上：`http://47.236.122.207:8000`，仓库：`https://github.com/wu716/reading-feedback-app`。
+线上：`http://43.161.238.165:8000`，仓库：`https://github.com/wu716/reading-feedback-app`。

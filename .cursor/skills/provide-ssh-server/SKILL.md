@@ -28,7 +28,7 @@ description: >-
 ## 必须原样提供
 
 ```bash
-ssh root@47.236.122.207
+ssh ubuntu@43.161.238.165
 ```
 
 同时附上服务器更新命令：
@@ -45,11 +45,9 @@ cd /opt/shuran-app && git pull origin main && cd deploy/aliyun && docker compose
 2. 登录服务器：
 
 ```bash
-ssh root@47.236.122.207
+ssh ubuntu@43.161.238.165
 ```
 
-3. 登录后执行：
+登录后若提示符是 `ubuntu@...$`，先执行 `sudo -i`。
 
-```bash
-cd /opt/shuran-app && git pull origin main && cd deploy/aliyun && docker compose up -d --build
-```
+线上：`http://43.161.238.165:8000`，仓库：`https://github.com/wu716/reading-feedback-app`。
