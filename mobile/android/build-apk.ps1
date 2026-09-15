@@ -58,4 +58,4 @@ Copy-Item $built $releaseApk -Force
 Write-Host "APK 已生成: $outApk"
 Write-Host "下载目录: $releaseApk"
 Write-Host "部署到服务器后，把该文件放到服务器项目的 releases/shuran.apk"
-Write-Host "下载页: http://47.236.122.207:8000/download"
+Write-Host "下载页: http://43.161.238.165:8000/download"

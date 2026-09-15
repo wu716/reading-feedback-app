@@ -23,7 +23,7 @@ cd D:\projects\reading-feedback-app\desktop\windows
 
 ## 打开
 
-双击 `shuran-windows.exe`。默认打开 `http://47.236.122.207:8000`。
+双击 `shuran-windows.exe`。默认打开 `http://43.161.238.165:8000`。
 
 换地址任选其一：
 

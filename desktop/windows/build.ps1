@@ -16,4 +16,4 @@ $dest = Join-Path $releaseDir "shuran-windows.exe"
 Copy-Item $exe $dest -Force
 Write-Host "Built $dest"
 Write-Host "Do not git add this exe. Upload with:"
-Write-Host "scp `"$dest`" root@47.236.122.207:/opt/shuran-app/releases/shuran-windows.exe"
+Write-Host "scp `"$dest`" ubuntu@43.161.238.165:/opt/shuran-app/releases/shuran-windows.exe"

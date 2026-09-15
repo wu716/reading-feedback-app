@@ -976,7 +976,7 @@ function shuranIsPhoneApp() {
 
 function shuranStartAppUpdate() {
     const shell = shuranShellInfo();
-    const origin = window.location.origin || 'http://47.236.122.207:8000';
+    const origin = window.location.origin || 'http://43.161.238.165:8000';
     const pageUrl = origin + '/download';
     if (!shuranIsPhoneApp()) {
         if (typeof showMessage === 'function') {
@@ -1076,7 +1076,7 @@ function promptLegacyNativeUpdate() {
         document.body.appendChild(bar);
         document.getElementById('shuranUpdateNowBtn').onclick = function () {
             const btnNow = document.getElementById('shuranUpdateNowBtn');
-            const origin = window.location.origin || 'http://47.236.122.207:8000';
+            const origin = window.location.origin || 'http://43.161.238.165:8000';
             shuranCopyText(origin + '/download').then(function (ok) {
                 if (ok && btnNow) btnNow.textContent = '链接已复制';
                 shuranStartAppUpdate();
