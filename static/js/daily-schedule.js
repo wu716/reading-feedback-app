@@ -6,6 +6,7 @@
     let data = { date: null, designed_at: null, tasks: [] };
     let mode = 'list';
     let splitFor = null;
+    let editingId = null;
 
     function todayISO() {
         const now = new Date();
@@ -73,14 +74,14 @@
         const hint = document.getElementById('scheduleHint');
         if (!hint) return;
         if (mode === 'design') {
-            hint.textContent = '未填项可留空';
+            hint.textContent = '未填项可留空。点文字可改，也可拆开或删除';
             return;
         }
         if (mode === 'flow' && data.designed_at) {
-            hint.textContent = allDone() ? '今日已完成' : '勾选完成，也可记下执行情况';
+            hint.textContent = allDone() ? '今日已完成' : '勾选完成，也可记下执行情况。写错了点文字可改，右侧可删除';
             return;
         }
-        hint.textContent = allDone() ? '今日已完成' : '写下今天要做的事';
+        hint.textContent = allDone() ? '今日已完成' : '写下今天要做的事。写错了点文字可改，右侧可删除';
     }
 
     function allDone() {
@@ -111,9 +112,37 @@
         if (doneBtn) doneBtn.hidden = mode !== 'design';
         if (backBtn) {
             backBtn.hidden = mode === 'list';
-            backBtn.textContent = mode === 'flow' ? '回到清单' : '回到清单';
+            backBtn.textContent = '回到清单';
         }
         if (addRow) addRow.hidden = mode !== 'list';
+    }
+
+    function renderTitle(task) {
+        if (editingId === task.id) {
+            return `<input type="text" class="flow-task-text-input" maxlength="500" value="${escapeHtml(task.text)}" data-act="text" aria-label="修改这一步">`;
+        }
+        return `<div class="flow-task-text" data-act="edit" title="点此修改">${escapeHtml(task.text)}</div>`;
+    }
+
+    function renderDeleteBtn() {
+        return '<button type="button" class="flow-mini-btn flow-danger" data-act="delete">删除</button>';
+    }
+
+    function renderSplitRow(task) {
+        if (splitFor !== task.id) return '';
+        return `
+            <div class="flow-split-row">
+                <input type="text" maxlength="500" placeholder="写下更具体的一步" data-split-input>
+                <button type="button" class="flow-ghost-btn" data-act="split-save">加入</button>
+            </div>`;
+    }
+
+    function renderEditActions(showSplit) {
+        return `
+            <div class="flow-task-actions">
+                <button type="button" data-act="edit">修改</button>
+                ${showSplit ? '<button type="button" data-act="split">拆开</button>' : ''}
+            </div>`;
     }
 
     function renderTask(task, isChild) {
@@ -123,24 +152,17 @@
         if (task.estimated_minutes != null) {
             meta.push(`<span class="flow-mark">${escapeHtml(minutesLabel(task.estimated_minutes))}</span>`);
         }
-        const splitOpen = splitFor === task.id;
         return `
             <article class="flow-task${isChild ? ' is-child' : ''}${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
                 <div class="flow-task-main">
                     ${renderDoneBtn(task)}
-                    <div class="flow-task-text">${escapeHtml(task.text)}</div>
+                    ${renderTitle(task)}
+                    ${renderDeleteBtn()}
                 </div>
                 ${meta.length ? `<div class="flow-task-meta">${meta.join('')}</div>` : ''}
                 ${renderNote(task)}
-                <div class="flow-task-actions">
-                    <button type="button" data-act="split">拆开</button>
-                    <button type="button" data-act="delete">删除</button>
-                </div>
-                ${splitOpen ? `
-                    <div class="flow-split-row">
-                        <input type="text" maxlength="500" placeholder="写下更具体的一步" data-split-input>
-                        <button type="button" class="flow-ghost-btn" data-act="split-save">加入</button>
-                    </div>` : ''}
+                ${renderEditActions(true)}
+                ${renderSplitRow(task)}
             </article>
             ${(task.children || []).map((child) => renderTask(child, true)).join('')}
         `;
@@ -152,7 +174,8 @@
         return `
             <article class="flow-task${isChild ? ' is-child' : ''}" data-task-id="${task.id}">
                 <div class="flow-task-main">
-                    <div class="flow-task-text">${escapeHtml(task.text)}</div>
+                    ${renderTitle(task)}
+                    ${renderDeleteBtn()}
                 </div>
                 <div class="flow-task-meta">
                     <button type="button" class="flow-chip${task.familiarity === 'familiar' ? ' active' : ''}" data-act="fam" data-value="familiar">熟悉</button>
@@ -162,6 +185,8 @@
                     <button type="button" class="flow-mini-btn" data-act="down">下移</button>
                     ${index > 0 ? `<button type="button" class="flow-chip${parallelOn ? ' active' : ''}" data-act="parallel">与上一项并行</button>` : ''}
                 </div>
+                ${renderEditActions(true)}
+                ${renderSplitRow(task)}
             </article>
             ${(task.children || []).map((child, i, arr) => renderDesignTask(child, arr, i, true)).join('')}
         `;
@@ -201,10 +226,12 @@
             <article class="flow-task${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
                 <div class="flow-task-main">
                     ${renderDoneBtn(task)}
-                    <div class="flow-task-text">${escapeHtml(task.text)}</div>
+                    ${renderTitle(task)}
+                    ${renderDeleteBtn()}
                 </div>
                 ${extra.length ? `<div class="flow-task-meta">${extra.map((x) => `<span class="flow-mark">${escapeHtml(x)}</span>`).join('')}</div>` : ''}
                 ${renderNote(task)}
+                ${renderEditActions(false)}
                 ${task.children && task.children.length ? renderFlowGroups(task.children) : ''}
             </article>
         `;
@@ -228,6 +255,20 @@
         }).join('');
     }
 
+    function focusEditor() {
+        const list = document.getElementById('scheduleList');
+        if (!list) return;
+        const editInput = editingId
+            ? list.querySelector(`[data-task-id="${editingId}"] [data-act="text"]`)
+            : null;
+        if (editInput) {
+            editInput.focus();
+            editInput.select();
+            return;
+        }
+        if (mode === 'list' || mode === 'design') list.querySelector('[data-split-input]')?.focus();
+    }
+
     function render() {
         const list = document.getElementById('scheduleList');
         if (!list) return;
@@ -239,14 +280,12 @@
         }
         if (mode === 'design') {
             list.innerHTML = data.tasks.map((task, i, arr) => renderDesignTask(task, arr, i, false)).join('');
-            return;
-        }
-        if (mode === 'flow') {
+        } else if (mode === 'flow') {
             list.innerHTML = renderFlowGroups(data.tasks);
-            return;
+        } else {
+            list.innerHTML = data.tasks.map((task) => renderTask(task, false)).join('');
         }
-        list.innerHTML = data.tasks.map((task) => renderTask(task, false)).join('');
-        list.querySelector('[data-split-input]')?.focus();
+        focusEditor();
     }
 
     async function load(nextDay) {
@@ -257,6 +296,7 @@
             return;
         }
         day = nextDay || currentDay();
+        editingId = null;
         data = await api(`?task_date=${encodeURIComponent(day)}`);
         if (mode === 'flow' && !data.designed_at) mode = 'list';
         render();
@@ -282,6 +322,29 @@
             method: 'PATCH',
             body: JSON.stringify(body),
         });
+        render();
+    }
+
+    async function saveText(id, value) {
+        const task = flatten(data.tasks || [], []).find((item) => item.id === id);
+        const next = (value || '').trim();
+        const prev = task ? String(task.text || '').trim() : '';
+        if (editingId === id) editingId = null;
+        if (!task || !next || next === prev) {
+            render();
+            return;
+        }
+        await patchTask(id, { text: next });
+    }
+
+    async function beginEdit(id) {
+        if (editingId === id) return;
+        if (editingId) {
+            const input = document.querySelector(`#scheduleList [data-task-id="${editingId}"] [data-act="text"]`);
+            if (input) await saveText(editingId, input.value);
+        }
+        splitFor = null;
+        editingId = id;
         render();
     }
 
@@ -355,6 +418,19 @@
         await patchTask(current.id, { parallel_group: group });
     }
 
+    function actionFromEvent(e) {
+        const actEl = e.target.closest('[data-act]');
+        const article = e.target.closest('[data-task-id]');
+        const act = actEl ? actEl.dataset.act : '';
+        if (!article || !act) return null;
+        return {
+            article,
+            act,
+            actEl,
+            id: parseInt(article.dataset.taskId, 10),
+        };
+    }
+
     window.loadDailySchedule = function loadDailySchedule() {
         return load(currentDay()).catch((e) => {
             const hint = document.getElementById('scheduleHint');
@@ -367,6 +443,7 @@
         if (!root || root.dataset.bound) return;
         root.dataset.bound = '1';
         day = todayISO();
+        const list = document.getElementById('scheduleList');
 
         document.getElementById('schedulePrevDay')?.addEventListener('click', () => {
             load(shiftDay(currentDay(), -1));
@@ -390,6 +467,7 @@
         });
         document.getElementById('scheduleDesignBtn')?.addEventListener('click', () => {
             mode = 'design';
+            editingId = null;
             render();
         });
         document.getElementById('scheduleDoneBtn')?.addEventListener('click', async () => {
@@ -399,6 +477,7 @@
                     body: JSON.stringify({ task_date: currentDay() }),
                 });
                 mode = 'flow';
+                editingId = null;
                 render();
             } catch (e) {
                 if (typeof showMessage === 'function') showMessage(e.message, 'error');
@@ -406,32 +485,42 @@
         });
         document.getElementById('scheduleBackBtn')?.addEventListener('click', () => {
             mode = 'list';
+            editingId = null;
             render();
         });
 
-        document.getElementById('scheduleList')?.addEventListener('click', async (e) => {
-            const article = e.target.closest('[data-task-id]');
-            const act = e.target.dataset.act;
-            if (!article || !act) return;
-            const id = parseInt(article.dataset.taskId, 10);
+        list?.addEventListener('mousedown', (e) => {
+            const hit = actionFromEvent(e);
+            if (!hit || !editingId) return;
+            if (hit.act === 'delete' || hit.act === 'edit' || hit.act === 'split') {
+                e.preventDefault();
+            }
+        });
+
+        list?.addEventListener('click', async (e) => {
+            const hit = actionFromEvent(e);
+            if (!hit) return;
+            const { article, act, actEl, id } = hit;
+            if (act === 'note' || act === 'text' || act === 'minutes') return;
             try {
-                if (act === 'note') {
-                    return;
-                }
-                if (act === 'toggle') {
+                if (act === 'edit') {
+                    await beginEdit(id);
+                } else if (act === 'toggle') {
                     const task = flatten(data.tasks || [], []).find((item) => item.id === id);
                     await patchTask(id, { completed: !(task && task.completed) });
                 } else if (act === 'delete') {
+                    editingId = null;
                     data = await api(`/tasks/${id}`, { method: 'DELETE' });
                     render();
                 } else if (act === 'split') {
                     splitFor = splitFor === id ? null : id;
+                    editingId = null;
                     render();
                 } else if (act === 'split-save') {
                     const input = article.querySelector('[data-split-input]');
                     await addTask(input?.value, id);
                 } else if (act === 'fam') {
-                    const value = e.target.dataset.value;
+                    const value = actEl.dataset.value;
                     const task = flatten(data.tasks || [], []).find((t) => t.id === id);
                     if (task && task.familiarity === value) {
                         await patchTask(id, { clear_familiarity: true });
@@ -450,7 +539,25 @@
             }
         });
 
-        document.getElementById('scheduleList')?.addEventListener('keydown', async (e) => {
+        list?.addEventListener('keydown', async (e) => {
+            const article = e.target.closest('[data-task-id]');
+            if (!article) return;
+            const id = parseInt(article.dataset.taskId, 10);
+            if (e.target.dataset.act === 'text') {
+                if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
+                    e.preventDefault();
+                    try {
+                        await saveText(id, e.target.value);
+                    } catch (err) {
+                        if (typeof showMessage === 'function') showMessage(err.message, 'error');
+                    }
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    editingId = null;
+                    render();
+                }
+                return;
+            }
             if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
             if (e.target.dataset.act === 'note') {
                 e.preventDefault();
@@ -460,9 +567,6 @@
             const input = e.target.closest('[data-split-input]');
             if (!input) return;
             e.preventDefault();
-            const article = input.closest('[data-task-id]');
-            if (!article) return;
-            const id = parseInt(article.dataset.taskId, 10);
             try {
                 await addTask(input.value, id);
             } catch (err) {
@@ -470,7 +574,21 @@
             }
         });
 
-        document.getElementById('scheduleList')?.addEventListener('change', async (e) => {
+        list?.addEventListener('focusout', (e) => {
+            if (e.target.dataset.act !== 'text') return;
+            const article = e.target.closest('[data-task-id]');
+            if (!article) return;
+            const id = parseInt(article.dataset.taskId, 10);
+            const value = e.target.value;
+            setTimeout(() => {
+                if (editingId !== id) return;
+                saveText(id, value).catch((err) => {
+                    if (typeof showMessage === 'function') showMessage(err.message, 'error');
+                });
+            }, 120);
+        });
+
+        list?.addEventListener('change', async (e) => {
             const article = e.target.closest('[data-task-id]');
             if (!article) return;
             const id = parseInt(article.dataset.taskId, 10);
@@ -491,7 +609,6 @@
                 if (typeof showMessage === 'function') showMessage(err.message, 'error');
             }
         });
-
     }
 
     if (document.readyState === 'loading') {

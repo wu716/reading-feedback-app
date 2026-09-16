@@ -107,6 +107,12 @@
     margin: 0 0 16px;
 }
 
+.flow-add-row[hidden],
+.flow-ghost-btn[hidden],
+.flow-solid-btn[hidden] {
+    display: none !important;
+}
+
 .flow-add-row {
     display: flex;
     align-items: baseline;
@@ -216,6 +222,30 @@
     line-height: 1.65;
     font-family: "Noto Serif SC", "Songti SC", serif;
     font-size: 1rem;
+    cursor: pointer;
+}
+
+.flow-task-text:hover {
+    color: #5c3d36;
+}
+
+.flow-task-text-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    border-bottom: 1px solid #d8d1c4;
+    border-radius: 0;
+    padding: 0 0 2px;
+    background: transparent;
+    color: inherit;
+    font-family: "Noto Serif SC", "Songti SC", serif;
+    font-size: 1rem;
+    line-height: 1.65;
+}
+
+.flow-task-text-input:focus {
+    outline: none;
+    border-bottom-color: #9c3b32;
 }
 
 .flow-task-meta {
@@ -247,7 +277,7 @@
 .flow-task-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 14px;
+    gap: 16px;
     margin-top: 8px;
     margin-left: 26px;
 }
@@ -256,10 +286,21 @@
 .flow-mini-btn {
     border: none;
     background: transparent;
-    color: #8a8478;
-    font-size: 0.75rem;
+    color: #6b6560;
+    font-size: 0.82rem;
+    min-height: 28px;
     padding: 0;
     cursor: pointer;
+}
+
+.flow-task-actions button.flow-danger,
+.flow-mini-btn.flow-danger {
+    color: #9c3b32;
+    flex-shrink: 0;
+}
+
+.flow-task-main > .flow-danger {
+    margin-top: 6px;
 }
 
 .flow-minutes {
