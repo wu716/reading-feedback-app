@@ -4015,7 +4015,6 @@
                         <span class="me-row-main"><span class="me-row-title">时间日志</span></span>
                         <span class="me-chevron">›</span>
                     </button>
-                    <p class="me-hint" id="timeLogVolumeMeHint" hidden>打开书然后，约 1.5 秒内连按三下音量减即可打开「记」。</p>
                     <button type="button" class="me-row" onclick="navigateTo('stats')">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V3"/></svg>
@@ -4062,6 +4061,24 @@
                         <span class="me-chevron">›</span>
                     </a>
                     <p class="me-hint me-desktop-only">不要用电脑管家打开安卓安装包。</p>
+                </div>
+
+                <div class="me-group" id="meVolumeTripleGroup" hidden>
+                    <div class="me-group-title">快捷记下</div>
+                    <div class="me-row me-row-static">
+                        <div class="me-row-main">
+                            <div class="me-row-title">三击音量减 → 记</div>
+                            <div class="me-row-desc" id="timeLogVolumeMeDesc">书然开着时，约 1.5 秒内连按三下音量减即可打开「记」。</div>
+                        </div>
+                        <label class="me-switch">
+                            <input type="checkbox" id="timeLogVolumeMeSwitch">
+                            <span class="me-switch-ui"></span>
+                        </label>
+                    </div>
+                    <p class="me-hint" id="timeLogVolumeMeHint" hidden></p>
+                    <div class="me-actions" id="timeLogVolumeUpdateWrap" hidden>
+                        <button type="button" class="me-btn me-btn-primary" id="timeLogVolumeUpdateBtn">换安装包</button>
+                    </div>
                 </div>
 
                 <div class="me-group reminder-settings-section">
@@ -4398,17 +4415,17 @@
                         <span class="me-switch-ui"></span>
                     </label>
                 </div>
-                <div id="timeLogAssistRow" hidden>
-                    <div class="me-row me-row-static me-native-only">
-                        <div class="me-row-main">
-                            <div class="me-row-title">三击音量减 → 记</div>
-                            <div class="me-row-desc" id="timeLogVolumeHint">书然在前台时连按三下音量减即可。锁屏或其它应用需打开右侧开关。</div>
-                        </div>
-                        <label class="me-switch">
-                            <input type="checkbox" id="timeLogVolumeSwitch">
-                            <span class="me-switch-ui"></span>
-                        </label>
+                <div class="me-row me-row-static me-native-only" id="timeLogVolumeRow" hidden>
+                    <div class="me-row-main">
+                        <div class="me-row-title">三击音量减 → 记</div>
+                        <div class="me-row-desc" id="timeLogVolumeHint">书然在前台时连按三下音量减即可。锁屏或其它应用需打开右侧开关。</div>
                     </div>
+                    <label class="me-switch">
+                        <input type="checkbox" id="timeLogVolumeSwitch">
+                        <span class="me-switch-ui"></span>
+                    </label>
+                </div>
+                <div id="timeLogAssistRow" hidden>
                     <div class="me-row me-row-static me-native-only">
                         <div class="me-row-main">
                             <div class="me-row-title">荣耀 / 华为电源键长按</div>
@@ -4462,12 +4479,12 @@
                 <h3>5. 时间日志</h3>
                 <ol>
                     <li>点「记」抓住此刻，写下后才会入日志。写错可删。</li>
-                    <li>电脑可开「小窗」，或把「记」拖到窗口边缘停靠。手机打开书然后，约 1.5 秒内连按三下音量减即可打开「记」。锁屏或其它应用需在本页打开「三击音量减」。也可用磁贴或桌面快捷方式。</li>
+                    <li>电脑可开「小窗」，或把「记」拖到窗口边缘停靠。手机请到「我的 → 快捷记下」。书然开着时，约 1.5 秒内连按三下音量减即可打开「记」。锁屏或其它应用需打开「三击音量减」开关。也可用磁贴或桌面快捷方式。</li>
                 </ol>
             </div>
             <div class="guide-card">
                 <h3>6. 我的</h3>
-                <p>改昵称、开关提醒、查看实践统计和数据看板。这份说明随时可以再打开。</p>
+                <p>改昵称、开关提醒、打开「快捷记下」（三击音量减），查看实践统计和数据看板。这份说明随时可以再打开。</p>
             </div>
         </section>
     </main>
@@ -5014,6 +5031,7 @@
                 if (sectionId === 'user-center') {
                     loadUserInfo();
                     loadReminderSettings();
+                    if (typeof syncTimeLogChrome === 'function') syncTimeLogChrome();
                 }
                 if (sectionId === 'owner') {
                     loadOwnerConsole();
@@ -8320,7 +8338,7 @@
     <script src="/static/js/app-tabbar.js?v=20260912nav1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
     <script src="/static/js/daily-schedule.js?v=20260916later1"></script>
-    <script src="/static/js/time-log.js?v=20260915a"></script>
+    <script src="/static/js/time-log.js?v=20260916vol"></script>
     <script src="/static/js/desktop-shell.js?v=20260914fill5"></script>
 </body>
 </html>
