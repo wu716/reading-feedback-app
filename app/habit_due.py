@@ -155,7 +155,8 @@ def is_due(action, day: date, scheduled) -> bool:
     win_start, win_end = window_bounds(action, day)
 
     if kind != "habit":
-        return bool(getattr(action, "start_date", None) or getattr(action, "end_date", None))
+        # 情境型只在有截止日期时出现：这段时间要做完。只有开始日不够。
+        return bool(getattr(action, "end_date", None))
 
     if freq == "weekly":
         week_start, week_end = week_bounds(day)
