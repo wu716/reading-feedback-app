@@ -6384,12 +6384,18 @@
             }
         }
         
+        function asList(response) {
+            if (Array.isArray(response)) return response;
+            if (response && Array.isArray(response.items)) return response.items;
+            return [];
+        }
+
         // 加载行动项列表
         async function loadActions() {
             try {
-                const response = await apiRequest('/api/actions/');
-                allActions = response.items; // 存储所有行动项
-                renderActions(); // 渲染行动项
+                const response = await apiRequest('/api/actions/?size=100');
+                allActions = asList(response);
+                renderActions();
             } catch (error) {
                 document.getElementById('actionsList').innerHTML = 
                     '<div class="error">加载失败: ' + error.message + '</div>';
@@ -6446,7 +6452,7 @@
                     <p><strong>类型：</strong> ${getActionTypeText(actionType)}</p>
                     <p><strong>时间管理：</strong> ${getDurationInfo(action)}</p>
                     <div class="action-tags">
-                        ${action.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                        ${(Array.isArray(action.tags) ? action.tags : []).map(tag => `<span class="tag">${tag}</span>`).join('')}
                     </div>
                     </div>
                     <div class="action-buttons">
@@ -6668,7 +6674,7 @@
         async function getExistingPracticeLogs(actionId) {
             try {
                 const response = await apiRequest(`/api/actions/${actionId}/practice-logs?size=1000`);
-                return response.items || [];
+                return asList(response);
             } catch (error) {
                 console.error('获取实践记录失败:', error);
                 return [];
@@ -6682,12 +6688,9 @@
             currentActionForLogs = actionId;
             document.getElementById('practiceLogsModal').classList.remove('hidden');
             
-            // 获取行动项信息
             try {
-                const response = await apiRequest('/api/actions/');
-                const action = response.items.find(a => a.id === actionId);
-                
-                if (action) {
+                const action = await apiRequest(`/api/actions/${actionId}`);
+                if (action && action.action_text) {
                     document.getElementById('practiceLogsSubtitle').textContent = 
                         `查看"${action.action_text}"的所有实践反馈记录`;
                 }
@@ -6695,7 +6698,6 @@
                 console.error('获取行动项信息失败:', error);
             }
             
-            // 加载实践记录
             await loadPracticeLogs(actionId);
         }
         
@@ -6705,22 +6707,25 @@
         }
         
         async function loadPracticeLogs(actionId) {
+            const logsList = document.getElementById('practiceLogsList');
             try {
-                // 获取所有实践记录（设置较大的size确保获取所有记录）
                 const response = await apiRequest(`/api/actions/${actionId}/practice-logs?size=1000`);
-                const logsList = document.getElementById('practiceLogsList');
-                
-                if (response.items.length === 0) {
+                const logs = asList(response);
+
+                if (logs.length === 0) {
                     logsList.innerHTML = '<div class="loading">暂无实践记录</div>';
                     return;
                 }
-                
-                // 获取行动项类型
-                const actionsResponse = await apiRequest('/api/actions/');
-                const action = actionsResponse.items.find(a => a.id === actionId);
-                const isTrigger = action && action.action_type === 'trigger';
-                
-                logsList.innerHTML = response.items.map(log => {
+
+                let isTrigger = false;
+                try {
+                    const action = await apiRequest(`/api/actions/${actionId}`);
+                    isTrigger = !!(action && action.action_type === 'trigger');
+                } catch (error) {
+                    console.error('获取行动项类型失败:', error);
+                }
+
+                logsList.innerHTML = logs.map(log => {
                     const resultIcon = {
                         'success': '✅',
                         'partial': '⚠️',
