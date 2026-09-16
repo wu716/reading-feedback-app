@@ -136,6 +136,61 @@
     outline: none;
 }
 
+.schedule-nudge {
+    margin: 4px 0 10px;
+}
+
+.schedule-nudge[hidden] {
+    display: none !important;
+}
+
+.schedule-nudge-kicker {
+    font-size: 0.75rem;
+    color: #8a8478;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+}
+
+.schedule-nudge-item {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee7d8;
+}
+
+.schedule-nudge-copy {
+    flex: 1;
+    min-width: 0;
+}
+
+.schedule-nudge-text {
+    font-size: 0.94rem;
+    color: #1c1b19;
+}
+
+.schedule-nudge-why {
+    margin-top: 2px;
+    font-size: 0.72rem;
+    color: #8a8478;
+}
+
+.schedule-nudge-item button,
+.schedule-nudge-more {
+    border: none;
+    background: transparent;
+    color: #9c3b32;
+    padding: 0;
+    font-size: 0.82rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.schedule-nudge-more {
+    color: #8a8478;
+    margin-top: 8px;
+}
+
 .home-schedule-list {
     min-height: 72px;
 }

@@ -57,7 +57,7 @@ class Action(Base):
     # 新增时间管理字段（可选，用于向后兼容）
     duration_type = Column(String(20), nullable=True, default="short_term")  # "short_term", "long_term", "lifetime"
     target_duration_days = Column(Integer, nullable=True)  # 目标持续天数（短期/长期）
-    target_frequency = Column(String(50), nullable=True)   # "daily", "weekly", "monthly", "custom"
+    target_frequency = Column(String(50), nullable=True)   # "daily", "weekly", "monthly", "quarterly", "custom"
     custom_frequency_days = Column(Integer, nullable=True) # 自定义频率（每X天一次）
     start_date = Column(Date, nullable=True)               # 行动开始日期
     end_date = Column(Date, nullable=True)                 # 行动结束日期（如果有）
@@ -171,6 +171,7 @@ class DailyTask(Base):
     familiarity = Column(String(20), nullable=True)
     estimated_minutes = Column(Integer, nullable=True)
     parallel_group = Column(Integer, nullable=True)
+    action_id = Column(Integer, ForeignKey("actions.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
