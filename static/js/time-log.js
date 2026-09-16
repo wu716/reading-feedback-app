@@ -499,6 +499,54 @@
         return window.ShuranNative || null;
     }
 
+    function isPhoneApp() {
+        if (typeof shuranIsPhoneApp === 'function') return !!shuranIsPhoneApp();
+        return !!(native() || /ShuranApp/i.test(navigator.userAgent || ''));
+    }
+
+    function hasVolumeApi(n) {
+        return !!(n && typeof n.setVolumeTripleEnabled === 'function' && typeof n.isVolumeTripleEnabled === 'function');
+    }
+
+    function shellNeedsVolumeUpdate() {
+        return !hasVolumeApi(native());
+    }
+
+    function readVolumeOn() {
+        const n = native();
+        try {
+            return !!(hasVolumeApi(n) && n.isVolumeTripleEnabled());
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function bindOnce(el, event, handler) {
+        if (!el || el.dataset.bound === '1') return;
+        el.dataset.bound = '1';
+        el.addEventListener(event, handler);
+    }
+
+    function applyVolumeWant(want, switchEl) {
+        const n = native();
+        if (!hasVolumeApi(n) || shellNeedsVolumeUpdate()) {
+            if (switchEl) switchEl.checked = false;
+            if (typeof showMessage === 'function') {
+                showMessage('当前手机外壳没有这项。请换安装包，覆盖即可，不用卸载。', 'info');
+            }
+            if (typeof shuranStartAppUpdate === 'function') shuranStartAppUpdate();
+            setTimeout(syncAssistRow, 300);
+            return;
+        }
+        try {
+            n.setVolumeTripleEnabled(want);
+        } catch (err) {
+            if (typeof showMessage === 'function') showMessage('无法打开系统无障碍设置', 'error');
+            if (switchEl) switchEl.checked = !want;
+        }
+        setTimeout(syncAssistRow, 400);
+    }
+
     function syncOverlaySwitch() {
         const row = document.getElementById('timeLogOverlayRow');
         const sw = document.getElementById('timeLogOverlaySwitch');
@@ -574,27 +622,48 @@
     window.closeTimeLogSheet = discardSheet;
 
     function syncAssistRow() {
-        const row = document.getElementById('timeLogAssistRow');
         const n = native();
-        if (!row) return;
-        const show = !!(n && typeof n.pinTimeLogShortcut === 'function');
-        row.hidden = !show;
-        const meHint = document.getElementById('timeLogVolumeMeHint');
-        if (meHint) meHint.hidden = !show;
-        const volumeHint = document.getElementById('timeLogVolumeHint');
+        const phone = isPhoneApp();
+        const outdated = phone && shellNeedsVolumeUpdate();
+        const volumeOn = readVolumeOn();
+
+        const meGroup = document.getElementById('meVolumeTripleGroup');
+        if (meGroup) meGroup.hidden = !phone;
+        const volumeRow = document.getElementById('timeLogVolumeRow');
+        if (volumeRow) volumeRow.hidden = !phone;
+
+        const meSwitch = document.getElementById('timeLogVolumeMeSwitch');
         const volumeSwitch = document.getElementById('timeLogVolumeSwitch');
-        let volumeOn = false;
-        try {
-            volumeOn = !!(n && typeof n.isVolumeTripleEnabled === 'function' && n.isVolumeTripleEnabled());
-        } catch (e) {
-            volumeOn = false;
+        [meSwitch, volumeSwitch].forEach((sw) => {
+            if (!sw) return;
+            sw.checked = volumeOn;
+            sw.disabled = outdated;
+        });
+
+        let desc = '书然开着时，约 1.5 秒内连按三下音量减就会打开「记」，不必开本开关。锁屏或其他应用再用，请打开右侧开关。';
+        let extra = '';
+        if (outdated) {
+            desc = '当前安装包没有音量键功能。点「换安装包」覆盖即可，不用卸载。';
+            extra = '外壳需 1.5.2。更新后打开书然，约 1.5 秒内连按三下音量减就会出现「记」。锁屏或其他 App 再用，再打开右侧开关。';
+        } else if (volumeOn) {
+            desc = '锁屏或其他应用上，约 1.5 秒内连按三下音量减会弹出「记」。书然在前台时不必开本开关。单击仍调音量。';
         }
-        if (volumeSwitch) volumeSwitch.checked = volumeOn;
-        if (volumeHint) {
-            volumeHint.textContent = volumeOn
-                ? '锁屏或其他应用上，约 1.5 秒内连按三下音量减会弹出「记」。书然在前台时不必开本开关。单击仍调音量。'
-                : '书然在前台时，约 1.5 秒内连按三下音量减就会打开「记」，不必开本开关。锁屏或其它应用再用，请打开右侧开关（系统无障碍，只监听这个手势）。';
+
+        const meDesc = document.getElementById('timeLogVolumeMeDesc');
+        const volumeHint = document.getElementById('timeLogVolumeHint');
+        const meHint = document.getElementById('timeLogVolumeMeHint');
+        if (meDesc) meDesc.textContent = desc;
+        if (volumeHint) volumeHint.textContent = desc;
+        if (meHint) {
+            meHint.textContent = extra;
+            meHint.hidden = !extra;
         }
+        const updateWrap = document.getElementById('timeLogVolumeUpdateWrap');
+        if (updateWrap) updateWrap.hidden = !outdated;
+
+        const row = document.getElementById('timeLogAssistRow');
+        const showAssist = !!(n && typeof n.pinTimeLogShortcut === 'function');
+        if (row) row.hidden = !showAssist;
         const status = document.getElementById('timeLogAssistStatus');
         if (!status || !n) return;
         let held = false;
@@ -631,15 +700,17 @@
         document.getElementById('timeLogOverlaySwitch')?.addEventListener('change', (e) => {
             applyOverlay(e.target.checked);
         });
-        document.getElementById('timeLogVolumeSwitch')?.addEventListener('change', (e) => {
-            const n = native();
-            const want = !!e.target.checked;
-            try {
-                if (n && typeof n.setVolumeTripleEnabled === 'function') n.setVolumeTripleEnabled(want);
-            } catch (err) {
-                if (typeof showMessage === 'function') showMessage('无法打开系统无障碍设置', 'error');
-            }
-            setTimeout(syncAssistRow, 300);
+        bindOnce(document.getElementById('timeLogVolumeSwitch'), 'change', (e) => {
+            applyVolumeWant(!!e.target.checked, e.target);
+        });
+        bindOnce(document.getElementById('timeLogVolumeMeSwitch'), 'change', (e) => {
+            applyVolumeWant(!!e.target.checked, e.target);
+        });
+        bindOnce(document.getElementById('timeLogVolumeUpdateBtn'), 'click', () => {
+            if (typeof shuranStartAppUpdate === 'function') shuranStartAppUpdate();
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') syncAssistRow();
         });
         document.getElementById('timeLogAssistBtn')?.addEventListener('click', () => {
             const n = native();
