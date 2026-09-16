@@ -33,6 +33,7 @@ class User(Base):
     daily_todos = relationship("DailyTodo", back_populates="user", cascade="all, delete-orphan")
     daily_tasks = relationship("DailyTask", back_populates="user", cascade="all, delete-orphan")
     daily_schedules = relationship("DailySchedule", back_populates="user", cascade="all, delete-orphan")
+    future_actions = relationship("FutureAction", back_populates="user", cascade="all, delete-orphan")
     time_log_nodes = relationship("TimeLogNode", back_populates="user", cascade="all, delete-orphan")
     reading_entries = relationship("ReadingEntry", back_populates="user", cascade="all, delete-orphan")
     self_talk_playback_logs = relationship(
@@ -195,6 +196,20 @@ class DailySchedule(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     user = relationship("User", back_populates="daily_schedules")
+
+
+class FutureAction(Base):
+    """还没规划、但想做的行动。不进当天日程，也不提醒。"""
+    __tablename__ = "future_actions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="future_actions")
 
 
 class TimeLogNode(Base):

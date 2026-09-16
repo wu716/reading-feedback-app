@@ -9,6 +9,8 @@
     let editingId = null;
     let suggestions = [];
     let nudgeOpen = false;
+    let laterItems = [];
+    let editingLaterId = null;
 
     function todayISO() {
         const now = new Date();
@@ -117,6 +119,8 @@
             backBtn.textContent = '回到清单';
         }
         if (addRow) addRow.hidden = mode !== 'list';
+        const later = document.getElementById('scheduleLater');
+        if (later) later.hidden = mode !== 'list';
     }
 
     function renderTitle(task) {
@@ -297,12 +301,49 @@
         `;
     }
 
+    function laterIntoLabel() {
+        return currentDay() === todayISO() ? '写进今天' : '写进这一天';
+    }
+
+    function renderLater() {
+        const box = document.getElementById('scheduleLaterList');
+        if (!box) return;
+        if (!laterItems.length) {
+            box.innerHTML = '<p class="schedule-later-empty">先记下来，准备好了再写进这一天</p>';
+            return;
+        }
+        box.innerHTML = laterItems.map((item) => {
+            const title = editingLaterId === item.id
+                ? `<input type="text" class="flow-task-text-input" maxlength="500" value="${escapeHtml(item.text)}" data-later-act="text" aria-label="修改以后想做">`
+                : `<div class="flow-task-text" data-later-act="edit" title="点此修改">${escapeHtml(item.text)}</div>`;
+            return `
+                <article class="schedule-later-item" data-later-id="${item.id}">
+                    <div class="flow-task-main">
+                        ${title}
+                        <button type="button" class="flow-mini-btn flow-danger" data-later-act="delete">删除</button>
+                    </div>
+                    <div class="flow-task-actions">
+                        <button type="button" data-later-act="edit">修改</button>
+                        <button type="button" data-later-act="into">${laterIntoLabel()}</button>
+                    </div>
+                </article>`;
+        }).join('');
+        if (editingLaterId) {
+            const input = box.querySelector(`[data-later-id="${editingLaterId}"] [data-later-act="text"]`);
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }
+    }
+
     function render() {
         const list = document.getElementById('scheduleList');
         if (!list) return;
         renderToolbar();
         setHint();
         renderNudge();
+        renderLater();
         if (!(data.tasks || []).length) {
             list.innerHTML = '<p class="flow-empty">还没有行动</p>';
             return;
@@ -333,19 +374,35 @@
         }
     }
 
+    async function loadLater() {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            laterItems = [];
+            return;
+        }
+        try {
+            const result = await api('/future');
+            laterItems = result.items || [];
+        } catch (err) {
+            laterItems = [];
+        }
+    }
+
     async function load(nextDay) {
         const token = localStorage.getItem('authToken');
         if (!token) {
             data = { date: currentDay(), designed_at: null, tasks: [] };
             suggestions = [];
+            laterItems = [];
             render();
             return;
         }
         day = nextDay || currentDay();
         editingId = null;
+        editingLaterId = null;
         data = await api(`?task_date=${encodeURIComponent(day)}`);
         if (mode === 'flow' && !data.designed_at) mode = 'list';
-        await loadSuggestions();
+        await Promise.all([loadSuggestions(), loadLater()]);
         render();
     }
 
@@ -363,6 +420,63 @@
         });
         splitFor = null;
         await loadSuggestions();
+        render();
+    }
+
+    async function addLater(text) {
+        const value = (text || '').trim();
+        if (!value) return;
+        const result = await api('/future', {
+            method: 'POST',
+            body: JSON.stringify({ text: value }),
+        });
+        laterItems = result.items || [];
+        editingLaterId = null;
+        renderLater();
+    }
+
+    async function saveLaterText(id, value) {
+        const item = laterItems.find((row) => row.id === id);
+        const next = (value || '').trim();
+        const prev = item ? String(item.text || '').trim() : '';
+        if (editingLaterId === id) editingLaterId = null;
+        if (!item || !next || next === prev) {
+            renderLater();
+            return;
+        }
+        const result = await api(`/future/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ text: next }),
+        });
+        laterItems = result.items || [];
+        renderLater();
+    }
+
+    async function beginLaterEdit(id) {
+        if (editingLaterId === id) return;
+        if (editingLaterId) {
+            const input = document.querySelector(`#scheduleLaterList [data-later-id="${editingLaterId}"] [data-later-act="text"]`);
+            if (input) await saveLaterText(editingLaterId, input.value);
+        }
+        editingLaterId = id;
+        renderLater();
+    }
+
+    async function deleteLater(id) {
+        const result = await api(`/future/${id}`, { method: 'DELETE' });
+        laterItems = result.items || [];
+        if (editingLaterId === id) editingLaterId = null;
+        renderLater();
+    }
+
+    async function scheduleLater(id) {
+        data = await api(`/future/${id}/schedule`, {
+            method: 'POST',
+            body: JSON.stringify({ task_date: currentDay() }),
+        });
+        laterItems = laterItems.filter((row) => row.id !== id);
+        if (editingLaterId === id) editingLaterId = null;
+        await Promise.all([loadSuggestions(), loadLater()]);
         render();
     }
 
@@ -517,9 +631,24 @@
                 document.getElementById('scheduleAddBtn')?.click();
             }
         });
+        document.getElementById('scheduleLaterAddBtn')?.addEventListener('click', () => {
+            const input = document.getElementById('scheduleLaterInput');
+            addLater(input?.value).then(() => {
+                if (input) input.value = '';
+            }).catch((e) => {
+                if (typeof showMessage === 'function') showMessage(e.message, 'error');
+            });
+        });
+        document.getElementById('scheduleLaterInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('scheduleLaterAddBtn')?.click();
+            }
+        });
         document.getElementById('scheduleDesignBtn')?.addEventListener('click', () => {
             mode = 'design';
             editingId = null;
+            editingLaterId = null;
             render();
         });
         document.getElementById('scheduleDoneBtn')?.addEventListener('click', async () => {
@@ -538,7 +667,62 @@
         document.getElementById('scheduleBackBtn')?.addEventListener('click', () => {
             mode = 'list';
             editingId = null;
+            editingLaterId = null;
             render();
+        });
+
+        const laterList = document.getElementById('scheduleLaterList');
+
+        laterList?.addEventListener('click', async (e) => {
+            const actEl = e.target.closest('[data-later-act]');
+            const article = e.target.closest('[data-later-id]');
+            if (!actEl || !article) return;
+            const act = actEl.dataset.laterAct;
+            if (act === 'text') return;
+            const id = parseInt(article.dataset.laterId, 10);
+            try {
+                if (act === 'edit') {
+                    await beginLaterEdit(id);
+                } else if (act === 'delete') {
+                    await deleteLater(id);
+                } else if (act === 'into') {
+                    await scheduleLater(id);
+                }
+            } catch (err) {
+                if (typeof showMessage === 'function') showMessage(err.message, 'error');
+            }
+        });
+
+        laterList?.addEventListener('keydown', async (e) => {
+            const article = e.target.closest('[data-later-id]');
+            if (!article || e.target.dataset.laterAct !== 'text') return;
+            const id = parseInt(article.dataset.laterId, 10);
+            if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
+                e.preventDefault();
+                try {
+                    await saveLaterText(id, e.target.value);
+                } catch (err) {
+                    if (typeof showMessage === 'function') showMessage(err.message, 'error');
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                editingLaterId = null;
+                renderLater();
+            }
+        });
+
+        laterList?.addEventListener('focusout', (e) => {
+            if (e.target.dataset.laterAct !== 'text') return;
+            const article = e.target.closest('[data-later-id]');
+            if (!article) return;
+            const id = parseInt(article.dataset.laterId, 10);
+            const value = e.target.value;
+            setTimeout(() => {
+                if (editingLaterId !== id) return;
+                saveLaterText(id, value).catch((err) => {
+                    if (typeof showMessage === 'function') showMessage(err.message, 'error');
+                });
+            }, 120);
         });
 
         nudge?.addEventListener('click', async (e) => {

@@ -423,6 +423,54 @@
     font-family: "Noto Serif SC", "Songti SC", serif;
 }
 
+.schedule-later {
+    margin-top: 28px;
+    padding-top: 18px;
+    border-top: 1px solid #e6e1d6;
+}
+
+.schedule-later[hidden] {
+    display: none !important;
+}
+
+.schedule-later-kicker {
+    font-family: "Noto Serif SC", "Songti SC", serif;
+    font-size: 0.92rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: #1c1b19;
+}
+
+.schedule-later-hint {
+    margin: 4px 0 0;
+    color: #8a8478;
+    font-size: 0.78rem;
+    line-height: 1.6;
+}
+
+.schedule-later .flow-add-row {
+    margin-top: 10px;
+}
+
+.schedule-later-list {
+    min-height: 0;
+}
+
+.schedule-later-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #eee7d8;
+}
+
+.schedule-later-item .flow-task-main {
+    gap: 12px;
+}
+
+.schedule-later-empty {
+    color: #b6b0a6;
+    font-size: 0.82rem;
+    padding: 12px 0 4px;
+}
+
 .tl-list {
     display: flex;
     flex-direction: column;

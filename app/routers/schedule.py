@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_active_user
 from app.database import get_db
 from app.habit_due import quarter_bounds, suggest_for_day, week_bounds
-from app.models import Action, DailySchedule, DailyTask, User
+from app.models import Action, DailySchedule, DailyTask, FutureAction, User
 
 router = APIRouter(prefix="/schedule", tags=["日程安排"])
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
@@ -137,6 +137,45 @@ class DayScheduleOut(BaseModel):
     tasks: List[TaskOut]
 
 
+class FutureCreate(BaseModel):
+    text: str = Field(..., min_length=1, max_length=500)
+
+    @field_validator("text")
+    @classmethod
+    def strip_future_text(cls, value: str) -> str:
+        text = (value or "").strip()
+        if not text:
+            raise ValueError("内容不能为空")
+        return text
+
+
+class FutureUpdate(BaseModel):
+    text: str = Field(..., min_length=1, max_length=500)
+
+    @field_validator("text")
+    @classmethod
+    def strip_future_text(cls, value: str) -> str:
+        text = (value or "").strip()
+        if not text:
+            raise ValueError("内容不能为空")
+        return text
+
+
+class FutureScheduleBody(BaseModel):
+    task_date: Optional[date] = None
+
+
+class FutureOut(BaseModel):
+    id: int
+    text: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FutureListOut(BaseModel):
+    items: List[FutureOut]
+
+
 def visible_tasks(db: Session, user_id: int, day: date) -> List[DailyTask]:
     return (
         db.query(DailyTask)
@@ -224,6 +263,37 @@ def build_tree(tasks: List[DailyTask]) -> List[TaskOut]:
         )
 
     return [node(task) for task in by_parent.get(None, [])]
+
+
+def visible_future_actions(db: Session, user_id: int) -> List[FutureAction]:
+    return (
+        db.query(FutureAction)
+        .filter(
+            FutureAction.user_id == user_id,
+            FutureAction.deleted_at.is_(None),
+        )
+        .order_by(FutureAction.id.desc())
+        .all()
+    )
+
+
+def get_future_or_404(db: Session, user_id: int, item_id: int) -> FutureAction:
+    item = (
+        db.query(FutureAction)
+        .filter(
+            FutureAction.id == item_id,
+            FutureAction.user_id == user_id,
+            FutureAction.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="这条以后想做不存在")
+    return item
+
+
+def future_payload(db: Session, user_id: int) -> FutureListOut:
+    return FutureListOut(items=[FutureOut.model_validate(item) for item in visible_future_actions(db, user_id)])
 
 
 def day_payload(db: Session, user: User, day: date) -> DayScheduleOut:
@@ -423,5 +493,73 @@ async def mark_designed(
         raise HTTPException(status_code=400, detail="先写下今天要做的行动")
     schedule = get_or_create_schedule(db, current_user.id, day)
     schedule.designed_at = beijing_now()
+    db.commit()
+    return day_payload(db, current_user, day)
+
+
+@router.get("/future", response_model=FutureListOut)
+async def list_future_actions(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    return future_payload(db, current_user.id)
+
+
+@router.post("/future", response_model=FutureListOut)
+async def create_future_action(
+    body: FutureCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    item = FutureAction(user_id=current_user.id, text=body.text)
+    db.add(item)
+    db.commit()
+    return future_payload(db, current_user.id)
+
+
+@router.patch("/future/{item_id}", response_model=FutureListOut)
+async def update_future_action(
+    item_id: int,
+    body: FutureUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    item = get_future_or_404(db, current_user.id, item_id)
+    item.text = body.text
+    db.commit()
+    return future_payload(db, current_user.id)
+
+
+@router.delete("/future/{item_id}", response_model=FutureListOut)
+async def delete_future_action(
+    item_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    item = get_future_or_404(db, current_user.id, item_id)
+    item.deleted_at = beijing_now()
+    db.commit()
+    return future_payload(db, current_user.id)
+
+
+@router.post("/future/{item_id}/schedule", response_model=DayScheduleOut)
+async def schedule_future_action(
+    item_id: int,
+    body: FutureScheduleBody,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    item = get_future_or_404(db, current_user.id, item_id)
+    day = parse_day(body.task_date)
+    get_or_create_schedule(db, current_user.id, day)
+    db.add(
+        DailyTask(
+            user_id=current_user.id,
+            task_date=day,
+            text=item.text,
+            sort_order=next_sort_order(db, current_user.id, day, None),
+        )
+    )
+    item.deleted_at = beijing_now()
     db.commit()
     return day_payload(db, current_user, day)
