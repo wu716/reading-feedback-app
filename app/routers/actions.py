@@ -747,15 +747,18 @@ async def get_action_milestones(
     return milestones[:20]  # 返回最近的20个里程碑
 
 
-@router.get("/{action_id}/practice-logs", response_model=List[PracticeLogResponse])
+@router.get("/{action_id}/practice-logs", response_model=PaginatedResponse)
 async def get_action_practice_logs(
     action_id: int,
     size: int = Query(1000, ge=1, le=10000, description="返回记录数"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """获取指定行动项的实践记录"""
-    # 验证行动项存在且属于当前用户
+    """获取指定行动项的实践记录。
+
+    统一返回 { items, total, page, size, pages }。桌面 WebView 可能缓存旧页面，
+    旧代码会读 response.items.length；如果这里仍返回裸数组，弹窗就会报错。
+    """
     action = db.query(Action).filter(
         Action.id == action_id,
         Action.user_id == current_user.id,
@@ -765,14 +768,21 @@ async def get_action_practice_logs(
     if not action:
         raise HTTPException(status_code=404, detail="行动项不存在")
     
-    # 获取实践记录
     practice_logs = db.query(PracticeLog).filter(
         PracticeLog.action_id == action_id,
         PracticeLog.user_id == current_user.id,
         PracticeLog.deleted_at.is_(None)
     ).order_by(desc(PracticeLog.date)).limit(size).all()
-    
-    return [PracticeLogResponse.from_orm(log) for log in practice_logs]
+
+    items = [PracticeLogResponse.from_orm(log).dict() for log in practice_logs]
+    total = len(items)
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        page=1,
+        size=size,
+        pages=1 if total else 0,
+    )
 
 
 # ============= 提醒触发函数 =============

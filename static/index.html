@@ -6400,8 +6400,10 @@
         }
         
         function asList(response) {
-            if (Array.isArray(response)) return response;
-            if (response && Array.isArray(response.items)) return response.items;
+            if (Array.isArray(response)) return response.filter(Boolean);
+            if (!response || typeof response !== 'object') return [];
+            if (Array.isArray(response.items)) return response.items.filter(Boolean);
+            if (Array.isArray(response.data)) return response.data.filter(Boolean);
             return [];
         }
 
@@ -6738,11 +6740,13 @@
         
         async function loadPracticeLogs(actionId) {
             const logsList = document.getElementById('practiceLogsList');
+            if (!logsList) return;
+            logsList.innerHTML = '<div class="loading">加载中...</div>';
             try {
                 const response = await apiRequest(`/api/actions/${actionId}/practice-logs?size=1000`);
                 const logs = asList(response);
 
-                if (logs.length === 0) {
+                if (!logs.length) {
                     logsList.innerHTML = '<div class="loading">暂无实践记录</div>';
                     return;
                 }
@@ -6761,8 +6765,16 @@
                         'partial': '⚠️',
                         'fail': '❌'
                     }[log.result] || '❓';
-                    
-                    const ratingStars = log.rating ? '★'.repeat(log.rating) + '☆'.repeat(5 - log.rating) : '未评分';
+                    const rating = Number(log.rating) || 0;
+                    const ratingStars = rating > 0
+                        ? '★'.repeat(rating) + '☆'.repeat(Math.max(0, 5 - rating))
+                        : '未评分';
+                    const logDate = log.date ? new Date(log.date).toLocaleDateString() : '';
+                    const logTime = log.created_at ? new Date(log.created_at).toLocaleTimeString() : '';
+                    const score = Number(log.success_score);
+                    const scoreHtml = Number.isFinite(score) && score > 0
+                        ? `<div style="font-size: 12px; color: #666;">成功分数: ${score.toFixed(2)}</div>`
+                        : '';
                     
                     return `
                         <div class="practice-log-item" style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 15px; border-left: 4px solid #667eea;">
@@ -6773,12 +6785,12 @@
                                         ${isTrigger && log.attempt_number ? ` - 第${log.attempt_number}次` : ''}
                                     </h4>
                                     <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">
-                                        ${new Date(log.date).toLocaleDateString()} ${new Date(log.created_at).toLocaleTimeString()}
+                                        ${logDate} ${logTime}
                                     </p>
                                 </div>
                                 <div style="text-align: right;">
                                     <div style="color: #ffd700; font-size: 16px;">${ratingStars}</div>
-                                    ${log.success_score ? `<div style="font-size: 12px; color: #666;">成功分数: ${log.success_score.toFixed(2)}</div>` : ''}
+                                    ${scoreHtml}
                                 </div>
                             </div>
                             ${log.notes ? `<p style="margin: 10px 0 0 0; color: #555; font-style: italic;">"${log.notes}"</p>` : ''}
@@ -6787,8 +6799,8 @@
                 }).join('');
                 
             } catch (error) {
-                document.getElementById('practiceLogsList').innerHTML = 
-                    '<div class="error">加载记录失败: ' + error.message + '</div>';
+                console.error('加载实践记录失败:', error);
+                logsList.innerHTML = '<div class="error">加载记录失败，请稍后重试</div>';
             }
         }
         
