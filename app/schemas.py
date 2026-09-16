@@ -34,6 +34,7 @@ class TargetFrequency(str, Enum):
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
     CUSTOM = "custom"
 
 

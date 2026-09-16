@@ -300,8 +300,8 @@ async def log_practice(
     
     db.add(practice_log)
     
-    # 如果实践成功，更新行动项状态为已完成
-    if practice_data.result.value == "success":
+    # 情境型一次成功即可归档；习惯要长期做，不能因为今天做成了就标完成
+    if practice_data.result.value == "success" and action.action_type != "habit":
         action.status = "done"
     
     db.commit()

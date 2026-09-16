@@ -7,6 +7,8 @@
     let mode = 'list';
     let splitFor = null;
     let editingId = null;
+    let suggestions = [];
+    let nudgeOpen = false;
 
     function todayISO() {
         const now = new Date();
@@ -269,11 +271,38 @@
         if (mode === 'list' || mode === 'design') list.querySelector('[data-split-input]')?.focus();
     }
 
+    function renderNudge() {
+        const box = document.getElementById('scheduleNudge');
+        if (!box) return;
+        const show = mode === 'list' && suggestions.length > 0;
+        box.hidden = !show;
+        if (!show) {
+            box.innerHTML = '';
+            return;
+        }
+        const visible = nudgeOpen ? suggestions : suggestions.slice(0, 3);
+        const rest = suggestions.length - visible.length;
+        box.innerHTML = `
+            <div class="schedule-nudge-kicker">排进今天</div>
+            ${visible.map((item) => `
+                <div class="schedule-nudge-item" data-action-id="${item.action_id}">
+                    <div class="schedule-nudge-copy">
+                        <div class="schedule-nudge-text">${escapeHtml(item.text)}</div>
+                        <div class="schedule-nudge-why">${escapeHtml(item.reason || '')}</div>
+                    </div>
+                    <button type="button" data-nudge-add="${item.action_id}">加入</button>
+                </div>
+            `).join('')}
+            ${rest > 0 ? `<button type="button" class="schedule-nudge-more" data-nudge-more>还有 ${rest} 个</button>` : ''}
+        `;
+    }
+
     function render() {
         const list = document.getElementById('scheduleList');
         if (!list) return;
         renderToolbar();
         setHint();
+        renderNudge();
         if (!(data.tasks || []).length) {
             list.innerHTML = '<p class="flow-empty">还没有行动</p>';
             return;
@@ -288,10 +317,27 @@
         focusEditor();
     }
 
+    async function loadSuggestions() {
+        const token = localStorage.getItem('authToken');
+        const box = document.getElementById('scheduleNudge');
+        if (!token) {
+            suggestions = [];
+            return;
+        }
+        try {
+            const result = await api(`/suggestions?task_date=${encodeURIComponent(currentDay())}`);
+            suggestions = result.items || [];
+        } catch (err) {
+            suggestions = [];
+            if (box) box.hidden = true;
+        }
+    }
+
     async function load(nextDay) {
         const token = localStorage.getItem('authToken');
         if (!token) {
             data = { date: currentDay(), designed_at: null, tasks: [] };
+            suggestions = [];
             render();
             return;
         }
@@ -299,10 +345,11 @@
         editingId = null;
         data = await api(`?task_date=${encodeURIComponent(day)}`);
         if (mode === 'flow' && !data.designed_at) mode = 'list';
+        await loadSuggestions();
         render();
     }
 
-    async function addTask(text, parentId) {
+    async function addTask(text, parentId, actionId) {
         const value = (text || '').trim();
         if (!value) return;
         data = await api('/tasks', {
@@ -311,9 +358,11 @@
                 text: value,
                 task_date: currentDay(),
                 parent_id: parentId || null,
+                action_id: actionId || null,
             }),
         });
         splitFor = null;
+        await loadSuggestions();
         render();
     }
 
@@ -444,11 +493,14 @@
         root.dataset.bound = '1';
         day = todayISO();
         const list = document.getElementById('scheduleList');
+        const nudge = document.getElementById('scheduleNudge');
 
         document.getElementById('schedulePrevDay')?.addEventListener('click', () => {
+            nudgeOpen = false;
             load(shiftDay(currentDay(), -1));
         });
         document.getElementById('scheduleNextDay')?.addEventListener('click', () => {
+            nudgeOpen = false;
             load(shiftDay(currentDay(), 1));
         });
         document.getElementById('scheduleAddBtn')?.addEventListener('click', () => {
@@ -489,6 +541,25 @@
             render();
         });
 
+        nudge?.addEventListener('click', async (e) => {
+            const more = e.target.closest('[data-nudge-more]');
+            if (more) {
+                nudgeOpen = true;
+                renderNudge();
+                return;
+            }
+            const addBtn = e.target.closest('[data-nudge-add]');
+            if (!addBtn) return;
+            const actionId = parseInt(addBtn.getAttribute('data-nudge-add'), 10);
+            const item = suggestions.find((row) => row.action_id === actionId);
+            if (!item) return;
+            try {
+                await addTask(item.text, null, actionId);
+            } catch (err) {
+                if (typeof showMessage === 'function') showMessage(err.message, 'error');
+            }
+        });
+
         list?.addEventListener('mousedown', (e) => {
             const hit = actionFromEvent(e);
             if (!hit || !editingId) return;
@@ -511,6 +582,7 @@
                 } else if (act === 'delete') {
                     editingId = null;
                     data = await api(`/tasks/${id}`, { method: 'DELETE' });
+                    await loadSuggestions();
                     render();
                 } else if (act === 'split') {
                     splitFor = splitFor === id ? null : id;
