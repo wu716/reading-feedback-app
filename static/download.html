@@ -181,6 +181,13 @@
         const onDesktop = !inAndroid && !inShuranApp;
         const hasNativeUpdater = !!(window.ShuranNative && typeof window.ShuranNative.checkUpdate === "function");
         const needsBrowserInstall = inShuranApp && !hasNativeUpdater;
+
+        if (inShuranApp) {
+            const next = /(?:^|[?&])from=app(?:&|$)/.test(window.location.search)
+                ? "/?update=1"
+                : "/";
+            window.location.replace(next);
+        }
         const alreadyCopied = /(?:^|[?&])copied=1(?:&|$)/.test(window.location.search);
         const mask = document.getElementById("wechatMask");
         const btn = document.getElementById("downloadBtn");
@@ -333,7 +340,7 @@
             try {
                 shouldAutoOpen = fromApp && sessionStorage.getItem(openedKey) !== "1";
             } catch (e) {}
-            if (shouldAutoOpen && !inWeChat) {
+            if (shouldAutoOpen && !inWeChat && !inShuranApp) {
                 try { sessionStorage.setItem(openedKey, "1"); } catch (e) {}
                 window.setTimeout(function () {
                     openSystemBrowser(apkUrl);

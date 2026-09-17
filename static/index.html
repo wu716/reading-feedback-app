@@ -3634,7 +3634,7 @@
     <script>
         (function () {
             if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-                location.replace('http://43.161.238.165:8000/?v=20260917upd7');
+                location.replace('http://43.161.238.165:8000/?v=20260917upd8');
                 return;
             }
             window.SHURAN_VERSION = '1.5.0';
@@ -3687,7 +3687,7 @@
                 bar.innerHTML = '<div style="max-width:420px;margin:0 auto;width:100%;">'
                     + '<h1 style="font-size:1.45rem;margin:0 0 12px;">需要更新书然</h1>'
                     + '<p style="line-height:1.6;opacity:.92;margin:0 0 22px;">点一次即可更新。登录会保留，不必卸载。</p>'
-                    + '<a id="shuranShellUpdateLink" href="/download" style="display:block;text-align:center;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;text-decoration:none;border-radius:12px;padding:14px 16px;font-weight:700;">立即更新</a>'
+                    + '<a id="shuranShellUpdateLink" href="/?update=1" style="display:block;text-align:center;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;text-decoration:none;border-radius:12px;padding:14px 16px;font-weight:700;">立即更新</a>'
                     + '</div>';
                 var link = bar.querySelector('#shuranShellUpdateLink');
                 if (link) {
@@ -3703,7 +3703,13 @@
                 });
             }
             function checkGate() {
-                if (shellIsOld()) paintGate(readShellName());
+                if (shellIsOld()) {
+                    paintGate(readShellName());
+                    return;
+                }
+                var bar = document.getElementById('shuranShellUpdateGate');
+                if (bar) bar.remove();
+                window.SHURAN_SHELL_GATE_LOCKED = false;
             }
             checkGate();
             [50, 200, 600, 1500, 3000].forEach(function (ms) {
@@ -8619,7 +8625,7 @@
     
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
-    <script src="/static/reminder_notification.js?v=20260917upd7"></script>
+    <script src="/static/reminder_notification.js?v=20260917upd8"></script>
     <script src="/static/js/app-tabbar.js?v=20260912nav1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
     <script src="/static/js/daily-schedule.js?v=20260917upd5"></script>
