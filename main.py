@@ -75,7 +75,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20260917upd5"
+STATIC_UI_VERSION = "20260917upd7"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
@@ -101,7 +101,7 @@ def stale_ui_redirect(request: Request, path: str) -> RedirectResponse | None:
 
 @app.middleware("http")
 async def redirect_legacy_singapore(request: Request, call_next):
-    """1.3.4 仍打开新加坡。页面和安装包跳香港；健康检查与 API 留在旧机备份。"""
+    """1.3.4 仍打开新加坡。页面跳香港；健康检查、API、更新信息与 APK 留在旧机。"""
     if not is_legacy_singapore(request):
         return await call_next(request)
     path = request.url.path or "/"

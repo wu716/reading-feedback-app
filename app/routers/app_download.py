@@ -6,7 +6,7 @@ import urllib.request
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from app.legacy_origin import canonical_url, is_legacy_singapore
 
@@ -66,19 +66,43 @@ def find_apk() -> Path | None:
     return None
 
 
+def _apk_file_ok(path: Path) -> bool:
+    return path.is_file() and path.stat().st_size > 1024
+
+
+def _cache_apk_from(url: str, dest: Path) -> Path | None:
+    try:
+        RELEASE_DIR.mkdir(parents=True, exist_ok=True)
+        logger.info("Downloading Android package from %s", url)
+        req = urllib.request.Request(url, headers={"User-Agent": "shuran-app"})
+        with urllib.request.urlopen(req, timeout=60) as resp, dest.open("wb") as out:
+            while True:
+                chunk = resp.read(64 * 1024)
+                if not chunk:
+                    break
+                out.write(chunk)
+    except Exception:
+        logger.exception("Failed to cache APK from %s", url)
+        if dest.exists():
+            try:
+                dest.unlink()
+            except OSError:
+                pass
+        return None
+    return dest if _apk_file_ok(dest) else None
+
+
 def ensure_apk() -> Path | None:
     local = find_apk()
     if local:
         return local
     dest = RELEASE_DIR / "shuran.apk"
-    try:
-        RELEASE_DIR.mkdir(parents=True, exist_ok=True)
-        logger.info("Downloading Android package from GitHub Releases")
-        urllib.request.urlretrieve(GITHUB_APK_URL, dest)
-    except Exception:
-        logger.exception("Failed to cache APK from GitHub")
-        return None
-    return dest if dest.is_file() else None
+    return _cache_apk_from(GITHUB_APK_URL, dest)
+
+
+def fetch_apk_from_canonical() -> Path | None:
+    dest = RELEASE_DIR / "shuran.apk"
+    return _cache_apk_from(canonical_url("/download/apk"), dest)
 
 
 def _version_tuple(name: str) -> tuple[int, ...]:
@@ -140,7 +164,7 @@ def load_latest_meta() -> dict:
 
 
 def build_info(request: Request | None = None) -> dict:
-    apk = ensure_apk() or find_apk()
+    apk = find_apk()
     windows_exe = find_windows_exe()
     meta = load_latest_meta()
     download_url = "/download/apk"
@@ -161,9 +185,6 @@ def build_info(request: Request | None = None) -> dict:
     min_name = str(meta.get("minVersionName") or "") or MIN_SHELL_VERSION_NAME
     if _version_less(min_name, MIN_SHELL_VERSION_NAME):
         min_name = MIN_SHELL_VERSION_NAME
-    if request is not None and is_legacy_singapore(request):
-        download_url = canonical_url("/download/apk")
-        windows_download_url = canonical_url("/download/windows")
     info = {
         "available": True,
         "filename": meta["filename"],
@@ -185,10 +206,10 @@ def build_info(request: Request | None = None) -> dict:
         info["size_bytes"] = size
         info["size_mb"] = round(size / (1024 * 1024), 1)
     else:
+        # 1.3.4 只认本机 /download/apk，不能把客户端打发到 GitHub HTTPS。
         info["available"] = True
         info["size_bytes"] = 1810063
         info["size_mb"] = 1.7
-        info["download_url"] = GITHUB_APK_URL
     if windows_exe is not None:
         wsize = windows_exe.stat().st_size
         info["windows_size_bytes"] = wsize
@@ -206,13 +227,13 @@ async def download_info(request: Request):
 
 @router.get("/download/apk")
 async def download_apk(request: Request):
-    if is_legacy_singapore(request):
-        return RedirectResponse(
-            canonical_url("/download/apk"),
-            status_code=302,
-            headers={"Cache-Control": "no-store"},
-        )
-    apk = ensure_apk()
+    # 1.3.4 外壳写死新加坡 URL：必须在本机直接返回字节，禁止 302 去香港/GitHub
+    #（旧 HttpURLConnection 跟跨机重定向经常下到空包或失败）。
+    apk = find_apk()
+    if not apk and is_legacy_singapore(request):
+        apk = fetch_apk_from_canonical()
+    if not apk:
+        apk = ensure_apk()
     if apk:
         return FileResponse(
             path=str(apk),
@@ -220,7 +241,7 @@ async def download_apk(request: Request):
             filename="shuran.apk",
             headers={"Cache-Control": "no-store"},
         )
-    return RedirectResponse(GITHUB_APK_URL, status_code=302)
+    raise HTTPException(status_code=503, detail="安装包暂不可用")
 
 
 @router.get("/download/windows")

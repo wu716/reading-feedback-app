@@ -3,7 +3,7 @@
     <string name="app_name">书然</string>
     <string name="app_url">http://43.161.238.165:8000/</string>
     <!-- Keep in sync with STATIC_UI_VERSION in main.py -->
-    <string name="static_ui_version">20260917upd5</string>
+    <string name="static_ui_version">20260917upd7</string>
     <string name="loading">正在打开书然…</string>
     <string name="network_error">无法连接服务器，请检查网络后重试</string>
     <string name="retry">重试</string>

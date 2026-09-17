@@ -9,7 +9,7 @@ from app.legacy_origin import (
     keep_on_legacy_origin,
     request_host_name,
 )
-from app.routers.app_download import MIN_SHELL_VERSION_CODE, MIN_SHELL_VERSION_NAME, load_latest_meta
+from app.routers.app_download import MIN_SHELL_VERSION_CODE, MIN_SHELL_VERSION_NAME, build_info, load_latest_meta
 
 
 def _request(host: str, forwarded: str = "") -> SimpleNamespace:
@@ -30,9 +30,10 @@ class LegacyOriginTests(TestCase):
     def test_keeps_backup_api_and_update_info(self):
         self.assertTrue(keep_on_legacy_origin("/health"))
         self.assertTrue(keep_on_legacy_origin("/download/info"))
+        self.assertTrue(keep_on_legacy_origin("/download/apk"))
         self.assertTrue(keep_on_legacy_origin("/api/auth/me"))
         self.assertFalse(keep_on_legacy_origin("/"))
-        self.assertFalse(keep_on_legacy_origin("/download/apk"))
+        self.assertFalse(keep_on_legacy_origin("/download"))
         self.assertFalse(keep_on_legacy_origin("/static/index.html"))
 
     def test_canonical_url_points_at_hong_kong(self):
@@ -48,3 +49,20 @@ class LegacyOriginTests(TestCase):
         self.assertTrue(bool(meta.get("force")))
         self.assertEqual(MIN_SHELL_VERSION_NAME, "1.5.4")
         self.assertEqual(MIN_SHELL_VERSION_CODE, 20)
+
+    def test_singapore_update_info_stays_on_singapore(self):
+        from unittest.mock import patch
+
+        request = SimpleNamespace(
+            headers={"host": "47.236.122.207:8000"},
+            base_url="http://47.236.122.207:8000/",
+        )
+        with patch("app.routers.app_download.ensure_apk", return_value=None), patch(
+            "app.routers.app_download.find_apk", return_value=None
+        ), patch("app.routers.app_download.find_windows_exe", return_value=None):
+            info = build_info(request)
+        self.assertTrue(info["available"])
+        self.assertGreaterEqual(int(info["versionCode"]), MIN_SHELL_VERSION_CODE)
+        self.assertIn("/download/apk", info["download_url"])
+        self.assertNotIn("github.com", info["download_url"])
+        self.assertIn("47.236.122.207", info["download_url"])

@@ -30,7 +30,7 @@ import java.util.concurrent.Executors;
  * 同包名 + 更高 versionCode 即为覆盖更新，不必卸载。
  */
 public class AppUpdater {
-    static final int REQUEST_INSTALL_UNKNOWN = 1004;
+    static final int REQUEST_INSTALL_UNKNOWN = 1005;
     private static final String TAG = "ShuranUpdate";
     private static final String META_PATH = "/download/info";
     private static final int MIN_SHELL_CODE = 20;
@@ -181,11 +181,16 @@ public class AppUpdater {
             return;
         }
 
-        if (promptShowing && promptDialog != null && promptDialog.isShowing()) {
+        final String url = resolveDownloadUrl(info);
+        // 网页挡板已点过「立即更新」时直接下载，避免再弹一层确认被挡住。
+        if (fromUser) {
+            startDownload(url);
             return;
         }
 
-        String downloadUrl = activity.updateBaseUrl() + "/download/apk";
+        if (promptShowing && promptDialog != null && promptDialog.isShowing()) {
+            return;
+        }
 
         String message = activity.getString(
                 R.string.update_message,
@@ -196,7 +201,6 @@ public class AppUpdater {
             message = message + "\n\n" + notes.trim();
         }
 
-        final String url = downloadUrl;
         promptShowing = true;
         promptDialog = new AlertDialog.Builder(activity)
                 .setTitle(R.string.update_title)
@@ -210,6 +214,23 @@ public class AppUpdater {
         promptDialog.setCanceledOnTouchOutside(false);
         promptDialog.setOnDismissListener(d -> promptShowing = false);
         promptDialog.show();
+    }
+
+    private String resolveDownloadUrl(JSONObject info) {
+        String fallback = activity.updateBaseUrl() + "/download/apk";
+        String fromInfo = info != null ? info.optString("download_url", "") : "";
+        if (fromInfo.isEmpty()) {
+            return fallback;
+        }
+        if (fromInfo.startsWith("/")) {
+            return activity.updateBaseUrl() + fromInfo;
+        }
+        if ((fromInfo.startsWith("http://") || fromInfo.startsWith("https://"))
+                && fromInfo.contains("/download/apk")
+                && !fromInfo.contains("github.com")) {
+            return fromInfo;
+        }
+        return fallback;
     }
 
     private void startDownload(String url) {

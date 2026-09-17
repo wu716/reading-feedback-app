@@ -6,7 +6,7 @@
 (function hopOffSingapore() {
     try {
         if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-            location.replace('http://43.161.238.165:8000/?v=20260917upd5');
+            location.replace('http://43.161.238.165:8000/?v=20260917upd7');
         }
     } catch (e) { /* ignore */ }
 })();
@@ -1058,27 +1058,38 @@ function shuranMinShell(latest) {
     return { minCode: minCode, minName: minName };
 }
 
-function shuranStartAppUpdate() {
-    const shell = shuranShellInfo();
-    const origin = window.location.origin || 'http://43.161.238.165:8000';
-    const pageUrl = origin + '/download';
+function shuranTriggerNativeInstall() {
+    try {
+        if (window.ShuranNative && typeof window.ShuranNative.checkUpdate === 'function') {
+            window.ShuranNative.checkUpdate();
+            return true;
+        }
+    } catch (e) { /* ignore */ }
+    return false;
+}
+
+function shuranMarkUpdateButtonBusy(btn) {
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = '正在打开安装…';
+    btn.style.opacity = '0.85';
+}
+
+function shuranStartAppUpdate(btn) {
     if (!shuranIsPhoneApp()) {
         if (typeof showMessage === 'function') {
             showMessage('电脑用的是网页，刷新即可。安装包只给安卓手机。', 'info');
         }
         return;
     }
-    const outdated = shuranShellNeedsUpdate(shell);
-    if (shell.hasUpdater && !outdated) {
-        window.ShuranNative.checkUpdate();
+    shuranMarkUpdateButtonBusy(btn || document.getElementById('shuranUpdateNowBtn')
+        || document.getElementById('shuranShellUpdateLink'));
+    if (shuranTriggerNativeInstall()) {
         return;
     }
-    if (shell.hasUpdater) {
-        try { window.ShuranNative.checkUpdate(); } catch (e) { /* ignore */ }
-    }
-    shuranCopyText(pageUrl).then(function (ok) {
-        window.location.href = pageUrl + '?from=app' + (ok ? '&copied=1' : '');
-    });
+    // 无原生更新器时仍走本机 APK；WebView 会拦截并再调 checkUpdate。
+    const origin = window.location.origin || 'http://43.161.238.165:8000';
+    window.location.href = origin + '/download/apk';
 }
 
 window.SHURAN_VERSION = window.SHURAN_VERSION || '1.5.0';
@@ -1210,11 +1221,11 @@ function shuranPromptShellUpdate(force) {
             ].join(';');
             bar.innerHTML = '<div style="max-width:420px;margin:0 auto;width:100%;">'
                 + '<h1 style="font-size:1.45rem;margin:0 0 12px;">需要更新书然</h1>'
-                + '<p style="line-height:1.65;opacity:.92;margin:0 0 22px;">请点一次覆盖安装最新书然。登录会保留，不必卸载。</p>'
+                + '<p style="line-height:1.65;opacity:.92;margin:0 0 22px;">请点一次覆盖安装最新书然。登录会保留，不必卸载。若弹出系统窗口，请再点一次允许安装。</p>'
                 + '<button type="button" id="shuranUpdateNowBtn" style="width:100%;border:none;border-radius:12px;padding:14px 16px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:1.05rem;font-weight:700;">立即更新</button>'
                 + '</div>';
             const btn = document.getElementById('shuranUpdateNowBtn');
-            if (btn) btn.onclick = function () { shuranStartAppUpdate(); };
+            if (btn) btn.onclick = function () { shuranStartAppUpdate(btn); };
             const earlyLink = bar.querySelector('#shuranShellUpdateLink');
             if (earlyLink) {
                 earlyLink.addEventListener('click', function (e) {

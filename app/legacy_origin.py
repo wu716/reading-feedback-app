@@ -4,7 +4,9 @@ from fastapi import Request
 
 CANONICAL_ORIGIN = "http://43.161.238.165:8000"
 LEGACY_SINGAPORE_HOSTS = frozenset({"47.236.122.207"})
-KEEP_ON_LEGACY_EXACT = frozenset({"/health", "/download/info"})
+# 1.3.4 外壳把检查更新/下载写死在新加坡。信息与 APK 必须在旧机直接返回，
+# 不能 302 去香港或跳到 GitHub HTTPS（旧 HttpURLConnection 跟不过去）。
+KEEP_ON_LEGACY_EXACT = frozenset({"/health", "/download/info", "/download/apk"})
 KEEP_ON_LEGACY_PREFIXES = ("/api", "/owner", "/uploads")
 
 
