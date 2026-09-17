@@ -2,23 +2,20 @@
 """Android 安装包下载与版本检查：覆盖更新，不必卸载重装。"""
 import json
 import logging
-import urllib.request
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
+from app.apk_file import GITHUB_APK_URLS, discard_invalid_apk, download_apk_from_url, is_valid_apk
 from app.legacy_origin import canonical_url, is_legacy_singapore
 
 logger = logging.getLogger(__name__)
 
-GITHUB_APK_URL = (
-    "https://github.com/wu716/reading-feedback-app/releases/download/"
-    "android-1.5.4/shuran.apk"
-)
-# 线上 latest.json 若过旧，1.3.4 会误以为已是最新。接口永不低于此门槛。
-MIN_SHELL_VERSION_CODE = 20
-MIN_SHELL_VERSION_NAME = "1.5.4"
+GITHUB_APK_URL = GITHUB_APK_URLS[-1]
+# 目前 GitHub 上只有 android-1.5.2 的真实安装包。1.5.4 工作流缺签名 Secrets，不能当门槛。
+MIN_SHELL_VERSION_CODE = 18
+MIN_SHELL_VERSION_NAME = "1.5.2"
 
 router = APIRouter(tags=["app-download"])
 
@@ -53,7 +50,8 @@ def find_windows_exe() -> Path | None:
 
 def find_apk() -> Path | None:
     for path in APK_CANDIDATES:
-        if path.is_file():
+        discard_invalid_apk(path)
+        if is_valid_apk(path):
             return path
     if RELEASE_DIR.is_dir():
         apks = sorted(
@@ -61,8 +59,10 @@ def find_apk() -> Path | None:
             key=lambda item: item.stat().st_mtime,
             reverse=True,
         )
-        if apks:
-            return apks[0]
+        for path in apks:
+            discard_invalid_apk(path)
+            if is_valid_apk(path):
+                return path
     return None
 
 
@@ -71,14 +71,13 @@ def ensure_apk() -> Path | None:
     if local:
         return local
     dest = RELEASE_DIR / "shuran.apk"
-    try:
-        RELEASE_DIR.mkdir(parents=True, exist_ok=True)
-        logger.info("Downloading Android package from GitHub Releases")
-        urllib.request.urlretrieve(GITHUB_APK_URL, dest)
-    except Exception:
-        logger.exception("Failed to cache APK from GitHub")
-        return None
-    return dest if dest.is_file() else None
+    discard_invalid_apk(dest)
+    RELEASE_DIR.mkdir(parents=True, exist_ok=True)
+    for url in GITHUB_APK_URLS:
+        logger.info("Downloading Android package from %s", url)
+        if download_apk_from_url(url, dest):
+            return dest
+    return None
 
 
 def _version_tuple(name: str) -> tuple[int, ...]:
@@ -185,10 +184,9 @@ def build_info(request: Request | None = None) -> dict:
         info["size_bytes"] = size
         info["size_mb"] = round(size / (1024 * 1024), 1)
     else:
-        info["available"] = True
-        info["size_bytes"] = 1810063
-        info["size_mb"] = 1.7
-        info["download_url"] = GITHUB_APK_URL
+        info["available"] = False
+        info["size_bytes"] = 0
+        info["size_mb"] = 0
     if windows_exe is not None:
         wsize = windows_exe.stat().st_size
         info["windows_size_bytes"] = wsize
@@ -220,7 +218,7 @@ async def download_apk(request: Request):
             filename="shuran.apk",
             headers={"Cache-Control": "no-store"},
         )
-    return RedirectResponse(GITHUB_APK_URL, status_code=302)
+    raise HTTPException(status_code=404, detail="安装包暂不可用")
 
 
 @router.get("/download/windows")

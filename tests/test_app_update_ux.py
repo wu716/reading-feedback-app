@@ -30,5 +30,5 @@ class AppUpdateUxTests(TestCase):
         self.assertNotIn("点击「复制下载链接」", DOWNLOAD_HTML)
 
     def test_ui_cache_version_bumped(self):
-        self.assertIn('STATIC_UI_VERSION = "20260917upd6"', MAIN_PY)
-        self.assertIn("20260917upd6", UPDATE_JS)
+        self.assertIn('STATIC_UI_VERSION = "20260917upd7"', MAIN_PY)
+        self.assertIn("20260917upd7", UPDATE_JS)

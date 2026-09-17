@@ -46,5 +46,5 @@ class LegacyOriginTests(TestCase):
         self.assertGreaterEqual(int(meta.get("versionCode") or 0), MIN_SHELL_VERSION_CODE)
         self.assertGreaterEqual(int(meta.get("minVersionCode") or 0), MIN_SHELL_VERSION_CODE)
         self.assertTrue(bool(meta.get("force")))
-        self.assertEqual(MIN_SHELL_VERSION_NAME, "1.5.4")
-        self.assertEqual(MIN_SHELL_VERSION_CODE, 20)
+        self.assertEqual(MIN_SHELL_VERSION_NAME, "1.5.2")
+        self.assertEqual(MIN_SHELL_VERSION_CODE, 18)
