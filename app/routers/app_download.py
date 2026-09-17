@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 GITHUB_APK_URL = (
     "https://github.com/wu716/reading-feedback-app/releases/download/"
-    "android-1.5.2/shuran.apk"
+    "android-1.5.4/shuran.apk"
 )
 
 router = APIRouter(tags=["app-download"])
