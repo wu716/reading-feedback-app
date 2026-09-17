@@ -74,12 +74,28 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20260917upd1"
+STATIC_UI_VERSION = "20260917upd3"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
     "Expires": "0",
 }
+
+
+def stale_ui_redirect(request: Request, path: str) -> RedirectResponse | None:
+    """Old shells restore ?ui=18 and skip new HTML; any missing/old v must refresh."""
+    if request.query_params.get("v") == STATIC_UI_VERSION:
+        return None
+    kept = [
+        (key, value)
+        for key, value in request.query_params.multi_items()
+        if key not in ("v", "ui")
+    ]
+    url = f"{path}?v={STATIC_UI_VERSION}"
+    if kept:
+        extra = "&".join(f"{key}={value}" for key, value in kept)
+        url = f"{url}&{extra}"
+    return RedirectResponse(url=url, headers=NO_STORE_HEADERS)
 
 
 @app.middleware("http")
@@ -119,11 +135,9 @@ async def indexed_home(request: Request):
     不要带 Clear-Site-Data：Chromium/Android WebView 会因此中断进行中的
     fetch 和 iframe 导航，表现为添加待办失败 + net::ERR_CONNECTION_ABORTED。
     """
-    if request.query_params.get("v") != STATIC_UI_VERSION:
-        return RedirectResponse(
-            url=f"/static/index.html?v={STATIC_UI_VERSION}",
-            headers=NO_STORE_HEADERS,
-        )
+    redirected = stale_ui_redirect(request, "/static/index.html")
+    if redirected is not None:
+        return redirected
     return FileResponse(
         "static/index.html",
         media_type="text/html",
@@ -148,11 +162,9 @@ else:
 @app.get("/")
 async def root(request: Request):
     """未带当前 UI 版本号时 307 到新地址，逼 WebView 丢掉根路径上的旧 HTML。"""
-    if request.query_params.get("v") != STATIC_UI_VERSION:
-        return RedirectResponse(
-            url=f"/?v={STATIC_UI_VERSION}",
-            headers=NO_STORE_HEADERS,
-        )
+    redirected = stale_ui_redirect(request, "/")
+    if redirected is not None:
+        return redirected
     return FileResponse(
         "static/index.html",
         media_type="text/html",

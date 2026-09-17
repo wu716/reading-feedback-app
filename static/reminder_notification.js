@@ -1038,6 +1038,19 @@ function shuranVersionLess(current, latest) {
     return false;
 }
 
+function shuranMinShell(latest) {
+    const floorCode = Number(window.SHURAN_MIN_SHELL_CODE) || 20;
+    const floorName = String(window.SHURAN_MIN_SHELL_NAME || '1.5.4');
+    const remoteCode = Math.max(
+        Number(latest && latest.versionCode) || 0,
+        Number(latest && latest.minVersionCode) || 0
+    );
+    const remoteName = String((latest && latest.versionName) || '');
+    const minCode = Math.max(floorCode, remoteCode);
+    const minName = (remoteName && shuranVersionLess(floorName, remoteName)) ? remoteName : floorName;
+    return { minCode: minCode, minName: minName };
+}
+
 function shuranStartAppUpdate() {
     const shell = shuranShellInfo();
     const origin = window.location.origin || 'http://43.161.238.165:8000';
@@ -1048,9 +1061,13 @@ function shuranStartAppUpdate() {
         }
         return;
     }
-    if (shell.hasUpdater) {
+    const outdated = shuranShellNeedsUpdate(shell);
+    if (shell.hasUpdater && !outdated) {
         window.ShuranNative.checkUpdate();
         return;
+    }
+    if (shell.hasUpdater) {
+        try { window.ShuranNative.checkUpdate(); } catch (e) { /* ignore */ }
     }
     shuranCopyText(pageUrl).then(function (ok) {
         window.location.href = pageUrl + '?from=app' + (ok ? '&copied=1' : '');
@@ -1086,17 +1103,22 @@ function fillAppVersionLabel() {
     }
 
     const outdated = shuranShellNeedsUpdate(shell);
+    const row = document.getElementById('appVersionRow');
+    if (row) {
+        row.classList.remove('me-row-static');
+    }
     if (btn) {
-        btn.hidden = !(shell.inApp && outdated);
+        btn.hidden = true;
         btn.textContent = '立即更新';
     }
     if (hint) {
+        hint.hidden = false;
         if (shell.inApp && outdated) {
-            hint.hidden = false;
-            hint.textContent = '当前外壳过旧，点右侧覆盖安装即可，不用卸载，登录会保留。';
+            hint.textContent = '当前外壳过旧。点「版本」这一行下载安装包，覆盖即可，不用卸载，登录会保留。';
+        } else if (shell.inApp) {
+            hint.textContent = '点「版本」这一行可下载安装包。覆盖即可，不用卸载，登录会保留。';
         } else {
-            hint.textContent = '';
-            hint.hidden = true;
+            hint.textContent = '点这一行可下载安装包。电脑请用网页刷新。';
         }
     }
 }
@@ -1112,11 +1134,13 @@ function startReminderServiceIfLoggedIn() {
 function shuranShellNeedsUpdate(shell, latest) {
     shell = shell || shuranShellInfo();
     if (!shell.inApp) return false;
-    const minCode = Number((latest && latest.versionCode) || window.SHURAN_MIN_SHELL_CODE || 20);
-    const minName = String((latest && latest.versionName) || window.SHURAN_MIN_SHELL_NAME || '1.5.4');
+    const min = shuranMinShell(latest);
     const code = Number(shell.versionCode) || 0;
-    if (code > 0 && code < minCode) return true;
-    if (shell.versionName && shuranVersionLess(shell.versionName, minName)) return true;
+    const name = String(shell.versionName || '');
+    if (code > 0 && code < min.minCode) return true;
+    if (name && shuranVersionLess(name, min.minName)) return true;
+    if (!name && code > 0 && code < min.minCode) return true;
+    if (code === 0 && !name) return true;
     if (code === 0 && !shell.hasUpdater) return true;
     return false;
 }
@@ -1125,13 +1149,16 @@ function shuranPromptShellUpdate(force) {
     try {
         const shell = shuranShellInfo();
         if (!shell.inApp) return;
-        const existing = document.getElementById('shuranShellUpdateGate');
         const apply = function (latest) {
             if (!shuranShellNeedsUpdate(shell, latest)) {
+                const existing = document.getElementById('shuranShellUpdateGate');
+                if (existing && (existing.getAttribute('data-locked') === '1' || window.SHURAN_SHELL_GATE_LOCKED)) {
+                    return;
+                }
                 if (existing && !force) existing.remove();
                 return;
             }
-            const latestName = (latest && latest.versionName) || window.SHURAN_MIN_SHELL_NAME;
+            const latestName = shuranMinShell(latest).minName;
             const currentName = shell.versionName || '旧版';
             let bar = document.getElementById('shuranShellUpdateGate');
             if (!bar) {
@@ -1141,6 +1168,8 @@ function shuranPromptShellUpdate(force) {
                 bar.setAttribute('aria-modal', 'true');
                 document.body.appendChild(bar);
             }
+            bar.setAttribute('data-locked', '1');
+            window.SHURAN_SHELL_GATE_LOCKED = true;
             bar.style.cssText = [
                 'position:fixed',
                 'inset:0',
@@ -1169,6 +1198,7 @@ function shuranPromptShellUpdate(force) {
                 });
             }
         };
+        apply(null);
         fetch('/download/info', { cache: 'no-store' })
             .then(function (res) { return res.ok ? res.json() : {}; })
             .then(apply)

@@ -14,6 +14,9 @@ GITHUB_APK_URL = (
     "https://github.com/wu716/reading-feedback-app/releases/download/"
     "android-1.5.4/shuran.apk"
 )
+# 线上 latest.json 若过旧，1.3.4 会误以为已是最新。接口永不低于此门槛。
+MIN_SHELL_VERSION_CODE = 20
+MIN_SHELL_VERSION_NAME = "1.5.4"
 
 router = APIRouter(tags=["app-download"])
 
@@ -76,6 +79,23 @@ def ensure_apk() -> Path | None:
     return dest if dest.is_file() else None
 
 
+def _version_tuple(name: str) -> tuple[int, ...]:
+    parts: list[int] = []
+    for chunk in str(name or "").replace("-", ".").split("."):
+        digits = "".join(ch for ch in chunk if ch.isdigit())
+        if digits:
+            parts.append(int(digits))
+    return tuple(parts) or (0,)
+
+
+def _version_less(current: str, latest: str) -> bool:
+    pa, pb = _version_tuple(current), _version_tuple(latest)
+    n = max(len(pa), len(pb))
+    pa = pa + (0,) * (n - len(pa))
+    pb = pb + (0,) * (n - len(pb))
+    return pa < pb
+
+
 def load_latest_meta() -> dict:
     defaults = {
         "versionCode": 0,
@@ -123,16 +143,23 @@ def build_info(request: Request | None = None) -> dict:
         origin = str(request.base_url).rstrip("/")
         download_url = origin + "/download/apk"
         windows_download_url = origin + "/download/windows"
-    # 外壳落后时必须能发现新安装包，打开就会提示覆盖更新。
-    reported_code = meta["versionCode"]
+    # 外壳落后时必须能发现新安装包。门槛取 json 与硬编码的较高值，避免旧 json 漏掉 1.3.4。
+    reported_code = max(
+        int(meta.get("versionCode") or 0),
+        int(meta.get("minVersionCode") or 0),
+        MIN_SHELL_VERSION_CODE,
+    )
+    reported_name = str(meta.get("versionName") or "") or MIN_SHELL_VERSION_NAME
+    if _version_less(reported_name, MIN_SHELL_VERSION_NAME):
+        reported_name = MIN_SHELL_VERSION_NAME
     info = {
         "available": apk is not None,
         "filename": meta["filename"],
         "versionCode": reported_code,
-        "versionName": meta["versionName"],
+        "versionName": reported_name,
         "notes": meta["notes"],
-        "require_shell": bool(meta.get("require_shell")),
-        "minVersionCode": int(meta.get("minVersionCode") or reported_code or 0),
+        "require_shell": True,
+        "minVersionCode": reported_code,
         "download_url": download_url,
         "update_in_place": True,
         "windows_available": windows_exe is not None,

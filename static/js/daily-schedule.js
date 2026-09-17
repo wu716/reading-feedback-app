@@ -280,13 +280,26 @@
         box.hidden = !show;
         if (!show) {
             box.innerHTML = '';
+            box.classList.remove('is-collapsed');
             return;
         }
-        const visible = nudgeOpen ? suggestions : suggestions.slice(0, 3);
-        const rest = suggestions.length - visible.length;
+        const collapsed = !nudgeOpen;
+        box.classList.toggle('is-collapsed', collapsed);
+        if (collapsed) {
+            box.innerHTML = `
+                <button type="button" class="schedule-nudge-kicker is-toggle" data-nudge-more>
+                    <span>行动项 · 还没排进今天</span>
+                    <span class="schedule-nudge-count">${suggestions.length}</span>
+                </button>
+            `;
+            return;
+        }
         box.innerHTML = `
-            <div class="schedule-nudge-kicker">行动项 · 还没排进今天</div>
-            ${visible.map((item) => `
+            <div class="schedule-nudge-head">
+                <div class="schedule-nudge-kicker">行动项 · 还没排进今天</div>
+                <button type="button" class="schedule-nudge-more" data-nudge-more>收起</button>
+            </div>
+            ${suggestions.map((item) => `
                 <div class="schedule-nudge-item" data-action-id="${item.action_id}">
                     <div class="schedule-nudge-copy">
                         <div class="schedule-nudge-text">${escapeHtml(item.text)}</div>
@@ -295,12 +308,6 @@
                     <button type="button" data-nudge-add="${item.action_id}">加入</button>
                 </div>
             `).join('')}
-            ${rest > 0
-                ? `<button type="button" class="schedule-nudge-more" data-nudge-more>还有 ${rest} 个</button>`
-                : (nudgeOpen && suggestions.length > 3
-                    ? '<button type="button" class="schedule-nudge-more" data-nudge-more>收起</button>'
-                    : '')
-            }
         `;
     }
 

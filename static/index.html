@@ -19,8 +19,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260912nav1">
-    <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd1">
-    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260917upd1">
+    <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd3">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260917upd3">
     <style>
         :root {
             --ink: #1c1b19;
@@ -1635,13 +1635,13 @@
         
         .action-buttons {
             margin-top: 16px;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
             border: 1px solid var(--line, #e6e1d6);
-            border-radius: 10px;
+            border-radius: 14px;
+            background: #fff;
             overflow: hidden;
-            background: var(--line, #e6e1d6);
         }
 
         .action-filter-row {
@@ -1667,30 +1667,42 @@
         .action-buttons .action-tool,
         .action-buttons .btn-small {
             width: 100%;
+            max-width: none;
+            box-sizing: border-box;
             min-width: 0;
+            min-height: 52px;
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             align-items: center;
-            justify-content: center;
-            gap: 5px;
-            padding: 12px 6px 10px;
-            font-size: 0.72rem;
+            justify-content: flex-start;
+            gap: 12px;
+            padding: 12px 16px;
+            font-size: 0.95rem;
             font-weight: 500;
             font-family: inherit;
             line-height: 1.35;
-            color: #6b6560;
-            background: #fffcf6;
+            color: #1c1b19;
+            background: #fff;
             border: none;
+            border-bottom: 1px solid #f1eee6;
             border-radius: 0;
-            white-space: normal;
+            white-space: nowrap;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
 
+        .action-buttons .action-tool:last-child,
+        .action-buttons .btn-small:last-child {
+            border-bottom: none;
+        }
+
         .action-tool-ico {
-            width: 22px;
-            height: 22px;
-            color: #8a8478;
+            flex: 0 0 32px;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: #f4efe4;
+            color: #6b6560;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -1702,7 +1714,18 @@
         }
 
         .action-tool-label {
+            flex: 1;
+            min-width: 0;
+            text-align: left;
             color: inherit;
+        }
+
+        .action-tool-chevron {
+            flex: 0 0 auto;
+            color: #c5c0b6;
+            font-size: 1.15rem;
+            font-weight: 300;
+            line-height: 1;
         }
 
         .action-buttons .action-tool:active,
@@ -1713,7 +1736,7 @@
         .action-buttons .action-tool.is-danger,
         .action-buttons .btn-small.btn-danger {
             color: #c4564c;
-            background: #fffcf6;
+            background: #fff;
         }
 
         .action-buttons .action-tool.is-danger .action-tool-ico {
@@ -3413,7 +3436,8 @@
             }
 
             .action-buttons {
-                grid-template-columns: repeat(3, 1fr);
+                display: flex;
+                flex-direction: column;
             }
 
             .action-buttons .btn-small {
@@ -3604,40 +3628,85 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260917upd1">
+    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260917upd3">
 </head>
 <body>
     <script>
         (function () {
             window.SHURAN_VERSION = '1.5.0';
-            var ua = navigator.userAgent || '';
-            var match = ua.match(/ShuranApp\/([\d.]+)/);
-            if (match) {
-                var cur = String(match[1]).split('.').map(function (n) { return parseInt(n, 10) || 0; });
-                var min = [1, 5, 4];
-                var old = false;
-                for (var i = 0; i < 3; i++) {
-                    var a = cur[i] || 0, b = min[i] || 0;
-                    if (a < b) { old = true; break; }
-                    if (a > b) break;
+            window.SHURAN_MIN_SHELL_CODE = 20;
+            window.SHURAN_MIN_SHELL_NAME = '1.5.4';
+            function versionLess(current, latest) {
+                var pa = String(current || '0').split(/[^\d]+/).map(function (n) { return parseInt(n, 10) || 0; });
+                var pb = String(latest || '0').split(/[^\d]+/).map(function (n) { return parseInt(n, 10) || 0; });
+                var n = Math.max(pa.length, pb.length);
+                for (var i = 0; i < n; i++) {
+                    var x = pa[i] || 0, y = pb[i] || 0;
+                    if (x < y) return true;
+                    if (x > y) return false;
                 }
-                if (old && !document.getElementById('shuranShellUpdateGate')) {
-                    var gate = document.createElement('div');
-                    gate.id = 'shuranShellUpdateGate';
-                    gate.setAttribute('role', 'dialog');
-                    gate.setAttribute('aria-modal', 'true');
-                    gate.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:#1a1a2e;color:#fff;display:flex;flex-direction:column;justify-content:center;padding:28px 22px;box-sizing:border-box;';
-                    gate.innerHTML = '<div style="max-width:420px;margin:0 auto;width:100%;">'
-                        + '<h1 style="font-size:1.45rem;margin:0 0 12px;">需要更新外壳</h1>'
-                        + '<p style="line-height:1.6;opacity:.92;margin:0 0 22px;">当前外壳 ' + match[1] + '，请覆盖安装最新安装包后才能继续。登录数据会保留，不必卸载。</p>'
-                        + '<a id="shuranShellUpdateLink" href="/download" style="display:block;text-align:center;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;text-decoration:none;border-radius:12px;padding:14px 16px;font-weight:700;">立即更新</a>'
-                        + '</div>';
-                    document.documentElement.appendChild(gate);
-                    document.addEventListener('DOMContentLoaded', function () {
-                        if (gate.parentNode !== document.body) document.body.appendChild(gate);
+                return false;
+            }
+            function inPhoneApp() {
+                try { if (window.ShuranNative) return true; } catch (e) {}
+                return /ShuranApp\//i.test(navigator.userAgent || '');
+            }
+            function readShellName() {
+                var ua = navigator.userAgent || '';
+                var match = ua.match(/ShuranApp\/([\w.\-]+)/);
+                if (match) return match[1];
+                try {
+                    if (window.ShuranNative && typeof window.ShuranNative.getAppVersion === 'function') {
+                        return String(window.ShuranNative.getAppVersion() || '');
+                    }
+                } catch (e) {}
+                return '';
+            }
+            function shellIsOld() {
+                if (!inPhoneApp()) return false;
+                var name = readShellName();
+                if (!name) return true;
+                return versionLess(name, window.SHURAN_MIN_SHELL_NAME);
+            }
+            function paintGate(name) {
+                var currentName = name || readShellName() || '旧版';
+                var bar = document.getElementById('shuranShellUpdateGate');
+                if (!bar) {
+                    bar = document.createElement('div');
+                    bar.id = 'shuranShellUpdateGate';
+                    document.documentElement.appendChild(bar);
+                }
+                bar.setAttribute('role', 'dialog');
+                bar.setAttribute('aria-modal', 'true');
+                bar.setAttribute('data-locked', '1');
+                window.SHURAN_SHELL_GATE_LOCKED = true;
+                bar.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:#1a1a2e;color:#fff;display:flex;flex-direction:column;justify-content:center;padding:28px 22px;box-sizing:border-box;';
+                bar.innerHTML = '<div style="max-width:420px;margin:0 auto;width:100%;">'
+                    + '<h1 style="font-size:1.45rem;margin:0 0 12px;">需要更新外壳</h1>'
+                    + '<p style="line-height:1.6;opacity:.92;margin:0 0 22px;">当前外壳 ' + currentName
+                    + '，请覆盖安装最新安装包后才能继续。登录数据会保留，不必卸载。</p>'
+                    + '<a id="shuranShellUpdateLink" href="/download" style="display:block;text-align:center;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;text-decoration:none;border-radius:12px;padding:14px 16px;font-weight:700;">立即更新</a>'
+                    + '</div>';
+                var link = bar.querySelector('#shuranShellUpdateLink');
+                if (link) {
+                    link.addEventListener('click', function (e) {
+                        if (typeof window.shuranStartAppUpdate === 'function') {
+                            e.preventDefault();
+                            window.shuranStartAppUpdate();
+                        }
                     });
                 }
+                document.addEventListener('DOMContentLoaded', function () {
+                    if (bar.parentNode !== document.body && document.body) document.body.appendChild(bar);
+                });
             }
+            function checkGate() {
+                if (shellIsOld()) paintGate(readShellName());
+            }
+            checkGate();
+            [50, 200, 600, 1500, 3000].forEach(function (ms) {
+                setTimeout(checkGate, ms);
+            });
             if (window.innerWidth > 768) {
                 document.documentElement.style.setProperty('--shuran-frame', window.innerHeight + 'px');
             }
@@ -4161,7 +4230,7 @@
                 </div>
 
                 <div class="me-group">
-                    <div class="me-row me-row-static">
+                    <button type="button" class="me-row" id="appVersionRow" onclick="typeof shuranStartAppUpdate==='function'&&shuranStartAppUpdate()">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M5 21h14"/></svg>
                         </span>
@@ -4169,9 +4238,9 @@
                             <div class="me-row-title">版本</div>
                             <div class="me-row-desc" id="appVersionLabel">1.5.0</div>
                         </div>
-                        <button type="button" class="me-link-btn" id="appUpdateBtn" hidden onclick="shuranStartAppUpdate()">换安装包</button>
-                    </div>
-                    <p class="me-hint" id="appVersionHint"></p>
+                        <span class="me-chevron" aria-hidden="true">›</span>
+                    </button>
+                    <p class="me-hint" id="appVersionHint">点这一行下载安装包。覆盖即可，不用卸载，登录会保留。</p>
                     <a class="me-row me-desktop-only" href="/download">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8"/></svg>
@@ -4566,6 +4635,7 @@
                     <p class="flow-hint">快捷设置磁贴或桌面「记」也可唤起。</p>
                 </div>
                 <div id="timeLogList" class="tl-list"></div>
+                <p class="flow-empty" id="timeLogRecentHint" hidden></p>
                 <div class="tl-total" id="timeLogTotal"></div>
             </div>
         </section>
@@ -4741,7 +4811,7 @@
                 
                 <div class="form-group" id="btmDurationDaysGroup">
                     <label for="btmTargetDurationDays">坚持天数</label>
-                    <input type="number" id="btmTargetDurationDays" min="1" max="3650" placeholder="天数">
+                    <input type="number" id="btmTargetDurationDays" min="1" max="3650" placeholder="天数" oninput="fillEndDateFromStartAndDays('btmStartDate','btmTargetDurationDays','btmEndDate')" onchange="fillEndDateFromStartAndDays('btmStartDate','btmTargetDurationDays','btmEndDate')">
                 </div>
                 
                 <div class="form-group">
@@ -4762,7 +4832,7 @@
                 
                 <div class="form-group">
                     <label for="btmStartDate">开始日期</label>
-                    <input type="date" id="btmStartDate">
+                    <input type="date" id="btmStartDate" oninput="fillEndDateFromStartAndDays('btmStartDate','btmTargetDurationDays','btmEndDate')" onchange="fillEndDateFromStartAndDays('btmStartDate','btmTargetDurationDays','btmEndDate')">
                 </div>
                 
                 <div class="form-group" id="btmEndDateGroup">
@@ -4795,7 +4865,7 @@
                 
                 <div class="form-group" id="tmDurationDaysGroup">
                     <label for="tmTargetDurationDays">坚持天数</label>
-                    <input type="number" id="tmTargetDurationDays" min="1" max="3650" placeholder="天数">
+                    <input type="number" id="tmTargetDurationDays" min="1" max="3650" placeholder="天数" oninput="fillEndDateFromStartAndDays('tmStartDate','tmTargetDurationDays','tmEndDate')" onchange="fillEndDateFromStartAndDays('tmStartDate','tmTargetDurationDays','tmEndDate')">
                 </div>
                 
                 <div class="form-group">
@@ -4816,7 +4886,7 @@
                 
                 <div class="form-group">
                     <label for="tmStartDate">开始日期</label>
-                    <input type="date" id="tmStartDate">
+                    <input type="date" id="tmStartDate" oninput="fillEndDateFromStartAndDays('tmStartDate','tmTargetDurationDays','tmEndDate')" onchange="fillEndDateFromStartAndDays('tmStartDate','tmTargetDurationDays','tmEndDate')">
                 </div>
                 
                 <div class="form-group" id="tmEndDateGroup">
@@ -4845,12 +4915,12 @@
                 
                 <div class="form-group">
                     <label for="cdTargetDays">完成天数</label>
-                    <input type="number" id="cdTargetDays" min="1" max="365" placeholder="期望在多少天内完成">
+                    <input type="number" id="cdTargetDays" min="1" max="365" placeholder="期望在多少天内完成" oninput="fillEndDateFromStartAndDays('cdStartDate','cdTargetDays','cdEndDate')" onchange="fillEndDateFromStartAndDays('cdStartDate','cdTargetDays','cdEndDate')">
                 </div>
                 
                 <div class="form-group">
                     <label for="cdStartDate">开始日期</label>
-                    <input type="date" id="cdStartDate">
+                    <input type="date" id="cdStartDate" oninput="fillEndDateFromStartAndDays('cdStartDate','cdTargetDays','cdEndDate')" onchange="fillEndDateFromStartAndDays('cdStartDate','cdTargetDays','cdEndDate')">
                 </div>
                 
                 <div class="form-group" id="cdEndDateGroup">
@@ -5159,12 +5229,8 @@
                     loadUserInfo();
                     loadReminderSettings();
                     if (typeof syncTimeLogChrome === 'function') syncTimeLogChrome();
+                    if (typeof fillAppVersionLabel === 'function') fillAppVersionLabel();
                     if (typeof shuranPromptShellUpdate === 'function') shuranPromptShellUpdate(true);
-                    try {
-                        if (window.ShuranNative && typeof window.ShuranNative.checkUpdate === 'function') {
-                            window.ShuranNative.checkUpdate();
-                        }
-                    } catch (e) { /* ignore */ }
                 }
                 if (sectionId === 'owner') {
                     loadOwnerConsole();
@@ -6594,7 +6660,7 @@
 
         function actionToolBtn(onclick, icon, label, extraClass) {
             const cls = extraClass ? `action-tool ${extraClass}` : 'action-tool';
-            return `<button type="button" class="${cls}" onclick="${onclick}"><span class="action-tool-ico" aria-hidden="true">${icon}</span><span class="action-tool-label">${label}</span></button>`;
+            return `<button type="button" class="${cls}" onclick="${onclick}"><span class="action-tool-ico" aria-hidden="true">${icon}</span><span class="action-tool-label">${label}</span><span class="action-tool-chevron" aria-hidden="true">›</span></button>`;
         }
 
         // 渲染行动项列表
@@ -8088,6 +8154,12 @@
             }
         }
         
+        function actionFromListResponse(response, actionId) {
+            return asList(response).find(a => a.id === actionId)
+                || (allActions || []).find(a => a.id === actionId)
+                || null;
+        }
+
         // 时间管理设置相关函数
         let currentActionForTM = null;
         
@@ -8095,15 +8167,14 @@
         async function showTimeManagementModal(actionId) {
             console.log('打开时间管理模态框，行动项ID:', actionId);
             currentActionForTM = actionId;
+            bindAllEndDateAutofill();
             document.getElementById('timeManagementModal').classList.remove('hidden');
             
             try {
-                // 获取当前行动项数据
-                const response = await apiRequest('/api/actions/');
-                const action = response.items.find(a => a.id === actionId);
+                const response = await apiRequest('/api/actions/?size=100');
+                const action = actionFromListResponse(response, actionId);
                 
                 if (action) {
-                    // 填充现有数据
                     document.getElementById('tmDurationType').value = action.duration_type || 'short_term';
                     document.getElementById('tmTargetDurationDays').value = action.target_duration_days || '';
                     document.getElementById('tmTargetFrequency').value = action.target_frequency || 'daily';
@@ -8111,20 +8182,21 @@
                     document.getElementById('tmStartDate').value = action.start_date || getBeijingDateString();
                     document.getElementById('tmEndDate').value = action.end_date || '';
                 } else {
-                    // 设置默认值
                     const today = getBeijingDateString();
                     document.getElementById('tmStartDate').value = today;
                     document.getElementById('tmDurationType').value = 'short_term';
                     document.getElementById('tmTargetDurationDays').value = 30;
                     document.getElementById('tmTargetFrequency').value = 'daily';
+                    document.getElementById('tmEndDate').value = '';
                 }
                 
-                // 初始化设置
                 toggleTMDurationSettings();
                 toggleTMCustomFrequency();
+                if (document.getElementById('tmStartDate').value && document.getElementById('tmTargetDurationDays').value) {
+                    fillEndDateFromStartAndDays('tmStartDate', 'tmTargetDurationDays', 'tmEndDate');
+                }
             } catch (error) {
                 console.error('加载行动项数据失败:', error);
-                // 设置默认值
                 const today = getBeijingDateString();
                 document.getElementById('tmStartDate').value = today;
                 document.getElementById('tmDurationType').value = 'short_term';
@@ -8132,6 +8204,7 @@
                 document.getElementById('tmTargetFrequency').value = 'daily';
                 toggleTMDurationSettings();
                 toggleTMCustomFrequency();
+                fillEndDateFromStartAndDays('tmStartDate', 'tmTargetDurationDays', 'tmEndDate');
             }
         }
         
@@ -8159,20 +8232,49 @@
             const startEl = document.getElementById(startId);
             const daysEl = document.getElementById(daysId);
             const endEl = document.getElementById(endId);
-            if (!startEl || !daysEl || !endEl) return;
+            if (!startEl || !daysEl || !endEl) return '';
             const next = addDaysToIso(startEl.value, daysEl.value);
             if (next) endEl.value = next;
+            return next;
         }
+        window.fillEndDateFromStartAndDays = fillEndDateFromStartAndDays;
 
         function bindEndDateAutofill(startId, daysId, endId) {
             const startEl = document.getElementById(startId);
             const daysEl = document.getElementById(daysId);
-            if (!startEl || !daysEl) return;
+            const endEl = document.getElementById(endId);
+            if (!startEl || !daysEl || !endEl) return;
+            if (startEl.dataset.endAutofillBound === '1') return;
+            startEl.dataset.endAutofillBound = '1';
             const sync = () => fillEndDateFromStartAndDays(startId, daysId, endId);
-            startEl.addEventListener('change', sync);
-            startEl.addEventListener('input', sync);
-            daysEl.addEventListener('change', sync);
-            daysEl.addEventListener('input', sync);
+            ['change', 'input', 'blur'].forEach((ev) => {
+                startEl.addEventListener(ev, sync);
+                daysEl.addEventListener(ev, sync);
+            });
+        }
+
+        function bindAllEndDateAutofill() {
+            bindEndDateAutofill('cdStartDate', 'cdTargetDays', 'cdEndDate');
+            bindEndDateAutofill('tmStartDate', 'tmTargetDurationDays', 'tmEndDate');
+            bindEndDateAutofill('btmStartDate', 'btmTargetDurationDays', 'btmEndDate');
+        }
+        window.bindAllEndDateAutofill = bindAllEndDateAutofill;
+        if (!window.__shuranEndDateDelegation) {
+            window.__shuranEndDateDelegation = true;
+            const links = {
+                cdStartDate: ['cdStartDate', 'cdTargetDays', 'cdEndDate'],
+                cdTargetDays: ['cdStartDate', 'cdTargetDays', 'cdEndDate'],
+                tmStartDate: ['tmStartDate', 'tmTargetDurationDays', 'tmEndDate'],
+                tmTargetDurationDays: ['tmStartDate', 'tmTargetDurationDays', 'tmEndDate'],
+                btmStartDate: ['btmStartDate', 'btmTargetDurationDays', 'btmEndDate'],
+                btmTargetDurationDays: ['btmStartDate', 'btmTargetDurationDays', 'btmEndDate']
+            };
+            const syncFromEvent = (e) => {
+                const link = e.target && links[e.target.id];
+                if (link) fillEndDateFromStartAndDays(link[0], link[1], link[2]);
+            };
+            document.addEventListener('input', syncFromEvent, true);
+            document.addEventListener('change', syncFromEvent, true);
         }
 
         function toggleTMDurationSettings() {
@@ -8188,10 +8290,11 @@
             } else {
                 durationDaysGroup.style.display = 'block';
                 endDateGroup.style.display = 'block';
-                if (durationType === 'short_term') {
-                    document.getElementById('tmTargetDurationDays').value = 30;
-                } else if (durationType === 'long_term') {
-                    document.getElementById('tmTargetDurationDays').value = 365;
+                const daysEl = document.getElementById('tmTargetDurationDays');
+                if (durationType === 'short_term' && !daysEl.value) {
+                    daysEl.value = 30;
+                } else if (durationType === 'long_term' && !daysEl.value) {
+                    daysEl.value = 365;
                 }
                 fillEndDateFromStartAndDays('tmStartDate', 'tmTargetDurationDays', 'tmEndDate');
             }
@@ -8213,13 +8316,14 @@
         
         function showCountAndDaysModal(actionId) {
             currentActionForCD = actionId;
+            bindAllEndDateAutofill();
             document.getElementById('countAndDaysModal').classList.remove('hidden');
             
-            // 设置默认日期
             const today = getBeijingDateString();
             document.getElementById('cdStartDate').value = today;
+            document.getElementById('cdEndDate').value = '';
+            fillEndDateFromStartAndDays('cdStartDate', 'cdTargetDays', 'cdEndDate');
             
-            // 加载现有数据
             loadCountAndDaysData(actionId);
         }
         
@@ -8230,15 +8334,15 @@
         
         async function loadCountAndDaysData(actionId) {
             try {
-                const response = await apiRequest('/api/actions/');
-                const action = response.items.find(a => a.id === actionId);
+                const response = await apiRequest('/api/actions/?size=100');
+                const action = actionFromListResponse(response, actionId);
                 
                 if (action) {
                     document.getElementById('cdTargetCount').value = action.target_duration_days || '';
                     document.getElementById('cdTargetDays').value = action.custom_frequency_days || '';
                     document.getElementById('cdStartDate').value = action.start_date || getBeijingDateString();
                     document.getElementById('cdEndDate').value = action.end_date || '';
-                    if (!document.getElementById('cdEndDate').value) {
+                    if (document.getElementById('cdStartDate').value && document.getElementById('cdTargetDays').value) {
                         fillEndDateFromStartAndDays('cdStartDate', 'cdTargetDays', 'cdEndDate');
                     }
                 }
@@ -8246,6 +8350,7 @@
                 console.error('加载次数和天数数据失败:', error);
                 const today = getBeijingDateString();
                 document.getElementById('cdStartDate').value = today;
+                fillEndDateFromStartAndDays('cdStartDate', 'cdTargetDays', 'cdEndDate');
             }
         }
         
@@ -8302,14 +8407,14 @@
         
         // 批量时间管理设置相关函数
         function showBatchTimeManagementModal() {
+            bindAllEndDateAutofill();
             document.getElementById('batchTimeManagementModal').classList.remove('hidden');
             
-            // 设置默认日期
             const today = getBeijingDateString();
             document.getElementById('btmStartDate').value = today;
             
-            // 初始化设置
             toggleBTMDurationSettings();
+            fillEndDateFromStartAndDays('btmStartDate', 'btmTargetDurationDays', 'btmEndDate');
         }
         
         function closeBatchTimeManagementModal() {
@@ -8332,11 +8437,11 @@
                 durationDaysGroup.style.display = 'block';
                 endDateGroup.style.display = 'block';
                 
-                // 根据类型设置默认天数
-                if (durationType === 'short_term') {
-                    document.getElementById('btmTargetDurationDays').value = 30;
-                } else if (durationType === 'long_term') {
-                    document.getElementById('btmTargetDurationDays').value = 365;
+                const daysEl = document.getElementById('btmTargetDurationDays');
+                if (durationType === 'short_term' && !daysEl.value) {
+                    daysEl.value = 30;
+                } else if (durationType === 'long_term' && !daysEl.value) {
+                    daysEl.value = 365;
                 }
                 fillEndDateFromStartAndDays('btmStartDate', 'btmTargetDurationDays', 'btmEndDate');
             }
@@ -8368,6 +8473,9 @@
             const targetFrequency = document.getElementById('tmTargetFrequency').value;
             const customFrequencyDays = document.getElementById('tmCustomFrequencyDays').value ? parseInt(document.getElementById('tmCustomFrequencyDays').value) : null;
             const startDate = document.getElementById('tmStartDate').value || null;
+            if (!document.getElementById('tmEndDate').value) {
+                fillEndDateFromStartAndDays('tmStartDate', 'tmTargetDurationDays', 'tmEndDate');
+            }
             const endDate = document.getElementById('tmEndDate').value || null;
             
             // 验证设置
@@ -8424,6 +8532,9 @@
             const targetFrequency = document.getElementById('btmTargetFrequency').value;
             const customFrequencyDays = document.getElementById('btmCustomFrequencyDays').value ? parseInt(document.getElementById('btmCustomFrequencyDays').value) : null;
             const startDate = document.getElementById('btmStartDate').value || null;
+            if (!document.getElementById('btmEndDate').value) {
+                fillEndDateFromStartAndDays('btmStartDate', 'btmTargetDurationDays', 'btmEndDate');
+            }
             const endDate = document.getElementById('btmEndDate').value || null;
             
             // 验证设置
@@ -8439,8 +8550,8 @@
             
             try {
                 // 获取所有未完成的习惯型行动项
-                const response = await apiRequest('/api/actions/');
-                const incompleteHabitActions = response.items.filter(action => 
+                const response = await apiRequest('/api/actions/?size=100');
+                const incompleteHabitActions = asList(response).filter(action => 
                     action.status !== 'done' && action.action_type === 'habit'
                 );
                 
@@ -8497,19 +8608,17 @@
             document.getElementById('timeManagementForm').addEventListener('submit', submitTimeManagement);
             document.getElementById('countAndDaysForm').addEventListener('submit', submitCountAndDays);
             document.getElementById('batchTimeManagementForm').addEventListener('submit', submitBatchTimeManagement);
-            bindEndDateAutofill('cdStartDate', 'cdTargetDays', 'cdEndDate');
-            bindEndDateAutofill('tmStartDate', 'tmTargetDurationDays', 'tmEndDate');
-            bindEndDateAutofill('btmStartDate', 'btmTargetDurationDays', 'btmEndDate');
         });
+        bindAllEndDateAutofill();
     </script>
     
     <!-- Self-talk 提醒通知服务 -->
-    <script src="/static/js/time-picker.js?v=20260917upd1"></script>
-    <script src="/static/reminder_notification.js?v=20260917upd1"></script>
+    <script src="/static/js/time-picker.js?v=20260917upd3"></script>
+    <script src="/static/reminder_notification.js?v=20260917upd3"></script>
     <script src="/static/js/app-tabbar.js?v=20260912nav1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
-    <script src="/static/js/daily-schedule.js?v=20260917upd1"></script>
-    <script src="/static/js/time-log.js?v=20260916vol"></script>
+    <script src="/static/js/daily-schedule.js?v=20260917upd3"></script>
+    <script src="/static/js/time-log.js?v=20260917p0"></script>
     <script src="/static/js/desktop-shell.js?v=20260914fill5"></script>
 </body>
 </html>
