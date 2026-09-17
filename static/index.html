@@ -3711,7 +3711,14 @@
                             window.shuranStartAppUpdate(link);
                             return;
                         }
-                        window.location.href = (window.location.origin || 'http://43.161.238.165:8000') + '/download';
+                        link.disabled = false;
+                        link.textContent = '立即更新';
+                        var status = document.getElementById('shuranUpdateGateStatus');
+                        if (status) {
+                            status.style.display = 'block';
+                            status.style.color = '#ffb4b4';
+                            status.textContent = '请用系统浏览器打开 http://43.161.238.165:8000/download 下载后覆盖安装。';
+                        }
                     });
                 }
                 document.addEventListener('DOMContentLoaded', function () {

@@ -6,7 +6,7 @@
 (function hopOffSingapore() {
     try {
         if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-            location.replace('http://43.161.238.165:8000/?v=20260917upd7');
+            location.replace('http://43.161.238.165:8000/?v=20260917upd8');
         }
     } catch (e) { /* ignore */ }
 })();
@@ -1126,10 +1126,16 @@ function shuranStartAppUpdate(btn) {
         }, 2500);
         return;
     }
-    // 极旧外壳没有原生更新器：打开下载页（不是直接跳 APK 二进制，避免像浏览器乱跳）。
-    const origin = window.location.origin || 'http://43.161.238.165:8000';
-    shuranSetUpdateGateStatus('当前外壳太旧，正在打开下载页。请点「下载安装包」覆盖安装。', true);
-    window.location.href = origin + '/download';
+    // 极旧外壳没有原生更新器：留在挡板并给出可复制地址，禁止再跳浏览器/下载页死循环。
+    if (target) {
+        target.disabled = false;
+        target.textContent = '重试更新';
+        target.style.opacity = '1';
+    }
+    shuranSetUpdateGateStatus(
+        '当前外壳无法应用内安装。请用手机系统浏览器打开 http://43.161.238.165:8000/download 下载后覆盖安装，再回来打开书然。',
+        true
+    );
 }
 
 window.SHURAN_VERSION = window.SHURAN_VERSION || '1.5.0';
@@ -1226,10 +1232,10 @@ function shuranShellNeedsUpdate(shell, latest) {
 
 function shuranPromptShellUpdate(force) {
     try {
-        const shell = shuranShellInfo();
-        if (!shell.inApp) return;
+        if (!shuranShellInfo().inApp) return;
         const apply = function (latest) {
-            // 已够新：必须拆掉挡板（包括曾点过更新/稍后仍锁着的情况）。
+            // 每次重读外壳版本：装完 1.5.4 后必须能拆掉挡板，不能沿用进页时的旧 shell。
+            const shell = shuranShellInfo();
             if (!shuranShellNeedsUpdate(shell, latest)) {
                 shuranClearShellUpdateGate();
                 return;
@@ -1258,13 +1264,13 @@ function shuranPromptShellUpdate(force) {
             ].join(';');
             const packageMissing = latest && latest.available === false;
             const bodyText = packageMissing
-                ? '服务器上的新安装包还没就绪。请稍后再开书然，或用浏览器打开 http://43.161.238.165:8000/download 下载后覆盖安装。'
-                : '请点一次，在应用内覆盖安装最新书然。登录会保留，不必卸载。若弹出系统窗口，请再点一次允许安装。';
+                ? '服务器上的新安装包还没就绪。请稍后再开书然，或用系统浏览器打开 http://43.161.238.165:8000/download 下载后覆盖安装。'
+                : '请点一次，在应用内覆盖安装最新书然。登录会保留，不必卸载。若又弹出「需要更新」窗口，请再点「立即更新」（不要点「稍后」）。系统若询问安装权限，请允许。';
             bar.innerHTML = '<div style="max-width:420px;margin:0 auto;width:100%;">'
                 + '<h1 style="font-size:1.45rem;margin:0 0 12px;">需要更新书然</h1>'
                 + '<p style="line-height:1.65;opacity:.92;margin:0 0 22px;">' + bodyText + '</p>'
                 + '<button type="button" id="shuranUpdateNowBtn" style="width:100%;border:none;border-radius:12px;padding:14px 16px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:1.05rem;font-weight:700;">'
-                + (packageMissing ? '打开下载页' : '立即更新')
+                + (packageMissing ? '我知道了' : '立即更新')
                 + '</button>'
                 + '<p id="shuranUpdateGateStatus" style="display:none;margin:14px 0 0;line-height:1.5;font-size:0.92rem;"></p>'
                 + '</div>';
@@ -1272,7 +1278,10 @@ function shuranPromptShellUpdate(force) {
             if (btn) {
                 btn.onclick = function () {
                     if (packageMissing) {
-                        window.location.href = (window.location.origin || 'http://43.161.238.165:8000') + '/download';
+                        shuranSetUpdateGateStatus(
+                            '请用系统浏览器打开 http://43.161.238.165:8000/download ，不要点「稍后」。',
+                            true
+                        );
                         return;
                     }
                     shuranStartAppUpdate(btn);

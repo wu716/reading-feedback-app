@@ -231,17 +231,23 @@ public class MainActivity extends Activity {
     }
 
     String updateBaseUrl() {
+        String baked = getString(R.string.app_url).replaceAll("/+$", "");
         try {
             String live = webView != null ? webView.getUrl() : null;
             if (live != null && (live.startsWith("http://") || live.startsWith("https://"))) {
                 Uri uri = Uri.parse(live);
+                String host = uri.getHost();
+                // 新加坡即将下线：更新检查/下载一律走香港，避免装到旧机空包。
+                if (host != null && host.equalsIgnoreCase("47.236.122.207")) {
+                    return baked;
+                }
                 if (uri.getScheme() != null && uri.getAuthority() != null) {
                     return uri.getScheme() + "://" + uri.getAuthority();
                 }
             }
         } catch (Exception ignored) {
         }
-        return getString(R.string.app_url).replaceAll("/+$", "");
+        return baked;
     }
 
     private void maybeCheckAppUpdate() {
