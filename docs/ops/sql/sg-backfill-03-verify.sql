@@ -7,53 +7,55 @@ GROUP BY log_date
 ORDER BY log_date DESC;
 
 SELECT 'table_counts' AS check;
-SELECT 'users' AS t, count(*) FROM users
-UNION ALL SELECT 'actions', count(*) FROM actions
-UNION ALL SELECT 'practice_logs', count(*) FROM practice_logs
-UNION ALL SELECT 'daily_todos', count(*) FROM daily_todos
-UNION ALL SELECT 'daily_tasks', count(*) FROM daily_tasks
-UNION ALL SELECT 'daily_schedules', count(*) FROM daily_schedules
-UNION ALL SELECT 'future_actions', count(*) FROM future_actions
-UNION ALL SELECT 'reading_entries', count(*) FROM reading_entries
-UNION ALL SELECT 'self_talks', count(*) FROM self_talks
-UNION ALL SELECT 'self_talk_playback_logs', count(*) FROM self_talk_playback_logs
-UNION ALL SELECT 'ai_advice_sessions', count(*) FROM ai_advice_sessions
-UNION ALL SELECT 'ai_advice_messages', count(*) FROM ai_advice_messages
-UNION ALL SELECT 'self_talk_reminder_settings', count(*) FROM self_talk_reminder_settings
-UNION ALL SELECT 'self_talk_reminder_logs', count(*) FROM self_talk_reminder_logs
-UNION ALL SELECT 'ai_call_logs', count(*) FROM ai_call_logs
-UNION ALL SELECT 'time_log_nodes', count(*) FROM time_log_nodes
+SELECT n.t,
+       CASE
+         WHEN to_regclass('public.' || n.t) IS NULL THEN -1
+         ELSE (
+           xpath(
+             '//row/c/text()',
+             query_to_xml(format('SELECT count(*) AS c FROM %I', n.t), false, true, '')
+           )
+         )[1]::text::bigint
+       END AS n
+FROM (
+  VALUES
+    ('users'),('actions'),('practice_logs'),('daily_todos'),('daily_tasks'),
+    ('daily_schedules'),('future_actions'),('reading_entries'),('self_talks'),
+    ('self_talk_playback_logs'),('ai_advice_sessions'),('ai_advice_messages'),
+    ('self_talk_reminder_settings'),('self_talk_reminder_logs'),('ai_call_logs'),
+    ('time_log_nodes')
+) AS n(t)
 ORDER BY 1;
 
 SELECT 'staging_vs_mapped' AS check;
-SELECT 'actions' AS t, (SELECT count(*) FROM sg_stg_actions) AS sg_csv,
-       (SELECT count(*) FROM sg_id_map WHERE table_name = 'actions') AS mapped
-UNION ALL SELECT 'practice_logs', (SELECT count(*) FROM sg_stg_practice_logs),
-       (SELECT count(*) FROM sg_id_map WHERE table_name = 'practice_logs')
-UNION ALL SELECT 'daily_todos', (SELECT count(*) FROM sg_stg_daily_todos),
-       (SELECT count(*) FROM sg_id_map WHERE table_name = 'daily_todos')
-UNION ALL SELECT 'daily_tasks', (SELECT count(*) FROM sg_stg_daily_tasks),
-       (SELECT count(*) FROM sg_id_map WHERE table_name = 'daily_tasks')
-UNION ALL SELECT 'daily_schedules', (SELECT count(*) FROM sg_stg_daily_schedules),
-       (SELECT count(*) FROM sg_id_map WHERE table_name = 'daily_schedules')
-UNION ALL SELECT 'future_actions', (SELECT count(*) FROM sg_stg_future_actions),
-       (SELECT count(*) FROM sg_id_map WHERE table_name = 'future_actions')
-UNION ALL SELECT 'reading_entries', (SELECT count(*) FROM sg_stg_reading_entries),
-       (SELECT count(*) FROM sg_id_map WHERE table_name = 'reading_entries')
-UNION ALL SELECT 'self_talks', (SELECT count(*) FROM sg_stg_self_talks),
-       (SELECT count(*) FROM sg_id_map WHERE table_name = 'self_talks')
-UNION ALL SELECT 'self_talk_playback_logs', (SELECT count(*) FROM sg_stg_self_talk_playback_logs),
-       (SELECT count(*) FROM sg_id_map WHERE table_name = 'self_talk_playback_logs')
-UNION ALL SELECT 'ai_advice_sessions', (SELECT count(*) FROM sg_stg_ai_advice_sessions),
-       (SELECT count(*) FROM sg_id_map WHERE table_name = 'ai_advice_sessions')
-UNION ALL SELECT 'ai_advice_messages', (SELECT count(*) FROM sg_stg_ai_advice_messages),
-       (SELECT count(*) FROM sg_id_map WHERE table_name = 'ai_advice_messages')
-UNION ALL SELECT 'self_talk_reminder_settings', (SELECT count(*) FROM sg_stg_self_talk_reminder_settings),
-       (SELECT count(*) FROM sg_id_map WHERE table_name = 'self_talk_reminder_settings')
-UNION ALL SELECT 'self_talk_reminder_logs', (SELECT count(*) FROM sg_stg_self_talk_reminder_logs),
-       (SELECT count(*) FROM sg_id_map WHERE table_name = 'self_talk_reminder_logs')
-UNION ALL SELECT 'ai_call_logs', (SELECT count(*) FROM sg_stg_ai_call_logs),
-       (SELECT count(*) FROM sg_id_map WHERE table_name = 'ai_call_logs');
+SELECT n.t,
+       CASE
+         WHEN to_regclass('public.' || n.stg) IS NULL THEN -1
+         ELSE (
+           xpath(
+             '//row/c/text()',
+             query_to_xml(format('SELECT count(*) AS c FROM %I', n.stg), false, true, '')
+           )
+         )[1]::text::bigint
+       END AS sg_csv,
+       (SELECT count(*) FROM sg_id_map m WHERE m.table_name = n.t) AS mapped
+FROM (
+  VALUES
+    ('actions', 'sg_stg_actions'),
+    ('practice_logs', 'sg_stg_practice_logs'),
+    ('daily_todos', 'sg_stg_daily_todos'),
+    ('daily_tasks', 'sg_stg_daily_tasks'),
+    ('daily_schedules', 'sg_stg_daily_schedules'),
+    ('future_actions', 'sg_stg_future_actions'),
+    ('reading_entries', 'sg_stg_reading_entries'),
+    ('self_talks', 'sg_stg_self_talks'),
+    ('self_talk_playback_logs', 'sg_stg_self_talk_playback_logs'),
+    ('ai_advice_sessions', 'sg_stg_ai_advice_sessions'),
+    ('ai_advice_messages', 'sg_stg_ai_advice_messages'),
+    ('self_talk_reminder_settings', 'sg_stg_self_talk_reminder_settings'),
+    ('self_talk_reminder_logs', 'sg_stg_self_talk_reminder_logs'),
+    ('ai_call_logs', 'sg_stg_ai_call_logs')
+) AS n(t, stg);
 
 SELECT 'sg_emails_missing_on_hk' AS check;
 SELECT s.email
