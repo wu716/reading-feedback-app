@@ -2,7 +2,7 @@ namespace Shuran.Desktop;
 
 static class Program
 {
-    public const string DefaultUrl = "http://43.161.238.165:8000";
+    public const string DefaultUrl = "http://43.161.238.165:8000/?v=20260917nudge1";
 
     [STAThread]
     static void Main(string[] args)

@@ -78,6 +78,15 @@ sealed class MainForm : Form
             e.Handled = true;
             _webView.CoreWebView2.Navigate(e.Uri);
         };
+        try
+        {
+            await _webView.CoreWebView2.Profile.ClearBrowsingDataAsync(
+                CoreWebView2BrowsingDataKinds.DiskCache);
+        }
+        catch
+        {
+            /* older runtimes may not expose disk-cache-only clearing */
+        }
         _webView.CoreWebView2.Navigate(_startUrl);
     }
 
