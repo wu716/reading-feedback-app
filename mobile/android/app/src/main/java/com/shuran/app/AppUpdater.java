@@ -33,6 +33,8 @@ public class AppUpdater {
     static final int REQUEST_INSTALL_UNKNOWN = 1004;
     private static final String TAG = "ShuranUpdate";
     private static final String META_PATH = "/download/info";
+    private static final int MIN_SHELL_CODE = 20;
+    private static final String MIN_SHELL_NAME = "1.5.4";
 
     private final MainActivity activity;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -65,6 +67,28 @@ public class AppUpdater {
             return activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0).versionName;
         } catch (Exception e) {
             return "0";
+        }
+    }
+
+    static boolean versionLess(String current, String latest) {
+        String[] a = String.valueOf(current == null ? "0" : current).split("[^0-9]+");
+        String[] b = String.valueOf(latest == null ? "0" : latest).split("[^0-9]+");
+        int n = Math.max(a.length, b.length);
+        for (int i = 0; i < n; i++) {
+            int x = i < a.length ? parseVersionPart(a[i]) : 0;
+            int y = i < b.length ? parseVersionPart(b[i]) : 0;
+            if (x < y) return true;
+            if (x > y) return false;
+        }
+        return false;
+    }
+
+    private static int parseVersionPart(String part) {
+        if (part == null || part.isEmpty()) return 0;
+        try {
+            return Integer.parseInt(part);
+        } catch (NumberFormatException e) {
+            return 0;
         }
     }
 
@@ -125,11 +149,19 @@ public class AppUpdater {
             return;
         }
         boolean available = info.optBoolean("available", false);
-        int latestCode = info.optInt("versionCode", 0);
+        int latestCode = Math.max(
+                Math.max(info.optInt("versionCode", 0), info.optInt("minVersionCode", 0)),
+                MIN_SHELL_CODE
+        );
         String latestName = info.optString("versionName", "");
+        if (latestName.isEmpty() || versionLess(latestName, MIN_SHELL_NAME)) {
+            latestName = MIN_SHELL_NAME;
+        }
         String notes = info.optString("notes", "");
         int currentCode = currentVersionCode(activity);
         String currentName = currentVersionName(activity);
+        boolean outdated = currentCode < latestCode
+                || versionLess(currentName, latestName);
 
         if (!available) {
             if (fromUser) {
@@ -137,7 +169,7 @@ public class AppUpdater {
             }
             return;
         }
-        if (latestCode <= currentCode) {
+        if (!outdated) {
             if (fromUser) {
                 Toast.makeText(
                         activity,

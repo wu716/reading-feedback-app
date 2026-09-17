@@ -150,11 +150,51 @@
     display: none !important;
 }
 
+.schedule-nudge.is-collapsed {
+    padding-bottom: 2px;
+}
+
 .schedule-nudge-kicker {
     font-size: 0.75rem;
     color: #8a8478;
     letter-spacing: 0.04em;
     margin-bottom: 6px;
+}
+
+.schedule-nudge-kicker.is-toggle {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    margin: 0;
+    padding: 4px 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: 0.75rem;
+    color: #8a8478;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    text-align: left;
+}
+
+.schedule-nudge-count {
+    color: #9c3b32;
+    letter-spacing: 0;
+    flex-shrink: 0;
+}
+
+.schedule-nudge-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.schedule-nudge-head .schedule-nudge-kicker {
+    margin-bottom: 0;
 }
 
 .schedule-nudge-item {
@@ -194,7 +234,6 @@
 
 .schedule-nudge-more {
     color: #8a8478;
-    margin-top: 8px;
 }
 
 .home-schedule-list {
