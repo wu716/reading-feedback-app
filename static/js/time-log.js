@@ -10,16 +10,27 @@
     let composerViewportHandler = null;
 
     function todayISO() {
-        const now = new Date();
-        const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-        return local.toISOString().slice(0, 10);
+        try {
+            return new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Shanghai',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+            }).format(new Date());
+        } catch (e) {
+            const now = new Date();
+            const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+            return local.toISOString().slice(0, 10);
+        }
     }
 
     function shiftDay(iso, delta) {
-        const d = new Date(iso + 'T00:00:00');
-        d.setDate(d.getDate() + delta);
-        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-        return local.toISOString().slice(0, 10);
+        const parts = String(iso || '').split('-').map((n) => parseInt(n, 10));
+        if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) {
+            return todayISO();
+        }
+        const shifted = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + delta));
+        return shifted.toISOString().slice(0, 10);
     }
 
     function escapeHtml(s) {
@@ -75,9 +86,15 @@
         const label = document.getElementById('timeLogDateLabel');
         if (label) label.textContent = currentDay();
         if (total) {
+            const viewingToday = currentDay() === todayISO();
             total.textContent = data.nodes?.length
                 ? `已记录 ${formatDuration(data.total_seconds)}`
-                : '今天还没有写下任何一段';
+                : (viewingToday ? '今天还没有写下任何一段' : `${currentDay()} 还没有写下任何一段`);
+        }
+        const hint = document.getElementById('timeLogRecentHint');
+        if (hint && (data.nodes || []).length) {
+            hint.hidden = true;
+            hint.textContent = '';
         }
         if (!list) return;
         if (!(data.nodes || []).length) {
@@ -131,6 +148,28 @@
         await loadTasks();
         renderList();
         syncOverlaySwitch();
+        if (!(data.nodes || []).length) {
+            loadRecentHint();
+        }
+    }
+
+    async function loadRecentHint() {
+        const hint = document.getElementById('timeLogRecentHint');
+        if (!hint) return;
+        try {
+            const summary = await logApi('/recent-days?days=30');
+            const days = (summary.days || []).filter((item) => item.date && item.date !== currentDay() && item.count);
+            if (!days.length) {
+                hint.hidden = true;
+                hint.textContent = '';
+                return;
+            }
+            const shown = days.slice(0, 5).map((item) => `${item.date} ${item.count} 条`).join('，');
+            hint.textContent = `这台服务器上还有记录：${shown}。可用「前一天 / 后一天」查看。`;
+            hint.hidden = false;
+        } catch (e) {
+            hint.hidden = true;
+        }
     }
 
     function isUnwritten(node) {

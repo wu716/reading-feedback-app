@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """时间日志：点击时间节点，记录上一段做了什么。"""
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import List, Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user
@@ -73,18 +74,49 @@ class DayLogOut(BaseModel):
     nodes: List[NodeOut]
 
 
+class DaySummary(BaseModel):
+    date: date
+    count: int
+
+
+class RecentDaysOut(BaseModel):
+    days: List[DaySummary]
+
+
 def is_written_node(node: TimeLogNode) -> bool:
     """没写下内容、也没关联行动的节点不进入每日日志。"""
     return bool((node.label or "").strip()) or node.task_id is not None
 
 
+def calendar_day(value: datetime) -> date:
+    return ensure_aware(value).date()
+
+
+def day_bounds(day: date) -> tuple[datetime, datetime]:
+    start = datetime.combine(day, datetime.min.time(), tzinfo=BEIJING_TZ)
+    return start, start + timedelta(days=1)
+
+
+def belongs_to_day(node: TimeLogNode, day: date) -> bool:
+    """log_date 写错时，仍按北京时间的 logged_at 认到当天，避免看起来像被删。"""
+    if node.log_date == day:
+        return True
+    if node.logged_at is None:
+        return False
+    return calendar_day(node.logged_at) == day
+
+
 def live_nodes(db: Session, user_id: int, day: date) -> List[TimeLogNode]:
+    start, end = day_bounds(day)
     return (
         db.query(TimeLogNode)
         .filter(
             TimeLogNode.user_id == user_id,
-            TimeLogNode.log_date == day,
             TimeLogNode.deleted_at.is_(None),
+            or_(
+                TimeLogNode.log_date == day,
+                and_(TimeLogNode.logged_at >= start, TimeLogNode.logged_at < end),
+            ),
         )
         .order_by(TimeLogNode.logged_at.asc(), TimeLogNode.id.asc())
         .all()
@@ -153,10 +185,17 @@ def resolve_logged_at(value: Optional[datetime], now: datetime) -> datetime:
     return at
 
 
+def soft_delete_node(node: TimeLogNode) -> None:
+    """用户数据只标记删除，不从数据库抹掉。"""
+    if node.deleted_at is None:
+        node.deleted_at = beijing_now()
+
+
 def purge_unwritten_drafts(db: Session, user_id: int, day: date) -> None:
     for draft in live_nodes(db, user_id, day):
-        if not is_written_node(draft):
-            db.delete(draft)
+        if is_written_node(draft):
+            continue
+        soft_delete_node(draft)
     db.flush()
 
 
@@ -175,10 +214,42 @@ def recompute_day_durations(db: Session, user_id: int, day: date) -> None:
 
 def remove_node(db: Session, node: TimeLogNode, user_id: int) -> date:
     day = node.log_date
-    db.delete(node)
+    soft_delete_node(node)
     db.flush()
     recompute_day_durations(db, user_id, day)
     return day
+
+
+@router.get("/recent-days", response_model=RecentDaysOut)
+async def list_recent_days(
+    days: int = Query(30, ge=1, le=90),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    start_day = beijing_today() - timedelta(days=days - 1)
+    start_at, _ = day_bounds(start_day)
+    rows = (
+        db.query(TimeLogNode)
+        .filter(
+            TimeLogNode.user_id == current_user.id,
+            TimeLogNode.deleted_at.is_(None),
+            or_(TimeLogNode.log_date >= start_day, TimeLogNode.logged_at >= start_at),
+        )
+        .all()
+    )
+    counts: dict[date, int] = {}
+    for node in rows:
+        if not is_written_node(node):
+            continue
+        seen = {node.log_date}
+        if node.logged_at is not None:
+            seen.add(calendar_day(node.logged_at))
+        for day in seen:
+            if day >= start_day:
+                counts[day] = counts.get(day, 0) + 1
+    return RecentDaysOut(
+        days=[DaySummary(date=day, count=counts[day]) for day in sorted(counts, reverse=True)]
+    )
 
 
 @router.get("", response_model=DayLogOut)
@@ -197,8 +268,8 @@ async def punch_node(
     db: Session = Depends(get_db),
 ):
     now = beijing_now()
-    day = parse_day(body.log_date)
     stamped = resolve_logged_at(body.logged_at, now)
+    day = parse_day(body.log_date) if body.log_date else calendar_day(stamped)
     purge_unwritten_drafts(db, current_user.id, day)
     last = visible_nodes(db, current_user.id, day)
     previous = last[-1] if last else None

@@ -34,7 +34,12 @@ class User(Base):
     daily_tasks = relationship("DailyTask", back_populates="user", cascade="all, delete-orphan")
     daily_schedules = relationship("DailySchedule", back_populates="user", cascade="all, delete-orphan")
     future_actions = relationship("FutureAction", back_populates="user", cascade="all, delete-orphan")
-    time_log_nodes = relationship("TimeLogNode", back_populates="user", cascade="all, delete-orphan")
+    time_log_nodes = relationship(
+        "TimeLogNode",
+        back_populates="user",
+        cascade="save-update, merge",
+        passive_deletes=True,
+    )
     reading_entries = relationship("ReadingEntry", back_populates="user", cascade="all, delete-orphan")
     self_talk_playback_logs = relationship(
         "SelfTalkPlaybackLog", back_populates="user", cascade="all, delete-orphan"

@@ -95,11 +95,3 @@ def ensure_schema():
                 conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_phone ON users (phone)"))
         except Exception as exc:
             logger.warning("创建 users.phone 唯一索引失败: %s", exc)
-    if "time_log_nodes" in existing_tables:
-        try:
-            with engine.begin() as conn:
-                result = conn.execute(text("DELETE FROM time_log_nodes WHERE deleted_at IS NOT NULL"))
-            if result.rowcount:
-                logger.info("已从数据库清除 %s 条软删除时间日志", result.rowcount)
-        except Exception as exc:
-            logger.warning("清除软删除时间日志失败: %s", exc)
