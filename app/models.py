@@ -24,6 +24,7 @@ class User(Base):
     plan = Column(String(50), default="free")
     plan_expires_at = Column(Date, nullable=True)
     token_version = Column(Integer, default=0)
+    capture_kind = Column(String(20), nullable=False, default="moment")
     
     # 关系
     actions = relationship("Action", back_populates="user", cascade="all, delete-orphan")
@@ -34,6 +35,7 @@ class User(Base):
     daily_tasks = relationship("DailyTask", back_populates="user", cascade="all, delete-orphan")
     daily_schedules = relationship("DailySchedule", back_populates="user", cascade="all, delete-orphan")
     future_actions = relationship("FutureAction", back_populates="user", cascade="all, delete-orphan")
+    ideas = relationship("Idea", back_populates="user", cascade="all, delete-orphan")
     time_log_nodes = relationship(
         "TimeLogNode",
         back_populates="user",
@@ -215,6 +217,20 @@ class FutureAction(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", back_populates="future_actions")
+
+
+class Idea(Base):
+    """突然记下的灵感。不进时刻，也不进待办。"""
+    __tablename__ = "ideas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="ideas")
 
 
 class TimeLogNode(Base):

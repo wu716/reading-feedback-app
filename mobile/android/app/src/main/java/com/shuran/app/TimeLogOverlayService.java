@@ -35,6 +35,7 @@ public class TimeLogOverlayService extends Service {
     private WindowManager.LayoutParams panelParams;
     private EditText labelInput;
     private TextView panelHint;
+    private CaptureKindBar kindBar;
     private String pendingLoggedAt;
     private int pendingDuration;
     private boolean punching;
@@ -147,6 +148,16 @@ public class TimeLogOverlayService extends Service {
         panelHint.setTypeface(Typeface.SERIF);
         box.addView(panelHint);
 
+        kindBar = new CaptureKindBar(this);
+        LinearLayout.LayoutParams kindParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        kindParams.topMargin = dp(10);
+        box.addView(kindBar, kindParams);
+        kindBar.setKind(TimeLogClient.preferenceKind(this));
+        kindBar.setListener((kind, todoWhen) -> paintHint());
+
         labelInput = new EditText(this);
         labelInput.setHint(R.string.timelog_overlay_hint);
         labelInput.setTextColor(0xFF1C1B19);
@@ -181,7 +192,7 @@ public class TimeLogOverlayService extends Service {
         panel = box;
         panel.setVisibility(View.GONE);
         panelParams = new WindowManager.LayoutParams(
-                dp(300),
+                dp(320),
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 overlayType(),
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
@@ -246,26 +257,35 @@ public class TimeLogOverlayService extends Service {
         punching = true;
         pendingLoggedAt = TimeLogClient.nowIso();
         pendingDuration = 0;
+        if (kindBar != null) {
+            kindBar.setKind(TimeLogClient.preferenceKind(this));
+        }
         showPanel(getString(R.string.timelog_overlay_preparing), "");
+        paintHint();
         final long clickedAt = System.currentTimeMillis();
         new Thread(() -> {
+            String kind = TimeLogClient.preferenceKind(this);
+            try {
+                kind = TimeLogClient.fetchPreferenceKind(this);
+            } catch (Exception ignored) {
+            }
+            int duration = 0;
             try {
                 JSONObject day = TimeLogClient.dayLog(this);
-                int duration = TimeLogClient.durationSinceLast(day, clickedAt);
-                main.post(() -> {
-                    punching = false;
-                    pendingDuration = duration;
-                    String hint = duration <= 0
-                            ? getString(R.string.timelog_overlay_start)
-                            : getString(R.string.timelog_overlay_elapsed, formatDuration(duration));
-                    showPanel(hint, "");
-                });
-            } catch (Exception e) {
-                main.post(() -> {
-                    punching = false;
-                    showPanel(getString(R.string.timelog_overlay_start), "");
-                });
+                duration = TimeLogClient.durationSinceLast(day, clickedAt);
+            } catch (Exception ignored) {
             }
+            final String resolvedKind = kind;
+            final int resolvedDuration = duration;
+            main.post(() -> {
+                punching = false;
+                pendingDuration = resolvedDuration;
+                if (kindBar != null) {
+                    kindBar.setKind(resolvedKind);
+                }
+                paintHint();
+                showPanel(hintViewText(), "");
+            });
         }, "timelog-preview").start();
     }
 
@@ -276,13 +296,15 @@ public class TimeLogOverlayService extends Service {
             return;
         }
         final String loggedAt = pendingLoggedAt;
+        final String kind = kindBar == null ? CaptureKinds.MOMENT : kindBar.kind();
+        final String todoWhen = kindBar == null ? CaptureKinds.TODAY : kindBar.todoWhen();
         showPanel(getString(R.string.timelog_overlay_saving), label);
         new Thread(() -> {
             try {
-                TimeLogClient.punch(this, label, loggedAt);
+                TimeLogClient.capture(this, kind, label, todoWhen, loggedAt);
                 main.post(() -> {
                     hidePanel();
-                    toast(getString(R.string.timelog_overlay_saved));
+                    toast(savedMessage(kind, todoWhen));
                 });
             } catch (Exception e) {
                 main.post(() -> toast(e.getMessage() == null
@@ -290,6 +312,46 @@ public class TimeLogOverlayService extends Service {
                         : e.getMessage()));
             }
         }, "timelog-save").start();
+    }
+
+    private void paintHint() {
+        if (panelHint == null || labelInput == null) {
+            return;
+        }
+        panelHint.setText(hintViewText());
+        String kind = kindBar == null ? CaptureKinds.MOMENT : kindBar.kind();
+        if (CaptureKinds.IDEA.equals(kind)) {
+            labelInput.setHint(R.string.capture_placeholder_idea);
+        } else if (CaptureKinds.TODO.equals(kind)) {
+            labelInput.setHint(R.string.capture_placeholder_todo);
+        } else {
+            labelInput.setHint(R.string.timelog_overlay_hint);
+        }
+    }
+
+    private String hintViewText() {
+        String kind = kindBar == null ? CaptureKinds.MOMENT : kindBar.kind();
+        if (CaptureKinds.IDEA.equals(kind)) {
+            return getString(R.string.capture_hint_idea);
+        }
+        if (CaptureKinds.TODO.equals(kind)) {
+            return getString(R.string.capture_hint_todo);
+        }
+        return pendingDuration <= 0
+                ? getString(R.string.timelog_overlay_start)
+                : getString(R.string.timelog_overlay_elapsed, formatDuration(pendingDuration));
+    }
+
+    private String savedMessage(String kind, String todoWhen) {
+        if (CaptureKinds.IDEA.equals(kind)) {
+            return getString(R.string.capture_saved_idea);
+        }
+        if (CaptureKinds.TODO.equals(kind)) {
+            return CaptureKinds.LATER.equals(todoWhen)
+                    ? getString(R.string.capture_saved_todo_later)
+                    : getString(R.string.capture_saved_todo_today);
+        }
+        return getString(R.string.capture_saved_moment);
     }
 
     private void showPanel(String hint, String label) {

@@ -36,14 +36,50 @@ final class TimeLogClient {
     }
 
     static JSONObject punch(Context context, String label, String loggedAtIso) throws Exception {
+        return capture(context, CaptureKinds.MOMENT, label, null, loggedAtIso);
+    }
+
+    static JSONObject capture(
+            Context context,
+            String kind,
+            String label,
+            String todoWhen,
+            String loggedAtIso
+    ) throws Exception {
         JSONObject body = new JSONObject();
+        body.put("kind", CaptureKinds.normalizeKind(kind));
         if (label != null && !label.trim().isEmpty()) {
-            body.put("label", label.trim());
+            body.put("text", label.trim());
         }
-        if (loggedAtIso != null && !loggedAtIso.isEmpty()) {
+        if (CaptureKinds.TODO.equals(CaptureKinds.normalizeKind(kind))) {
+            body.put("todo_when", CaptureKinds.normalizeWhen(todoWhen));
+        }
+        if (CaptureKinds.MOMENT.equals(CaptureKinds.normalizeKind(kind))
+                && loggedAtIso != null
+                && !loggedAtIso.isEmpty()) {
             body.put("logged_at", loggedAtIso);
         }
-        return request(context, "POST", "/api/time-log/nodes", body);
+        return request(context, "POST", "/api/capture/save", body);
+    }
+
+    static String preferenceKind(Context context) {
+        return CaptureKinds.normalizeKind(
+                ReminderScheduler.prefs(context).getString(CaptureKinds.PREF_KIND, CaptureKinds.MOMENT)
+        );
+    }
+
+    static void cachePreferenceKind(Context context, String kind) {
+        ReminderScheduler.prefs(context)
+                .edit()
+                .putString(CaptureKinds.PREF_KIND, CaptureKinds.normalizeKind(kind))
+                .apply();
+    }
+
+    static String fetchPreferenceKind(Context context) throws Exception {
+        JSONObject data = request(context, "GET", "/api/capture/preference", null);
+        String kind = CaptureKinds.normalizeKind(data.optString("kind", CaptureKinds.MOMENT));
+        cachePreferenceKind(context, kind);
+        return kind;
     }
 
     static JSONObject updateLabel(Context context, int nodeId, String label) throws Exception {

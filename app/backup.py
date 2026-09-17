@@ -17,6 +17,7 @@ from app.models import (
     AiCallLog,
     AuditLog,
     DailyTodo,
+    Idea,
     InviteCode,
     PracticeLog,
     ReadingEntry,
@@ -54,6 +55,7 @@ def build_backup_zip(db: Session) -> bytes:
     readings = db.query(ReadingEntry).filter(ReadingEntry.deleted_at.is_(None)).all()
     talks = db.query(SelfTalk).filter(SelfTalk.deleted_at.is_(None)).all()
     todos = db.query(DailyTodo).filter(DailyTodo.deleted_at.is_(None)).all()
+    ideas = db.query(Idea).filter(Idea.deleted_at.is_(None)).all()
     time_logs = db.query(TimeLogNode).all()
     ai_logs = db.query(AiCallLog).all()
     subs = db.query(Subscription).all()
@@ -101,6 +103,10 @@ def build_backup_zip(db: Session) -> bytes:
         "todos.csv": _csv_bytes(
             ["id", "user_id", "todo_date", "text", "completed"],
             [[d.id, d.user_id, _cell(d.todo_date), d.text, d.completed] for d in todos],
+        ),
+        "ideas.csv": _csv_bytes(
+            ["id", "user_id", "text", "created_at", "deleted_at"],
+            [[i.id, i.user_id, i.text, _cell(i.created_at), _cell(i.deleted_at)] for i in ideas],
         ),
         "time_log_nodes.csv": _csv_bytes(
             ["id", "user_id", "log_date", "logged_at", "label", "duration_seconds", "task_id", "deleted_at"],

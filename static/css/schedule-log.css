@@ -732,11 +732,36 @@ body.tl-composing .tl-fab {
     }
 }
 
-.tl-task-picks {
+.tl-task-picks,
+.tl-kind-picks,
+.tl-when-picks {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     margin-bottom: 12px;
+}
+
+.tl-kind-picks button,
+.tl-when-picks button {
+    flex: 1;
+    min-height: 34px;
+    border: 1px solid #1c1b19;
+    background: transparent;
+    color: #1c1b19;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.86rem;
+    cursor: pointer;
+}
+
+.tl-kind-picks button.is-on,
+.tl-when-picks button.is-on {
+    background: #1c1b19;
+    color: #f3efe6;
+}
+
+.tl-when-picks[hidden] {
+    display: none !important;
 }
 
 .tl-sheet-actions {

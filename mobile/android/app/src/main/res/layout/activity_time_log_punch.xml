@@ -14,6 +14,12 @@
         android:textColor="#1C1B19"
         android:textSize="14sp" />
 
+    <com.shuran.app.CaptureKindBar
+        android:id="@+id/capture_kind_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp" />
+
     <EditText
         android:id="@+id/timelog_punch_input"
         android:layout_width="match_parent"

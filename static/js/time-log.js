@@ -6,6 +6,9 @@
     let data = { date: null, total_seconds: 0, nodes: [] };
     let tasks = [];
     let pendingNode = null;
+    let captureContext = null;
+    let captureKind = 'moment';
+    let captureTodoWhen = 'today';
     let compact = document.body.classList.contains('tl-compact-page');
     let composerViewportHandler = null;
 
@@ -182,6 +185,7 @@
         document.getElementById('timeLogSheetBackdrop')?.remove();
         document.body.classList.remove('tl-composing');
         pendingNode = null;
+        captureContext = null;
     }
 
     async function removeNode(nodeId) {
@@ -324,6 +328,223 @@
             input.setSelectionRange(len, len);
         }
     }
+
+    const CAPTURE_KINDS = ['moment', 'idea', 'todo'];
+    const CAPTURE_KIND_KEY = 'shuran.captureKind';
+
+    function readCachedKind() {
+        try {
+            const raw = localStorage.getItem(CAPTURE_KIND_KEY);
+            if (CAPTURE_KINDS.includes(raw)) return raw;
+        } catch (e) {
+            /* ignore */
+        }
+        return 'moment';
+    }
+
+    function writeCachedKind(kind) {
+        const next = CAPTURE_KINDS.includes(kind) ? kind : 'moment';
+        captureKind = next;
+        try {
+            localStorage.setItem(CAPTURE_KIND_KEY, next);
+        } catch (e) {
+            /* ignore */
+        }
+        return next;
+    }
+
+    async function loadCapturePreference() {
+        captureKind = readCachedKind();
+        try {
+            const pref = await apiRequest('/api/capture/preference');
+            if (pref && CAPTURE_KINDS.includes(pref.kind)) {
+                writeCachedKind(pref.kind);
+            }
+        } catch (e) {
+            /* 离线时用本地默认时刻 */
+        }
+        return captureKind;
+    }
+
+    async function saveCapturePreference(kind) {
+        const next = writeCachedKind(kind);
+        try {
+            await apiRequest('/api/capture/preference', {
+                method: 'PATCH',
+                body: JSON.stringify({ kind: next }),
+            });
+        } catch (e) {
+            if (typeof showMessage === 'function') showMessage(e.message, 'error');
+        }
+        syncCaptureKindRow();
+        return next;
+    }
+
+    function kindCopy(kind, ctx) {
+        if (kind === 'idea') {
+            return {
+                title: '灵感',
+                hint: '先写下来，之后在「灵感」里能看到。',
+                placeholder: '一闪而过的念头',
+            };
+        }
+        if (kind === 'todo') {
+            return {
+                title: '待办',
+                hint: '先写下来，再选进今天还是以后。',
+                placeholder: '突然想起要做的事',
+            };
+        }
+        if (ctx && ctx.isStart) {
+            return {
+                title: '记下开始',
+                hint: '写下才会记入时刻。',
+                placeholder: '这段在做什么',
+            };
+        }
+        return {
+            title: '这段在做什么',
+            hint: ctx && ctx.duration
+                ? `距上一段 ${formatDuration(ctx.duration)}`
+                : '写下才会记入时刻。',
+            placeholder: '这段在做什么',
+        };
+    }
+
+    function paintCaptureSheet(sheet) {
+        const ctx = captureContext || {};
+        const copy = kindCopy(captureKind, ctx);
+        const title = sheet.querySelector('#timeLogSheetTitle');
+        const hint = sheet.querySelector('#timeLogSheetHint');
+        const input = sheet.querySelector('#timeLogSheetInput');
+        const whenRow = sheet.querySelector('#timeLogWhenPicks');
+        if (title) title.textContent = copy.title;
+        if (hint) hint.textContent = copy.hint;
+        if (input) input.placeholder = copy.placeholder;
+        sheet.querySelectorAll('[data-kind]').forEach((btn) => {
+            btn.classList.toggle('is-on', btn.dataset.kind === captureKind);
+        });
+        sheet.querySelectorAll('[data-when]').forEach((btn) => {
+            btn.classList.toggle('is-on', btn.dataset.when === captureTodoWhen);
+        });
+        if (whenRow) whenRow.hidden = captureKind !== 'todo';
+    }
+
+    async function saveCaptureSheet(sheet) {
+        const input = sheet.querySelector('#timeLogSheetInput');
+        const label = (input?.value || '').trim();
+        if (!label) {
+            await discardSheet();
+            return;
+        }
+        const ctx = captureContext || {};
+        const payload = { kind: captureKind, text: label };
+        if (captureKind === 'todo') payload.todo_when = captureTodoWhen;
+        if (captureKind === 'moment' && ctx.loggedAt) payload.logged_at = ctx.loggedAt;
+        try {
+            await apiRequest('/api/capture/save', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+            closeSheet();
+            if (captureKind === 'moment') {
+                await load(ctx.logDate || currentDay());
+            }
+            if (captureKind === 'idea' && typeof window.loadIdeas === 'function') {
+                window.loadIdeas();
+            }
+            if (captureKind === 'todo' && captureTodoWhen === 'today' && typeof window.loadTodayDashboard === 'function') {
+                window.loadTodayDashboard();
+            }
+            if (captureKind === 'todo' && captureTodoWhen === 'later' && typeof window.loadDailySchedule === 'function') {
+                window.loadDailySchedule();
+            }
+            if (typeof showMessage === 'function') {
+                const done = captureKind === 'idea'
+                    ? '已记入灵感'
+                    : (captureKind === 'todo'
+                        ? (captureTodoWhen === 'later' ? '已记入以后想做' : '已记入今日待办')
+                        : '已记入时刻');
+                showMessage(done, 'success');
+            }
+        } catch (e) {
+            if (typeof showMessage === 'function') showMessage(e.message, 'error');
+        }
+    }
+
+    function openCaptureSheet(ctx) {
+        closeSheet();
+        captureContext = ctx || {};
+        captureTodoWhen = 'today';
+        document.body.classList.add('tl-composing');
+        const backdrop = document.createElement('div');
+        backdrop.id = 'timeLogSheetBackdrop';
+        backdrop.className = 'tl-sheet-backdrop';
+        const sheet = document.createElement('div');
+        sheet.id = 'timeLogSheet';
+        sheet.className = 'tl-sheet';
+        sheet.innerHTML = `
+            <h3 id="timeLogSheetTitle"></h3>
+            <p id="timeLogSheetHint"></p>
+            <div class="tl-kind-picks" role="tablist" aria-label="记下到哪里">
+                <button type="button" data-kind="moment">时刻</button>
+                <button type="button" data-kind="idea">灵感</button>
+                <button type="button" data-kind="todo">待办</button>
+            </div>
+            <div class="tl-when-picks" id="timeLogWhenPicks" hidden>
+                <button type="button" data-when="today">今天</button>
+                <button type="button" data-when="later">以后</button>
+            </div>
+            <textarea id="timeLogSheetInput" maxlength="500" enterkeyhint="done"></textarea>
+            <div class="tl-sheet-actions">
+                <span></span>
+                <div class="tl-sheet-actions-end">
+                    <button type="button" class="flow-ghost-btn" id="timeLogSheetCancel">稍后</button>
+                    <button type="button" class="flow-solid-btn" id="timeLogSheetSave">写下</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(backdrop);
+        document.body.appendChild(sheet);
+        paintCaptureSheet(sheet);
+        placeDesktopSheet(sheet);
+        bindComposerViewport(sheet);
+        backdrop.addEventListener('click', () => discardSheet());
+        sheet.querySelector('#timeLogSheetCancel').addEventListener('click', () => discardSheet());
+        sheet.querySelectorAll('[data-kind]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                captureKind = btn.dataset.kind;
+                paintCaptureSheet(sheet);
+                placeDesktopSheet(sheet);
+            });
+        });
+        sheet.querySelectorAll('[data-when]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                captureTodoWhen = btn.dataset.when;
+                paintCaptureSheet(sheet);
+            });
+        });
+        sheet.querySelector('#timeLogSheetSave').addEventListener('click', () => saveCaptureSheet(sheet));
+        const input = sheet.querySelector('#timeLogSheetInput');
+        if (input) {
+            input.focus();
+        }
+    }
+
+    function syncCaptureKindRow() {
+        captureKind = readCachedKind();
+        document.querySelectorAll('input[name="captureKindDefault"]').forEach((input) => {
+            input.checked = input.value === captureKind;
+        });
+        const label = document.getElementById('captureKindDefaultDesc');
+        if (label) {
+            const names = { moment: '时刻', idea: '灵感', todo: '待办' };
+            label.textContent = `三击或点「记」时先落到${names[captureKind] || '时刻'}，仍可当场改。`;
+        }
+    }
+
+    window.syncCaptureKindRow = syncCaptureKindRow;
+    window.loadCapturePreference = loadCapturePreference;
 
     function isDesktopShell() {
         return window.matchMedia('(min-width: 769px)').matches;
@@ -480,7 +701,7 @@
         return Math.max(0, Math.round((clickedAt - prev) / 1000));
     }
 
-    async function punch(forSelectedDay) {
+    async function punch(forSelectedDay, kindOverride) {
         if (compact) setCompactCollapsed(false);
         const token = localStorage.getItem('authToken');
         if (!token) {
@@ -496,16 +717,19 @@
             } else {
                 await loadTasks();
             }
+        } catch (e) {
+            /* 时刻需要日志；灵感/待办仍可先写 */
+        }
+        try {
+            await loadCapturePreference();
+            if (CAPTURE_KINDS.includes(kindOverride)) captureKind = kindOverride;
             const duration = durationSinceLast(clickedAt);
-            const node = {
-                id: null,
-                log_date: punchDay,
-                logged_at: new Date(clickedAt).toISOString(),
-                label: '',
-                duration_seconds: duration,
-                task_id: null,
-            };
-            openSheet(node, duration <= 0 && !(data.nodes || []).length);
+            openCaptureSheet({
+                logDate: punchDay,
+                loggedAt: new Date(clickedAt).toISOString(),
+                duration,
+                isStart: duration <= 0 && !(data.nodes || []).length,
+            });
         } catch (e) {
             if (typeof showMessage === 'function') showMessage(e.message, 'error');
         }
@@ -520,7 +744,7 @@
             btn.className = 'tl-fab';
             btn.type = 'button';
             btn.textContent = '记';
-            btn.title = '记下此刻。写下内容才会记入日志。电脑上可拖到左右边缘停靠。';
+            btn.title = '记下。默认为时刻，可当场改成灵感或待办。';
             btn.addEventListener('click', (e) => {
                 if (btn.dataset.dragged === '1') {
                     e.preventDefault();
@@ -647,6 +871,8 @@
         if (fab) fab.hidden = !localStorage.getItem('authToken');
         syncOverlaySwitch();
         syncAssistRow();
+        syncCaptureKindRow();
+        loadCapturePreference().then(syncCaptureKindRow);
     };
 
     window.loadTimeLog = function loadTimeLog() {
@@ -667,9 +893,11 @@
         const volumeOn = readVolumeOn();
 
         const meGroup = document.getElementById('meVolumeTripleGroup');
-        if (meGroup) meGroup.hidden = !phone;
+        if (meGroup) meGroup.hidden = false;
         const volumeRow = document.getElementById('timeLogVolumeRow');
         if (volumeRow) volumeRow.hidden = !phone;
+        const meVolumeRow = document.getElementById('timeLogVolumeMeRow');
+        if (meVolumeRow) meVolumeRow.hidden = !phone;
 
         const meSwitch = document.getElementById('timeLogVolumeMeSwitch');
         const volumeSwitch = document.getElementById('timeLogVolumeSwitch');
@@ -726,7 +954,7 @@
         document.getElementById('timeLogNextDay')?.addEventListener('click', () => {
             load(shiftDay(currentDay(), 1));
         });
-        document.getElementById('timeLogPunchBtn')?.addEventListener('click', () => punch(true));
+        document.getElementById('timeLogPunchBtn')?.addEventListener('click', () => punch(true, 'moment'));
         document.getElementById('timeLogCompactBtn')?.addEventListener('click', openCompactWindow);
         document.getElementById('timeLogDockBall')?.addEventListener('click', () => punch(false));
         document.getElementById('timeLogMinimizeBtn')?.addEventListener('click', () => {
@@ -744,6 +972,11 @@
         });
         bindOnce(document.getElementById('timeLogVolumeMeSwitch'), 'change', (e) => {
             applyVolumeWant(!!e.target.checked, e.target);
+        });
+        document.querySelectorAll('input[name="captureKindDefault"]').forEach((input) => {
+            bindOnce(input, 'change', () => {
+                if (input.checked) saveCapturePreference(input.value);
+            });
         });
         bindOnce(document.getElementById('timeLogVolumeUpdateBtn'), 'click', () => {
             if (typeof shuranStartAppUpdate === 'function') shuranStartAppUpdate();

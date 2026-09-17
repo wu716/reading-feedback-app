@@ -89,6 +89,7 @@ def ensure_schema():
     add_column("users", "real_name", "real_name VARCHAR(100)")
     add_column("users", "plan_expires_at", "plan_expires_at DATE")
     add_column("users", "token_version", "token_version INTEGER DEFAULT 0")
+    add_column("users", "capture_kind", "capture_kind VARCHAR(20) DEFAULT 'moment'")
     if "users" in existing_tables:
         try:
             with engine.begin() as conn:
