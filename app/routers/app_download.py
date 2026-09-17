@@ -229,11 +229,16 @@ def build_info(request: Request | None = None) -> dict:
         origin = str(request.base_url).rstrip("/")
         download_url = origin + "/download/apk"
         windows_download_url = origin + "/download/windows"
-    # 外壳落后时必须能发现新安装包。门槛取 json 与硬编码的较高值，避免旧 json 漏掉 1.3.4。
-    reported_code = max(
-        int(meta.get("versionCode") or 0),
+    # latest = 可下载的新包；min = 兼容门槛。二者不能混用，否则每发一版都会把全员锁进强制更新页。
+    apk_code = read_apk_version_code(apk) if apk is not None else None
+    min_code = max(
         int(meta.get("minVersionCode") or 0),
         MIN_SHELL_VERSION_CODE,
+    )
+    reported_code = max(
+        int(meta.get("versionCode") or 0),
+        min_code,
+        int(apk_code or 0),
     )
     reported_name = str(meta.get("versionName") or "") or MIN_SHELL_VERSION_NAME
     if _version_less(reported_name, MIN_SHELL_VERSION_NAME):
@@ -250,7 +255,7 @@ def build_info(request: Request | None = None) -> dict:
         "notes": meta["notes"],
         "require_shell": True,
         "force": True,
-        "minVersionCode": reported_code,
+        "minVersionCode": min_code,
         "minVersionName": min_name,
         "download_url": download_url,
         "update_in_place": True,
@@ -262,9 +267,8 @@ def build_info(request: Request | None = None) -> dict:
         size = apk.stat().st_size
         info["size_bytes"] = size
         info["size_mb"] = round(size / (1024 * 1024), 1)
-        code = read_apk_version_code(apk)
-        if code is not None:
-            info["apk_version_code"] = code
+        if apk_code is not None:
+            info["apk_version_code"] = apk_code
     else:
         info["size_bytes"] = 0
         info["size_mb"] = 0

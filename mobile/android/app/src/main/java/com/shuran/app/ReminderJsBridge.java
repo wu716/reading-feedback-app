@@ -165,6 +165,11 @@ public class ReminderJsBridge {
     }
 
     @JavascriptInterface
+    public String getAuthToken() {
+        return ReminderScheduler.storedToken(activity.getApplicationContext());
+    }
+
+    @JavascriptInterface
     public String getAppVersion() {
         return AppUpdater.currentVersionName(activity);
     }

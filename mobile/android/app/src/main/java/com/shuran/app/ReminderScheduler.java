@@ -134,6 +134,11 @@ public final class ReminderScheduler {
         prefs(context).edit().remove(KEY_TOKEN).apply();
     }
 
+    public static String storedToken(Context context) {
+        String token = prefs(context).getString(KEY_TOKEN, "");
+        return token == null ? "" : token;
+    }
+
     public static void applySettings(Context context, JSONObject settings) {
         SharedPreferences p = prefs(context);
         boolean enabled = settings.has("enabled")

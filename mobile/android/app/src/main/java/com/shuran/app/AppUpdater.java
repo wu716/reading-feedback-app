@@ -150,19 +150,21 @@ public class AppUpdater {
             return;
         }
         boolean available = info.optBoolean("available", false);
-        int latestCode = Math.max(
-                Math.max(info.optInt("versionCode", 0), info.optInt("minVersionCode", 0)),
-                MIN_SHELL_CODE
-        );
+        int minCode = Math.max(info.optInt("minVersionCode", 0), MIN_SHELL_CODE);
+        String minName = info.optString("minVersionName", "");
+        if (minName.isEmpty() || versionLess(minName, MIN_SHELL_NAME)) {
+            minName = MIN_SHELL_NAME;
+        }
+        int latestCode = Math.max(info.optInt("versionCode", 0), minCode);
         String latestName = info.optString("versionName", "");
-        if (latestName.isEmpty() || versionLess(latestName, MIN_SHELL_NAME)) {
-            latestName = MIN_SHELL_NAME;
+        if (latestName.isEmpty() || versionLess(latestName, minName)) {
+            latestName = minName;
         }
         String notes = info.optString("notes", "");
         int currentCode = currentVersionCode(activity);
         String currentName = currentVersionName(activity);
-        boolean outdated = currentCode < latestCode
-                || versionLess(currentName, latestName);
+        boolean belowMin = currentCode < minCode || versionLess(currentName, minName);
+        boolean hasNewer = currentCode < latestCode || versionLess(currentName, latestName);
 
         if (!available) {
             if (fromUser) {
@@ -170,7 +172,7 @@ public class AppUpdater {
             }
             return;
         }
-        if (!outdated) {
+        if (!hasNewer) {
             if (fromUser) {
                 Toast.makeText(
                         activity,
@@ -188,7 +190,6 @@ public class AppUpdater {
             return;
         }
 
-        // 自动检查：只弹一次强制更新，无「稍后」。点更新即下载安装。
         if (promptShowing && promptDialog != null && promptDialog.isShowing()) {
             return;
         }
@@ -203,16 +204,21 @@ public class AppUpdater {
         }
 
         promptShowing = true;
-        promptDialog = new AlertDialog.Builder(activity)
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity)
                 .setTitle(R.string.update_title)
                 .setMessage(message)
                 .setPositiveButton(R.string.update_now, (d, w) -> {
                     promptShowing = false;
                     startDownload(url);
-                })
-                .setCancelable(false)
-                .create();
-        promptDialog.setCanceledOnTouchOutside(false);
+                });
+        if (belowMin) {
+            builder.setCancelable(false);
+        } else {
+            builder.setNegativeButton(R.string.update_later, (d, w) -> promptShowing = false);
+            builder.setCancelable(true);
+        }
+        promptDialog = builder.create();
+        promptDialog.setCanceledOnTouchOutside(!belowMin);
         promptDialog.setOnDismissListener(d -> promptShowing = false);
         promptDialog.show();
     }

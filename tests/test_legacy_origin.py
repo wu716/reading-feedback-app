@@ -50,6 +50,33 @@ class LegacyOriginTests(TestCase):
         self.assertEqual(MIN_SHELL_VERSION_NAME, "1.5.4")
         self.assertEqual(MIN_SHELL_VERSION_CODE, 20)
 
+    def test_build_info_min_is_floor_not_latest(self):
+        from unittest.mock import patch
+
+        request = SimpleNamespace(
+            headers={"host": "43.161.238.165:8000"},
+            base_url="http://43.161.238.165:8000/",
+        )
+        meta = {
+            "versionCode": 21,
+            "versionName": "1.5.5",
+            "filename": "shuran.apk",
+            "notes": "",
+            "require_shell": True,
+            "force": True,
+            "minVersionCode": 20,
+            "minVersionName": "1.5.4",
+        }
+        with patch("app.routers.app_download.load_latest_meta", return_value=meta), patch(
+            "app.routers.app_download.find_apk", return_value=None
+        ), patch("app.routers.app_download.find_windows_exe", return_value=None), patch(
+            "app.routers.app_download.read_apk_version_code", return_value=None
+        ):
+            info = build_info(request)
+        self.assertEqual(int(info["versionCode"]), 21)
+        self.assertEqual(int(info["minVersionCode"]), 20)
+        self.assertEqual(info["minVersionName"], "1.5.4")
+
     def test_singapore_update_info_stays_on_singapore(self):
         from unittest.mock import patch
 

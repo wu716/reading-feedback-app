@@ -6,7 +6,7 @@
 (function hopOffSingapore() {
     try {
         if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-            location.replace('http://43.161.238.165:8000/?v=20260917upd8');
+            location.replace('http://43.161.238.165:8000/?v=20260917upd9');
         }
     } catch (e) { /* ignore */ }
 })();
@@ -83,13 +83,7 @@ class ReminderNotificationService {
     }
 
     hasNativeMethod(name) {
-        const native = this.nativeBridge();
-        if (!native) return false;
-        try {
-            return typeof native[name] === 'function';
-        } catch (e) {
-            return false;
-        }
+        return shuranHasNativeMethod(name);
     }
 
     isNativeApp() {
@@ -217,7 +211,19 @@ class ReminderNotificationService {
     }
 
     authToken() {
-        return localStorage.getItem('authToken') || localStorage.getItem('token');
+        const fromLs = localStorage.getItem('authToken') || localStorage.getItem('token');
+        if (fromLs) return fromLs;
+        try {
+            const native = window.ShuranNative;
+            if (native && native.getAuthToken) {
+                const nativeToken = String(native.getAuthToken() || '');
+                if (nativeToken) {
+                    localStorage.setItem('authToken', nativeToken);
+                    return nativeToken;
+                }
+            }
+        } catch (e) { /* ignore */ }
+        return '';
     }
 
     escapeHtml(s) {
@@ -970,18 +976,41 @@ class ReminderNotificationService {
 
 window.reminderNotificationService = new ReminderNotificationService();
 
+function shuranHasNativeMethod(name) {
+    try {
+        const native = window.ShuranNative;
+        if (!native) return false;
+        const value = native[name];
+        if (typeof value === 'function') return true;
+        // Android addJavascriptInterface 在部分 WebView（荣耀/华为）上 typeof 不是 function。
+        return value != null;
+    } catch (e) {
+        return false;
+    }
+}
+
+function shuranCallNative(name) {
+    try {
+        if (!window.ShuranNative || !shuranHasNativeMethod(name)) return false;
+        window.ShuranNative[name]();
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
 function shuranShellInfo() {
     const ua = navigator.userAgent || '';
     const uaMatch = ua.match(/ShuranApp\/([\w.\-]+)/);
     const native = window.ShuranNative;
-    const hasUpdater = !!(native && typeof native.checkUpdate === 'function');
+    const hasUpdater = shuranHasNativeMethod('checkUpdate');
     let versionName = '';
     let versionCode = 0;
     try {
-        if (native && typeof native.getAppVersion === 'function') {
+        if (shuranHasNativeMethod('getAppVersion')) {
             versionName = String(native.getAppVersion() || '');
         }
-        if (native && typeof native.getVersionCode === 'function') {
+        if (shuranHasNativeMethod('getVersionCode')) {
             versionCode = Number(native.getVersionCode()) || 0;
         }
     } catch (e) { /* ignore */ }
@@ -1048,22 +1077,28 @@ function shuranVersionLess(current, latest) {
 function shuranMinShell(latest) {
     const floorCode = Number(window.SHURAN_MIN_SHELL_CODE) || 20;
     const floorName = String(window.SHURAN_MIN_SHELL_NAME || '1.5.4');
-    const remoteCode = Math.max(
-        Number(latest && latest.versionCode) || 0,
-        Number(latest && latest.minVersionCode) || 0
-    );
-    const remoteName = String((latest && latest.versionName) || '');
-    const minCode = Math.max(floorCode, remoteCode);
-    const minName = (remoteName && shuranVersionLess(floorName, remoteName)) ? remoteName : floorName;
+    const remoteMinCode = Number(latest && latest.minVersionCode) || 0;
+    const remoteLatest = Number(latest && latest.versionCode) || 0;
+    const remoteMinName = String((latest && latest.minVersionName) || '');
+    // 仅当服务端明确把门槛设得低于「最新包」时才抬高门槛。
+    // 旧接口曾把 minVersionCode 写成 latest.versionCode，那会让每发一版都锁死全员。
+    let minCode = floorCode;
+    if (remoteMinCode > minCode && (remoteLatest === 0 || remoteMinCode < remoteLatest)) {
+        minCode = remoteMinCode;
+    }
+    let minName = floorName;
+    if (remoteMinName && shuranVersionLess(floorName, remoteMinName)
+            && (!latest || !latest.versionName || shuranVersionLess(remoteMinName, latest.versionName))) {
+        minName = remoteMinName;
+    }
     return { minCode: minCode, minName: minName };
 }
 
 function shuranTriggerNativeInstall() {
+    if (shuranCallNative('checkUpdate')) return true;
     try {
-        if (window.ShuranNative && typeof window.ShuranNative.checkUpdate === 'function') {
-            window.ShuranNative.checkUpdate();
-            return true;
-        }
+        window.ShuranNative.checkUpdate();
+        return true;
     } catch (e) { /* ignore */ }
     return false;
 }
@@ -1119,9 +1154,10 @@ function shuranStartAppUpdate(btn) {
                     target.style.opacity = '1';
                 }
                 shuranSetUpdateGateStatus(
-                    '还没装上新版本。请确认系统安装窗口里点了「安装」。若提示冲突，不要卸载，把问题发给站长。',
+                    '还没装上新版本。请确认系统安装窗口里点了「安装」。也可先继续使用，或用系统浏览器打开 http://43.161.238.165:8000/download 覆盖安装。',
                     true
                 );
+                shuranShowContinueUsing();
             }
         }, 2500);
         return;
@@ -1133,9 +1169,27 @@ function shuranStartAppUpdate(btn) {
         target.style.opacity = '1';
     }
     shuranSetUpdateGateStatus(
-        '当前外壳无法应用内安装。请用手机系统浏览器打开 http://43.161.238.165:8000/download 下载后覆盖安装，再回来打开书然。',
+        '当前外壳无法应用内安装。可先继续使用书然；或用手机系统浏览器打开 http://43.161.238.165:8000/download 下载后覆盖安装。',
         true
     );
+    shuranShowContinueUsing();
+}
+
+function shuranShowContinueUsing() {
+    const bar = document.getElementById('shuranShellUpdateGate');
+    if (!bar || document.getElementById('shuranContinueUsingBtn')) return;
+    const wrap = bar.firstElementChild;
+    if (!wrap) return;
+    const skip = document.createElement('button');
+    skip.id = 'shuranContinueUsingBtn';
+    skip.type = 'button';
+    skip.textContent = '先继续使用';
+    skip.style.cssText = 'width:100%;margin-top:12px;border:1px solid rgba(255,255,255,0.35);border-radius:12px;padding:12px 16px;background:transparent;color:#fff;font-size:1rem;';
+    skip.onclick = function () {
+        window.SHURAN_SHELL_GATE_DISMISSED = true;
+        shuranClearShellUpdateGate();
+    };
+    wrap.appendChild(skip);
 }
 
 window.SHURAN_VERSION = window.SHURAN_VERSION || '1.5.0';
@@ -1219,19 +1273,21 @@ function startReminderServiceIfLoggedIn() {
 function shuranShellNeedsUpdate(shell, latest) {
     shell = shell || shuranShellInfo();
     if (!shell.inApp) return false;
+    if (window.SHURAN_SHELL_GATE_DISMISSED) return false;
     const min = shuranMinShell(latest);
     const code = Number(shell.versionCode) || 0;
     const name = String(shell.versionName || '');
+    if (code > 0 && code >= min.minCode) return false;
+    if (name && !shuranVersionLess(name, min.minName)) return false;
     if (code > 0 && code < min.minCode) return true;
     if (name && shuranVersionLess(name, min.minName)) return true;
-    if (!name && code > 0 && code < min.minCode) return true;
-    if (code === 0 && !name) return true;
-    if (code === 0 && !shell.hasUpdater) return true;
+    // 读不到版本时不要锁死整页：荣耀/华为 WebView 上 JS 桥方法可能检测失败。
     return false;
 }
 
 function shuranPromptShellUpdate(force) {
     try {
+        if (window.SHURAN_SHELL_GATE_DISMISSED) return;
         if (!shuranShellInfo().inApp) return;
         const apply = function (latest) {
             // 每次重读外壳版本：装完 1.5.4 后必须能拆掉挡板，不能沿用进页时的旧 shell。
@@ -1264,7 +1320,7 @@ function shuranPromptShellUpdate(force) {
             ].join(';');
             const packageMissing = latest && latest.available === false;
             const bodyText = packageMissing
-                ? '服务器上的新安装包还没就绪。请稍后再开书然，或用系统浏览器打开 http://43.161.238.165:8000/download 下载后覆盖安装。'
+                ? '服务器上的新安装包还没就绪。可先继续使用书然，或用系统浏览器打开 http://43.161.238.165:8000/download 下载后覆盖安装。'
                 : '请点一次，在应用内覆盖安装最新书然。登录会保留，不必卸载。若又弹出「需要更新」窗口，请再点「立即更新」（不要点「稍后」）。系统若询问安装权限，请允许。';
             bar.innerHTML = '<div style="max-width:420px;margin:0 auto;width:100%;">'
                 + '<h1 style="font-size:1.45rem;margin:0 0 12px;">需要更新书然</h1>'
@@ -1272,19 +1328,25 @@ function shuranPromptShellUpdate(force) {
                 + '<button type="button" id="shuranUpdateNowBtn" style="width:100%;border:none;border-radius:12px;padding:14px 16px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:1.05rem;font-weight:700;">'
                 + (packageMissing ? '我知道了' : '立即更新')
                 + '</button>'
+                + '<button type="button" id="shuranContinueUsingBtn" style="width:100%;margin-top:12px;border:1px solid rgba(255,255,255,0.35);border-radius:12px;padding:12px 16px;background:transparent;color:#fff;font-size:1rem;">先继续使用</button>'
                 + '<p id="shuranUpdateGateStatus" style="display:none;margin:14px 0 0;line-height:1.5;font-size:0.92rem;"></p>'
                 + '</div>';
             const btn = document.getElementById('shuranUpdateNowBtn');
             if (btn) {
                 btn.onclick = function () {
                     if (packageMissing) {
-                        shuranSetUpdateGateStatus(
-                            '请用系统浏览器打开 http://43.161.238.165:8000/download ，不要点「稍后」。',
-                            true
-                        );
+                        window.SHURAN_SHELL_GATE_DISMISSED = true;
+                        shuranClearShellUpdateGate();
                         return;
                     }
                     shuranStartAppUpdate(btn);
+                };
+            }
+            const skip = document.getElementById('shuranContinueUsingBtn');
+            if (skip) {
+                skip.onclick = function () {
+                    window.SHURAN_SHELL_GATE_DISMISSED = true;
+                    shuranClearShellUpdateGate();
                 };
             }
         };

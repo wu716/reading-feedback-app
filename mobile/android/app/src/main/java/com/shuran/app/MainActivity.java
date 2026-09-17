@@ -84,10 +84,7 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
-        // HTTP disk cache only. Cookies and localStorage stay so login survives.
-        webView.clearCache(true);
-        webView.clearFormData();
-        webView.clearHistory();
+        // Do not clearCache: Honor/Huawei WebView can wipe localStorage with it.
         settings.setUserAgentString(
                 settings.getUserAgentString() + " ShuranApp/" + AppUpdater.currentVersionName(this)
         );
@@ -424,8 +421,6 @@ public class MainActivity extends Activity {
     private void loadApp(Intent intent) {
         errorView.setVisibility(View.GONE);
         webView.setVisibility(View.VISIBLE);
-        webView.clearCache(true);
-        webView.clearFormData();
         String path = intent != null ? intent.getStringExtra(ReminderNotifications.EXTRA_OPEN_PATH) : null;
         if (path != null && !path.isEmpty()) {
             intent.removeExtra(ReminderNotifications.EXTRA_OPEN_PATH);
@@ -588,7 +583,6 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         webView.onResume();
-        webView.clearCache(true);
         webView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
         ReminderScheduler.restore(this);
         TimeLogOverlay.restore(this);
@@ -614,9 +608,10 @@ public class MainActivity extends Activity {
         if (nativeRecorder != null) {
             nativeRecorder.release();
         }
-        webView.loadUrl("about:blank");
-        webView.stopLoading();
-        webView.destroy();
+        if (webView != null) {
+            webView.stopLoading();
+            webView.destroy();
+        }
         super.onDestroy();
     }
 }

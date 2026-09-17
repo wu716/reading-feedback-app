@@ -3543,20 +3543,11 @@
 
             .app-header .user-info,
             .app-header .user-info.show {
-                display: flex;
-                flex-direction: row;
-                align-items: center;
-                gap: 6px;
-                padding: 4px 8px;
+                display: none;
             }
 
             .app-header .user-email {
                 display: none;
-            }
-
-            .app-header .logout-btn {
-                padding: 4px 10px;
-                white-space: nowrap;
             }
             
             .section-header h1 {
@@ -3634,7 +3625,7 @@
     <script>
         (function () {
             if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-                location.replace('http://43.161.238.165:8000/?v=20260917upd8');
+                location.replace('http://43.161.238.165:8000/?v=20260917upd9');
                 return;
             }
             window.SHURAN_VERSION = '1.5.0';
@@ -3655,21 +3646,30 @@
                 try { if (window.ShuranNative) return true; } catch (e) {}
                 return /ShuranApp\//i.test(navigator.userAgent || '');
             }
+            function hasNativeMethod(name) {
+                try {
+                    var native = window.ShuranNative;
+                    if (!native) return false;
+                    var value = native[name];
+                    return typeof value === 'function' || value != null;
+                } catch (e) { return false; }
+            }
             function readShellName() {
                 var ua = navigator.userAgent || '';
                 var match = ua.match(/ShuranApp\/([\w.\-]+)/);
                 if (match) return match[1];
                 try {
-                    if (window.ShuranNative && typeof window.ShuranNative.getAppVersion === 'function') {
+                    if (hasNativeMethod('getAppVersion')) {
                         return String(window.ShuranNative.getAppVersion() || '');
                     }
                 } catch (e) {}
                 return '';
             }
             function shellIsOld() {
+                if (window.SHURAN_SHELL_GATE_DISMISSED) return false;
                 if (!inPhoneApp()) return false;
                 var name = readShellName();
-                if (!name) return true;
+                if (!name) return false;
                 return versionLess(name, window.SHURAN_MIN_SHELL_NAME);
             }
             function clearGate() {
@@ -3693,6 +3693,7 @@
                     + '<h1 style="font-size:1.45rem;margin:0 0 12px;">需要更新书然</h1>'
                     + '<p style="line-height:1.6;opacity:.92;margin:0 0 22px;">请点一次，在应用内覆盖安装最新书然。登录会保留，不必卸载。若弹出系统窗口，请再点一次允许安装。</p>'
                     + '<button type="button" id="shuranShellUpdateLink" style="display:block;width:100%;text-align:center;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:12px;padding:14px 16px;font-weight:700;font-size:1.05rem;">立即更新</button>'
+                    + '<button type="button" id="shuranContinueUsingBtn" style="width:100%;margin-top:12px;border:1px solid rgba(255,255,255,0.35);border-radius:12px;padding:12px 16px;background:transparent;color:#fff;font-size:1rem;">先继续使用</button>'
                     + '<p id="shuranUpdateGateStatus" style="display:none;margin:14px 0 0;line-height:1.5;font-size:0.92rem;"></p>'
                     + '</div>';
                 var link = bar.querySelector('#shuranShellUpdateLink');
@@ -3702,10 +3703,8 @@
                         link.disabled = true;
                         link.textContent = '正在打开安装…';
                         try {
-                            if (window.ShuranNative && typeof window.ShuranNative.checkUpdate === 'function') {
-                                window.ShuranNative.checkUpdate();
-                                return;
-                            }
+                            window.ShuranNative.checkUpdate();
+                            return;
                         } catch (err) {}
                         if (typeof window.shuranStartAppUpdate === 'function') {
                             window.shuranStartAppUpdate(link);
@@ -3717,8 +3716,15 @@
                         if (status) {
                             status.style.display = 'block';
                             status.style.color = '#ffb4b4';
-                            status.textContent = '请用系统浏览器打开 http://43.161.238.165:8000/download 下载后覆盖安装。';
+                            status.textContent = '可先继续使用。或用系统浏览器打开 http://43.161.238.165:8000/download 下载后覆盖安装。';
                         }
+                    });
+                }
+                var skip = bar.querySelector('#shuranContinueUsingBtn');
+                if (skip) {
+                    skip.addEventListener('click', function () {
+                        window.SHURAN_SHELL_GATE_DISMISSED = true;
+                        clearGate();
                     });
                 }
                 document.addEventListener('DOMContentLoaded', function () {
@@ -3779,7 +3785,6 @@
             </div>
             <div class="user-info" id="userInfo">
                 <div class="user-email" id="userEmail"></div>
-                <button class="logout-btn" onclick="logout()">退出登录</button>
             </div>
         </div>
     </header>
@@ -6086,14 +6091,76 @@
             }, 5000);
         }
         
+        function readAuthCookie(name) {
+            const parts = String(document.cookie || '').split(';');
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i].trim();
+                if (part.indexOf(name + '=') === 0) {
+                    try {
+                        return decodeURIComponent(part.slice(name.length + 1));
+                    } catch (e) {
+                        return part.slice(name.length + 1);
+                    }
+                }
+            }
+            return '';
+        }
+
+        function persistAuthCookie(token, email, maxAgeSec) {
+            const maxAge = token ? Math.max(60, Number(maxAgeSec) || 14 * 24 * 60 * 60) : 0;
+            document.cookie = 'shuran_auth_token=' + encodeURIComponent(token || '')
+                + '; max-age=' + maxAge + '; path=/; SameSite=Lax';
+            document.cookie = 'shuran_user_email=' + encodeURIComponent(email || '')
+                + '; max-age=' + (email ? maxAge : 0) + '; path=/; SameSite=Lax';
+        }
+
+        function readNativeAuthToken() {
+            try {
+                const native = window.ShuranNative;
+                if (!native) return '';
+                if (native.getAuthToken) {
+                    return String(native.getAuthToken() || '');
+                }
+            } catch (e) { /* ignore */ }
+            return '';
+        }
+
+        function syncNativeAuthToken(token) {
+            try {
+                const native = window.ShuranNative;
+                if (!native || !native.syncSession) return;
+                native.syncSession(JSON.stringify({
+                    token: token || '',
+                    origin: window.location.origin,
+                }));
+            } catch (e) { /* ignore */ }
+        }
+
+        function restoreAuthSessionFromDisk() {
+            let token = localStorage.getItem('authToken') || '';
+            let email = localStorage.getItem('userEmail') || '';
+            if (!token) token = readAuthCookie('shuran_auth_token');
+            if (!token) token = readNativeAuthToken();
+            if (!email) email = readAuthCookie('shuran_user_email');
+            if (token) {
+                authToken = token;
+                localStorage.setItem('authToken', token);
+                persistAuthCookie(token, email, 14 * 24 * 60 * 60);
+                syncNativeAuthToken(token);
+            }
+            if (email) localStorage.setItem('userEmail', email);
+            return token;
+        }
+
         function saveAuthSession(token, email, expiresInSeconds) {
             authToken = token;
             localStorage.setItem('authToken', token);
             if (email) localStorage.setItem('userEmail', email);
-            if (expiresInSeconds) {
-                const expiresAt = Date.now() + expiresInSeconds * 1000;
-                localStorage.setItem('authTokenExpiresAt', String(expiresAt));
-            }
+            const ttl = Number(expiresInSeconds) || 14 * 24 * 60 * 60;
+            const expiresAt = Date.now() + ttl * 1000;
+            localStorage.setItem('authTokenExpiresAt', String(expiresAt));
+            persistAuthCookie(token, email || localStorage.getItem('userEmail') || '', ttl);
+            syncNativeAuthToken(token);
         }
 
         function clearAuthSession() {
@@ -6101,6 +6168,7 @@
             localStorage.removeItem('authToken');
             localStorage.removeItem('userEmail');
             localStorage.removeItem('authTokenExpiresAt');
+            persistAuthCookie('', '', 0);
             if (window.reminderNotificationService) {
                 window.reminderNotificationService.stop();
             }
@@ -6468,7 +6536,7 @@
             cancelPendingAuthModal();
             closeAuthModal();
 
-            authToken = localStorage.getItem('authToken');
+            authToken = restoreAuthSessionFromDisk() || localStorage.getItem('authToken');
             if (!authToken) {
                 authCheckInProgress = false;
                 authCheckSettled = true;
@@ -8643,7 +8711,7 @@
     
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
-    <script src="/static/reminder_notification.js?v=20260917upd8"></script>
+    <script src="/static/reminder_notification.js?v=20260917upd9"></script>
     <script src="/static/js/app-tabbar.js?v=20260912nav1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
     <script src="/static/js/daily-schedule.js?v=20260917upd5"></script>
