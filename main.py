@@ -146,8 +146,13 @@ else:
 
 
 @app.get("/")
-async def root():
-    """根路径直接返回首页，避免 WebView 缓存旧的 302 跳转。"""
+async def root(request: Request):
+    """未带当前 UI 版本号时 307 到新地址，逼 WebView 丢掉根路径上的旧 HTML。"""
+    if request.query_params.get("v") != STATIC_UI_VERSION:
+        return RedirectResponse(
+            url=f"/?v={STATIC_UI_VERSION}",
+            headers=NO_STORE_HEADERS,
+        )
     return FileResponse(
         "static/index.html",
         media_type="text/html",
