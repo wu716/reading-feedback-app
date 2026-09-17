@@ -199,10 +199,15 @@
 
 .schedule-nudge-item {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 12px;
     padding: 8px 0;
     border-bottom: 1px solid #eee7d8;
+}
+
+.schedule-nudge.is-collapsed .schedule-nudge-item {
+    border-bottom: none;
+    padding: 6px 0 8px;
 }
 
 .schedule-nudge-copy {
@@ -215,10 +220,23 @@
     color: #1c1b19;
 }
 
+.schedule-nudge.is-collapsed .schedule-nudge-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .schedule-nudge-why {
     margin-top: 2px;
     font-size: 0.72rem;
     color: #8a8478;
+}
+
+.schedule-nudge-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
 }
 
 .schedule-nudge-item button,
@@ -234,6 +252,11 @@
 
 .schedule-nudge-more {
     color: #8a8478;
+    margin-top: 0;
+}
+
+.schedule-nudge-more.is-footer {
+    margin-top: 8px;
 }
 
 .home-schedule-list {
