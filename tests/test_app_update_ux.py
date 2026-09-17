@@ -15,7 +15,8 @@ class AppUpdateUxTests(TestCase):
         self.assertIn("if (shell.hasUpdater)", body)
         self.assertIn("checkUpdate()", body)
         self.assertNotIn("copied=1", body)
-        self.assertLess(body.index("return;"), body.index("shuranOpenSystemBrowser"))
+        self.assertNotIn("location.href = pageUrl", body)
+        self.assertNotIn("from=app", body)
 
     def test_old_shell_opens_system_browser_for_apk(self):
         self.assertIn("function shuranAndroidIntentUrl", UPDATE_JS)
@@ -23,12 +24,16 @@ class AppUpdateUxTests(TestCase):
         self.assertIn("android.intent.action.VIEW", UPDATE_JS)
         self.assertIn("shuranOpenSystemBrowser(apkUrl)", UPDATE_JS)
 
-    def test_download_page_prefers_browser_handoff_over_copy_paste(self):
-        self.assertIn("用浏览器下载", DOWNLOAD_HTML)
-        self.assertIn("openSystemBrowser(apkUrl)", DOWNLOAD_HTML)
-        self.assertIn("android.intent.action.VIEW", DOWNLOAD_HTML)
-        self.assertNotIn("点击「复制下载链接」", DOWNLOAD_HTML)
+    def test_in_app_download_page_returns_home(self):
+        self.assertIn("window.location.replace(next)", DOWNLOAD_HTML)
+        self.assertIn('"/?update=1"', DOWNLOAD_HTML)
+        self.assertIn("inShuranApp", DOWNLOAD_HTML)
+
+    def test_current_shell_can_dismiss_update_gate(self):
+        self.assertIn("window.SHURAN_SHELL_GATE_LOCKED = false", UPDATE_JS)
+        self.assertIn("existing.remove()", UPDATE_JS)
+        self.assertNotIn("data-locked') === '1'", UPDATE_JS)
 
     def test_ui_cache_version_bumped(self):
-        self.assertIn('STATIC_UI_VERSION = "20260917upd7"', MAIN_PY)
-        self.assertIn("20260917upd7", UPDATE_JS)
+        self.assertIn('STATIC_UI_VERSION = "20260917upd8"', MAIN_PY)
+        self.assertIn("20260917upd8", UPDATE_JS)

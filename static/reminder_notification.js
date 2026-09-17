@@ -6,7 +6,7 @@
 (function hopOffSingapore() {
     try {
         if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-            location.replace('http://43.161.238.165:8000/?v=20260917upd7');
+            location.replace('http://43.161.238.165:8000/?v=20260917upd8');
         }
     } catch (e) { /* ignore */ }
 })();
@@ -1097,10 +1097,15 @@ function shuranOpenSystemBrowser(url) {
     }
 }
 
+function shuranGoHome() {
+    if (/^\/download(?:\/|$)/.test(window.location.pathname || '')) {
+        window.location.replace('/');
+    }
+}
+
 function shuranStartAppUpdate() {
     const shell = shuranShellInfo();
     const origin = window.location.origin || 'http://43.161.238.165:8000';
-    const pageUrl = origin + '/download';
     const apkUrl = origin + '/download/apk';
     if (!shuranIsPhoneApp()) {
         if (typeof showMessage === 'function') {
@@ -1108,18 +1113,16 @@ function shuranStartAppUpdate() {
         }
         return;
     }
+    if (!shuranShellNeedsUpdate(shell)) {
+        shuranGoHome();
+        return;
+    }
     if (shell.hasUpdater) {
         try { window.ShuranNative.checkUpdate(); } catch (e) { /* ignore */ }
         return;
     }
-    shuranCopyText(pageUrl);
-    const opened = shuranOpenSystemBrowser(apkUrl);
-    window.setTimeout(function () {
-        if (opened && document.visibilityState === 'hidden') {
-            return;
-        }
-        window.location.href = pageUrl + '?from=app';
-    }, 700);
+    shuranCopyText(origin + '/download');
+    shuranOpenSystemBrowser(apkUrl);
 }
 
 window.SHURAN_VERSION = window.SHURAN_VERSION || '1.5.0';
@@ -1223,10 +1226,8 @@ function shuranPromptShellUpdate(force) {
         const apply = function (latest) {
             if (!shuranShellNeedsUpdate(shell, latest)) {
                 const existing = document.getElementById('shuranShellUpdateGate');
-                if (existing && (existing.getAttribute('data-locked') === '1' || window.SHURAN_SHELL_GATE_LOCKED)) {
-                    return;
-                }
-                if (existing && !force) existing.remove();
+                if (existing) existing.remove();
+                window.SHURAN_SHELL_GATE_LOCKED = false;
                 return;
             }
             let bar = document.getElementById('shuranShellUpdateGate');
@@ -1280,14 +1281,29 @@ function promptLegacyNativeUpdate() {
     shuranPromptShellUpdate(false);
 }
 
+function shuranConsumeUpdateQuery() {
+    try {
+        const params = new URLSearchParams(window.location.search || '');
+        if (params.get('update') !== '1') return;
+        params.delete('update');
+        const next = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '') + (window.location.hash || '');
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, '', next);
+        }
+        shuranStartAppUpdate();
+    } catch (e) { /* ignore */ }
+}
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startReminderServiceIfLoggedIn);
     document.addEventListener('DOMContentLoaded', promptLegacyNativeUpdate);
     document.addEventListener('DOMContentLoaded', fillAppVersionLabel);
+    document.addEventListener('DOMContentLoaded', shuranConsumeUpdateQuery);
 } else {
     startReminderServiceIfLoggedIn();
     promptLegacyNativeUpdate();
     fillAppVersionLabel();
+    shuranConsumeUpdateQuery();
 }
 window.addEventListener('auth-check-settled', startReminderServiceIfLoggedIn);
 window.addEventListener('auth-check-settled', promptLegacyNativeUpdate);
