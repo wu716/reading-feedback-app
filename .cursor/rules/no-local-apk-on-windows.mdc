@@ -1,14 +1,18 @@
 ---
-description: 禁止在这台 Windows 电脑上下载、编译或保存手机安装包 (*.apk)
+description: 本机可打 APK；用户确认已传到服务器后必须删除本机所有 *.apk
 alwaysApply: true
 ---
 
-# 不要在本机保存 APK
+# 本机 APK：可打、确认上传后必须删
 
-不要在这台 Windows 电脑上下载、编译或保存手机安装包 (`*.apk`)；需要新外壳时只改 Android 源码并推 GitHub，由用户在服务器/手机更新，或明确要求时再在服务器上处理。不要 `git add` apk。
+用户要求更新手机外壳时，**允许**在这台 Windows 电脑上用项目现有 Android 构建（`mobile/android` gradle，keystore 已在磁盘）打签名包，输出到 `D:\projects\reading-feedback-app\releases\shuran.apk`。
 
-## 本机豁免（优先于「打 APK」技能）
+不要 `git add` apk，不要提交 `*.apk` / `releases/*.apk`。
 
-`do-it-and-give-steps`、`auto-push-github` 等技能若写「打 APK」或把安装包放到 `D:\projects\reading-feedback-app\releases\shuran.apk`：**这台 Windows 机器豁免**——用户已禁止本机 APK。不要 gradle 打包、不要从服务器 scp/下载 `.apk` 到本机、不要复制到 `releases/` 或 `mobile/android` 构建产物目录。
+## 上传后删除（必须）
 
-允许：改 `mobile/android` 源码、推 GitHub。需要新安装包时，等用户明确要求再在服务器上处理，或由用户在手机更新。
+用户确认文件已在服务器上（例如说「传好了」「上传完了」）之后，**必须删除本机所有 `*.apk`**，包括 `releases/shuran.apk` 以及 `mobile/android` 构建产物目录里的 apk。不要让安装包一直留在这台电脑上。本轮打完、用户尚未确认上传时，不要提前删除。
+
+## 与其他技能的关系
+
+`do-it-and-give-steps`、`auto-push-github` 等技能若写「打 APK」或把安装包放到 `releases/shuran.apk`：按本规则执行——用户要更新手机外壳时本机打包；确认上服务器后删干净。不要把 apk 加入 git。
