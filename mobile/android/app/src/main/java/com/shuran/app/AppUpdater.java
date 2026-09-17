@@ -126,6 +126,7 @@ public class AppUpdater {
         conn.setReadTimeout(12000);
         conn.setRequestProperty("Accept", "application/json");
         conn.setRequestProperty("Cache-Control", "no-cache");
+        conn.setInstanceFollowRedirects(true);
         try {
             int code = conn.getResponseCode();
             if (code != 200) {

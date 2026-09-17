@@ -8,6 +8,8 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
+from app.legacy_origin import canonical_url, is_legacy_singapore
+
 logger = logging.getLogger(__name__)
 
 GITHUB_APK_URL = (
@@ -103,7 +105,9 @@ def load_latest_meta() -> dict:
         "filename": "shuran.apk",
         "notes": "覆盖安装即可更新，登录数据会保留，不必卸载重装。",
         "require_shell": False,
+        "force": True,
         "minVersionCode": 0,
+        "minVersionName": MIN_SHELL_VERSION_NAME,
     }
     if not LATEST_META.is_file():
         return defaults
@@ -126,8 +130,10 @@ def load_latest_meta() -> dict:
             "versionName": str(data.get("versionName") or ""),
             "filename": str(data.get("filename") or defaults["filename"]),
             "notes": str(notes),
-            "require_shell": bool(data.get("require_shell")),
+            "require_shell": True,
+            "force": bool(data.get("force", True)),
             "minVersionCode": min_code,
+            "minVersionName": str(data.get("minVersionName") or MIN_SHELL_VERSION_NAME),
         }
     except Exception:
         return defaults
@@ -152,14 +158,22 @@ def build_info(request: Request | None = None) -> dict:
     reported_name = str(meta.get("versionName") or "") or MIN_SHELL_VERSION_NAME
     if _version_less(reported_name, MIN_SHELL_VERSION_NAME):
         reported_name = MIN_SHELL_VERSION_NAME
+    min_name = str(meta.get("minVersionName") or "") or MIN_SHELL_VERSION_NAME
+    if _version_less(min_name, MIN_SHELL_VERSION_NAME):
+        min_name = MIN_SHELL_VERSION_NAME
+    if request is not None and is_legacy_singapore(request):
+        download_url = canonical_url("/download/apk")
+        windows_download_url = canonical_url("/download/windows")
     info = {
-        "available": apk is not None,
+        "available": True,
         "filename": meta["filename"],
         "versionCode": reported_code,
         "versionName": reported_name,
         "notes": meta["notes"],
         "require_shell": True,
+        "force": True,
         "minVersionCode": reported_code,
+        "minVersionName": min_name,
         "download_url": download_url,
         "update_in_place": True,
         "windows_available": windows_exe is not None,
@@ -191,7 +205,13 @@ async def download_info(request: Request):
 
 
 @router.get("/download/apk")
-async def download_apk():
+async def download_apk(request: Request):
+    if is_legacy_singapore(request):
+        return RedirectResponse(
+            canonical_url("/download/apk"),
+            status_code=302,
+            headers={"Cache-Control": "no-store"},
+        )
     apk = ensure_apk()
     if apk:
         return FileResponse(

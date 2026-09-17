@@ -12,6 +12,7 @@ import uvicorn
 
 from app.config import settings
 from app.database import ensure_schema, get_db
+from app.legacy_origin import canonical_url, is_legacy_singapore, keep_on_legacy_origin
 from app.scheduler import start_scheduler
 from app.routers import auth, actions, practice, dashboard, ai_advice, today, app_download, owner, schedule, time_log
 from app.self_talk.router import router as self_talk_router
@@ -74,7 +75,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20260917upd4"
+STATIC_UI_VERSION = "20260917upd5"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
@@ -96,6 +97,21 @@ def stale_ui_redirect(request: Request, path: str) -> RedirectResponse | None:
         extra = "&".join(f"{key}={value}" for key, value in kept)
         url = f"{url}&{extra}"
     return RedirectResponse(url=url, headers=NO_STORE_HEADERS)
+
+
+@app.middleware("http")
+async def redirect_legacy_singapore(request: Request, call_next):
+    """1.3.4 仍打开新加坡。页面和安装包跳香港；健康检查与 API 留在旧机备份。"""
+    if not is_legacy_singapore(request):
+        return await call_next(request)
+    path = request.url.path or "/"
+    if keep_on_legacy_origin(path):
+        return await call_next(request)
+    if path in ("/", "/static/index.html"):
+        dest = canonical_url("/", f"v={STATIC_UI_VERSION}")
+    else:
+        dest = canonical_url(path, request.url.query)
+    return RedirectResponse(url=dest, status_code=302, headers=NO_STORE_HEADERS)
 
 
 @app.middleware("http")
