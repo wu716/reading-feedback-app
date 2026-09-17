@@ -1,0 +1,14 @@
+---
+description: 禁止在这台 Windows 电脑上下载、编译或保存手机安装包 (*.apk)
+alwaysApply: true
+---
+
+# 不要在本机保存 APK
+
+不要在这台 Windows 电脑上下载、编译或保存手机安装包 (`*.apk`)；需要新外壳时只改 Android 源码并推 GitHub，由用户在服务器/手机更新，或明确要求时再在服务器上处理。不要 `git add` apk。
+
+## 本机豁免（优先于「打 APK」技能）
+
+`do-it-and-give-steps`、`auto-push-github` 等技能若写「打 APK」或把安装包放到 `D:\projects\reading-feedback-app\releases\shuran.apk`：**这台 Windows 机器豁免**——用户已禁止本机 APK。不要 gradle 打包、不要从服务器 scp/下载 `.apk` 到本机、不要复制到 `releases/` 或 `mobile/android` 构建产物目录。
+
+允许：改 `mobile/android` 源码、推 GitHub。需要新安装包时，等用户明确要求再在服务器上处理，或由用户在手机更新。
