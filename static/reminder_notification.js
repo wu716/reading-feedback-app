@@ -480,14 +480,17 @@ class ReminderNotificationService {
 
         const bellBtn = document.getElementById('reminderBellBtn');
         const dropdown = document.getElementById('reminderDropdown');
-        if (bellBtn && dropdown) {
+        if (bellBtn && dropdown && !bellBtn.dataset.reminderBound) {
+            bellBtn.dataset.reminderBound = '1';
             bellBtn.addEventListener('click', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 this.toggleDropdown();
             });
         }
         const settingsLink = document.getElementById('reminderSettingsLink');
-        if (settingsLink) {
+        if (settingsLink && !settingsLink.dataset.reminderBound) {
+            settingsLink.dataset.reminderBound = '1';
             settingsLink.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.openSettings();
@@ -495,11 +498,18 @@ class ReminderNotificationService {
         }
         const closeBtn = document.getElementById('reminderDropdownClose');
         if (closeBtn) {
-            closeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.closeDropdown();
-            });
+            closeBtn.textContent = '收起';
+            closeBtn.setAttribute('aria-label', '收起');
+            if (!closeBtn.dataset.reminderBound) {
+                closeBtn.dataset.reminderBound = '1';
+                closeBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.closeDropdown();
+                });
+            }
         }
+        this.ensureBackdrop();
         document.addEventListener('click', (e) => {
             const wrap = document.getElementById('reminderBellWrap');
             if (wrap && !wrap.contains(e.target)) this.closeDropdown();
@@ -520,12 +530,15 @@ class ReminderNotificationService {
             .reminder-bell-btn { position: relative; width: 40px; height: 40px; border: none; border-radius: 0; background: transparent; color: #f3efe6; cursor: pointer; display: flex; align-items: center; justify-content: center; }
             .reminder-bell-icon { width: 22px; height: 22px; display: block; }
             .reminder-bell-badge { position: absolute; top: 7px; right: 8px; width: 7px; height: 7px; min-width: 0; padding: 0; background: #9c3b32; color: transparent; font-size: 0; line-height: 0; border-radius: 50%; box-shadow: 0 0 0 2px #6b63c4; }
-            .reminder-dropdown { position: absolute; top: calc(100% + 8px); right: 0; left: auto; width: 360px; max-width: calc(100vw - 24px); box-sizing: border-box; background: #fff; color: #333; border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,0.18); z-index: 1200; overflow: hidden; display: flex; flex-direction: column; }
+            .reminder-backdrop { display: none; position: fixed; inset: 0; background: rgba(28,27,25,0.4); z-index: 1290; }
+            .reminder-backdrop.is-open { display: block; }
+            .reminder-dropdown { position: absolute; top: calc(100% + 8px); right: 0; left: auto; width: 360px; max-width: calc(100vw - 24px); box-sizing: border-box; background: #fff; color: #333; border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,0.18); z-index: 1300; overflow: hidden; flex-direction: column; display: none; }
+            .reminder-dropdown.is-open { display: flex !important; }
             .reminder-dropdown[hidden] { display: none !important; }
             .reminder-dropdown-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #eee; font-size: 0.95rem; flex-shrink: 0; }
             .reminder-dropdown-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
             .reminder-dropdown-head a { color: #667eea; text-decoration: none; font-size: 0.85rem; }
-            .reminder-dropdown-close { width: 32px; height: 32px; border: none; border-radius: 8px; background: #f0f0f0; color: #555; font-size: 1.25rem; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+            .reminder-dropdown-close { min-width: 52px; height: 32px; border: none; border-radius: 8px; background: #f0f0f0; color: #374151; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
             .reminder-dropdown-list { max-height: 360px; overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
             .reminder-empty { padding: 20px; color: #999; font-size: 0.9rem; text-align: center; }
             .reminder-item { padding: 12px 14px; border-bottom: 1px solid #f3f3f3; }
@@ -574,7 +587,7 @@ class ReminderNotificationService {
                     <strong>提醒</strong>
                     <div class="reminder-dropdown-head-actions">
                         <a href="#" id="reminderSettingsLink">提醒设置</a>
-                        <button type="button" class="reminder-dropdown-close" id="reminderDropdownClose" aria-label="关闭">×</button>
+                        <button type="button" class="reminder-dropdown-close" id="reminderDropdownClose" aria-label="收起">收起</button>
                     </div>
                 </div>
                 <div class="reminder-dropdown-list" id="reminderDropdownList"></div>
@@ -615,18 +628,57 @@ class ReminderNotificationService {
         }
     }
 
+    ensureBackdrop() {
+        let backdrop = document.getElementById('reminderBackdrop');
+        if (backdrop) return backdrop;
+        backdrop = document.createElement('div');
+        backdrop.id = 'reminderBackdrop';
+        backdrop.className = 'reminder-backdrop';
+        backdrop.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            this.closeDropdown();
+        });
+        document.body.appendChild(backdrop);
+        return backdrop;
+    }
+
+    isDropdownOpen() {
+        const dropdown = document.getElementById('reminderDropdown');
+        return !!(dropdown && dropdown.classList.contains('is-open'));
+    }
+
     toggleDropdown() {
+        if (this.isDropdownOpen()) this.closeDropdown();
+        else this.openDropdown();
+    }
+
+    openDropdown() {
         const dropdown = document.getElementById('reminderDropdown');
         if (!dropdown) return;
-        this.dropdownOpen = dropdown.hidden;
-        dropdown.hidden = !this.dropdownOpen;
-        if (this.dropdownOpen) this.positionDropdown();
+        dropdown.hidden = false;
+        dropdown.removeAttribute('hidden');
+        dropdown.classList.add('is-open');
+        this.dropdownOpen = true;
+        const backdrop = this.ensureBackdrop();
+        backdrop.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+        const btn = document.getElementById('reminderBellBtn');
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+        this.positionDropdown();
     }
 
     closeDropdown() {
         const dropdown = document.getElementById('reminderDropdown');
-        if (dropdown) dropdown.hidden = true;
+        if (dropdown) {
+            dropdown.hidden = true;
+            dropdown.classList.remove('is-open');
+        }
         this.dropdownOpen = false;
+        const backdrop = document.getElementById('reminderBackdrop');
+        if (backdrop) backdrop.classList.remove('is-open');
+        document.body.style.overflow = '';
+        const btn = document.getElementById('reminderBellBtn');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
     }
 
     isNarrowViewport() {
@@ -635,7 +687,7 @@ class ReminderNotificationService {
 
     positionDropdown() {
         const dropdown = document.getElementById('reminderDropdown');
-        if (!dropdown || dropdown.hidden) return;
+        if (!dropdown || !this.isDropdownOpen()) return;
 
         dropdown.style.transform = '';
         dropdown.style.removeProperty('--reminder-sheet-top');
@@ -996,7 +1048,7 @@ function shuranStartAppUpdate() {
         }
         return;
     }
-    if (shell.hasUpdater && !shuranVersionLess(shell.versionName, '1.5.2')) {
+    if (shell.hasUpdater) {
         window.ShuranNative.checkUpdate();
         return;
     }
@@ -1006,6 +1058,8 @@ function shuranStartAppUpdate() {
 }
 
 window.SHURAN_VERSION = window.SHURAN_VERSION || '1.5.0';
+window.SHURAN_MIN_SHELL_CODE = 20;
+window.SHURAN_MIN_SHELL_NAME = '1.5.4';
 
 function fillAppVersionLabel() {
     const label = document.getElementById('appVersionLabel');
@@ -1024,10 +1078,6 @@ function fillAppVersionLabel() {
     if (cardTitle && (cardTitle.textContent === '当前内容' || cardTitle.textContent === '版本更新')) {
         cardTitle.textContent = '版本';
     }
-    if (btn) {
-        btn.hidden = true;
-        btn.textContent = '换安装包';
-    }
 
     if (shell.versionName) {
         label.textContent = version + ' · 外壳 ' + shell.versionName;
@@ -1035,15 +1085,15 @@ function fillAppVersionLabel() {
         label.textContent = version;
     }
 
+    const outdated = shuranShellNeedsUpdate(shell);
+    if (btn) {
+        btn.hidden = !(shell.inApp && outdated);
+        btn.textContent = '立即更新';
+    }
     if (hint) {
-        const outdated = shuranVersionLess(shell.versionName, '1.5.2')
-            || (shell.versionCode > 0 && shell.versionCode < 18);
-        if (shell.inApp && (outdated || !shell.hasUpdater)) {
+        if (shell.inApp && outdated) {
             hint.hidden = false;
-            hint.textContent = outdated
-                ? '需要更新手机外壳后，音量键和系统通知才能用。点右侧即可覆盖安装，不用卸载。'
-                : '当前外壳过旧。点右侧更新安装包，不要卸载。';
-            if (btn) btn.hidden = false;
+            hint.textContent = '当前外壳过旧，点右侧覆盖安装即可，不用卸载，登录会保留。';
         } else {
             hint.textContent = '';
             hint.hidden = true;
@@ -1052,56 +1102,84 @@ function fillAppVersionLabel() {
 }
 
 window.shuranStartAppUpdate = shuranStartAppUpdate;
+window.shuranPromptShellUpdate = shuranPromptShellUpdate;
 
 function startReminderServiceIfLoggedIn() {
     const token = localStorage.getItem('authToken') || localStorage.getItem('token');
     if (token) window.reminderNotificationService.start();
 }
 
-function promptLegacyNativeUpdate() {
+function shuranShellNeedsUpdate(shell, latest) {
+    shell = shell || shuranShellInfo();
+    if (!shell.inApp) return false;
+    const minCode = Number((latest && latest.versionCode) || window.SHURAN_MIN_SHELL_CODE || 20);
+    const minName = String((latest && latest.versionName) || window.SHURAN_MIN_SHELL_NAME || '1.5.4');
+    const code = Number(shell.versionCode) || 0;
+    if (code > 0 && code < minCode) return true;
+    if (shell.versionName && shuranVersionLess(shell.versionName, minName)) return true;
+    if (code === 0 && !shell.hasUpdater) return true;
+    return false;
+}
+
+function shuranPromptShellUpdate(force) {
     try {
         const shell = shuranShellInfo();
         if (!shell.inApp) return;
-        if (sessionStorage.getItem('shuran_shell_update_152') === '1') return;
-        if (document.getElementById('shuranNativeUpdateBanner')) return;
-        const currentName = shell.versionName || '旧版';
-        const currentCode = Number(shell.versionCode) || 0;
-        const outdated = shuranVersionLess(currentName, '1.5.2') || (currentCode > 0 && currentCode < 18);
-        if (!outdated) return;
-        const bar = document.createElement('div');
-        bar.id = 'shuranNativeUpdateBanner';
-        bar.setAttribute('role', 'dialog');
-        bar.style.cssText = [
-            'position:fixed',
-            'left:12px',
-            'right:12px',
-            'bottom:16px',
-            'z-index:9999',
-            'background:#1a1a2e',
-            'color:#fff',
-            'border-radius:14px',
-            'padding:16px',
-            'box-shadow:0 8px 24px rgba(0,0,0,.25)',
-            'font-size:15px',
-            'line-height:1.55'
-        ].join(';');
-        bar.innerHTML = '<strong style="font-size:16px;">需要更新手机外壳</strong>'
-            + '<p style="margin:8px 0 14px;opacity:.92;">当前 ' + currentName + '，最新 1.5.2。网页已经是新的。音量键和「记」在安装包里，点一次覆盖即可，不用卸载。</p>'
-            + '<div style="display:flex;gap:8px;">'
-            + '<button type="button" id="shuranUpdateNowBtn" style="flex:1;border:none;border-radius:10px;padding:11px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:600;">立即更新</button>'
-            + '<button type="button" id="shuranUpdateLaterBtn" style="border:none;border-radius:10px;padding:11px 16px;background:#333;color:#ddd;">稍后</button>'
-            + '</div>';
-        document.body.appendChild(bar);
-        document.getElementById('shuranUpdateNowBtn').onclick = function () {
-            shuranStartAppUpdate();
+        const existing = document.getElementById('shuranShellUpdateGate');
+        const apply = function (latest) {
+            if (!shuranShellNeedsUpdate(shell, latest)) {
+                if (existing && !force) existing.remove();
+                return;
+            }
+            const latestName = (latest && latest.versionName) || window.SHURAN_MIN_SHELL_NAME;
+            const currentName = shell.versionName || '旧版';
+            let bar = document.getElementById('shuranShellUpdateGate');
+            if (!bar) {
+                bar = document.createElement('div');
+                bar.id = 'shuranShellUpdateGate';
+                bar.setAttribute('role', 'dialog');
+                bar.setAttribute('aria-modal', 'true');
+                document.body.appendChild(bar);
+            }
+            bar.style.cssText = [
+                'position:fixed',
+                'inset:0',
+                'z-index:2147483000',
+                'background:#1a1a2e',
+                'color:#fff',
+                'display:flex',
+                'flex-direction:column',
+                'justify-content:center',
+                'padding:28px 22px',
+                'box-sizing:border-box'
+            ].join(';');
+            bar.innerHTML = '<div style="max-width:420px;margin:0 auto;width:100%;">'
+                + '<h1 style="font-size:1.45rem;margin:0 0 12px;">需要更新外壳</h1>'
+                + '<p style="line-height:1.65;opacity:.92;margin:0 0 22px;">当前外壳 ' + currentName
+                + '，最新 ' + latestName + '。网页已经是新的，但这个安装包太旧，点一次覆盖安装即可，不必卸载，登录会保留。</p>'
+                + '<button type="button" id="shuranUpdateNowBtn" style="width:100%;border:none;border-radius:12px;padding:14px 16px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:1.05rem;font-weight:700;">立即更新</button>'
+                + '</div>';
+            const btn = document.getElementById('shuranUpdateNowBtn');
+            if (btn) btn.onclick = function () { shuranStartAppUpdate(); };
+            const earlyLink = bar.querySelector('#shuranShellUpdateLink');
+            if (earlyLink) {
+                earlyLink.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    shuranStartAppUpdate();
+                });
+            }
         };
-        document.getElementById('shuranUpdateLaterBtn').onclick = function () {
-            sessionStorage.setItem('shuran_shell_update_152', '1');
-            bar.remove();
-        };
+        fetch('/download/info', { cache: 'no-store' })
+            .then(function (res) { return res.ok ? res.json() : {}; })
+            .then(apply)
+            .catch(function () { apply(null); });
     } catch (e) {
-        console.warn('promptLegacyNativeUpdate', e);
+        console.warn('shuranPromptShellUpdate', e);
     }
+}
+
+function promptLegacyNativeUpdate() {
+    shuranPromptShellUpdate(false);
 }
 
 if (document.readyState === 'loading') {

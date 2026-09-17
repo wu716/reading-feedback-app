@@ -23,6 +23,26 @@ from app.self_talk.reminder_service import ReminderService
 router = APIRouter(prefix="/actions", tags=["行动项管理"])
 
 
+def autofill_action_end_date(action: Action) -> None:
+    """完成天数/坚持天数已填、开始日期已有时，自动写出结束日期 = 开始 + 天数。"""
+    if getattr(action, "end_date", None) or not getattr(action, "start_date", None):
+        return
+    if getattr(action, "duration_type", None) == "lifetime":
+        return
+    days = None
+    if getattr(action, "action_type", None) == "trigger":
+        days = getattr(action, "custom_frequency_days", None)
+    else:
+        days = getattr(action, "target_duration_days", None)
+    try:
+        days = int(days) if days is not None else 0
+    except (TypeError, ValueError):
+        days = 0
+    if days < 1:
+        return
+    action.end_date = action.start_date + timedelta(days=days)
+
+
 @router.get("/ai-quota")
 async def get_ai_quota(
     current_user: User = Depends(get_current_active_user),
@@ -125,6 +145,7 @@ async def create_action(
         start_date=action_data.start_date or date.today(),
         end_date=action_data.end_date,
     )
+    autofill_action_end_date(db_action)
     db.add(db_action)
     db.commit()
     db.refresh(db_action)
@@ -355,6 +376,7 @@ async def update_action(
         action.start_date = action_update.start_date
     if action_update.end_date is not None:
         action.end_date = action_update.end_date
+    autofill_action_end_date(action)
     
     db.commit()
     db.refresh(action)

@@ -586,6 +586,13 @@ public class MainActivity extends Activity {
                 null
         );
         notifyNativeAppResume();
+        if (appUpdater != null && errorView.getVisibility() != View.VISIBLE) {
+            webView.postDelayed(() -> {
+                if (!isFinishing() && appUpdater != null) {
+                    appUpdater.check(false);
+                }
+            }, 600);
+        }
     }
 
     @Override

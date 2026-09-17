@@ -3,7 +3,7 @@
     <string name="app_name">书然</string>
     <string name="app_url">http://43.161.238.165:8000/</string>
     <!-- Keep in sync with STATIC_UI_VERSION in main.py -->
-    <string name="static_ui_version">20260917nudge1</string>
+    <string name="static_ui_version">20260917upd1</string>
     <string name="loading">正在打开书然…</string>
     <string name="network_error">无法连接服务器，请检查网络后重试</string>
     <string name="retry">重试</string>
@@ -24,7 +24,7 @@
     <string name="notification_reading_body">到每日阅读时间了，打开今日记录一下。</string>
     <string name="notification_todo_title">待办提醒</string>
     <string name="notification_todo_fallback">你有一条待办到点了。</string>
-    <string name="update_title">发现新版本</string>
+    <string name="update_title">需要更新</string>
     <string name="update_message">当前版本 %1$s，最新版本 %2$s。\n将覆盖安装，登录数据会保留，无需卸载。</string>
     <string name="update_now">立即更新</string>
     <string name="update_later">稍后</string>
