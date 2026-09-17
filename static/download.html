@@ -156,7 +156,7 @@
         <h1>书然</h1>
         <p class="sub" id="subText">覆盖安装，账号数据会保留</p>
         <p class="meta" id="meta">正在检查安装包…</p>
-        <p class="warn" id="inAppHint" style="display:none;">当前无法在应用内完成安装。请打开手机自带的浏览器（荣耀浏览器 / Chrome），在地址栏粘贴链接后下载。安装时选择「更新」，不要卸载。</p>
+        <p class="warn" id="inAppHint" style="display:none;">将打开手机自带的浏览器下载安装包。若没有跳转，再点「复制下载链接」，用荣耀浏览器 / Chrome 粘贴打开。安装时选择「更新」，不要卸载。</p>
         <a class="btn btn-primary" id="downloadBtn" href="/download/apk" style="pointer-events:none;opacity:0.45;">立即更新</a>
         <button type="button" class="btn btn-ghost" id="copyBtn">复制下载链接</button>
         <p class="ok" id="copiedHint">链接已复制</p>
@@ -193,6 +193,47 @@
         const apkLink = document.getElementById("apkLink");
         const tipsList = document.getElementById("tipsList");
         const pageUrl = window.location.origin + "/download";
+        const apkUrl = window.location.origin + "/download/apk";
+        const fromApp = /(?:^|[?&])from=app(?:&|$)/.test(window.location.search);
+        const openedKey = "shuran.openedBrowserDownload";
+
+        function androidIntentUrl(url) {
+            try {
+                const parsed = new URL(url, window.location.href);
+                const hostPath = parsed.host + parsed.pathname + parsed.search + parsed.hash;
+                return "intent://" + hostPath
+                    + "#Intent;scheme=" + parsed.protocol.replace(":", "")
+                    + ";action=android.intent.action.VIEW"
+                    + ";category=android.intent.category.BROWSABLE"
+                    + ";end";
+            } catch (e) {
+                return "";
+            }
+        }
+
+        function openSystemBrowser(url) {
+            if (window.ShuranNative && typeof window.ShuranNative.openExternalUrl === "function") {
+                try {
+                    window.ShuranNative.openExternalUrl(url);
+                    return true;
+                } catch (e) {}
+            }
+            const intentUrl = androidIntentUrl(url);
+            if (!intentUrl) return false;
+            try {
+                const a = document.createElement("a");
+                a.href = intentUrl;
+                a.target = "_blank";
+                a.rel = "noopener";
+                a.style.display = "none";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
 
         function copyTextFallback(text) {
             try {
@@ -236,11 +277,6 @@
                 copyBtn.textContent = "链接已复制";
                 copyBtn.classList.add("btn-success");
                 copyBtn.classList.remove("btn-primary", "btn-ghost");
-                if (needsBrowserInstall) {
-                    btn.textContent = "链接已复制";
-                    btn.classList.add("btn-success");
-                    btn.classList.remove("btn-primary");
-                }
                 return;
             }
             copiedHint.classList.add("show");
@@ -279,24 +315,30 @@
         if (needsBrowserInstall) {
             inAppHint.style.display = "block";
             inAppHint.parentNode.insertBefore(inAppHint, btn);
-            copyBtn.className = "btn btn-primary";
-            copyBtn.style.marginTop = "0";
-            btn.parentNode.insertBefore(copyBtn, btn);
-            btn.textContent = "立即更新";
-            btn.className = "btn btn-ghost";
+            btn.textContent = "用浏览器下载";
             btn.removeAttribute("href");
             btn.style.pointerEvents = "auto";
             btn.style.opacity = "1";
             btn.style.display = "block";
-            apkLink.style.display = "block";
+            apkLink.style.display = "none";
             showUrlBox();
             tipsList.innerHTML = ""
-                + "<li>点击「复制下载链接」</li>"
-                + "<li>打开手机自带的浏览器（荣耀浏览器 / Chrome）</li>"
-                + "<li>在地址栏粘贴并打开，下载安装包</li>"
+                + "<li>点「用浏览器下载」，手机会打开自带浏览器并开始下载</li>"
+                + "<li>若没有跳转，点「复制下载链接」，打开荣耀浏览器 / Chrome 粘贴</li>"
                 + "<li>安装时选择「更新」，不要卸载</li>";
             if (alreadyCopied) {
                 markCopied(true);
+            }
+            let shouldAutoOpen = fromApp;
+            try {
+                shouldAutoOpen = fromApp && sessionStorage.getItem(openedKey) !== "1";
+            } catch (e) {}
+            if (shouldAutoOpen && !inWeChat) {
+                try { sessionStorage.setItem(openedKey, "1"); } catch (e) {}
+                window.setTimeout(function () {
+                    openSystemBrowser(apkUrl);
+                    copyText(pageUrl);
+                }, 200);
             }
         }
 
@@ -350,12 +392,21 @@
             }
             if (hasNativeUpdater) {
                 event.preventDefault();
-                window.ShuranNative.checkUpdate();
+                if (window.ShuranNative && typeof window.ShuranNative.checkUpdate === "function") {
+                    window.ShuranNative.checkUpdate();
+                }
                 return;
             }
             if (needsBrowserInstall) {
                 event.preventDefault();
+                const opened = openSystemBrowser(apkUrl);
                 copyDownloadLink();
+                if (!opened) {
+                    copiedHint.classList.add("show");
+                    copiedHint.textContent = "未能自动打开浏览器，请复制下方链接";
+                    copiedHint.style.background = "#fff4e5";
+                    copiedHint.style.color = "#8a5a00";
+                }
             }
         });
 
