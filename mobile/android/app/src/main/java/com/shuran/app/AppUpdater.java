@@ -33,8 +33,8 @@ public class AppUpdater {
     static final int REQUEST_INSTALL_UNKNOWN = 1004;
     private static final String TAG = "ShuranUpdate";
     private static final String META_PATH = "/download/info";
-    private static final int MIN_SHELL_CODE = 20;
-    private static final String MIN_SHELL_NAME = "1.5.4";
+    private static final int MIN_SHELL_CODE = 18;
+    private static final String MIN_SHELL_NAME = "1.5.2";
 
     private final MainActivity activity;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -377,6 +377,7 @@ public class AppUpdater {
         } catch (Exception e) {
             Log.e(TAG, "install launch failed", e);
             Toast.makeText(activity, R.string.update_install_failed, Toast.LENGTH_LONG).show();
+            activity.openExternalUrl(activity.updateBaseUrl() + "/download/apk");
         }
     }
 }

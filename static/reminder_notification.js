@@ -6,7 +6,7 @@
 (function hopOffSingapore() {
     try {
         if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-            location.replace('http://43.161.238.165:8000/?v=20260917upd5');
+            location.replace('http://43.161.238.165:8000/?v=20260917upd8');
         }
     } catch (e) { /* ignore */ }
 })();
@@ -1046,8 +1046,8 @@ function shuranVersionLess(current, latest) {
 }
 
 function shuranMinShell(latest) {
-    const floorCode = Number(window.SHURAN_MIN_SHELL_CODE) || 20;
-    const floorName = String(window.SHURAN_MIN_SHELL_NAME || '1.5.4');
+    const floorCode = Number(window.SHURAN_MIN_SHELL_CODE) || 18;
+    const floorName = String(window.SHURAN_MIN_SHELL_NAME || '1.5.2');
     const remoteCode = Math.max(
         Number(latest && latest.versionCode) || 0,
         Number(latest && latest.minVersionCode) || 0
@@ -1058,32 +1058,76 @@ function shuranMinShell(latest) {
     return { minCode: minCode, minName: minName };
 }
 
+function shuranAndroidIntentUrl(url) {
+    try {
+        const parsed = new URL(url, window.location.href);
+        const hostPath = parsed.host + parsed.pathname + (parsed.search || '') + (parsed.hash || '');
+        const scheme = String(parsed.protocol || 'http:').replace(':', '');
+        return 'intent://' + hostPath
+            + '#Intent;scheme=' + scheme
+            + ';action=android.intent.action.VIEW'
+            + ';category=android.intent.category.BROWSABLE'
+            + ';end';
+    } catch (e) {
+        return '';
+    }
+}
+
+function shuranOpenSystemBrowser(url) {
+    if (window.ShuranNative && typeof window.ShuranNative.openExternalUrl === 'function') {
+        try {
+            window.ShuranNative.openExternalUrl(url);
+            return true;
+        } catch (e) { /* ignore */ }
+    }
+    const intentUrl = shuranAndroidIntentUrl(url);
+    if (!intentUrl) return false;
+    try {
+        const a = document.createElement('a');
+        a.href = intentUrl;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function shuranGoHome() {
+    if (/^\/download(?:\/|$)/.test(window.location.pathname || '')) {
+        window.location.replace('/');
+    }
+}
+
 function shuranStartAppUpdate() {
     const shell = shuranShellInfo();
     const origin = window.location.origin || 'http://43.161.238.165:8000';
-    const pageUrl = origin + '/download';
+    const apkUrl = origin + '/download/apk';
     if (!shuranIsPhoneApp()) {
         if (typeof showMessage === 'function') {
             showMessage('电脑用的是网页，刷新即可。安装包只给安卓手机。', 'info');
         }
         return;
     }
-    const outdated = shuranShellNeedsUpdate(shell);
-    if (shell.hasUpdater && !outdated) {
-        window.ShuranNative.checkUpdate();
+    if (!shuranShellNeedsUpdate(shell)) {
+        shuranGoHome();
         return;
     }
     if (shell.hasUpdater) {
         try { window.ShuranNative.checkUpdate(); } catch (e) { /* ignore */ }
+        return;
     }
-    shuranCopyText(pageUrl).then(function (ok) {
-        window.location.href = pageUrl + '?from=app' + (ok ? '&copied=1' : '');
-    });
+    shuranCopyText(origin + '/download');
+    shuranOpenSystemBrowser(apkUrl);
 }
 
 window.SHURAN_VERSION = window.SHURAN_VERSION || '1.5.0';
-window.SHURAN_MIN_SHELL_CODE = 20;
-window.SHURAN_MIN_SHELL_NAME = '1.5.4';
+window.SHURAN_MIN_SHELL_CODE = 18;
+window.SHURAN_MIN_SHELL_NAME = '1.5.2';
 
 function shuranIsOwner() {
     try {
@@ -1153,6 +1197,8 @@ function fillAppVersionLabel() {
 
 window.shuranStartAppUpdate = shuranStartAppUpdate;
 window.shuranPromptShellUpdate = shuranPromptShellUpdate;
+window.shuranOpenSystemBrowser = shuranOpenSystemBrowser;
+window.shuranAndroidIntentUrl = shuranAndroidIntentUrl;
 
 function startReminderServiceIfLoggedIn() {
     const token = localStorage.getItem('authToken') || localStorage.getItem('token');
@@ -1180,10 +1226,8 @@ function shuranPromptShellUpdate(force) {
         const apply = function (latest) {
             if (!shuranShellNeedsUpdate(shell, latest)) {
                 const existing = document.getElementById('shuranShellUpdateGate');
-                if (existing && (existing.getAttribute('data-locked') === '1' || window.SHURAN_SHELL_GATE_LOCKED)) {
-                    return;
-                }
-                if (existing && !force) existing.remove();
+                if (existing) existing.remove();
+                window.SHURAN_SHELL_GATE_LOCKED = false;
                 return;
             }
             let bar = document.getElementById('shuranShellUpdateGate');
@@ -1210,7 +1254,7 @@ function shuranPromptShellUpdate(force) {
             ].join(';');
             bar.innerHTML = '<div style="max-width:420px;margin:0 auto;width:100%;">'
                 + '<h1 style="font-size:1.45rem;margin:0 0 12px;">需要更新书然</h1>'
-                + '<p style="line-height:1.65;opacity:.92;margin:0 0 22px;">请点一次覆盖安装最新书然。登录会保留，不必卸载。</p>'
+                + '<p style="line-height:1.65;opacity:.92;margin:0 0 22px;">点一次即可更新。登录会保留，不必卸载。</p>'
                 + '<button type="button" id="shuranUpdateNowBtn" style="width:100%;border:none;border-radius:12px;padding:14px 16px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:1.05rem;font-weight:700;">立即更新</button>'
                 + '</div>';
             const btn = document.getElementById('shuranUpdateNowBtn');
@@ -1237,14 +1281,29 @@ function promptLegacyNativeUpdate() {
     shuranPromptShellUpdate(false);
 }
 
+function shuranConsumeUpdateQuery() {
+    try {
+        const params = new URLSearchParams(window.location.search || '');
+        if (params.get('update') !== '1') return;
+        params.delete('update');
+        const next = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '') + (window.location.hash || '');
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, '', next);
+        }
+        shuranStartAppUpdate();
+    } catch (e) { /* ignore */ }
+}
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startReminderServiceIfLoggedIn);
     document.addEventListener('DOMContentLoaded', promptLegacyNativeUpdate);
     document.addEventListener('DOMContentLoaded', fillAppVersionLabel);
+    document.addEventListener('DOMContentLoaded', shuranConsumeUpdateQuery);
 } else {
     startReminderServiceIfLoggedIn();
     promptLegacyNativeUpdate();
     fillAppVersionLabel();
+    shuranConsumeUpdateQuery();
 }
 window.addEventListener('auth-check-settled', startReminderServiceIfLoggedIn);
 window.addEventListener('auth-check-settled', promptLegacyNativeUpdate);

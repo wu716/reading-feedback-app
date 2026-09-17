@@ -230,6 +230,24 @@ public class MainActivity extends Activity {
         }
     }
 
+    void openExternalUrl(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            return;
+        }
+        try {
+            Uri uri = Uri.parse(url.trim());
+            String scheme = uri.getScheme();
+            if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+                return;
+            }
+            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            intent.addCategory(Intent.CATEGORY_BROWSABLE);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception ignored) {
+        }
+    }
+
     String updateBaseUrl() {
         try {
             String live = webView != null ? webView.getUrl() : null;

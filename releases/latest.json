@@ -1,10 +1,10 @@
 {
-  "versionCode": 20,
-  "versionName": "1.5.4",
+  "versionCode": 18,
+  "versionName": "1.5.2",
   "filename": "shuran.apk",
-  "notes": "请覆盖安装最新书然。登录数据会保留，不必卸载。",
+  "notes": "请覆盖安装。登录数据会保留，不必卸载。",
   "require_shell": true,
   "force": true,
-  "minVersionCode": 20,
-  "minVersionName": "1.5.4"
+  "minVersionCode": 18,
+  "minVersionName": "1.5.2"
 }

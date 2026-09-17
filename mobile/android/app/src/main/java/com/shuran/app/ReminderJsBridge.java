@@ -180,6 +180,11 @@ public class ReminderJsBridge {
     }
 
     @JavascriptInterface
+    public void openExternalUrl(String url) {
+        activity.runOnUiThread(() -> activity.openExternalUrl(url));
+    }
+
+    @JavascriptInterface
     public boolean canNativeRecord() {
         return true;
     }
