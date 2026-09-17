@@ -23,6 +23,7 @@ FROM (
     ('daily_schedules'),('future_actions'),('reading_entries'),('self_talks'),
     ('self_talk_playback_logs'),('ai_advice_sessions'),('ai_advice_messages'),
     ('self_talk_reminder_settings'),('self_talk_reminder_logs'),('ai_call_logs'),
+    ('subscriptions'),('invite_codes'),
     ('time_log_nodes')
 ) AS n(t)
 ORDER BY 1;
@@ -54,7 +55,9 @@ FROM (
     ('ai_advice_messages', 'sg_stg_ai_advice_messages'),
     ('self_talk_reminder_settings', 'sg_stg_self_talk_reminder_settings'),
     ('self_talk_reminder_logs', 'sg_stg_self_talk_reminder_logs'),
-    ('ai_call_logs', 'sg_stg_ai_call_logs')
+    ('ai_call_logs', 'sg_stg_ai_call_logs'),
+    ('subscriptions', 'sg_stg_subscriptions'),
+    ('invite_codes', 'sg_stg_invite_codes')
 ) AS n(t, stg);
 
 SELECT 'sg_emails_missing_on_hk' AS check;

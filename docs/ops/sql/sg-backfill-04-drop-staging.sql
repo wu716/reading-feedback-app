@@ -14,4 +14,6 @@ DROP TABLE IF EXISTS
   sg_stg_ai_call_logs,
   sg_stg_actions,
   sg_stg_users,
+  sg_stg_subscriptions,
+  sg_stg_invite_codes,
   sg_id_map;

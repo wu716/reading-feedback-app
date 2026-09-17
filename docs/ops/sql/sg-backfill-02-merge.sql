@@ -1,5 +1,7 @@
 -- 新加坡补迁：按邮箱对齐写入香港。已存在的行跳过。不覆盖香港用户。
--- 不处理 time_log_nodes / subscriptions / invite_codes。
+-- 不处理 time_log_nodes / anonymized_data / audit_logs。
+-- subscriptions：该邮箱在香港已有订阅则跳过，不覆盖。
+-- invite_codes：香港已有相同 code 则跳过，不覆盖。
 -- 正式表不存在则跳过（新加坡旧库没有 future_actions 时不是数据丢失）。
 -- 失败立刻停。禁止 DROP SCHEMA。禁止 docker compose down -v。
 
@@ -14,7 +16,7 @@ BEGIN
     'users','actions','practice_logs','daily_todos','daily_tasks','daily_schedules',
     'future_actions','reading_entries','self_talks','self_talk_playback_logs',
     'ai_advice_sessions','ai_advice_messages','self_talk_reminder_settings',
-    'self_talk_reminder_logs','ai_call_logs'
+    'self_talk_reminder_logs','ai_call_logs','subscriptions','invite_codes'
   ]
   LOOP
     IF to_regclass('public.' || t) IS NULL THEN
@@ -101,8 +103,10 @@ INSERT INTO actions (
   custom_frequency_days, start_date, end_date, created_at, updated_at, deleted_at
 )
 SELECT
-  new_id, hk_user_id, book_title, source_excerpt, action_text, tags, frequency, status,
-  action_type, duration_type, target_duration_days, target_frequency,
+  new_id, hk_user_id, book_title, source_excerpt, action_text,
+  COALESCE(tags, '[]'), COALESCE(frequency, 'daily'), COALESCE(status, 'todo'),
+  COALESCE(action_type, 'trigger'), COALESCE(duration_type, 'short_term'),
+  target_duration_days, target_frequency,
   custom_frequency_days, start_date, end_date, created_at, updated_at, deleted_at
 FROM _ins_actions;
 
@@ -500,9 +504,13 @@ INSERT INTO self_talk_reminder_settings (
   reading_reminder_time, created_at, updated_at
 )
 SELECT
-  new_id, hk_user_id, is_enabled, daily_reminder_enabled, daily_reminder_time, reminder_days,
-  after_action_reminder, after_new_action_reminder, inactive_days_threshold,
-  browser_notification, email_notification, reading_reminder_enabled,
+  new_id, hk_user_id,
+  COALESCE(is_enabled, true),
+  COALESCE(daily_reminder_enabled, false), daily_reminder_time, reminder_days,
+  COALESCE(after_action_reminder, true), COALESCE(after_new_action_reminder, true),
+  COALESCE(inactive_days_threshold, 3),
+  COALESCE(browser_notification, true), COALESCE(email_notification, true),
+  COALESCE(reading_reminder_enabled, false),
   reading_reminder_time, created_at, updated_at
 FROM _ins_reminder_settings;
 
@@ -571,6 +579,79 @@ FROM _ins_ai_call_logs;
 INSERT INTO sg_id_map (table_name, sg_id, hk_id)
 SELECT 'ai_call_logs', id, new_id FROM _ins_ai_call_logs;
 
+-- subscriptions：香港该邮箱已有订阅则跳过，不覆盖、不改 users.plan
+INSERT INTO sg_id_map (table_name, sg_id, hk_id)
+SELECT DISTINCT ON (s.id) 'subscriptions', s.id, x.id
+FROM sg_stg_subscriptions s
+JOIN users u ON lower(btrim(u.email)) = lower(btrim(s.owner_email))
+JOIN subscriptions x ON x.user_id = u.id
+ORDER BY s.id, x.id
+ON CONFLICT (table_name, sg_id) DO NOTHING;
+
+CREATE TEMP TABLE _ins_subscriptions AS
+SELECT DISTINCT ON (u.id) s.*, u.id AS hk_user_id,
+       nextval(pg_get_serial_sequence('public.subscriptions', 'id')) AS new_id
+FROM sg_stg_subscriptions s
+JOIN users u ON lower(btrim(u.email)) = lower(btrim(s.owner_email))
+WHERE s.plan IS NOT NULL
+  AND s.start_date IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM sg_id_map m WHERE m.table_name = 'subscriptions' AND m.sg_id = s.id
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM subscriptions x WHERE x.user_id = u.id
+  )
+ORDER BY u.id, s.id;
+
+INSERT INTO subscriptions (
+  id, user_id, plan, start_date, end_date, is_active, created_at, updated_at
+)
+SELECT
+  new_id, hk_user_id, plan, start_date, end_date,
+  COALESCE(is_active, true), created_at, updated_at
+FROM _ins_subscriptions;
+
+INSERT INTO sg_id_map (table_name, sg_id, hk_id)
+SELECT 'subscriptions', id, new_id FROM _ins_subscriptions;
+
+-- invite_codes：香港已有相同 code 则跳过，不覆盖
+INSERT INTO sg_id_map (table_name, sg_id, hk_id)
+SELECT DISTINCT ON (s.id) 'invite_codes', s.id, i.id
+FROM sg_stg_invite_codes s
+JOIN invite_codes i ON i.code = s.code
+WHERE s.code IS NOT NULL AND btrim(s.code) <> ''
+ORDER BY s.id, i.id
+ON CONFLICT (table_name, sg_id) DO NOTHING;
+
+CREATE TEMP TABLE _ins_invite_codes AS
+SELECT s.*, u.id AS hk_used_by_id,
+       nextval(pg_get_serial_sequence('public.invite_codes', 'id')) AS new_id
+FROM sg_stg_invite_codes s
+LEFT JOIN users u
+  ON s.used_by_email IS NOT NULL
+ AND btrim(s.used_by_email) <> ''
+ AND lower(btrim(u.email)) = lower(btrim(s.used_by_email))
+WHERE s.code IS NOT NULL
+  AND btrim(s.code) <> ''
+  AND NOT EXISTS (
+    SELECT 1 FROM sg_id_map m WHERE m.table_name = 'invite_codes' AND m.sg_id = s.id
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM invite_codes i WHERE i.code = s.code
+  );
+
+INSERT INTO invite_codes (
+  id, code, plan, note, expires_at, used_at, used_by_user_id, created_at
+)
+SELECT
+  new_id, code, COALESCE(plan, 'free'), note,
+  COALESCE(expires_at, now() + interval '365 days'),
+  used_at, hk_used_by_id, created_at
+FROM _ins_invite_codes;
+
+INSERT INTO sg_id_map (table_name, sg_id, hk_id)
+SELECT 'invite_codes', id, new_id FROM _ins_invite_codes;
+
 DO $$
 DECLARE
   t text;
@@ -581,7 +662,7 @@ BEGIN
     'users','actions','practice_logs','daily_todos','daily_tasks','daily_schedules',
     'future_actions','reading_entries','self_talks','self_talk_playback_logs',
     'ai_advice_sessions','ai_advice_messages','self_talk_reminder_settings',
-    'self_talk_reminder_logs','ai_call_logs'
+    'self_talk_reminder_logs','ai_call_logs','subscriptions','invite_codes'
   ]
   LOOP
     IF to_regclass('public.' || t) IS NULL THEN
