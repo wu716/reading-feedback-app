@@ -39,6 +39,8 @@ public class AppUpdater {
     private volatile boolean downloading;
     private volatile boolean cancelled;
     private File pendingApk;
+    private AlertDialog promptDialog;
+    private volatile boolean promptShowing;
     private AlertDialog progressDialog;
     private ProgressBar progressBar;
 
@@ -146,6 +148,10 @@ public class AppUpdater {
             return;
         }
 
+        if (promptShowing && promptDialog != null && promptDialog.isShowing()) {
+            return;
+        }
+
         String downloadUrl = activity.updateBaseUrl() + "/download/apk";
 
         String message = activity.getString(
@@ -158,12 +164,19 @@ public class AppUpdater {
         }
 
         final String url = downloadUrl;
-        new AlertDialog.Builder(activity)
+        promptShowing = true;
+        promptDialog = new AlertDialog.Builder(activity)
                 .setTitle(R.string.update_title)
                 .setMessage(message)
-                .setPositiveButton(R.string.update_now, (d, w) -> startDownload(url))
-                .setNegativeButton(R.string.update_later, null)
-                .show();
+                .setPositiveButton(R.string.update_now, (d, w) -> {
+                    promptShowing = false;
+                    startDownload(url);
+                })
+                .setCancelable(false)
+                .create();
+        promptDialog.setCanceledOnTouchOutside(false);
+        promptDialog.setOnDismissListener(d -> promptShowing = false);
+        promptDialog.show();
     }
 
     private void startDownload(String url) {

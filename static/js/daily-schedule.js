@@ -295,7 +295,12 @@
                     <button type="button" data-nudge-add="${item.action_id}">加入</button>
                 </div>
             `).join('')}
-            ${rest > 0 ? `<button type="button" class="schedule-nudge-more" data-nudge-more>还有 ${rest} 个</button>` : ''}
+            ${rest > 0
+                ? `<button type="button" class="schedule-nudge-more" data-nudge-more>还有 ${rest} 个</button>`
+                : (nudgeOpen && suggestions.length > 3
+                    ? '<button type="button" class="schedule-nudge-more" data-nudge-more>收起</button>'
+                    : '')
+            }
         `;
     }
 
@@ -735,7 +740,7 @@
         nudge?.addEventListener('click', async (e) => {
             const more = e.target.closest('[data-nudge-more]');
             if (more) {
-                nudgeOpen = true;
+                nudgeOpen = !nudgeOpen;
                 renderNudge();
                 return;
             }

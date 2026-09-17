@@ -62,6 +62,12 @@
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) cancel();
         });
+        overlay.addEventListener('pointerdown', (e) => {
+            if (e.target === overlay) {
+                e.preventDefault();
+                cancel();
+            }
+        });
         overlay.querySelector('.tp-cancel').addEventListener('click', cancel);
         overlay.querySelector('.tp-ok').addEventListener('click', confirm);
         overlay.querySelector('#tpClear').addEventListener('click', clearTime);
@@ -196,6 +202,10 @@
 
     function pick(options = {}) {
         const overlay = ensureOverlay();
+        if (overlay.classList.contains('is-open')) {
+            cancel();
+            return Promise.resolve(undefined);
+        }
         if (!hourColReady) {
             buildColumn(overlay.querySelector('#tpHourCol'), 24, '时');
             buildColumn(overlay.querySelector('#tpMinuteCol'), 60, '分');

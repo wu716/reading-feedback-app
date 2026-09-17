@@ -83,6 +83,7 @@ def load_latest_meta() -> dict:
         "filename": "shuran.apk",
         "notes": "覆盖安装即可更新，登录数据会保留，不必卸载重装。",
         "require_shell": False,
+        "minVersionCode": 0,
     }
     if not LATEST_META.is_file():
         return defaults
@@ -96,12 +97,17 @@ def load_latest_meta() -> dict:
         except (TypeError, ValueError):
             version_code = 0
         notes = data.get("notes") or defaults["notes"]
+        try:
+            min_code = int(data.get("minVersionCode") or version_code or 0)
+        except (TypeError, ValueError):
+            min_code = version_code
         return {
             "versionCode": version_code,
             "versionName": str(data.get("versionName") or ""),
             "filename": str(data.get("filename") or defaults["filename"]),
             "notes": str(notes),
             "require_shell": bool(data.get("require_shell")),
+            "minVersionCode": min_code,
         }
     except Exception:
         return defaults
@@ -117,9 +123,8 @@ def build_info(request: Request | None = None) -> dict:
         origin = str(request.base_url).rstrip("/")
         download_url = origin + "/download/apk"
         windows_download_url = origin + "/download/windows"
-    # 界面在网页里，打开即最新。默认不把安装包标成「有新版本」，
-    # 避免手机外壳启动时误弹更新。真正要换系统能力时，把 require_shell 打开。
-    reported_code = meta["versionCode"] if meta.get("require_shell") else 0
+    # 外壳落后时必须能发现新安装包，打开就会提示覆盖更新。
+    reported_code = meta["versionCode"]
     info = {
         "available": apk is not None,
         "filename": meta["filename"],
@@ -127,6 +132,7 @@ def build_info(request: Request | None = None) -> dict:
         "versionName": meta["versionName"],
         "notes": meta["notes"],
         "require_shell": bool(meta.get("require_shell")),
+        "minVersionCode": int(meta.get("minVersionCode") or reported_code or 0),
         "download_url": download_url,
         "update_in_place": True,
         "windows_available": windows_exe is not None,
