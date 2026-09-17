@@ -377,6 +377,7 @@ public class AppUpdater {
         } catch (Exception e) {
             Log.e(TAG, "install launch failed", e);
             Toast.makeText(activity, R.string.update_install_failed, Toast.LENGTH_LONG).show();
+            activity.openExternalUrl(activity.updateBaseUrl() + "/download/apk");
         }
     }
 }
