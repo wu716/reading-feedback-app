@@ -82,10 +82,10 @@
             return;
         }
         if (mode === 'flow' && data.designed_at) {
-            hint.textContent = allDone() ? '今日已完成' : '勾选完成，也可记下执行情况。写错了点文字可改，右侧可删除';
+            hint.textContent = allDone() ? '今日已完成' : '勾选完成，也可记下执行情况。写错了点「修改」，也可删除';
             return;
         }
-        hint.textContent = allDone() ? '今日已完成' : '写下今天要做的事。写错了点文字可改，右侧可删除';
+        hint.textContent = allDone() ? '今日已完成' : '写下今天要做的事。写错了点「修改」，也可拆开或删除';
     }
 
     function allDone() {
@@ -148,6 +148,7 @@
             <div class="flow-task-actions">
                 <button type="button" data-act="edit">修改</button>
                 ${showSplit ? '<button type="button" data-act="split">拆开</button>' : ''}
+                ${renderDeleteBtn()}
             </div>`;
     }
 
@@ -163,7 +164,6 @@
                 <div class="flow-task-main">
                     ${renderDoneBtn(task)}
                     ${renderTitle(task)}
-                    ${renderDeleteBtn()}
                 </div>
                 ${meta.length ? `<div class="flow-task-meta">${meta.join('')}</div>` : ''}
                 ${renderNote(task)}
@@ -181,7 +181,6 @@
             <article class="flow-task${isChild ? ' is-child' : ''}" data-task-id="${task.id}">
                 <div class="flow-task-main">
                     ${renderTitle(task)}
-                    ${renderDeleteBtn()}
                 </div>
                 <div class="flow-task-meta">
                     <button type="button" class="flow-chip${task.familiarity === 'familiar' ? ' active' : ''}" data-act="fam" data-value="familiar">熟悉</button>
@@ -233,7 +232,6 @@
                 <div class="flow-task-main">
                     ${renderDoneBtn(task)}
                     ${renderTitle(task)}
-                    ${renderDeleteBtn()}
                 </div>
                 ${extra.length ? `<div class="flow-task-meta">${extra.map((x) => `<span class="flow-mark">${escapeHtml(x)}</span>`).join('')}</div>` : ''}
                 ${renderNote(task)}
@@ -287,7 +285,7 @@
         const visible = nudgeOpen ? suggestions : suggestions.slice(0, 3);
         const rest = suggestions.length - visible.length;
         box.innerHTML = `
-            <div class="schedule-nudge-kicker">排进今天</div>
+            <div class="schedule-nudge-kicker">行动项 · 还没排进今天</div>
             ${visible.map((item) => `
                 <div class="schedule-nudge-item" data-action-id="${item.action_id}">
                     <div class="schedule-nudge-copy">
@@ -320,11 +318,11 @@
                 <article class="schedule-later-item" data-later-id="${item.id}">
                     <div class="flow-task-main">
                         ${title}
-                        <button type="button" class="flow-mini-btn flow-danger" data-later-act="delete">删除</button>
                     </div>
                     <div class="flow-task-actions">
                         <button type="button" data-later-act="edit">修改</button>
                         <button type="button" data-later-act="into">${laterIntoLabel()}</button>
+                        <button type="button" class="flow-mini-btn flow-danger" data-later-act="delete">删除</button>
                     </div>
                 </article>`;
         }).join('');
@@ -672,6 +670,15 @@
         });
 
         const laterList = document.getElementById('scheduleLaterList');
+
+        laterList?.addEventListener('mousedown', (e) => {
+            const actEl = e.target.closest('[data-later-act]');
+            if (!actEl || !editingLaterId) return;
+            const act = actEl.dataset.laterAct;
+            if (act === 'delete' || act === 'edit' || act === 'into') {
+                e.preventDefault();
+            }
+        });
 
         laterList?.addEventListener('click', async (e) => {
             const actEl = e.target.closest('[data-later-act]');

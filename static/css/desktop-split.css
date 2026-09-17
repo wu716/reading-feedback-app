@@ -130,6 +130,7 @@
     }
 
     #schedule .home-schedule-head,
+    #schedule .schedule-nudge,
     #schedule .flow-add-row,
     #actions.content-section.active > .notes-entry-card,
     #actions.content-section.active > .card > :not(.actions-list) {
@@ -141,6 +142,12 @@
         min-height: 0;
         overflow: auto;
         max-height: none;
+    }
+
+    #schedule .schedule-later {
+        flex-shrink: 0;
+        max-height: 36vh;
+        overflow: auto;
     }
 
     #actions .actions-list {

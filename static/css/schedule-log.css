@@ -137,7 +137,13 @@
 }
 
 .schedule-nudge {
-    margin: 4px 0 10px;
+    margin: 0 0 8px;
+    padding-bottom: 6px;
+}
+
+.schedule-nudge:not([hidden]) {
+    border-bottom: 1px solid #eee7d8;
+    margin-bottom: 10px;
 }
 
 .schedule-nudge[hidden] {
@@ -341,8 +347,8 @@
 .flow-mini-btn {
     border: none;
     background: transparent;
-    color: #6b6560;
-    font-size: 0.82rem;
+    color: #5c3d36;
+    font-size: 0.86rem;
     min-height: 28px;
     padding: 0;
     cursor: pointer;

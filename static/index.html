@@ -20,7 +20,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260912nav1">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260825time1">
-    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260916later1">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260917nudge1">
     <style>
         :root {
             --ink: #1c1b19;
@@ -3510,7 +3510,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260915a">
+    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260917nudge1">
 </head>
 <body>
     <script>
@@ -3807,11 +3807,11 @@
                         </div>
                     </div>
                 </div>
+                <div class="schedule-nudge" id="scheduleNudge" hidden></div>
                 <div class="flow-add-row" id="scheduleAddRow">
                     <input type="text" id="scheduleAddInput" maxlength="500" placeholder="写下这一步">
                     <button type="button" class="flow-solid-btn" id="scheduleAddBtn">写下</button>
                 </div>
-                <div class="schedule-nudge" id="scheduleNudge" hidden></div>
                 <div id="scheduleList" class="home-schedule-list"></div>
                 <div class="schedule-later" id="scheduleLater">
                     <div class="schedule-later-kicker">以后想做</div>
@@ -4459,7 +4459,7 @@
                 <h3>2. 日程</h3>
                 <ol>
                     <li>和「今日」「行动」一样，在下面的导航里。用来写下今天要处理的具体行动，再排成流程。</li>
-                    <li>直接写下即可。太大就拆开；想排成流程时，再标熟悉或陌生、预估时间、定顺序和并行。</li>
+                    <li>直接写下即可。写错了点「修改」。太大就拆开。行动项里还没排进今天的，会出现在输入框上方，点「加入」。</li>
                     <li>还没规划、但自己想做的，写在「以后想做」。不进今天、不提醒；准备好了再「写进这一天」。</li>
                 </ol>
             </div>
@@ -8337,7 +8337,7 @@
     <script src="/static/reminder_notification.js?v=20260915upd2"></script>
     <script src="/static/js/app-tabbar.js?v=20260912nav1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
-    <script src="/static/js/daily-schedule.js?v=20260916later1"></script>
+    <script src="/static/js/daily-schedule.js?v=20260917nudge1"></script>
     <script src="/static/js/time-log.js?v=20260916vol"></script>
     <script src="/static/js/desktop-shell.js?v=20260914fill5"></script>
 </body>

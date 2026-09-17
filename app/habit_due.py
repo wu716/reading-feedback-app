@@ -14,6 +14,7 @@ REASON = {
     "quarterly": "本季度",
     "custom": "按间隔",
     "window": "这段时间",
+    "open": "还未排进今天",
 }
 
 
@@ -140,7 +141,7 @@ def reason_for(freq: str, custom_days: Optional[int], window_only: bool) -> str:
     return REASON.get(freq, REASON["daily"])
 
 
-def is_due(action, day: date, scheduled) -> bool:
+def is_candidate(action, day: date, scheduled) -> bool:
     if (getattr(action, "status", None) or "todo") == "done":
         return False
     if getattr(action, "deleted_at", None):
@@ -149,13 +150,19 @@ def is_due(action, day: date, scheduled) -> bool:
         return False
     if any(as_date(getattr(task, "task_date", None)) == day and covers_action(task, action) for task in scheduled):
         return False
+    return True
+
+
+def is_due(action, day: date, scheduled) -> bool:
+    if not is_candidate(action, day, scheduled):
+        return False
 
     kind = action_type_of(action)
     freq = parse_freq(action)
     win_start, win_end = window_bounds(action, day)
 
     if kind != "habit":
-        # 情境型只在有截止日期时出现：这段时间要做完。只有开始日不够。
+        # 情境型只在有截止日期时算「到期」：这段时间要做完。只有开始日不够。
         return bool(getattr(action, "end_date", None))
 
     if freq == "weekly":
@@ -195,22 +202,49 @@ def is_due(action, day: date, scheduled) -> bool:
     return True
 
 
+def to_suggestion(action, frequency: str, reason: str) -> Optional[Suggestion]:
+    text = (getattr(action, "action_text", None) or "").strip()
+    if not text:
+        return None
+    return Suggestion(
+        action_id=action.id,
+        text=text,
+        frequency=frequency,
+        reason=reason,
+    )
+
+
+def is_filler(action, day: date, scheduled) -> bool:
+    """没标成习惯、也没设结束日时，写日程仍提一句，避免页面空白。到期日之外的习惯不塞进来。"""
+    if not is_candidate(action, day, scheduled):
+        return False
+    if is_due(action, day, scheduled):
+        return False
+    return action_type_of(action) != "habit"
+
+
 def suggest_for_day(actions: Iterable, scheduled: Iterable, day: date) -> List[Suggestion]:
-    items = []
+    due: List[Suggestion] = []
+    extra: List[Suggestion] = []
     for action in actions:
-        if not is_due(action, day, scheduled):
-            continue
         kind = action_type_of(action)
         freq = parse_freq(action)
         window_only = kind != "habit"
-        items.append(
-            Suggestion(
-                action_id=action.id,
-                text=(action.action_text or "").strip(),
-                frequency=freq if not window_only else "window",
-                reason=reason_for(freq, getattr(action, "custom_frequency_days", None), window_only),
+        if is_due(action, day, scheduled):
+            item = to_suggestion(
+                action,
+                freq if not window_only else "window",
+                reason_for(freq, getattr(action, "custom_frequency_days", None), window_only),
             )
-        )
-    rank = {"daily": 0, "custom": 1, "weekly": 2, "monthly": 3, "quarterly": 4, "window": 5}
-    items.sort(key=lambda item: (rank.get(item.frequency, 9), item.action_id))
-    return [item for item in items if item.text][:12]
+            if item:
+                due.append(item)
+        elif is_filler(action, day, scheduled):
+            item = to_suggestion(action, "open", REASON["open"])
+            if item:
+                extra.append(item)
+    rank = {"daily": 0, "custom": 1, "weekly": 2, "monthly": 3, "quarterly": 4, "window": 5, "open": 6}
+    due.sort(key=lambda item: (rank.get(item.frequency, 9), item.action_id))
+    items = due[:]
+    if len(items) < 3:
+        items.extend(extra[: 12 - len(items)])
+    return items[:12]
