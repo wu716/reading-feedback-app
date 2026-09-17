@@ -1,5 +1,6 @@
 -- 新加坡补迁：按邮箱对齐写入香港。已存在的行跳过。不覆盖香港用户。
 -- 不处理 time_log_nodes / subscriptions / invite_codes。
+-- 正式表不存在则跳过（新加坡旧库没有 future_actions 时不是数据丢失）。
 -- 失败立刻停。禁止 DROP SCHEMA。禁止 docker compose down -v。
 
 BEGIN;
@@ -16,6 +17,10 @@ BEGIN
     'self_talk_reminder_logs','ai_call_logs'
   ]
   LOOP
+    IF to_regclass('public.' || t) IS NULL THEN
+      RAISE NOTICE '表 % 不存在，跳过序列检查', t;
+      CONTINUE;
+    END IF;
     seq := pg_get_serial_sequence('public.' || t, 'id');
     IF seq IS NULL THEN
       RAISE EXCEPTION '表 % 没有 id 序列，停', t;
@@ -257,33 +262,45 @@ FROM _ins_daily_schedules;
 INSERT INTO sg_id_map (table_name, sg_id, hk_id)
 SELECT 'daily_schedules', id, new_id FROM _ins_daily_schedules;
 
--- future_actions
-INSERT INTO sg_id_map (table_name, sg_id, hk_id)
-SELECT DISTINCT ON (s.id) 'future_actions', s.id, f.id
-FROM sg_stg_future_actions s
-JOIN users u ON lower(btrim(u.email)) = lower(btrim(s.owner_email))
-JOIN future_actions f
-  ON f.user_id = u.id
- AND f.text IS NOT DISTINCT FROM s.text
- AND f.created_at IS NOT DISTINCT FROM s.created_at
-ORDER BY s.id, f.id
-ON CONFLICT (table_name, sg_id) DO NOTHING;
+-- future_actions：新加坡旧库没有这张表时暂存为空或未建，跳过；不是数据丢失
+DO $$
+BEGIN
+  IF to_regclass('public.future_actions') IS NULL THEN
+    RAISE NOTICE 'future_actions 不存在，跳过合并';
+    RETURN;
+  END IF;
+  IF to_regclass('public.sg_stg_future_actions') IS NULL THEN
+    RAISE NOTICE 'sg_stg_future_actions 不存在，跳过合并';
+    RETURN;
+  END IF;
 
-CREATE TEMP TABLE _ins_future_actions AS
-SELECT s.*, u.id AS hk_user_id,
-       nextval(pg_get_serial_sequence('public.future_actions', 'id')) AS new_id
-FROM sg_stg_future_actions s
-JOIN users u ON lower(btrim(u.email)) = lower(btrim(s.owner_email))
-WHERE NOT EXISTS (
-  SELECT 1 FROM sg_id_map m WHERE m.table_name = 'future_actions' AND m.sg_id = s.id
-);
+  INSERT INTO sg_id_map (table_name, sg_id, hk_id)
+  SELECT DISTINCT ON (s.id) 'future_actions', s.id, f.id
+  FROM sg_stg_future_actions s
+  JOIN users u ON lower(btrim(u.email)) = lower(btrim(s.owner_email))
+  JOIN future_actions f
+    ON f.user_id = u.id
+   AND f.text IS NOT DISTINCT FROM s.text
+   AND f.created_at IS NOT DISTINCT FROM s.created_at
+  ORDER BY s.id, f.id
+  ON CONFLICT (table_name, sg_id) DO NOTHING;
 
-INSERT INTO future_actions (id, user_id, text, created_at, updated_at, deleted_at)
-SELECT new_id, hk_user_id, text, created_at, updated_at, deleted_at
-FROM _ins_future_actions;
+  CREATE TEMP TABLE _ins_future_actions AS
+  SELECT s.*, u.id AS hk_user_id,
+         nextval(pg_get_serial_sequence('public.future_actions', 'id')) AS new_id
+  FROM sg_stg_future_actions s
+  JOIN users u ON lower(btrim(u.email)) = lower(btrim(s.owner_email))
+  WHERE NOT EXISTS (
+    SELECT 1 FROM sg_id_map m WHERE m.table_name = 'future_actions' AND m.sg_id = s.id
+  );
 
-INSERT INTO sg_id_map (table_name, sg_id, hk_id)
-SELECT 'future_actions', id, new_id FROM _ins_future_actions;
+  INSERT INTO future_actions (id, user_id, text, created_at, updated_at, deleted_at)
+  SELECT new_id, hk_user_id, text, created_at, updated_at, deleted_at
+  FROM _ins_future_actions;
+
+  INSERT INTO sg_id_map (table_name, sg_id, hk_id)
+  SELECT 'future_actions', id, new_id FROM _ins_future_actions;
+END $$;
 
 -- reading_entries
 INSERT INTO sg_id_map (table_name, sg_id, hk_id)
@@ -554,21 +571,31 @@ FROM _ins_ai_call_logs;
 INSERT INTO sg_id_map (table_name, sg_id, hk_id)
 SELECT 'ai_call_logs', id, new_id FROM _ins_ai_call_logs;
 
-SELECT setval(pg_get_serial_sequence('public.users', 'id'), COALESCE((SELECT MAX(id) FROM users), 1));
-SELECT setval(pg_get_serial_sequence('public.actions', 'id'), COALESCE((SELECT MAX(id) FROM actions), 1));
-SELECT setval(pg_get_serial_sequence('public.practice_logs', 'id'), COALESCE((SELECT MAX(id) FROM practice_logs), 1));
-SELECT setval(pg_get_serial_sequence('public.daily_todos', 'id'), COALESCE((SELECT MAX(id) FROM daily_todos), 1));
-SELECT setval(pg_get_serial_sequence('public.daily_tasks', 'id'), COALESCE((SELECT MAX(id) FROM daily_tasks), 1));
-SELECT setval(pg_get_serial_sequence('public.daily_schedules', 'id'), COALESCE((SELECT MAX(id) FROM daily_schedules), 1));
-SELECT setval(pg_get_serial_sequence('public.future_actions', 'id'), COALESCE((SELECT MAX(id) FROM future_actions), 1));
-SELECT setval(pg_get_serial_sequence('public.reading_entries', 'id'), COALESCE((SELECT MAX(id) FROM reading_entries), 1));
-SELECT setval(pg_get_serial_sequence('public.self_talks', 'id'), COALESCE((SELECT MAX(id) FROM self_talks), 1));
-SELECT setval(pg_get_serial_sequence('public.self_talk_playback_logs', 'id'), COALESCE((SELECT MAX(id) FROM self_talk_playback_logs), 1));
-SELECT setval(pg_get_serial_sequence('public.ai_advice_sessions', 'id'), COALESCE((SELECT MAX(id) FROM ai_advice_sessions), 1));
-SELECT setval(pg_get_serial_sequence('public.ai_advice_messages', 'id'), COALESCE((SELECT MAX(id) FROM ai_advice_messages), 1));
-SELECT setval(pg_get_serial_sequence('public.self_talk_reminder_settings', 'id'), COALESCE((SELECT MAX(id) FROM self_talk_reminder_settings), 1));
-SELECT setval(pg_get_serial_sequence('public.self_talk_reminder_logs', 'id'), COALESCE((SELECT MAX(id) FROM self_talk_reminder_logs), 1));
-SELECT setval(pg_get_serial_sequence('public.ai_call_logs', 'id'), COALESCE((SELECT MAX(id) FROM ai_call_logs), 1));
+DO $$
+DECLARE
+  t text;
+  seq text;
+  max_id bigint;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'users','actions','practice_logs','daily_todos','daily_tasks','daily_schedules',
+    'future_actions','reading_entries','self_talks','self_talk_playback_logs',
+    'ai_advice_sessions','ai_advice_messages','self_talk_reminder_settings',
+    'self_talk_reminder_logs','ai_call_logs'
+  ]
+  LOOP
+    IF to_regclass('public.' || t) IS NULL THEN
+      RAISE NOTICE '表 % 不存在，跳过序列校正', t;
+      CONTINUE;
+    END IF;
+    seq := pg_get_serial_sequence('public.' || t, 'id');
+    IF seq IS NULL THEN
+      RAISE EXCEPTION '表 % 没有 id 序列，停', t;
+    END IF;
+    EXECUTE format('SELECT COALESCE(MAX(id), 1) FROM %I', t) INTO max_id;
+    PERFORM setval(seq, max_id);
+  END LOOP;
+END $$;
 
 COMMIT;
 
