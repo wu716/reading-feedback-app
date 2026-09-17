@@ -3,7 +3,7 @@
     <string name="app_name">书然</string>
     <string name="app_url">http://43.161.238.165:8000/</string>
     <!-- Keep in sync with STATIC_UI_VERSION in main.py -->
-    <string name="static_ui_version">20260917upd7</string>
+    <string name="static_ui_version">20260917upd8</string>
     <string name="loading">正在打开书然…</string>
     <string name="network_error">无法连接服务器，请检查网络后重试</string>
     <string name="retry">重试</string>
@@ -33,10 +33,11 @@
     <string name="update_download_hint">请稍候，下载完成后会打开系统安装界面</string>
     <string name="update_already_latest">已是最新版本 %1$s</string>
     <string name="update_check_failed">检查更新失败，请稍后重试</string>
-    <string name="update_not_uploaded">服务器上还没有新安装包</string>
-    <string name="update_download_failed">下载更新失败，请稍后重试</string>
+    <string name="update_not_uploaded">服务器上还没有可用的新安装包。请打开 http://43.161.238.165:8000/download 下载后覆盖安装</string>
+    <string name="update_download_failed">下载更新失败，请稍后重试。也可打开 http://43.161.238.165:8000/download</string>
     <string name="update_allow_install">请允许「书然」安装应用，以便覆盖更新（不必卸载）</string>
-    <string name="update_install_failed">无法打开安装界面，请到下载页手动更新</string>
+    <string name="update_install_failed">无法打开安装界面。请用浏览器打开 http://43.161.238.165:8000/download 下载后覆盖安装</string>
+    <string name="update_still_old">还没有装上新版本。请在系统安装窗口点「安装」；若一直失败，打开 http://43.161.238.165:8000/download</string>
     <string name="timelog_overlay_title">时间节点</string>
     <string name="timelog_overlay_body">悬浮按钮已打开。点一下抓住此刻，写下才会记入日志。</string>
     <string name="timelog_overlay_hint">这段在做什么</string>

@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 
+from app.apk_version import apk_meets_min, read_apk_version_code, write_version_sidecar
 from app.legacy_origin import canonical_url, is_legacy_singapore
 
 logger = logging.getLogger(__name__)
@@ -51,18 +52,41 @@ def find_windows_exe() -> Path | None:
     return None
 
 
-def find_apk() -> Path | None:
+def _iter_apk_candidates() -> list[Path]:
+    found: list[Path] = []
+    seen: set[Path] = set()
     for path in APK_CANDIDATES:
-        if path.is_file():
-            return path
+        if path.is_file() and path not in seen:
+            found.append(path)
+            seen.add(path)
     if RELEASE_DIR.is_dir():
         apks = sorted(
             RELEASE_DIR.glob("*.apk"),
             key=lambda item: item.stat().st_mtime,
             reverse=True,
         )
-        if apks:
-            return apks[0]
+        for path in apks:
+            # Probe / temp downloads must never be served.
+            if path.name.startswith("_"):
+                continue
+            if path not in seen:
+                found.append(path)
+                seen.add(path)
+    return found
+
+
+def find_apk() -> Path | None:
+    """Return a usable APK at/above MIN_SHELL_VERSION_CODE, else None."""
+    for path in _iter_apk_candidates():
+        if apk_meets_min(path, MIN_SHELL_VERSION_CODE):
+            return path
+        code = read_apk_version_code(path)
+        logger.warning(
+            "Ignoring stale or unusable APK %s size=%s versionCode=%s",
+            path,
+            path.stat().st_size if path.is_file() else 0,
+            code,
+        )
     return None
 
 
@@ -70,12 +94,27 @@ def _apk_file_ok(path: Path) -> bool:
     return path.is_file() and path.stat().st_size > 1024
 
 
-def _cache_apk_from(url: str, dest: Path) -> Path | None:
+def _remove_if_stale(path: Path) -> None:
+    if not path.is_file():
+        return
+    if apk_meets_min(path, MIN_SHELL_VERSION_CODE):
+        return
+    try:
+        path.unlink()
+        side = path.with_name(path.name + ".versioncode")
+        if side.is_file():
+            side.unlink()
+        logger.warning("Removed stale APK %s", path)
+    except OSError:
+        logger.exception("Failed to remove stale APK %s", path)
+
+
+def _cache_apk_from(url: str, dest: Path, expect_code: int | None = None) -> Path | None:
     try:
         RELEASE_DIR.mkdir(parents=True, exist_ok=True)
         logger.info("Downloading Android package from %s", url)
         req = urllib.request.Request(url, headers={"User-Agent": "shuran-app"})
-        with urllib.request.urlopen(req, timeout=60) as resp, dest.open("wb") as out:
+        with urllib.request.urlopen(req, timeout=120) as resp, dest.open("wb") as out:
             while True:
                 chunk = resp.read(64 * 1024)
                 if not chunk:
@@ -89,7 +128,18 @@ def _cache_apk_from(url: str, dest: Path) -> Path | None:
             except OSError:
                 pass
         return None
-    return dest if _apk_file_ok(dest) else None
+    if not _apk_file_ok(dest):
+        return None
+    if not apk_meets_min(dest, MIN_SHELL_VERSION_CODE):
+        logger.warning("Cached APK from %s still below min shell; discarding", url)
+        try:
+            dest.unlink()
+        except OSError:
+            pass
+        return None
+    code = expect_code or read_apk_version_code(dest) or MIN_SHELL_VERSION_CODE
+    write_version_sidecar(dest, code)
+    return dest
 
 
 def ensure_apk() -> Path | None:
@@ -97,12 +147,18 @@ def ensure_apk() -> Path | None:
     if local:
         return local
     dest = RELEASE_DIR / "shuran.apk"
-    return _cache_apk_from(GITHUB_APK_URL, dest)
+    _remove_if_stale(dest)
+    return _cache_apk_from(GITHUB_APK_URL, dest, expect_code=MIN_SHELL_VERSION_CODE)
 
 
 def fetch_apk_from_canonical() -> Path | None:
     dest = RELEASE_DIR / "shuran.apk"
-    return _cache_apk_from(canonical_url("/download/apk"), dest)
+    _remove_if_stale(dest)
+    return _cache_apk_from(
+        canonical_url("/download/apk"),
+        dest,
+        expect_code=MIN_SHELL_VERSION_CODE,
+    )
 
 
 def _version_tuple(name: str) -> tuple[int, ...]:
@@ -185,8 +241,9 @@ def build_info(request: Request | None = None) -> dict:
     min_name = str(meta.get("minVersionName") or "") or MIN_SHELL_VERSION_NAME
     if _version_less(min_name, MIN_SHELL_VERSION_NAME):
         min_name = MIN_SHELL_VERSION_NAME
+    # 只有确认有可用安装包才标 available，避免客户端反复下到旧包死循环。
     info = {
-        "available": True,
+        "available": apk is not None,
         "filename": meta["filename"],
         "versionCode": reported_code,
         "versionName": reported_name,
@@ -205,11 +262,12 @@ def build_info(request: Request | None = None) -> dict:
         size = apk.stat().st_size
         info["size_bytes"] = size
         info["size_mb"] = round(size / (1024 * 1024), 1)
+        code = read_apk_version_code(apk)
+        if code is not None:
+            info["apk_version_code"] = code
     else:
-        # 1.3.4 只认本机 /download/apk，不能把客户端打发到 GitHub HTTPS。
-        info["available"] = True
-        info["size_bytes"] = 1810063
-        info["size_mb"] = 1.7
+        info["size_bytes"] = 0
+        info["size_mb"] = 0
     if windows_exe is not None:
         wsize = windows_exe.stat().st_size
         info["windows_size_bytes"] = wsize
@@ -222,6 +280,11 @@ def build_info(request: Request | None = None) -> dict:
 
 @router.get("/download/info")
 async def download_info(request: Request):
+    # 新加坡旧机若本地只有过期包，尝试从香港拉一份正确包再应答。
+    if find_apk() is None and is_legacy_singapore(request):
+        fetch_apk_from_canonical()
+    if find_apk() is None:
+        ensure_apk()
     return build_info(request)
 
 
@@ -234,14 +297,17 @@ async def download_apk(request: Request):
         apk = fetch_apk_from_canonical()
     if not apk:
         apk = ensure_apk()
-    if apk:
+    if apk and apk_meets_min(apk, MIN_SHELL_VERSION_CODE):
         return FileResponse(
             path=str(apk),
             media_type="application/vnd.android.package-archive",
             filename="shuran.apk",
             headers={"Cache-Control": "no-store"},
         )
-    raise HTTPException(status_code=503, detail="安装包暂不可用")
+    raise HTTPException(
+        status_code=503,
+        detail="安装包暂不可用或版本过旧，请稍后再试或打开 http://43.161.238.165:8000/download",
+    )
 
 
 @router.get("/download/windows")

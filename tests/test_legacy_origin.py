@@ -61,8 +61,9 @@ class LegacyOriginTests(TestCase):
             "app.routers.app_download.find_apk", return_value=None
         ), patch("app.routers.app_download.find_windows_exe", return_value=None):
             info = build_info(request)
-        self.assertTrue(info["available"])
+        self.assertFalse(info["available"])
         self.assertGreaterEqual(int(info["versionCode"]), MIN_SHELL_VERSION_CODE)
         self.assertIn("/download/apk", info["download_url"])
         self.assertNotIn("github.com", info["download_url"])
         self.assertIn("47.236.122.207", info["download_url"])
+        self.assertEqual(info["size_bytes"], 0)

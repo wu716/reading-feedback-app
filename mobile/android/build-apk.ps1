@@ -55,7 +55,15 @@ if (-not (Test-Path $releaseDir)) {
 $releaseApk = Join-Path $releaseDir "shuran.apk"
 Copy-Item $built $releaseApk -Force
 
+# 服务端用 sidecar 拒绝过期安装包，避免再下发 1.5.2 造成更新死循环。
+$versionCodeLine = Select-String -Path (Join-Path $ProjectDir "app\build.gradle") -Pattern "versionCode\s+(\d+)" | Select-Object -First 1
+if (-not $versionCodeLine) { throw "无法从 build.gradle 读取 versionCode" }
+$versionCode = [int]$versionCodeLine.Matches[0].Groups[1].Value
+Set-Content -Path ($releaseApk + ".versioncode") -Value "$versionCode" -Encoding ascii
+Set-Content -Path ($outApk + ".versioncode") -Value "$versionCode" -Encoding ascii
+
 Write-Host "APK 已生成: $outApk"
 Write-Host "下载目录: $releaseApk"
-Write-Host "部署到服务器后，把该文件放到服务器项目的 releases/shuran.apk"
+Write-Host "versionCode sidecar: $versionCode"
+Write-Host "部署到服务器后，把该文件放到服务器项目的 releases/shuran.apk（同时上传 .versioncode）"
 Write-Host "下载页: http://43.161.238.165:8000/download"

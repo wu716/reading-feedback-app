@@ -188,6 +188,7 @@ public class AppUpdater {
             return;
         }
 
+        // 自动检查：只弹一次强制更新，无「稍后」。点更新即下载安装。
         if (promptShowing && promptDialog != null && promptDialog.isShowing()) {
             return;
         }
@@ -395,6 +396,16 @@ public class AppUpdater {
                 );
             }
             activity.startActivity(intent);
+            // 用户从安装界面返回后若仍过旧，给出明确提示（避免无声死循环）。
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                if (activity.isFinishing()) {
+                    return;
+                }
+                int nowCode = currentVersionCode(activity);
+                if (nowCode > 0 && nowCode < MIN_SHELL_CODE) {
+                    Toast.makeText(activity, R.string.update_still_old, Toast.LENGTH_LONG).show();
+                }
+            }, 8000);
         } catch (Exception e) {
             Log.e(TAG, "install launch failed", e);
             Toast.makeText(activity, R.string.update_install_failed, Toast.LENGTH_LONG).show();

@@ -1075,6 +1075,20 @@ function shuranMarkUpdateButtonBusy(btn) {
     btn.style.opacity = '0.85';
 }
 
+function shuranSetUpdateGateStatus(text, isError) {
+    const status = document.getElementById('shuranUpdateGateStatus');
+    if (!status) return;
+    status.textContent = text || '';
+    status.style.display = text ? 'block' : 'none';
+    status.style.color = isError ? '#ffb4b4' : 'rgba(255,255,255,0.88)';
+}
+
+function shuranClearShellUpdateGate() {
+    const existing = document.getElementById('shuranShellUpdateGate');
+    if (existing) existing.remove();
+    window.SHURAN_SHELL_GATE_LOCKED = false;
+}
+
 function shuranStartAppUpdate(btn) {
     if (!shuranIsPhoneApp()) {
         if (typeof showMessage === 'function') {
@@ -1082,14 +1096,40 @@ function shuranStartAppUpdate(btn) {
         }
         return;
     }
-    shuranMarkUpdateButtonBusy(btn || document.getElementById('shuranUpdateNowBtn')
-        || document.getElementById('shuranShellUpdateLink'));
+    const target = btn || document.getElementById('shuranUpdateNowBtn')
+        || document.getElementById('shuranShellUpdateLink');
+    shuranMarkUpdateButtonBusy(target);
+    shuranSetUpdateGateStatus('正在应用内下载安装包…', false);
     if (shuranTriggerNativeInstall()) {
+        // 安装界面返回后若仍过旧，定时再检查并给出明确提示，避免无声死循环。
+        let tries = 0;
+        const timer = setInterval(function () {
+            tries += 1;
+            const shell = shuranShellInfo();
+            if (!shuranShellNeedsUpdate(shell)) {
+                clearInterval(timer);
+                shuranClearShellUpdateGate();
+                return;
+            }
+            if (tries >= 8) {
+                clearInterval(timer);
+                if (target) {
+                    target.disabled = false;
+                    target.textContent = '重试更新';
+                    target.style.opacity = '1';
+                }
+                shuranSetUpdateGateStatus(
+                    '还没装上新版本。请确认系统安装窗口里点了「安装」。若提示冲突，不要卸载，把问题发给站长。',
+                    true
+                );
+            }
+        }, 2500);
         return;
     }
-    // 无原生更新器时仍走本机 APK；WebView 会拦截并再调 checkUpdate。
+    // 极旧外壳没有原生更新器：打开下载页（不是直接跳 APK 二进制，避免像浏览器乱跳）。
     const origin = window.location.origin || 'http://43.161.238.165:8000';
-    window.location.href = origin + '/download/apk';
+    shuranSetUpdateGateStatus('当前外壳太旧，正在打开下载页。请点「下载安装包」覆盖安装。', true);
+    window.location.href = origin + '/download';
 }
 
 window.SHURAN_VERSION = window.SHURAN_VERSION || '1.5.0';
@@ -1189,12 +1229,9 @@ function shuranPromptShellUpdate(force) {
         const shell = shuranShellInfo();
         if (!shell.inApp) return;
         const apply = function (latest) {
+            // 已够新：必须拆掉挡板（包括曾点过更新/稍后仍锁着的情况）。
             if (!shuranShellNeedsUpdate(shell, latest)) {
-                const existing = document.getElementById('shuranShellUpdateGate');
-                if (existing && (existing.getAttribute('data-locked') === '1' || window.SHURAN_SHELL_GATE_LOCKED)) {
-                    return;
-                }
-                if (existing && !force) existing.remove();
+                shuranClearShellUpdateGate();
                 return;
             }
             let bar = document.getElementById('shuranShellUpdateGate');
@@ -1219,19 +1256,27 @@ function shuranPromptShellUpdate(force) {
                 'padding:28px 22px',
                 'box-sizing:border-box'
             ].join(';');
+            const packageMissing = latest && latest.available === false;
+            const bodyText = packageMissing
+                ? '服务器上的新安装包还没就绪。请稍后再开书然，或用浏览器打开 http://43.161.238.165:8000/download 下载后覆盖安装。'
+                : '请点一次，在应用内覆盖安装最新书然。登录会保留，不必卸载。若弹出系统窗口，请再点一次允许安装。';
             bar.innerHTML = '<div style="max-width:420px;margin:0 auto;width:100%;">'
                 + '<h1 style="font-size:1.45rem;margin:0 0 12px;">需要更新书然</h1>'
-                + '<p style="line-height:1.65;opacity:.92;margin:0 0 22px;">请点一次覆盖安装最新书然。登录会保留，不必卸载。若弹出系统窗口，请再点一次允许安装。</p>'
-                + '<button type="button" id="shuranUpdateNowBtn" style="width:100%;border:none;border-radius:12px;padding:14px 16px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:1.05rem;font-weight:700;">立即更新</button>'
+                + '<p style="line-height:1.65;opacity:.92;margin:0 0 22px;">' + bodyText + '</p>'
+                + '<button type="button" id="shuranUpdateNowBtn" style="width:100%;border:none;border-radius:12px;padding:14px 16px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:1.05rem;font-weight:700;">'
+                + (packageMissing ? '打开下载页' : '立即更新')
+                + '</button>'
+                + '<p id="shuranUpdateGateStatus" style="display:none;margin:14px 0 0;line-height:1.5;font-size:0.92rem;"></p>'
                 + '</div>';
             const btn = document.getElementById('shuranUpdateNowBtn');
-            if (btn) btn.onclick = function () { shuranStartAppUpdate(btn); };
-            const earlyLink = bar.querySelector('#shuranShellUpdateLink');
-            if (earlyLink) {
-                earlyLink.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    shuranStartAppUpdate();
-                });
+            if (btn) {
+                btn.onclick = function () {
+                    if (packageMissing) {
+                        window.location.href = (window.location.origin || 'http://43.161.238.165:8000') + '/download';
+                        return;
+                    }
+                    shuranStartAppUpdate(btn);
+                };
             }
         };
         apply(null);

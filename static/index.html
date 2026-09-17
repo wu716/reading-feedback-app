@@ -3634,7 +3634,7 @@
     <script>
         (function () {
             if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-                location.replace('http://43.161.238.165:8000/?v=20260917upd7');
+                location.replace('http://43.161.238.165:8000/?v=20260917upd8');
                 return;
             }
             window.SHURAN_VERSION = '1.5.0';
@@ -3672,6 +3672,11 @@
                 if (!name) return true;
                 return versionLess(name, window.SHURAN_MIN_SHELL_NAME);
             }
+            function clearGate() {
+                var bar = document.getElementById('shuranShellUpdateGate');
+                if (bar) bar.remove();
+                window.SHURAN_SHELL_GATE_LOCKED = false;
+            }
             function paintGate(name) {
                 var bar = document.getElementById('shuranShellUpdateGate');
                 if (!bar) {
@@ -3686,8 +3691,9 @@
                 bar.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:#1a1a2e;color:#fff;display:flex;flex-direction:column;justify-content:center;padding:28px 22px;box-sizing:border-box;';
                 bar.innerHTML = '<div style="max-width:420px;margin:0 auto;width:100%;">'
                     + '<h1 style="font-size:1.45rem;margin:0 0 12px;">需要更新书然</h1>'
-                    + '<p style="line-height:1.6;opacity:.92;margin:0 0 22px;">请点一次覆盖安装最新书然。登录会保留，不必卸载。若弹出系统窗口，请再点一次允许安装。</p>'
+                    + '<p style="line-height:1.6;opacity:.92;margin:0 0 22px;">请点一次，在应用内覆盖安装最新书然。登录会保留，不必卸载。若弹出系统窗口，请再点一次允许安装。</p>'
                     + '<button type="button" id="shuranShellUpdateLink" style="display:block;width:100%;text-align:center;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:12px;padding:14px 16px;font-weight:700;font-size:1.05rem;">立即更新</button>'
+                    + '<p id="shuranUpdateGateStatus" style="display:none;margin:14px 0 0;line-height:1.5;font-size:0.92rem;"></p>'
                     + '</div>';
                 var link = bar.querySelector('#shuranShellUpdateLink');
                 if (link) {
@@ -3705,7 +3711,7 @@
                             window.shuranStartAppUpdate(link);
                             return;
                         }
-                        window.location.href = (window.location.origin || 'http://43.161.238.165:8000') + '/download/apk';
+                        window.location.href = (window.location.origin || 'http://43.161.238.165:8000') + '/download';
                     });
                 }
                 document.addEventListener('DOMContentLoaded', function () {
@@ -3714,6 +3720,7 @@
             }
             function checkGate() {
                 if (shellIsOld()) paintGate(readShellName());
+                else clearGate();
             }
             checkGate();
             [50, 200, 600, 1500, 3000].forEach(function (ms) {
@@ -8629,7 +8636,7 @@
     
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
-    <script src="/static/reminder_notification.js?v=20260917upd7"></script>
+    <script src="/static/reminder_notification.js?v=20260917upd8"></script>
     <script src="/static/js/app-tabbar.js?v=20260912nav1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
     <script src="/static/js/daily-schedule.js?v=20260917upd5"></script>
