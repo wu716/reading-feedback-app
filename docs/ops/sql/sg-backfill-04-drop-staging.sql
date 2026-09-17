@@ -1,0 +1,17 @@
+DROP TABLE IF EXISTS
+  sg_stg_ai_advice_messages,
+  sg_stg_ai_advice_sessions,
+  sg_stg_self_talk_playback_logs,
+  sg_stg_self_talks,
+  sg_stg_practice_logs,
+  sg_stg_daily_tasks,
+  sg_stg_daily_todos,
+  sg_stg_daily_schedules,
+  sg_stg_future_actions,
+  sg_stg_reading_entries,
+  sg_stg_self_talk_reminder_settings,
+  sg_stg_self_talk_reminder_logs,
+  sg_stg_ai_call_logs,
+  sg_stg_actions,
+  sg_stg_users,
+  sg_id_map;
