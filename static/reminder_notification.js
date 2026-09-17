@@ -6,7 +6,7 @@
 (function hopOffSingapore() {
     try {
         if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-            location.replace('http://43.161.238.165:8000/?v=20260917upd6');
+            location.replace('http://43.161.238.165:8000/?v=20260917upd7');
         }
     } catch (e) { /* ignore */ }
 })();
@@ -1046,8 +1046,8 @@ function shuranVersionLess(current, latest) {
 }
 
 function shuranMinShell(latest) {
-    const floorCode = Number(window.SHURAN_MIN_SHELL_CODE) || 20;
-    const floorName = String(window.SHURAN_MIN_SHELL_NAME || '1.5.4');
+    const floorCode = Number(window.SHURAN_MIN_SHELL_CODE) || 18;
+    const floorName = String(window.SHURAN_MIN_SHELL_NAME || '1.5.2');
     const remoteCode = Math.max(
         Number(latest && latest.versionCode) || 0,
         Number(latest && latest.minVersionCode) || 0
@@ -1123,8 +1123,8 @@ function shuranStartAppUpdate() {
 }
 
 window.SHURAN_VERSION = window.SHURAN_VERSION || '1.5.0';
-window.SHURAN_MIN_SHELL_CODE = 20;
-window.SHURAN_MIN_SHELL_NAME = '1.5.4';
+window.SHURAN_MIN_SHELL_CODE = 18;
+window.SHURAN_MIN_SHELL_NAME = '1.5.2';
 
 function shuranIsOwner() {
     try {
