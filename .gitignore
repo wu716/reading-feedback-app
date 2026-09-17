@@ -92,6 +92,10 @@ uploads/
 uploads/**
 scripts/app.db.backup
 
+# 本机思考与未来规划（不上公开仓库）
+docs/ops/未来规划与待办.md
+docs/ops/快速唤起记-硬件与商店入口.md
+
 # 软著交存 PDF（本地生成，不入库）
 docs/ruanzhu/*.pdf
 

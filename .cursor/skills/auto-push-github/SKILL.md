@@ -37,6 +37,7 @@ description: >-
 4. 只暂存本次相关文件。**不要**加入：
    - `.env`、密钥、`*.apk`、`releases/*.apk`
    - `mobile/android/local.properties`、keystore
+   - `docs/ops/未来规划与待办.md`、`docs/ops/快速唤起记-硬件与商店入口.md`（本机思考，不上公开仓库）
    - 无关的未跟踪文件
 5. Commit 信息用 1–2 句英文，写 **why**，不要堆文件清单。PowerShell 示例：
 
