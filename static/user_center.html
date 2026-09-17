@@ -409,12 +409,12 @@
             </div>
         </div>
 
-        <div class="card" id="appUpdateCard">
+        <div class="card" id="appUpdateCard" hidden>
             <h2>版本</h2>
             <div class="setting-item">
                 <label>
                     <strong>页面</strong>
-                    <span class="description" id="appVersionLabel">1.5.0</span>
+                    <span class="description" id="appVersionLabel"></span>
                 </label>
             </div>
             <div class="action-buttons">
@@ -617,12 +617,19 @@
         function showAppVersion() {
             const label = document.getElementById('appVersionLabel');
             if (!label) return;
+            const card = document.getElementById('appUpdateCard');
+            if (!(currentUser && currentUser.is_owner)) {
+                if (card) card.hidden = true;
+                label.textContent = '';
+                return;
+            }
+            if (card) card.hidden = false;
+            const web = window.SHURAN_VERSION || '1.5.0';
             if (window.ShuranNative && typeof window.ShuranNative.getAppVersion === 'function') {
                 const name = window.ShuranNative.getAppVersion();
-                const web = window.SHURAN_VERSION || '1.5.0';
-                label.textContent = name ? (web + ' · 外壳 ' + name) : web;
+                label.textContent = name ? ('调试 页面 ' + web + ' · 安装包 ' + name) : ('调试 页面 ' + web);
             } else {
-                label.textContent = window.SHURAN_VERSION || '1.5.0';
+                label.textContent = '调试 页面 ' + web;
             }
         }
 
@@ -660,7 +667,7 @@
     </script>
     <script>window.SHURAN_VERSION = '1.5.0';</script>
     <script src="/static/js/time-picker.js?v=20260825time1"></script>
-    <script src="/static/reminder_notification.js?v=20260917upd4"></script>
+    <script src="/static/reminder_notification.js?v=20260917upd5"></script>
 </body>
 </html>
 

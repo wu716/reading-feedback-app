@@ -3,6 +3,13 @@
  * Android App（WebView + ShuranNative）走系统通知（状态栏/锁屏/通知栏），后台由 AlarmManager 触发；
  * 普通浏览器保留页面内铃铛/通知条，并在允许时使用 Notification API。
  */
+(function hopOffSingapore() {
+    try {
+        if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
+            location.replace('http://43.161.238.165:8000/?v=20260917upd5');
+        }
+    } catch (e) { /* ignore */ }
+})();
 
 class ReminderNotificationService {
     constructor() {
@@ -1078,6 +1085,14 @@ window.SHURAN_VERSION = window.SHURAN_VERSION || '1.5.0';
 window.SHURAN_MIN_SHELL_CODE = 20;
 window.SHURAN_MIN_SHELL_NAME = '1.5.4';
 
+function shuranIsOwner() {
+    try {
+        return !!(window.currentUser && window.currentUser.is_owner);
+    } catch (e) {
+        return false;
+    }
+}
+
 function fillAppVersionLabel() {
     const label = document.getElementById('appVersionLabel');
     if (!label) return;
@@ -1096,17 +1111,30 @@ function fillAppVersionLabel() {
         cardTitle.textContent = '版本';
     }
 
+    const row = document.getElementById('appVersionRow');
+    const card = document.getElementById('appUpdateCard');
+    const isOwner = shuranIsOwner();
+    if (!isOwner) {
+        if (row) row.hidden = true;
+        if (hint) hint.hidden = true;
+        if (btn) btn.hidden = true;
+        if (card) card.hidden = true;
+        label.textContent = '';
+        return;
+    }
+
+    if (card) card.hidden = false;
+    if (row) {
+        row.hidden = false;
+        row.classList.remove('me-row-static');
+    }
     if (shell.versionName) {
-        label.textContent = version + ' · 外壳 ' + shell.versionName;
+        label.textContent = '调试 页面 ' + version + ' · 安装包 ' + shell.versionName;
     } else {
-        label.textContent = version;
+        label.textContent = '调试 页面 ' + version;
     }
 
     const outdated = shuranShellNeedsUpdate(shell);
-    const row = document.getElementById('appVersionRow');
-    if (row) {
-        row.classList.remove('me-row-static');
-    }
     if (btn) {
         btn.hidden = true;
         btn.textContent = '立即更新';
@@ -1114,9 +1142,9 @@ function fillAppVersionLabel() {
     if (hint) {
         hint.hidden = false;
         if (shell.inApp && outdated) {
-            hint.textContent = '当前外壳过旧。点「版本」这一行下载安装包，覆盖即可，不用卸载，登录会保留。';
+            hint.textContent = '安装包过旧。点这一行下载后覆盖即可，不用卸载，登录会保留。';
         } else if (shell.inApp) {
-            hint.textContent = '点「版本」这一行可下载安装包。覆盖即可，不用卸载，登录会保留。';
+            hint.textContent = '点这一行可下载安装包。覆盖即可，不用卸载，登录会保留。';
         } else {
             hint.textContent = '点这一行可下载安装包。电脑请用网页刷新。';
         }
@@ -1158,8 +1186,6 @@ function shuranPromptShellUpdate(force) {
                 if (existing && !force) existing.remove();
                 return;
             }
-            const latestName = shuranMinShell(latest).minName;
-            const currentName = shell.versionName || '旧版';
             let bar = document.getElementById('shuranShellUpdateGate');
             if (!bar) {
                 bar = document.createElement('div');
@@ -1183,9 +1209,8 @@ function shuranPromptShellUpdate(force) {
                 'box-sizing:border-box'
             ].join(';');
             bar.innerHTML = '<div style="max-width:420px;margin:0 auto;width:100%;">'
-                + '<h1 style="font-size:1.45rem;margin:0 0 12px;">需要更新外壳</h1>'
-                + '<p style="line-height:1.65;opacity:.92;margin:0 0 22px;">当前外壳 ' + currentName
-                + '，最新 ' + latestName + '。网页已经是新的，但这个安装包太旧，点一次覆盖安装即可，不必卸载，登录会保留。</p>'
+                + '<h1 style="font-size:1.45rem;margin:0 0 12px;">需要更新书然</h1>'
+                + '<p style="line-height:1.65;opacity:.92;margin:0 0 22px;">请点一次覆盖安装最新书然。登录会保留，不必卸载。</p>'
                 + '<button type="button" id="shuranUpdateNowBtn" style="width:100%;border:none;border-radius:12px;padding:14px 16px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:1.05rem;font-weight:700;">立即更新</button>'
                 + '</div>';
             const btn = document.getElementById('shuranUpdateNowBtn');

@@ -86,6 +86,8 @@ public class MainActivity extends Activity {
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         // HTTP disk cache only. Cookies and localStorage stay so login survives.
         webView.clearCache(true);
+        webView.clearFormData();
+        webView.clearHistory();
         settings.setUserAgentString(
                 settings.getUserAgentString() + " ShuranApp/" + AppUpdater.currentVersionName(this)
         );
@@ -417,6 +419,7 @@ public class MainActivity extends Activity {
         errorView.setVisibility(View.GONE);
         webView.setVisibility(View.VISIBLE);
         webView.clearCache(true);
+        webView.clearFormData();
         String path = intent != null ? intent.getStringExtra(ReminderNotifications.EXTRA_OPEN_PATH) : null;
         if (path != null && !path.isEmpty()) {
             intent.removeExtra(ReminderNotifications.EXTRA_OPEN_PATH);
@@ -579,6 +582,8 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         webView.onResume();
+        webView.clearCache(true);
+        webView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
         ReminderScheduler.restore(this);
         TimeLogOverlay.restore(this);
         webView.evaluateJavascript(
