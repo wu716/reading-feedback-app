@@ -1,7 +1,7 @@
 {
-  "versionCode": 18,
-  "versionName": "1.5.2",
+  "versionCode": 19,
+  "versionName": "1.5.3",
   "filename": "shuran.apk",
-  "notes": "服务器已迁到香港。覆盖安装即可，登录数据会保留。",
+  "notes": "刷新日程页缓存。覆盖安装即可，登录数据会保留，不必卸载。",
   "require_shell": true
 }

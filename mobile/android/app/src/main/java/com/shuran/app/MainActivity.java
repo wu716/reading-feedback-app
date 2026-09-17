@@ -84,6 +84,7 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        // HTTP disk cache only. Cookies and localStorage stay so login survives.
         webView.clearCache(true);
         settings.setUserAgentString(
                 settings.getUserAgentString() + " ShuranApp/" + AppUpdater.currentVersionName(this)
@@ -213,12 +214,12 @@ public class MainActivity extends Activity {
             }
         });
 
-        if (savedInstanceState != null) {
-            webView.restoreState(savedInstanceState);
-            applyOpenPath(getIntent());
-        } else {
-            loadApp(getIntent());
-        }
+        // Always fetch a versioned URL. Restoring WebView HTML can replay a stale page.
+        webView.post(() -> {
+            if (!isFinishing()) {
+                loadApp(getIntent());
+            }
+        });
     }
 
     void checkAppUpdateFromUser() {
@@ -415,6 +416,7 @@ public class MainActivity extends Activity {
     private void loadApp(Intent intent) {
         errorView.setVisibility(View.GONE);
         webView.setVisibility(View.VISIBLE);
+        webView.clearCache(true);
         String path = intent != null ? intent.getStringExtra(ReminderNotifications.EXTRA_OPEN_PATH) : null;
         if (path != null && !path.isEmpty()) {
             intent.removeExtra(ReminderNotifications.EXTRA_OPEN_PATH);
@@ -432,8 +434,18 @@ public class MainActivity extends Activity {
         if (url == null || url.isEmpty()) {
             return url;
         }
-        String stamp = "ui=" + AppUpdater.currentVersionCode(this);
-        return url.contains("?") ? url + "&" + stamp : url + "?" + stamp;
+        Uri uri = Uri.parse(url);
+        Uri.Builder builder = uri.buildUpon().clearQuery();
+        for (String name : uri.getQueryParameterNames()) {
+            if ("v".equals(name) || "ui".equals(name)) {
+                continue;
+            }
+            for (String value : uri.getQueryParameters(name)) {
+                builder.appendQueryParameter(name, value);
+            }
+        }
+        builder.appendQueryParameter("v", getString(R.string.static_ui_version));
+        return builder.build().toString();
     }
 
     private void applyOpenPath(Intent intent) {
@@ -553,12 +565,6 @@ public class MainActivity extends Activity {
             pendingPermissionRequest.deny();
         }
         pendingPermissionRequest = null;
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        webView.saveState(outState);
     }
 
     @Override
