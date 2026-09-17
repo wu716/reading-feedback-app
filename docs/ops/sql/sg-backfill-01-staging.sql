@@ -1,4 +1,5 @@
 -- 新加坡补迁：香港机创建暂存表。不含外键。
+-- CSV 列可以是本表子集（新加坡旧库缺列）。加载时按 CSV 表头 COPY，缺的列保持空。
 -- 失败立刻停。禁止 DROP SCHEMA。禁止 docker compose down -v。
 
 DROP TABLE IF EXISTS
@@ -16,7 +17,9 @@ DROP TABLE IF EXISTS
   sg_stg_self_talk_reminder_logs,
   sg_stg_ai_call_logs,
   sg_stg_actions,
-  sg_stg_users;
+  sg_stg_users,
+  sg_stg_subscriptions,
+  sg_stg_invite_codes;
 
 CREATE TABLE sg_stg_users (
   id INTEGER,
@@ -233,6 +236,31 @@ CREATE TABLE sg_stg_ai_call_logs (
   call_date DATE,
   created_at TIMESTAMPTZ,
   owner_email TEXT
+);
+
+-- 新加坡 CSV 可能缺列；加载按表头 COPY，缺的列保持空。
+CREATE TABLE sg_stg_subscriptions (
+  id INTEGER,
+  user_id INTEGER,
+  plan TEXT,
+  start_date DATE,
+  end_date DATE,
+  is_active BOOLEAN,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ,
+  owner_email TEXT
+);
+
+CREATE TABLE sg_stg_invite_codes (
+  id INTEGER,
+  code TEXT,
+  plan TEXT,
+  note TEXT,
+  expires_at TIMESTAMPTZ,
+  used_at TIMESTAMPTZ,
+  used_by_user_id INTEGER,
+  created_at TIMESTAMPTZ,
+  used_by_email TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sg_id_map (
