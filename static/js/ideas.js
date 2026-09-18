@@ -41,13 +41,13 @@
         const box = document.getElementById('ideasList');
         if (!box) return;
         if (!items.length) {
-            box.innerHTML = '<p class="flow-empty">三击或点「记」，去处选 idea，写下就会出现在这里。</p>';
+            box.innerHTML = '<p class="flow-empty">三击或点「记」，去处选「灵感」，写下就会出现在这里。</p>';
             return;
         }
         box.innerHTML = items.map((item) => {
             const editing = editingId === item.id;
             const body = editing
-                ? `<input type="text" class="flow-task-text-input" maxlength="500" value="${escapeHtml(item.text)}" data-idea-act="text" aria-label="修改 idea">`
+                ? `<input type="text" class="flow-task-text-input" maxlength="500" value="${escapeHtml(item.text)}" data-idea-act="text" aria-label="修改灵感">`
                 : `<div class="flow-task-text" data-idea-act="edit" title="点此修改">${escapeHtml(item.text)}</div>`;
             return `
                 <article class="schedule-later-item" data-idea-id="${item.id}">
@@ -90,7 +90,7 @@
     }
 
     async function remove(id) {
-        if (!window.confirm('确定删除这条 idea？')) return;
+        if (!window.confirm('确定删除这条灵感？')) return;
         try {
             const data = await apiRequest(`/api/capture/ideas/${id}`, { method: 'DELETE' });
             items = data.items || [];
