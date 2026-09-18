@@ -10,7 +10,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 
 /**
- * 快捷记下的去处：moment / idea / todo；todo 再选 today 或 later。
+ * 快捷记下的去处：时刻 / 灵感 / 待办；待办再选今天或以后。
  */
 public class CaptureKindBar extends LinearLayout {
     public interface Listener {

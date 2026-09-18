@@ -4294,7 +4294,7 @@
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 1 7 7c0 2.4-1.2 4.4-3 5.6V16H8v-1.4C6.2 13.4 5 11.4 5 9a7 7 0 0 1 7-7z"/></svg>
                         </span>
-                        <span class="me-row-main"><span class="me-row-title">idea</span></span>
+                        <span class="me-row-main"><span class="me-row-title">灵感</span></span>
                         <span class="me-chevron">›</span>
                     </button>
                     <button type="button" class="me-row" onclick="navigateTo('stats')">
@@ -4359,13 +4359,13 @@
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
                             <div class="me-row-title">默认记下</div>
-                            <div class="me-row-desc" id="captureKindDefaultDesc">三击或点「记」时先落到 moment，仍可当场改。</div>
+                            <div class="me-row-desc" id="captureKindDefaultDesc">三击或点「记」时先落到时刻，仍可当场改。</div>
                         </div>
                     </div>
                     <div class="me-weekdays" id="captureKindDefaultRow">
-                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="moment" checked><span>moment</span></label>
-                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="idea"><span>idea</span></label>
-                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="todo"><span>todo</span></label>
+                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="moment" checked><span>时刻</span></label>
+                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="idea"><span>灵感</span></label>
+                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="todo"><span>待办</span></label>
                     </div>
                     <div class="me-row me-row-static" id="timeLogVolumeMeRow" hidden>
                         <div class="me-row-main">
@@ -4754,13 +4754,13 @@
         <section id="ideas" class="content-section">
             <div class="section-header">
                 <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
-                <h1>idea</h1>
+                <h1>灵感</h1>
                 <p>一闪而过的念头先记在这里</p>
             </div>
             <div class="flow-page">
                 <div class="flow-toolbar">
-                    <p class="flow-hint">不进 moment，也不进 todo。写错了可以改或删。</p>
-                    <button type="button" class="flow-solid-btn" id="ideasAddBtn">记下 idea</button>
+                    <p class="flow-hint">不进时刻，也不进待办。写错了可以改或删。</p>
+                    <button type="button" class="flow-solid-btn" id="ideasAddBtn">记下灵感</button>
                 </div>
                 <div id="ideasList" class="schedule-later-list"></div>
             </div>
@@ -8837,8 +8837,8 @@
     <script src="/static/js/app-tabbar.js?v=20260918desk1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
     <script src="/static/js/daily-schedule.js?v=20260917upd5"></script>
-    <script src="/static/js/time-log.js?v=20260918cap2"></script>
-    <script src="/static/js/ideas.js?v=20260918cap2"></script>
+    <script src="/static/js/time-log.js?v=20260918desk2"></script>
+    <script src="/static/js/ideas.js?v=20260918desk2"></script>
     <script src="/static/js/desktop-shell.js?v=20260918desk1"></script>
 </body>
 </html>
