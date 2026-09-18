@@ -60,7 +60,21 @@
         color: #f4efe4;
     }
 
+    .app-tabbar .tab-item.tab-capture .tab-icon {
+        background: #1c1b19;
+        color: #f4efe4;
+    }
+
+    .app-tabbar .tab-item.tab-capture {
+        color: #1c1b19;
+        font-weight: 600;
+    }
+
     body.has-app-tabbar {
         padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    }
+
+    body.has-app-tabbar .tl-fab {
+        display: none;
     }
 }

@@ -1127,7 +1127,7 @@ function shuranClearShellUpdateGate() {
 function shuranStartAppUpdate(btn) {
     if (!shuranIsPhoneApp()) {
         if (typeof showMessage === 'function') {
-            showMessage('电脑用的是网页，刷新即可。安装包只给安卓手机。', 'info');
+            showMessage('电脑请下载 Windows 应用（我的 → Windows 应用），或刷新网页。安装包只给安卓手机。', 'info');
         }
         return;
     }
@@ -1257,7 +1257,7 @@ function fillAppVersionLabel() {
         } else if (shell.inApp) {
             hint.textContent = '点这一行可下载安装包。覆盖即可，不用卸载，登录会保留。';
         } else {
-            hint.textContent = '点这一行可下载安装包。电脑请用网页刷新。';
+            hint.textContent = '点这一行可下载安装包。电脑请用「我的 → Windows 应用」。';
         }
     }
 }

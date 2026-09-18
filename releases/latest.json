@@ -1,8 +1,8 @@
 {
-  "versionCode": 22,
-  "versionName": "1.5.6",
+  "versionCode": 23,
+  "versionName": "1.5.7",
   "filename": "shuran.apk",
-  "notes": "快捷记下可改去处：时刻、灵感或待办。请覆盖安装，登录会保留。",
+  "notes": "快捷记下可改去处：moment、idea 或 todo。请覆盖安装，登录会保留。",
   "require_shell": true,
   "force": true,
   "minVersionCode": 20,

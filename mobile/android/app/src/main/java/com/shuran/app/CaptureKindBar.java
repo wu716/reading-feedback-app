@@ -2,6 +2,7 @@ package com.shuran.app;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -9,7 +10,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 
 /**
- * 快捷记下的去处：时刻 / 灵感 / 待办；待办再选今天或以后。
+ * 快捷记下的去处：moment / idea / todo；todo 再选 today 或 later。
  */
 public class CaptureKindBar extends LinearLayout {
     public interface Listener {
@@ -127,11 +128,17 @@ public class CaptureKindBar extends LinearLayout {
     }
 
     private void paintChip(Button button, boolean on) {
-        button.setBackgroundColor(on ? ON_BG : OFF_BG);
-        button.setTextColor(on ? ON_FG : OFF_FG);
-        if (!on) {
-            button.setBackgroundColor(Color.TRANSPARENT);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(8));
+        if (on) {
+            bg.setColor(ON_BG);
+            button.setTextColor(ON_FG);
+        } else {
+            bg.setColor(Color.TRANSPARENT);
+            bg.setStroke(Math.max(1, dp(1)), OFF_FG);
+            button.setTextColor(OFF_FG);
         }
+        button.setBackground(bg);
     }
 
     private int dp(int value) {

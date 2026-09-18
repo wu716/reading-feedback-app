@@ -2,9 +2,17 @@
 
 薄原生窗口，用 WebView2 打开现有网站。不是第二套前端。
 
+坐下工作时用这个；出门用手机看日程、「记」、偶尔 Self-talk。
+
 ## 为什么清晰
 
 窗口按 **PerMonitorV2** DPI 感知，WebView 按显示器像素排版。荣耀电脑管家套 APK 会把安卓界面当位图放大，全屏必糊。
+
+## 本版能力（1.6.0）
+
+- 双击打开，任务栏常驻；再开一次会唤起已有窗口，不会叠多个。
+- **Ctrl+Shift+K** 全局唤起「记」（对应手机三击音量减）。窗口内也可用 **Ctrl+K**。
+- 命令行加 `--capture` 可直接打开「记」。
 
 ## 依赖
 
@@ -20,6 +28,12 @@ cd D:\projects\reading-feedback-app\desktop\windows
 ```
 
 成功后生成 `releases/shuran-windows.exe`（不要提交 git）。
+
+上传服务器：
+
+```powershell
+scp .\releases\shuran-windows.exe ubuntu@43.161.238.165:/opt/shuran-app/releases/shuran-windows.exe
+```
 
 ## 打开
 

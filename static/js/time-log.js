@@ -383,30 +383,30 @@
     function kindCopy(kind, ctx) {
         if (kind === 'idea') {
             return {
-                title: '灵感',
-                hint: '先写下来，之后在「灵感」里能看到。',
+                title: 'idea',
+                hint: '先写下来，之后在 idea 里能看到。',
                 placeholder: '一闪而过的念头',
             };
         }
         if (kind === 'todo') {
             return {
-                title: '待办',
-                hint: '先写下来，再选进今天还是以后。',
+                title: 'todo',
+                hint: '先写下来，再选 today 或 later。',
                 placeholder: '突然想起要做的事',
             };
         }
         if (ctx && ctx.isStart) {
             return {
-                title: '记下开始',
-                hint: '写下才会记入时刻。',
+                title: 'moment',
+                hint: '写下才会记入 moment。',
                 placeholder: '这段在做什么',
             };
         }
         return {
-            title: '这段在做什么',
+            title: 'moment',
             hint: ctx && ctx.duration
                 ? `距上一段 ${formatDuration(ctx.duration)}`
-                : '写下才会记入时刻。',
+                : '写下才会记入 moment。',
             placeholder: '这段在做什么',
         };
     }
@@ -461,10 +461,10 @@
             }
             if (typeof showMessage === 'function') {
                 const done = captureKind === 'idea'
-                    ? '已记入灵感'
+                    ? '已记入 idea'
                     : (captureKind === 'todo'
-                        ? (captureTodoWhen === 'later' ? '已记入以后想做' : '已记入今日待办')
-                        : '已记入时刻');
+                        ? (captureTodoWhen === 'later' ? '已记入 later' : '已记入 today')
+                        : '已记入 moment');
                 showMessage(done, 'success');
             }
         } catch (e) {
@@ -487,13 +487,13 @@
             <h3 id="timeLogSheetTitle"></h3>
             <p id="timeLogSheetHint"></p>
             <div class="tl-kind-picks" role="tablist" aria-label="记下到哪里">
-                <button type="button" data-kind="moment">时刻</button>
-                <button type="button" data-kind="idea">灵感</button>
-                <button type="button" data-kind="todo">待办</button>
+                <button type="button" data-kind="moment">moment</button>
+                <button type="button" data-kind="idea">idea</button>
+                <button type="button" data-kind="todo">todo</button>
             </div>
             <div class="tl-when-picks" id="timeLogWhenPicks" hidden>
-                <button type="button" data-when="today">今天</button>
-                <button type="button" data-when="later">以后</button>
+                <button type="button" data-when="today">today</button>
+                <button type="button" data-when="later">later</button>
             </div>
             <textarea id="timeLogSheetInput" maxlength="500" enterkeyhint="done"></textarea>
             <div class="tl-sheet-actions">
@@ -538,8 +538,8 @@
         });
         const label = document.getElementById('captureKindDefaultDesc');
         if (label) {
-            const names = { moment: '时刻', idea: '灵感', todo: '待办' };
-            label.textContent = `三击或点「记」时先落到${names[captureKind] || '时刻'}，仍可当场改。`;
+            const names = { moment: 'moment', idea: 'idea', todo: 'todo' };
+            label.textContent = `三击或点「记」时先落到 ${names[captureKind] || 'moment'}，仍可当场改。`;
         }
     }
 
@@ -744,7 +744,7 @@
             btn.className = 'tl-fab';
             btn.type = 'button';
             btn.textContent = '记';
-            btn.title = '记下。默认为时刻，可当场改成灵感或待办。';
+            btn.title = '记下。默认为 moment，可当场改成 idea 或 todo。';
             btn.addEventListener('click', (e) => {
                 if (btn.dataset.dragged === '1') {
                     e.preventDefault();

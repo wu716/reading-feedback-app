@@ -6,12 +6,15 @@ namespace Shuran.Desktop;
 sealed class MainForm : Form
 {
     const string WebView2RuntimeUrl = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
+    const int HotkeyIdCapture = 1;
     readonly string _startUrl;
     readonly WebView2 _webView = new()
     {
         Dock = DockStyle.Fill,
         DefaultBackgroundColor = Color.White
     };
+    bool _hotkeyRegistered;
+    bool _webReady;
 
     public MainForm(string startUrl)
     {
@@ -25,8 +28,8 @@ sealed class MainForm : Form
         {
             /* ApplicationIcon on the exe is enough for the desktop shortcut */
         }
-        Width = 1100;
-        Height = 760;
+        Width = 1180;
+        Height = 800;
         MinimumSize = new Size(420, 560);
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.Sizable;
@@ -34,6 +37,29 @@ sealed class MainForm : Form
         KeyPreview = true;
         Controls.Add(_webView);
         Load += async (_, _) => await StartBrowserAsync();
+        FormClosed += (_, _) => UnregisterCaptureHotkey();
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == NativeMethods.WmActivateShuran)
+        {
+            BringToFrontSafe();
+            if (m.WParam != IntPtr.Zero)
+            {
+                _ = OpenCaptureAsync();
+            }
+            return;
+        }
+
+        if (m.Msg == NativeMethods.WmHotkey && m.WParam.ToInt32() == HotkeyIdCapture)
+        {
+            BringToFrontSafe();
+            _ = OpenCaptureAsync();
+            return;
+        }
+
+        base.WndProc(ref m);
     }
 
     async Task StartBrowserAsync()
@@ -72,11 +98,18 @@ sealed class MainForm : Form
         settings.IsZoomControlEnabled = true;
         settings.IsPinchZoomEnabled = false;
         settings.IsStatusBarEnabled = false;
-        _webView.CoreWebView2.Settings.UserAgent += " ShuranDesktop/1.5.0";
+        _webView.CoreWebView2.Settings.UserAgent += " ShuranDesktop/1.6.0";
         _webView.CoreWebView2.NewWindowRequested += (_, e) =>
         {
             e.Handled = true;
             _webView.CoreWebView2.Navigate(e.Uri);
+        };
+        _webView.CoreWebView2.NavigationCompleted += (_, e) =>
+        {
+            if (e.IsSuccess)
+            {
+                _webReady = true;
+            }
         };
         try
         {
@@ -87,7 +120,58 @@ sealed class MainForm : Form
         {
             /* older runtimes may not expose disk-cache-only clearing */
         }
+        RegisterCaptureHotkey();
         _webView.CoreWebView2.Navigate(_startUrl);
+    }
+
+    void RegisterCaptureHotkey()
+    {
+        if (_hotkeyRegistered || !IsHandleCreated) return;
+        // Ctrl+Shift+K：全局唤起「记」，对应手机三击音量减。
+        _hotkeyRegistered = NativeMethods.RegisterHotKey(
+            Handle,
+            HotkeyIdCapture,
+            NativeMethods.ModControl | NativeMethods.ModShift | NativeMethods.ModNorepeat,
+            (int)Keys.K);
+    }
+
+    void UnregisterCaptureHotkey()
+    {
+        if (!_hotkeyRegistered || !IsHandleCreated) return;
+        NativeMethods.UnregisterHotKey(Handle, HotkeyIdCapture);
+        _hotkeyRegistered = false;
+    }
+
+    void BringToFrontSafe()
+    {
+        if (WindowState == FormWindowState.Minimized || NativeMethods.IsIconic(Handle))
+        {
+            NativeMethods.ShowWindow(Handle, NativeMethods.SwRestore);
+            WindowState = FormWindowState.Normal;
+        }
+        Show();
+        Activate();
+        BringToFront();
+        NativeMethods.SetForegroundWindow(Handle);
+        _webView.Focus();
+    }
+
+    async Task OpenCaptureAsync()
+    {
+        if (_webView.CoreWebView2 is null) return;
+        for (var i = 0; i < 20 && !_webReady; i++)
+        {
+            await Task.Delay(100);
+        }
+        try
+        {
+            await _webView.CoreWebView2.ExecuteScriptAsync(
+                "(function(){try{if(typeof window.punchTimeLog==='function'){window.punchTimeLog(false);return;}if(typeof window.shuranOpenCapture==='function'){window.shuranOpenCapture();}}catch(e){}})();");
+        }
+        catch
+        {
+            /* page may still be loading */
+        }
     }
 
     static void ShowRuntimeMissing()

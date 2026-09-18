@@ -18,9 +18,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260912nav1">
+    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260918desk1">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd4">
-    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260917cap1">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260918desk1">
     <style>
         :root {
             --ink: #1c1b19;
@@ -245,6 +245,14 @@
             display: none !important;
         }
 
+        .me-phone-only {
+            display: flex;
+        }
+
+        p.me-phone-only {
+            display: block;
+        }
+
         @media (min-width: 769px) {
             a.me-row.me-desktop-only,
             .me-row.me-desktop-only {
@@ -253,6 +261,14 @@
 
             p.me-desktop-only {
                 display: block !important;
+            }
+
+            .me-phone-only,
+            a.me-row.me-phone-only,
+            .me-row.me-phone-only,
+            p.me-phone-only,
+            .me-group.me-phone-only {
+                display: none !important;
             }
         }
 
@@ -3619,7 +3635,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260917upd4">
+    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260918desk1">
 </head>
 <body>
     <script>
@@ -3805,6 +3821,10 @@
             <div class="nav-item" data-section="actions" onclick="navigateTo('actions')" title="行动">
                 <span class="nav-icon">行</span>
                 <span class="nav-text">行动</span>
+            </div>
+            <div class="nav-item" data-section="upload" onclick="navigateTo('upload')" title="上传笔记">
+                <span class="nav-icon">笔</span>
+                <span class="nav-text">上传笔记</span>
             </div>
             <div class="nav-item" data-section="self-talk" onclick="navigateTo('self-talk')" title="Self-talk">
                 <span class="nav-icon">谈</span>
@@ -4222,6 +4242,39 @@
                     </div>
                 </div>
 
+                <div class="me-group me-phone-only">
+                    <button type="button" class="me-row" onclick="navigateTo('overview')">
+                        <span class="me-row-icon" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
+                        </span>
+                        <span class="me-row-main">
+                            <span class="me-row-title">今日</span>
+                            <span class="me-row-desc">日历、待办和今天的进展</span>
+                        </span>
+                        <span class="me-chevron">›</span>
+                    </button>
+                    <button type="button" class="me-row" onclick="navigateTo('actions')">
+                        <span class="me-row-icon" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>
+                        </span>
+                        <span class="me-row-main">
+                            <span class="me-row-title">行动</span>
+                            <span class="me-row-desc">坐下时在电脑上更好做</span>
+                        </span>
+                        <span class="me-chevron">›</span>
+                    </button>
+                    <button type="button" class="me-row" onclick="navigateTo('upload')">
+                        <span class="me-row-icon" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+                        </span>
+                        <span class="me-row-main">
+                            <span class="me-row-title">上传笔记</span>
+                            <span class="me-row-desc">从笔记抽出行动项</span>
+                        </span>
+                        <span class="me-chevron">›</span>
+                    </button>
+                </div>
+
                 <div class="me-group">
                     <button type="button" class="me-row" id="ownerEntryRow" hidden onclick="navigateTo('owner')">
                         <span class="me-row-icon" aria-hidden="true">
@@ -4241,7 +4294,7 @@
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 1 7 7c0 2.4-1.2 4.4-3 5.6V16H8v-1.4C6.2 13.4 5 11.4 5 9a7 7 0 0 1 7-7z"/></svg>
                         </span>
-                        <span class="me-row-main"><span class="me-row-title">灵感</span></span>
+                        <span class="me-row-main"><span class="me-row-title">idea</span></span>
                         <span class="me-chevron">›</span>
                     </button>
                     <button type="button" class="me-row" onclick="navigateTo('stats')">
@@ -4279,17 +4332,26 @@
                         <span class="me-chevron" aria-hidden="true">›</span>
                     </button>
                     <p class="me-hint" id="appVersionHint" hidden></p>
-                    <a class="me-row me-desktop-only" href="/download">
+                    <a class="me-row me-desktop-only" id="windowsAppDownloadRow" href="/download">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8"/></svg>
                         </span>
                         <span class="me-row-main">
                             <span class="me-row-title">Windows 应用</span>
-                            <span class="me-row-desc">电脑请用这个打开</span>
+                            <span class="me-row-desc">电脑请用这个打开。出门用手机看日程和「记」。</span>
                         </span>
                         <span class="me-chevron">›</span>
                     </a>
-                    <p class="me-hint me-desktop-only">不要用电脑管家打开安卓安装包。</p>
+                    <div class="me-row me-row-static me-desktop-only" id="windowsAppRunningRow" hidden>
+                        <span class="me-row-icon" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8"/></svg>
+                        </span>
+                        <span class="me-row-main">
+                            <span class="me-row-title">已在 Windows 应用中</span>
+                            <span class="me-row-desc">全局 Ctrl+Shift+K 打开「记」。窗口内也可用 Ctrl+K。</span>
+                        </span>
+                    </div>
+                    <p class="me-hint me-desktop-only" id="windowsAppHint">不要用电脑管家打开安卓安装包。坐下做事用 Windows 应用，出门用手机。</p>
                 </div>
 
                 <div class="me-group" id="meVolumeTripleGroup" hidden>
@@ -4297,13 +4359,13 @@
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
                             <div class="me-row-title">默认记下</div>
-                            <div class="me-row-desc" id="captureKindDefaultDesc">三击或点「记」时先落到时刻，仍可当场改。</div>
+                            <div class="me-row-desc" id="captureKindDefaultDesc">三击或点「记」时先落到 moment，仍可当场改。</div>
                         </div>
                     </div>
                     <div class="me-weekdays" id="captureKindDefaultRow">
-                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="moment" checked><span>时刻</span></label>
-                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="idea"><span>灵感</span></label>
-                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="todo"><span>待办</span></label>
+                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="moment" checked><span>moment</span></label>
+                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="idea"><span>idea</span></label>
+                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="todo"><span>todo</span></label>
                     </div>
                     <div class="me-row me-row-static" id="timeLogVolumeMeRow" hidden>
                         <div class="me-row-main">
@@ -4692,13 +4754,13 @@
         <section id="ideas" class="content-section">
             <div class="section-header">
                 <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
-                <h1>灵感</h1>
+                <h1>idea</h1>
                 <p>一闪而过的念头先记在这里</p>
             </div>
             <div class="flow-page">
                 <div class="flow-toolbar">
-                    <p class="flow-hint">不进时刻，也不进待办。写错了可以改或删。</p>
-                    <button type="button" class="flow-solid-btn" id="ideasAddBtn">记下灵感</button>
+                    <p class="flow-hint">不进 moment，也不进 todo。写错了可以改或删。</p>
+                    <button type="button" class="flow-solid-btn" id="ideasAddBtn">记下 idea</button>
                 </div>
                 <div id="ideasList" class="schedule-later-list"></div>
             </div>
@@ -4708,6 +4770,10 @@
             <div class="section-header">
                 <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
                 <h1>使用说明</h1>
+            </div>
+            <div class="guide-card">
+                <h3>电脑和手机</h3>
+                <p>坐下工作时用电脑：看今日、排日程、抽行动。出门用手机：看日程、点「记」，有时用 Self-talk。账号是同一个。</p>
             </div>
             <div class="guide-card">
                 <h3>1. 今日</h3>
@@ -4737,10 +4803,10 @@
                 <p>用录音记下内心对话。完成行动或到了提醒时间，可以来这里复盘。</p>
             </div>
             <div class="guide-card">
-                <h3>5. 时间日志与灵感</h3>
+                <h3>5. moment 与 idea</h3>
                 <ol>
-                    <li>点「记」或三击音量减，先写下。去处可选时刻、灵感或待办；全体默认时刻，可在「我的 → 快捷记下」改。</li>
-                    <li>待办再选今天（今日待办）或以后（以后想做）。灵感在「我的 → 灵感」。</li>
+                    <li>手机点底栏「记」，或三击音量减，先写下。电脑 Windows 应用按 Ctrl+Shift+K（全局），或窗口内 Ctrl+K / 点右下角「记」。去处可选 moment、idea 或 todo；全体默认 moment，可在「我的 → 快捷记下」改。</li>
+                    <li>todo 再选 today 或 later。idea 在「我的 → idea」。</li>
                     <li>电脑可开「小窗」，或把「记」拖到窗口边缘停靠。锁屏或其他应用上三击，需打开「三击音量减」开关。也可用磁贴或桌面快捷方式。</li>
                 </ol>
             </div>
@@ -5196,30 +5262,47 @@
             if (overlay) overlay.classList.toggle('visible', open);
         }
 
-        const PRIMARY_TABS = new Set(['overview', 'schedule', 'actions', 'self-talk', 'user-center']);
-        const SECTION_PARENT = { upload: 'actions', stats: 'user-center', guide: 'user-center', owner: 'user-center', 'time-log': 'user-center', ideas: 'user-center' };
+        const PRIMARY_TABS_DESKTOP = new Set(['overview', 'schedule', 'actions', 'upload', 'self-talk', 'user-center']);
+        const PRIMARY_TABS_PHONE = new Set(['schedule', 'self-talk', 'user-center']);
+        const SECTION_PARENT_SHARED = { stats: 'user-center', guide: 'user-center', owner: 'user-center', 'time-log': 'user-center', ideas: 'user-center' };
+
+        function primaryTabs() {
+            return isMobileNav() ? PRIMARY_TABS_PHONE : PRIMARY_TABS_DESKTOP;
+        }
+
+        function sectionParentOf(sectionId) {
+            if (SECTION_PARENT_SHARED[sectionId]) return SECTION_PARENT_SHARED[sectionId];
+            if (isMobileNav() && (sectionId === 'overview' || sectionId === 'actions' || sectionId === 'upload')) {
+                return 'user-center';
+            }
+            return null;
+        }
 
         function primaryTabFor(sectionId) {
-            return SECTION_PARENT[sectionId] || sectionId;
+            return sectionParentOf(sectionId) || sectionId;
+        }
+
+        function defaultSection() {
+            return isMobileNav() ? 'schedule' : 'overview';
         }
 
         function updateHeaderBackButton() {
             const btn = document.getElementById('headerBackBtn');
             if (!btn) return;
-            const show = isMobileNav() && !PRIMARY_TABS.has(currentSectionId());
+            const show = isMobileNav() && !primaryTabs().has(currentSectionId());
             btn.hidden = !show;
         }
 
         function handlePageBack() {
             closeMobileSidebar();
             const current = currentSectionId();
-            const parent = SECTION_PARENT[current];
+            const parent = sectionParentOf(current);
             if (parent) {
                 navigateTo(parent);
                 return true;
             }
-            if (current !== 'overview') {
-                navigateTo('overview');
+            if (current !== defaultSection()) {
+                navigateTo(defaultSection());
                 return true;
             }
             return false;
@@ -5342,8 +5425,8 @@
                     navigateTo(hash);
                 }
             } else if (!hash) {
-                if (currentSectionId() !== 'overview') {
-                    navigateTo('overview');
+                if (currentSectionId() !== defaultSection()) {
+                    navigateTo(defaultSection());
                 }
             }
         });
@@ -5355,6 +5438,8 @@
             const hash = location.hash.slice(1);
             if (hash && document.getElementById(hash)) {
                 navigateTo(hash);
+            } else if (isMobileNav()) {
+                navigateTo(defaultSection());
             }
             
             initializeCalendar();
@@ -8748,12 +8833,12 @@
     
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
-    <script src="/static/reminder_notification.js?v=20260917upd9"></script>
-    <script src="/static/js/app-tabbar.js?v=20260917cap1"></script>
+    <script src="/static/reminder_notification.js?v=20260918desk1"></script>
+    <script src="/static/js/app-tabbar.js?v=20260918desk1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
     <script src="/static/js/daily-schedule.js?v=20260917upd5"></script>
-    <script src="/static/js/time-log.js?v=20260917cap1"></script>
-    <script src="/static/js/ideas.js?v=20260917cap1"></script>
-    <script src="/static/js/desktop-shell.js?v=20260914fill5"></script>
+    <script src="/static/js/time-log.js?v=20260918cap2"></script>
+    <script src="/static/js/ideas.js?v=20260918cap2"></script>
+    <script src="/static/js/desktop-shell.js?v=20260918desk1"></script>
 </body>
 </html>

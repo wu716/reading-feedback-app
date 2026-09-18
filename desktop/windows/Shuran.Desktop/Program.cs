@@ -1,12 +1,25 @@
+using System.Threading;
+
 namespace Shuran.Desktop;
 
 static class Program
 {
-    public const string DefaultUrl = "http://43.161.238.165:8000/?v=20260917upd5";
+    public const string DefaultUrl = "http://43.161.238.165:8000/?v=20260918desk1";
+    const string MutexName = @"Local\Shuran.Desktop.SingleInstance";
 
     [STAThread]
     static void Main(string[] args)
     {
+        using var mutex = new Mutex(true, MutexName, out var createdNew);
+        if (!createdNew)
+        {
+            var openCapture = args.Any(static a =>
+                a.Equals("--capture", StringComparison.OrdinalIgnoreCase)
+                || a.Equals("--记", StringComparison.OrdinalIgnoreCase));
+            NativeMethods.BroadcastActivate(openCapture);
+            return;
+        }
+
         ApplicationConfiguration.Initialize();
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.Run(new MainForm(ResolveStartUrl(args)));

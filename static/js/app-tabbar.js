@@ -1,39 +1,55 @@
 (function () {
     const TABS = [
-        { id: 'overview', label: '今日', icon: '今', href: '/static/index.html#overview' },
-        { id: 'schedule', label: '日程', icon: '程', href: '/static/index.html#schedule' },
-        { id: 'actions', label: '行动', icon: '行', href: '/static/index.html#actions' },
-        { id: 'self-talk', label: 'Self-talk', icon: '谈', href: '/static/index.html#self-talk' },
-        { id: 'user-center', label: '我的', icon: '我', href: '/static/index.html#user-center' },
+        { id: 'schedule', label: '日程', icon: '程' },
+        { id: 'capture', label: '记', icon: '记', action: 'capture' },
+        { id: 'self-talk', label: 'Self-talk', icon: '谈' },
+        { id: 'user-center', label: '我的', icon: '我' },
     ];
+
+    function tabHref(id) {
+        if (id === 'self-talk' && location.pathname.includes('self_talk')) {
+            return location.pathname + location.search;
+        }
+        if (id === 'user-center' && (location.pathname.includes('dashboard') || location.pathname.includes('user_center'))) {
+            return location.pathname + location.search;
+        }
+        return '/static/index.html#' + id;
+    }
 
     function currentTab() {
         const path = location.pathname || '';
         if (path.includes('self_talk')) return 'self-talk';
         if (path.includes('dashboard') || path.includes('user_center')) return 'user-center';
         const hash = (location.hash || '').replace('#', '');
-        if (hash === 'upload' || hash === 'actions') return 'actions';
-        if (hash === 'stats' || hash === 'guide' || hash === 'user-center' || hash === 'owner' || hash === 'time-log' || hash === 'ideas') return 'user-center';
-        if (hash === 'schedule') return 'schedule';
         if (hash === 'self-talk') return 'self-talk';
-        return 'overview';
+        if (hash === 'schedule' || hash === '') return 'schedule';
+        return 'user-center';
+    }
+
+    function openCapture() {
+        if (typeof window.punchTimeLog === 'function') {
+            window.punchTimeLog(false);
+            return;
+        }
+        location.href = '/static/index.html?capture=1#schedule';
     }
 
     function go(tab) {
+        if (tab.action === 'capture') {
+            openCapture();
+            return;
+        }
         if (typeof navigateTo === 'function') {
             navigateTo(tab.id);
             return;
         }
-        location.href = tab.href;
+        location.href = tabHref(tab.id);
     }
 
     function highlight() {
         const active = currentTab();
         document.querySelectorAll('#appTabbar .tab-item').forEach((el) => {
             el.classList.toggle('active', el.dataset.tab === active);
-        });
-        document.querySelectorAll('.nav-item[data-section]').forEach((el) => {
-            el.classList.toggle('active', el.dataset.section === active);
         });
     }
 
@@ -45,9 +61,9 @@
             const bar = document.createElement('nav');
             bar.id = 'appTabbar';
             bar.className = 'app-tabbar';
-            bar.setAttribute('aria-label', '主导航');
+            bar.setAttribute('aria-label', '出门时用');
             bar.innerHTML = TABS.map((t) => `
-                <button type="button" class="tab-item" data-tab="${t.id}">
+                <button type="button" class="tab-item${t.action === 'capture' ? ' tab-capture' : ''}" data-tab="${t.id}">
                     <span class="tab-icon">${t.icon}</span>
                     <span class="tab-text">${t.label}</span>
                 </button>
@@ -65,6 +81,7 @@
     }
 
     window.syncAppTabbar = highlight;
+    window.shuranOpenCapture = openCapture;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', render);

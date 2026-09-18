@@ -1,5 +1,6 @@
 /**
  * 电脑端导航密度：宽屏完整侧栏，半屏自动收成图标轨，可手动钉住。
+ * Windows 壳（ShuranDesktop）下标出「已在应用中」。
  */
 (function () {
     const KEY = 'shuran.sidebarMode';
@@ -8,6 +9,25 @@
 
     function isDesktop() {
         return window.innerWidth > 768;
+    }
+
+    function isShuranDesktopApp() {
+        return /ShuranDesktop/i.test(navigator.userAgent || '');
+    }
+
+    function syncDesktopAppRows() {
+        const inApp = isShuranDesktopApp();
+        document.body.classList.toggle('shuran-desktop-app', inApp);
+        const download = document.getElementById('windowsAppDownloadRow');
+        const running = document.getElementById('windowsAppRunningRow');
+        const hint = document.getElementById('windowsAppHint');
+        if (download) download.hidden = inApp;
+        if (running) running.hidden = !inApp;
+        if (hint) {
+            hint.textContent = inApp
+                ? '出门用手机看日程和「记」。本窗口可用 Ctrl+Shift+K 随时记下。'
+                : '不要用电脑管家打开安卓安装包。坐下做事用 Windows 应用，出门用手机。';
+        }
     }
 
     function isNarrow() {
@@ -78,9 +98,12 @@
         lastNarrow = isNarrow();
         const btn = document.getElementById('sidebarToggleBtn');
         if (btn) btn.addEventListener('click', toggle);
+        syncDesktopAppRows();
         apply();
         window.addEventListener('resize', onResize);
     }
+
+    window.isShuranDesktopApp = isShuranDesktopApp;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', onReady);
