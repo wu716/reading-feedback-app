@@ -1,10 +1,14 @@
 (function () {
     const TABS = [
-        { id: 'schedule', label: '日程', icon: '程' },
-        { id: 'capture', label: '记', icon: '记', action: 'capture' },
-        { id: 'self-talk', label: 'Self-talk', icon: '谈' },
-        { id: 'user-center', label: '我的', icon: '我' },
+        { id: 'schedule', labelKey: 'nav.schedule', label: '日程', icon: '程' },
+        { id: 'capture', labelKey: 'nav.capture', label: '记', icon: '记', action: 'capture' },
+        { id: 'self-talk', labelKey: 'nav.selfTalk', label: 'Self-talk', icon: '谈' },
+        { id: 'user-center', labelKey: 'nav.me', label: '我的', icon: '我' },
     ];
+
+    function t(key, fallback) {
+        return window.shuranI18n ? window.shuranI18n.t(key, fallback) : fallback;
+    }
 
     function tabHref(id) {
         if (id === 'self-talk' && location.pathname.includes('self_talk')) {
@@ -61,11 +65,11 @@
             const bar = document.createElement('nav');
             bar.id = 'appTabbar';
             bar.className = 'app-tabbar';
-            bar.setAttribute('aria-label', '出门时用');
+            bar.setAttribute('aria-label', t('tabbar.aria', '出门时用'));
             bar.innerHTML = TABS.map((t) => `
                 <button type="button" class="tab-item${t.action === 'capture' ? ' tab-capture' : ''}" data-tab="${t.id}">
                     <span class="tab-icon">${t.icon}</span>
-                    <span class="tab-text">${t.label}</span>
+                    <span class="tab-text" data-tab-label="${t.id}">${window.shuranI18n ? window.shuranI18n.t(t.labelKey, t.label) : t.label}</span>
                 </button>
             `).join('');
             bar.addEventListener('click', (e) => {
@@ -77,7 +81,18 @@
             document.body.appendChild(bar);
         }
         document.body.classList.add('has-app-tabbar');
+        updateLabels();
         highlight();
+    }
+
+    function updateLabels() {
+        const bar = document.getElementById('appTabbar');
+        if (!bar) return;
+        bar.setAttribute('aria-label', t('tabbar.aria', '出门时用'));
+        TABS.forEach((tab) => {
+            const label = bar.querySelector(`[data-tab-label="${tab.id}"]`);
+            if (label) label.textContent = t(tab.labelKey, tab.label);
+        });
     }
 
     window.syncAppTabbar = highlight;
@@ -89,4 +104,5 @@
         render();
     }
     window.addEventListener('hashchange', highlight);
+    window.addEventListener('shuran-language-change', updateLabels);
 })();

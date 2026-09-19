@@ -18,9 +18,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260918desk1">
+    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260919i18n1">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd4">
-    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260918desk1">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260919i18n1">
     <style>
         :root {
             --ink: #1c1b19;
@@ -251,6 +251,18 @@
 
         p.me-phone-only {
             display: block;
+        }
+
+        .me-group.me-phone-only {
+            display: block;
+        }
+
+        .me-language-options {
+            justify-content: flex-start;
+        }
+
+        .me-language-options .me-chip {
+            max-width: 150px;
         }
 
         @media (min-width: 769px) {
@@ -3635,13 +3647,13 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260918desk1">
+    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260919i18n1">
 </head>
 <body>
     <script>
         (function () {
             if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-                location.replace('http://43.161.238.165:8000/?v=20260917upd9');
+                location.replace('http://43.161.238.165:8000/?v=20260919i18n1');
                 return;
             }
             window.SHURAN_VERSION = '1.5.0';
@@ -3767,21 +3779,21 @@
     <!-- 顶部导航栏 -->
     <header class="app-header">
         <div class="app-logo">
-            <button type="button" class="header-icon-btn sidebar-toggle-btn" id="sidebarToggleBtn" aria-label="收起导航" title="收起导航">
+            <button type="button" class="header-icon-btn sidebar-toggle-btn" id="sidebarToggleBtn" aria-label="收起导航" title="收起导航" data-i18n-aria-label="nav.collapse" data-i18n-title="nav.collapse">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                     <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M5 7h14M5 12h14M5 17h9"/>
                 </svg>
             </button>
             <div class="header-nav-controls">
-                <button type="button" class="header-icon-btn" id="headerBackBtn" onclick="handlePageBack()" aria-label="返回" hidden>←</button>
+                <button type="button" class="header-icon-btn" id="headerBackBtn" onclick="handlePageBack()" aria-label="返回" data-i18n-aria-label="nav.back" hidden>←</button>
             </div>
-            <img class="app-brand-icon" src="/static/icons/app-icon-192.png" alt="书然" width="28" height="28">
+            <img class="app-brand-icon" src="/static/icons/app-icon-192.png" alt="书然" data-i18n-alt="app.title" width="28" height="28">
             <span class="header-mark" aria-hidden="true">书</span>
-            <span class="app-title">书然</span>
+            <span class="app-title" data-i18n="app.title">书然</span>
         </div>
         <div class="header-actions">
             <div class="reminder-bell-wrap" id="reminderBellWrap" hidden>
-                <button type="button" class="header-icon-btn reminder-bell-btn" id="reminderBellBtn" aria-label="提醒" title="提醒" aria-expanded="false">
+                <button type="button" class="header-icon-btn reminder-bell-btn" id="reminderBellBtn" aria-label="提醒" title="提醒" data-i18n-aria-label="reminder.title" data-i18n-title="reminder.title" aria-expanded="false">
                     <svg class="reminder-bell-icon" viewBox="0 0 24 24" aria-hidden="true">
                         <path fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" d="M7 17h10l-1.15-1.35V11a4.85 4.85 0 0 0-3.6-4.7V5.6a1.25 1.25 0 0 0-2.5 0v.7A4.85 4.85 0 0 0 6.15 11v4.65L5 17"/>
                         <path fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" d="M10.2 17.4a1.8 1.8 0 0 0 3.6 0"/>
@@ -3790,10 +3802,10 @@
                 </button>
                 <div class="reminder-dropdown" id="reminderDropdown" hidden>
                     <div class="reminder-dropdown-head">
-                        <strong>提醒</strong>
+                        <strong data-i18n="reminder.title">提醒</strong>
                         <div class="reminder-dropdown-head-actions">
-                            <a href="#" id="reminderSettingsLink">提醒设置</a>
-                            <button type="button" class="reminder-dropdown-close" id="reminderDropdownClose" aria-label="收起">收起</button>
+                            <a href="#" id="reminderSettingsLink" data-i18n="reminder.settings">提醒设置</a>
+                            <button type="button" class="reminder-dropdown-close" id="reminderDropdownClose" aria-label="收起" data-i18n="reminder.collapse" data-i18n-aria-label="reminder.collapse">收起</button>
                         </div>
                     </div>
                     <div class="reminder-dropdown-list" id="reminderDropdownList"></div>
@@ -3810,29 +3822,29 @@
     <!-- 侧边导航栏 -->
     <aside class="app-sidebar">
         <nav class="sidebar-nav">
-            <div class="nav-item active" data-section="overview" onclick="navigateTo('overview')" title="今日">
+            <div class="nav-item active" data-section="overview" onclick="navigateTo('overview')" title="今日" data-i18n-title="nav.today">
                 <span class="nav-icon">今</span>
-                <span class="nav-text">今日</span>
+                <span class="nav-text" data-i18n="nav.today">今日</span>
             </div>
-            <div class="nav-item" data-section="schedule" onclick="navigateTo('schedule')" title="日程">
+            <div class="nav-item" data-section="schedule" onclick="navigateTo('schedule')" title="日程" data-i18n-title="nav.schedule">
                 <span class="nav-icon">程</span>
-                <span class="nav-text">日程</span>
+                <span class="nav-text" data-i18n="nav.schedule">日程</span>
             </div>
-            <div class="nav-item" data-section="actions" onclick="navigateTo('actions')" title="行动">
+            <div class="nav-item" data-section="actions" onclick="navigateTo('actions')" title="行动" data-i18n-title="nav.actions">
                 <span class="nav-icon">行</span>
-                <span class="nav-text">行动</span>
+                <span class="nav-text" data-i18n="nav.actions">行动</span>
             </div>
-            <div class="nav-item" data-section="upload" onclick="navigateTo('upload')" title="上传笔记">
+            <div class="nav-item" data-section="upload" onclick="navigateTo('upload')" title="上传笔记" data-i18n-title="nav.upload">
                 <span class="nav-icon">笔</span>
-                <span class="nav-text">上传笔记</span>
+                <span class="nav-text" data-i18n="nav.upload">上传笔记</span>
             </div>
-            <div class="nav-item" data-section="self-talk" onclick="navigateTo('self-talk')" title="Self-talk">
+            <div class="nav-item" data-section="self-talk" onclick="navigateTo('self-talk')" title="Self-talk" data-i18n-title="nav.selfTalk">
                 <span class="nav-icon">谈</span>
-                <span class="nav-text">Self-talk</span>
+                <span class="nav-text" data-i18n="nav.selfTalk">Self-talk</span>
             </div>
-            <div class="nav-item" data-section="user-center" onclick="navigateTo('user-center')" title="我的">
+            <div class="nav-item" data-section="user-center" onclick="navigateTo('user-center')" title="我的" data-i18n-title="nav.me">
                 <span class="nav-icon">我</span>
-                <span class="nav-text">我的</span>
+                <span class="nav-text" data-i18n="nav.me">我的</span>
             </div>
         </nav>
     </aside>
@@ -3845,7 +3857,7 @@
         <!-- 首页概览区 -->
         <section id="overview" class="content-section active">
             <div class="section-header">
-                <h1>今日</h1>
+                <h1 data-i18n="nav.today">今日</h1>
             </div>
 
             <div class="in-app-reminder-bar" id="inAppReminderBar" hidden></div>
@@ -4031,7 +4043,7 @@
 
         <section id="schedule" class="content-section">
             <div class="section-header">
-                <h1>日程安排</h1>
+                <h1 data-i18n="schedule.title">日程安排</h1>
                 <p class="flow-hint" id="scheduleHint">写下今天要做的事</p>
             </div>
             <div class="home-schedule" id="homeSchedule">
@@ -4071,7 +4083,7 @@
         <section id="upload" class="content-section">
             <div class="section-header">
                 <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
-                <h1>读书笔记</h1>
+                <h1 data-i18n="upload.title">读书笔记</h1>
                 <p>从笔记生成行动项</p>
             </div>
             
@@ -4142,7 +4154,7 @@
         <!-- 行动项管理区 -->
         <section id="actions" class="content-section">
             <div class="section-header">
-                <h1>行动</h1>
+                <h1 data-i18n="nav.actions">行动</h1>
             </div>
 
             <div class="notes-entry-card" onclick="openNotesFromActions()">
@@ -4193,7 +4205,7 @@
         <!-- 个人中心区 -->
         <section id="user-center" class="content-section">
             <div class="section-header">
-                <h1>我的</h1>
+                <h1 data-i18n="nav.me">我的</h1>
             </div>
 
             <div class="me-page">
@@ -4205,27 +4217,41 @@
                         <span class="me-plan" id="userDisplayPlan"></span>
                         <div class="me-profile-email" id="userDisplayPlanExpire"></div>
                     </div>
-                    <button type="button" class="me-edit" onclick="showEditNameModal()">修改昵称</button>
+                    <button type="button" class="me-edit" onclick="showEditNameModal()" data-i18n="me.editName">修改昵称</button>
+                </div>
+
+                <div class="me-group" id="meLanguageGroup">
+                    <div class="me-group-title" data-i18n="me.language.group">语言</div>
+                    <div class="me-row me-row-static">
+                        <div class="me-row-main">
+                            <div class="me-row-title" data-i18n="me.language.title">界面语言</div>
+                            <div class="me-row-desc" data-i18n="me.language.desc">切换后会保存在本机。</div>
+                        </div>
+                    </div>
+                    <div class="me-weekdays me-language-options" id="languageChoiceRow">
+                        <label class="me-chip"><input type="radio" name="languageChoice" value="zh-CN"><span data-i18n="me.language.zh">中文</span></label>
+                        <label class="me-chip"><input type="radio" name="languageChoice" value="en"><span data-i18n="me.language.en">English</span></label>
+                    </div>
                 </div>
 
                 <div class="me-group" id="meAccountGroup">
-                    <div class="me-group-title">账户与套餐</div>
+                    <div class="me-group-title" data-i18n="me.account.group">账户与套餐</div>
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
-                            <div class="me-row-title">今日额度</div>
+                            <div class="me-row-title" data-i18n="me.quota.today">今日额度</div>
                             <div class="me-row-desc" id="meQuotaHint"></div>
                         </div>
                     </div>
-                    <p class="me-hint">付费和续期在微信产品群找站长开通，开通后当天额度按新套餐生效。</p>
+                    <p class="me-hint" data-i18n="me.plan.hint">付费和续期在微信产品群找站长开通，开通后当天额度按新套餐生效。</p>
                     <div class="owner-table-wrap">
                         <table class="me-plan-table" id="mePlanTable">
                             <thead>
                                 <tr>
-                                    <th>套餐</th>
-                                    <th>价格</th>
-                                    <th>抽取 / 天</th>
-                                    <th>建议 / 天</th>
-                                    <th>时长</th>
+                                    <th data-i18n="me.plans.plan">套餐</th>
+                                    <th data-i18n="me.plans.price">价格</th>
+                                    <th data-i18n="me.plans.extracts">抽取 / 天</th>
+                                    <th data-i18n="me.plans.advice">建议 / 天</th>
+                                    <th data-i18n="me.plans.duration">时长</th>
                                 </tr>
                             </thead>
                             <tbody id="mePlanTableBody"></tbody>
@@ -4234,11 +4260,11 @@
                 </div>
 
                 <div class="me-group" id="meBindPhoneGroup" hidden>
-                    <div class="me-group-title">绑定手机号</div>
-                    <p class="me-hint">绑定后可用手机号登录。一个号码只能绑定一个账户。验证码绑定稍后开放。</p>
+                    <div class="me-group-title" data-i18n="me.bindPhone.group">绑定手机号</div>
+                    <p class="me-hint" data-i18n="me.bindPhone.hint">绑定后可用手机号登录。一个号码只能绑定一个账户。验证码绑定稍后开放。</p>
                     <div class="me-inline-form">
-                        <input type="tel" id="bindPhoneInput" maxlength="11" placeholder="11 位手机号" autocomplete="tel">
-                        <button type="button" class="me-link-btn" onclick="bindUserPhone()">绑定</button>
+                        <input type="tel" id="bindPhoneInput" maxlength="11" placeholder="11 位手机号" data-i18n-placeholder="me.bindPhone.placeholder" autocomplete="tel">
+                        <button type="button" class="me-link-btn" onclick="bindUserPhone()" data-i18n="me.bindPhone.action">绑定</button>
                     </div>
                 </div>
 
@@ -4248,8 +4274,8 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
                         </span>
                         <span class="me-row-main">
-                            <span class="me-row-title">今日</span>
-                            <span class="me-row-desc">日历、待办和今天的进展</span>
+                            <span class="me-row-title" data-i18n="me.quick.today.title">今日</span>
+                            <span class="me-row-desc" data-i18n="me.quick.today.desc">日历、待办和今天的进展</span>
                         </span>
                         <span class="me-chevron">›</span>
                     </button>
@@ -4258,8 +4284,8 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>
                         </span>
                         <span class="me-row-main">
-                            <span class="me-row-title">行动</span>
-                            <span class="me-row-desc">坐下时在电脑上更好做</span>
+                            <span class="me-row-title" data-i18n="me.quick.actions.title">行动</span>
+                            <span class="me-row-desc" data-i18n="me.quick.actions.desc">坐下时在电脑上更好做</span>
                         </span>
                         <span class="me-chevron">›</span>
                     </button>
@@ -4268,8 +4294,8 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
                         </span>
                         <span class="me-row-main">
-                            <span class="me-row-title">上传笔记</span>
-                            <span class="me-row-desc">从笔记抽出行动项</span>
+                            <span class="me-row-title" data-i18n="me.quick.upload.title">上传笔记</span>
+                            <span class="me-row-desc" data-i18n="me.quick.upload.desc">从笔记抽出行动项</span>
                         </span>
                         <span class="me-chevron">›</span>
                     </button>
@@ -4280,42 +4306,42 @@
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h6"/></svg>
                         </span>
-                        <span class="me-row-main"><span class="me-row-title">站长开通</span></span>
+                        <span class="me-row-main"><span class="me-row-title" data-i18n="me.menu.owner">站长开通</span></span>
                         <span class="me-chevron">›</span>
                     </button>
                     <button type="button" class="me-row" onclick="navigateTo('time-log')">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
                         </span>
-                        <span class="me-row-main"><span class="me-row-title">时间日志</span></span>
+                        <span class="me-row-main"><span class="me-row-title" data-i18n="me.menu.timeLog">时间日志</span></span>
                         <span class="me-chevron">›</span>
                     </button>
                     <button type="button" class="me-row" onclick="navigateTo('ideas')">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 1 7 7c0 2.4-1.2 4.4-3 5.6V16H8v-1.4C6.2 13.4 5 11.4 5 9a7 7 0 0 1 7-7z"/></svg>
                         </span>
-                        <span class="me-row-main"><span class="me-row-title">灵感</span></span>
+                        <span class="me-row-main"><span class="me-row-title" data-i18n="me.menu.ideas">灵感</span></span>
                         <span class="me-chevron">›</span>
                     </button>
                     <button type="button" class="me-row" onclick="navigateTo('stats')">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V3"/></svg>
                         </span>
-                        <span class="me-row-main"><span class="me-row-title">实践统计</span></span>
+                        <span class="me-row-main"><span class="me-row-title" data-i18n="me.menu.stats">实践统计</span></span>
                         <span class="me-chevron">›</span>
                     </button>
                     <button type="button" class="me-row" onclick="goToDashboard()">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg>
                         </span>
-                        <span class="me-row-main"><span class="me-row-title">数据看板</span></span>
+                        <span class="me-row-main"><span class="me-row-title" data-i18n="me.menu.dashboard">数据看板</span></span>
                         <span class="me-chevron">›</span>
                     </button>
                     <button type="button" class="me-row" onclick="navigateTo('guide')">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 0-3 3V4z"/><path d="M5 4a3 3 0 0 1 3-3h11v16"/></svg>
                         </span>
-                        <span class="me-row-main"><span class="me-row-title">使用说明</span></span>
+                        <span class="me-row-main"><span class="me-row-title" data-i18n="me.menu.guide">使用说明</span></span>
                         <span class="me-chevron">›</span>
                     </button>
                 </div>
@@ -4326,7 +4352,7 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M5 21h14"/></svg>
                         </span>
                         <div class="me-row-main">
-                            <div class="me-row-title">版本</div>
+                            <div class="me-row-title" data-i18n="me.version.title">版本</div>
                             <div class="me-row-desc" id="appVersionLabel"></div>
                         </div>
                         <span class="me-chevron" aria-hidden="true">›</span>
@@ -4337,8 +4363,8 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8"/></svg>
                         </span>
                         <span class="me-row-main">
-                            <span class="me-row-title">Windows 应用</span>
-                            <span class="me-row-desc">电脑请用这个打开。出门用手机看日程和「记」。</span>
+                            <span class="me-row-title" data-i18n="me.windows.title">Windows 应用</span>
+                            <span class="me-row-desc" data-i18n="me.windows.desc">电脑请用这个打开。出门用手机看日程和「记」。</span>
                         </span>
                         <span class="me-chevron">›</span>
                     </a>
@@ -4347,30 +4373,30 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8"/></svg>
                         </span>
                         <span class="me-row-main">
-                            <span class="me-row-title">已在 Windows 应用中</span>
-                            <span class="me-row-desc">全局 Ctrl+Shift+K 打开「记」。窗口内也可用 Ctrl+K。</span>
+                            <span class="me-row-title" data-i18n="me.windows.running.title">已在 Windows 应用中</span>
+                            <span class="me-row-desc" data-i18n="me.windows.running.desc">全局 Ctrl+Shift+K 打开「记」。窗口内也可用 Ctrl+K。</span>
                         </span>
                     </div>
-                    <p class="me-hint me-desktop-only" id="windowsAppHint">不要用电脑管家打开安卓安装包。坐下做事用 Windows 应用，出门用手机。</p>
+                    <p class="me-hint me-desktop-only" id="windowsAppHint" data-i18n="me.windows.hint">不要用电脑管家打开安卓安装包。坐下做事用 Windows 应用，出门用手机。</p>
                 </div>
 
                 <div class="me-group" id="meVolumeTripleGroup" hidden>
-                    <div class="me-group-title">快捷记下</div>
+                    <div class="me-group-title" data-i18n="me.capture.group">快捷记下</div>
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
-                            <div class="me-row-title">默认记下</div>
-                            <div class="me-row-desc" id="captureKindDefaultDesc">三击或点「记」时先落到时刻，仍可当场改。</div>
+                            <div class="me-row-title" data-i18n="me.capture.default.title">默认记下</div>
+                            <div class="me-row-desc" id="captureKindDefaultDesc" data-i18n="me.capture.default.desc">三击或点「记」时先落到时刻，仍可当场改。</div>
                         </div>
                     </div>
                     <div class="me-weekdays" id="captureKindDefaultRow">
-                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="moment" checked><span>时刻</span></label>
-                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="idea"><span>灵感</span></label>
-                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="todo"><span>待办</span></label>
+                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="moment" checked><span data-i18n="capture.kind.moment">时刻</span></label>
+                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="idea"><span data-i18n="capture.kind.idea">灵感</span></label>
+                        <label class="me-chip"><input type="radio" name="captureKindDefault" value="todo"><span data-i18n="capture.kind.todo">待办</span></label>
                     </div>
                     <div class="me-row me-row-static" id="timeLogVolumeMeRow" hidden>
                         <div class="me-row-main">
-                            <div class="me-row-title">三击音量减 → 记</div>
-                            <div class="me-row-desc" id="timeLogVolumeMeDesc">书然开着时，约 1.5 秒内连按三下音量减即可打开「记」。</div>
+                            <div class="me-row-title" data-i18n="me.capture.volume.title">三击音量减 → 记</div>
+                            <div class="me-row-desc" id="timeLogVolumeMeDesc" data-i18n="me.capture.volume.desc">书然开着时，约 1.5 秒内连按三下音量减即可打开「记」。</div>
                         </div>
                         <label class="me-switch">
                             <input type="checkbox" id="timeLogVolumeMeSwitch">
@@ -4379,16 +4405,16 @@
                     </div>
                     <p class="me-hint" id="timeLogVolumeMeHint" hidden></p>
                     <div class="me-actions" id="timeLogVolumeUpdateWrap" hidden>
-                        <button type="button" class="me-btn me-btn-primary" id="timeLogVolumeUpdateBtn">换安装包</button>
+                        <button type="button" class="me-btn me-btn-primary" id="timeLogVolumeUpdateBtn" data-i18n="me.capture.updateApp">换安装包</button>
                     </div>
                 </div>
 
                 <div class="me-group reminder-settings-section">
-                    <div class="me-group-title">提醒</div>
-                    <p class="me-hint">待办时间在添加时单独设置；阅读时间在今日待办里设置。到点后会弹出系统通知。</p>
+                    <div class="me-group-title" data-i18n="me.reminders.group">提醒</div>
+                    <p class="me-hint" data-i18n="me.reminders.hint">待办时间在添加时单独设置；阅读时间在今日待办里设置。到点后会弹出系统通知。</p>
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
-                            <div class="me-row-title">启用提醒</div>
+                            <div class="me-row-title" data-i18n="me.reminders.enable">启用提醒</div>
                         </div>
                         <label class="me-switch">
                             <input type="checkbox" id="reminderMasterSwitch">
@@ -4399,13 +4425,13 @@
 
                 <div class="me-group" id="dailyReminderGroup">
                     <button type="button" class="me-group-title me-group-toggle" id="dailyReminderToggle" aria-expanded="true">
-                        每日提醒
-                        <span class="me-group-toggle-hint" id="dailyReminderToggleHint">收起</span>
+                        <span data-i18n="me.reminders.dailyGroup">每日提醒</span>
+                        <span class="me-group-toggle-hint" id="dailyReminderToggleHint" data-i18n="reminder.collapse">收起</span>
                     </button>
                     <div id="dailyReminderPanel">
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
-                            <div class="me-row-title">每天提醒</div>
+                            <div class="me-row-title" data-i18n="me.reminders.daily">每天提醒</div>
                         </div>
                         <label class="me-switch">
                             <input type="checkbox" id="reminderDailySwitch">
@@ -4414,32 +4440,32 @@
                     </div>
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
-                            <div class="me-row-title">提醒时间</div>
+                            <div class="me-row-title" data-i18n="me.reminders.time">提醒时间</div>
                         </div>
                         <input type="time" class="me-control" id="dailyReminderTime" value="20:00" data-time-title="每日提醒时间">
                     </div>
                     <div class="me-row me-row-static me-row-last">
                         <div class="me-row-main">
-                            <div class="me-row-title">重复</div>
+                            <div class="me-row-title" data-i18n="me.reminders.repeat">重复</div>
                         </div>
                     </div>
-                    <div class="me-weekdays" aria-label="重复日期">
-                        <label class="me-chip"><input type="checkbox" id="reminderDay0" checked><span>日</span></label>
-                        <label class="me-chip"><input type="checkbox" id="reminderDay1" checked><span>一</span></label>
-                        <label class="me-chip"><input type="checkbox" id="reminderDay2" checked><span>二</span></label>
-                        <label class="me-chip"><input type="checkbox" id="reminderDay3" checked><span>三</span></label>
-                        <label class="me-chip"><input type="checkbox" id="reminderDay4" checked><span>四</span></label>
-                        <label class="me-chip"><input type="checkbox" id="reminderDay5" checked><span>五</span></label>
-                        <label class="me-chip"><input type="checkbox" id="reminderDay6" checked><span>六</span></label>
+                    <div class="me-weekdays" aria-label="重复日期" data-i18n-aria-label="me.reminders.repeatDays">
+                        <label class="me-chip"><input type="checkbox" id="reminderDay0" checked><span data-i18n="weekday.sun.short">日</span></label>
+                        <label class="me-chip"><input type="checkbox" id="reminderDay1" checked><span data-i18n="weekday.mon.short">一</span></label>
+                        <label class="me-chip"><input type="checkbox" id="reminderDay2" checked><span data-i18n="weekday.tue.short">二</span></label>
+                        <label class="me-chip"><input type="checkbox" id="reminderDay3" checked><span data-i18n="weekday.wed.short">三</span></label>
+                        <label class="me-chip"><input type="checkbox" id="reminderDay4" checked><span data-i18n="weekday.thu.short">四</span></label>
+                        <label class="me-chip"><input type="checkbox" id="reminderDay5" checked><span data-i18n="weekday.fri.short">五</span></label>
+                        <label class="me-chip"><input type="checkbox" id="reminderDay6" checked><span data-i18n="weekday.sat.short">六</span></label>
                     </div>
                     </div>
                 </div>
 
                 <div class="me-group">
-                    <div class="me-group-title">行动提醒</div>
+                    <div class="me-group-title" data-i18n="me.actionReminders.group">行动提醒</div>
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
-                            <div class="me-row-title">完成行动后</div>
+                            <div class="me-row-title" data-i18n="me.actionReminders.afterDone">完成行动后</div>
                         </div>
                         <label class="me-switch">
                             <input type="checkbox" id="reminderActionSwitch">
@@ -4448,7 +4474,7 @@
                     </div>
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
-                            <div class="me-row-title">新增行动后</div>
+                            <div class="me-row-title" data-i18n="me.actionReminders.afterNew">新增行动后</div>
                         </div>
                         <label class="me-switch">
                             <input type="checkbox" id="reminderNewActionSwitch">
@@ -4457,8 +4483,8 @@
                     </div>
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
-                            <div class="me-row-title">非活跃提醒</div>
-                            <div class="me-row-desc">超过设定天数未使用时提醒</div>
+                            <div class="me-row-title" data-i18n="me.actionReminders.inactive">非活跃提醒</div>
+                            <div class="me-row-desc" data-i18n="me.actionReminders.inactiveDesc">超过设定天数未使用时提醒</div>
                         </div>
                         <select id="inactiveDaysThreshold" class="me-control">
                             <option value="1">1 天</option>
@@ -4474,42 +4500,42 @@
                 </div>
 
                 <div class="me-group">
-                    <div class="me-group-title">通知</div>
-                    <p class="me-hint">系统通知出现在状态栏与锁屏。网页版会在应用内提示。</p>
+                    <div class="me-group-title" data-i18n="me.notifications.group">通知</div>
+                    <p class="me-hint" data-i18n="me.notifications.hint">系统通知出现在状态栏与锁屏。网页版会在应用内提示。</p>
                     <div id="reminderReliabilityBox" hidden>
-                        <p class="me-hint">退出 App 后也要到点提醒，请完成下面几项。荣耀 / 华为 / 小米等国产系统默认会杀掉后台闹钟。</p>
+                        <p class="me-hint" data-i18n="me.notifications.reliabilityHint">退出 App 后也要到点提醒，请完成下面几项。荣耀 / 华为 / 小米等国产系统默认会杀掉后台闹钟。</p>
                         <div class="me-row me-row-static" id="notifyPermRow">
                             <div class="me-row-main">
-                                <div class="me-row-title">通知权限</div>
-                                <div class="me-row-desc" id="notifyPermDesc">检测中…</div>
+                                <div class="me-row-title" data-i18n="me.notifications.permission">通知权限</div>
+                                <div class="me-row-desc" id="notifyPermDesc" data-i18n="status.checking">检测中…</div>
                             </div>
-                            <button type="button" class="me-link-btn" id="notifyPermBtn" onclick="openNotificationSettings()">去开启</button>
+                            <button type="button" class="me-link-btn" id="notifyPermBtn" onclick="openNotificationSettings()" data-i18n="common.enable">去开启</button>
                         </div>
                         <div class="me-row me-row-static" id="exactAlarmRow">
                             <div class="me-row-main">
-                                <div class="me-row-title">精确闹钟</div>
-                                <div class="me-row-desc" id="exactAlarmDesc">未开启时，到点提醒可能被推迟到打开应用才出现</div>
+                                <div class="me-row-title" data-i18n="me.notifications.exactAlarm">精确闹钟</div>
+                                <div class="me-row-desc" id="exactAlarmDesc" data-i18n="me.notifications.exactAlarmDesc">未开启时，到点提醒可能被推迟到打开应用才出现</div>
                             </div>
-                            <button type="button" class="me-link-btn" id="exactAlarmBtn" onclick="openExactAlarmSettings()">去开启</button>
+                            <button type="button" class="me-link-btn" id="exactAlarmBtn" onclick="openExactAlarmSettings()" data-i18n="common.enable">去开启</button>
                         </div>
                         <div class="me-row me-row-static" id="batteryOptRow">
                             <div class="me-row-main">
-                                <div class="me-row-title">关闭电池优化</div>
-                                <div class="me-row-desc" id="batteryOptDesc">系统省电会取消已设定的闹钟</div>
+                                <div class="me-row-title" data-i18n="me.notifications.battery">关闭电池优化</div>
+                                <div class="me-row-desc" id="batteryOptDesc" data-i18n="me.notifications.batteryDesc">系统省电会取消已设定的闹钟</div>
                             </div>
-                            <button type="button" class="me-link-btn" id="batteryOptBtn" onclick="openBatteryOptimizationSettings()">去关闭</button>
+                            <button type="button" class="me-link-btn" id="batteryOptBtn" onclick="openBatteryOptimizationSettings()" data-i18n="common.turnOff">去关闭</button>
                         </div>
                         <div class="me-row me-row-static" id="autostartRow">
                             <div class="me-row-main">
-                                <div class="me-row-title">允许自启动</div>
-                                <div class="me-row-desc">划掉后台后仍要响：允许书然自启动 / 关联启动</div>
+                                <div class="me-row-title" data-i18n="me.notifications.autostart">允许自启动</div>
+                                <div class="me-row-desc" data-i18n="me.notifications.autostartDesc">划掉后台后仍要响：允许书然自启动 / 关联启动</div>
                             </div>
-                            <button type="button" class="me-link-btn" onclick="openAutostartSettings()">去设置</button>
+                            <button type="button" class="me-link-btn" onclick="openAutostartSettings()" data-i18n="common.settings">去设置</button>
                         </div>
                     </div>
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
-                            <div class="me-row-title">系统通知</div>
+                            <div class="me-row-title" data-i18n="me.notifications.system">系统通知</div>
                         </div>
                         <label class="me-switch">
                             <input type="checkbox" id="reminderBrowserSwitch">
@@ -4518,7 +4544,7 @@
                     </div>
                     <div class="me-row me-row-static">
                         <div class="me-row-main">
-                            <div class="me-row-title">邮件通知</div>
+                            <div class="me-row-title" data-i18n="me.notifications.email">邮件通知</div>
                         </div>
                         <label class="me-switch">
                             <input type="checkbox" id="reminderEmailSwitch">
@@ -4526,21 +4552,21 @@
                         </label>
                     </div>
                     <div class="me-actions">
-                        <button type="button" class="me-btn me-btn-primary" onclick="saveReminderSettings()">保存</button>
+                        <button type="button" class="me-btn me-btn-primary" onclick="saveReminderSettings()" data-i18n="common.save">保存</button>
                     </div>
                 </div>
 
                 <div class="me-group">
-                    <div class="me-group-title">修改密码</div>
-                    <p class="me-hint">改密后，其它已登录设备会退出。</p>
+                    <div class="me-group-title" data-i18n="me.password.group">修改密码</div>
+                    <p class="me-hint" data-i18n="me.password.hint">改密后，其它已登录设备会退出。</p>
                     <div class="owner-form">
-                        <input type="password" id="oldPasswordInput" placeholder="当前密码" autocomplete="current-password">
-                        <input type="password" id="newPasswordInput" placeholder="新密码（至少 6 位）" autocomplete="new-password">
-                        <button type="button" class="me-link-btn" onclick="changeUserPassword()">更新</button>
+                        <input type="password" id="oldPasswordInput" placeholder="当前密码" data-i18n-placeholder="me.password.old" autocomplete="current-password">
+                        <input type="password" id="newPasswordInput" placeholder="新密码（至少 6 位）" data-i18n-placeholder="me.password.new" autocomplete="new-password">
+                        <button type="button" class="me-link-btn" onclick="changeUserPassword()" data-i18n="common.update">更新</button>
                     </div>
                 </div>
 
-                <button type="button" class="me-logout" onclick="confirmLogout()">退出登录</button>
+                <button type="button" class="me-logout" onclick="confirmLogout()" data-i18n="auth.logout">退出登录</button>
             </div>
         </section>
 
@@ -4865,57 +4891,57 @@
             <div class="ink-grain"></div>
             <div class="ink-mist"></div>
         </div>
-        <p class="ink-colophon">开卷有益 · 知行合一</p>
+        <p class="ink-colophon" data-i18n="auth.colophon">开卷有益 · 知行合一</p>
         <div class="auth-layout">
             <div class="auth-brand">
                 <span class="ink-seal">然</span>
-                <h1>书然</h1>
+                <h1 data-i18n="app.title">书然</h1>
                 <div class="brand-brush"></div>
-                <p class="brand-tagline">把读书笔记，变成真正在做的行动</p>
+                <p class="brand-tagline" data-i18n="app.tagline">把读书笔记，变成真正在做的行动</p>
             </div>
             <div class="auth-container">
-                <button class="close-modal" onclick="closeAuthModal()">&times;</button>
+                <button class="close-modal" onclick="closeAuthModal()" aria-label="关闭" data-i18n-aria-label="common.close">&times;</button>
                 <div class="auth-header">
-                    <h2>入册</h2>
-                    <p>登录已有账户，或注册开启书然</p>
+                    <h2 data-i18n="auth.entry.title">入册</h2>
+                    <p data-i18n="auth.entry.desc">登录已有账户，或注册开启书然</p>
                 </div>
 
                 <div class="auth-tabs">
-                    <button class="auth-tab active" onclick="switchTab('login')">登录</button>
-                    <button class="auth-tab" onclick="switchTab('register')">注册</button>
+                    <button class="auth-tab active" onclick="switchTab('login')" data-i18n="auth.login.tab">登录</button>
+                    <button class="auth-tab" onclick="switchTab('register')" data-i18n="auth.register.tab">注册</button>
                 </div>
 
                 <form class="auth-form active" id="loginForm">
                     <div class="form-group">
-                        <label for="loginEmail">手机号或邮箱</label>
-                        <input type="text" id="loginEmail" required placeholder="手机号或邮箱" autocomplete="username">
+                        <label for="loginEmail" data-i18n="auth.account.label">手机号或邮箱</label>
+                        <input type="text" id="loginEmail" required placeholder="手机号或邮箱" data-i18n-placeholder="auth.account.placeholder" autocomplete="username">
                     </div>
                     <div class="form-group">
-                        <label for="loginPassword">密码</label>
-                        <input type="password" id="loginPassword" required placeholder="密码" autocomplete="current-password">
+                        <label for="loginPassword" data-i18n="auth.password.label">密码</label>
+                        <input type="password" id="loginPassword" required placeholder="密码" data-i18n-placeholder="auth.password.placeholder" autocomplete="current-password">
                     </div>
-                    <button type="submit" class="auth-btn">登录</button>
+                    <button type="submit" class="auth-btn" data-i18n="auth.login.submit">登录</button>
                 </form>
 
                 <form class="auth-form" id="registerForm">
                     <div class="form-group">
-                        <label for="registerPhone">手机号</label>
-                        <input type="tel" id="registerPhone" required maxlength="11" placeholder="11 位手机号" autocomplete="tel">
+                        <label for="registerPhone" data-i18n="auth.phone.label">手机号</label>
+                        <input type="tel" id="registerPhone" required maxlength="11" placeholder="11 位手机号" data-i18n-placeholder="auth.phone.placeholder" autocomplete="tel">
                     </div>
                     <div class="form-group">
-                        <label for="registerName">真实姓名</label>
-                        <input type="text" id="registerName" required maxlength="20" placeholder="姓名" autocomplete="name">
+                        <label for="registerName" data-i18n="auth.name.label">真实姓名</label>
+                        <input type="text" id="registerName" required maxlength="20" placeholder="姓名" data-i18n-placeholder="auth.name.placeholder" autocomplete="name">
                     </div>
                     <div class="form-group">
-                        <label for="registerPassword">密码</label>
-                        <input type="password" id="registerPassword" required placeholder="密码" autocomplete="new-password">
-                        <div class="password-hint">至少 6 位，建议字母与数字搭配</div>
+                        <label for="registerPassword" data-i18n="auth.password.label">密码</label>
+                        <input type="password" id="registerPassword" required placeholder="密码" data-i18n-placeholder="auth.password.placeholder" autocomplete="new-password">
+                        <div class="password-hint" data-i18n="auth.password.hint">至少 6 位，建议字母与数字搭配</div>
                     </div>
                     <div class="form-group" id="inviteCodeGroup">
-                        <label for="registerInvite">邀请码</label>
-                        <input type="text" id="registerInvite" required maxlength="4" inputmode="numeric" placeholder="4 位数字邀请码">
+                        <label for="registerInvite" data-i18n="auth.invite.label">邀请码</label>
+                        <input type="text" id="registerInvite" required maxlength="4" inputmode="numeric" placeholder="4 位数字邀请码" data-i18n-placeholder="auth.invite.placeholder">
                     </div>
-                    <button type="submit" class="auth-btn">注册</button>
+                    <button type="submit" class="auth-btn" data-i18n="auth.register.submit">注册</button>
                 </form>
             </div>
         </div>
@@ -5211,20 +5237,21 @@
     <div class="practice-modal hidden" id="logoutConfirmModal">
         <div class="practice-container" style="width: 400px;">
             <div class="practice-header">
-                <h3>退出登录</h3>
+                <h3 data-i18n="auth.logout">退出登录</h3>
             </div>
             
             <div style="padding: 20px; text-align: center;">
-                <p style="margin-bottom: 20px; font-size: 1.1rem;">退出当前账号？</p>
+                <p style="margin-bottom: 20px; font-size: 1.1rem;" data-i18n="auth.logout.confirm">退出当前账号？</p>
                 
                 <div style="display: flex; gap: 15px; justify-content: center;">
-                    <button onclick="closeLogoutConfirmModal()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">取消</button>
-                    <button onclick="performLogout()" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;">确定退出</button>
+                    <button onclick="closeLogoutConfirmModal()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;" data-i18n="common.cancel">取消</button>
+                    <button onclick="performLogout()" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;" data-i18n="auth.logout.confirmButton">确定退出</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="/static/js/i18n.js?v=20260919i18n1"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -5235,6 +5262,10 @@
         let showAuthModalTimer = null;
         let allActions = []; // 存储所有行动项
         let currentFilterType = 'all'; // 当前筛选类型
+
+        function shuranText(key, fallback) {
+            return window.shuranI18n ? window.shuranI18n.t(key, fallback) : (fallback || key);
+        }
         
         // ============= 导航切换功能 =============
         function isMobileNav() {
@@ -5446,6 +5477,7 @@
             updateHeaderBackButton();
             initializePersonalStats();
             initPasswordToggles();
+            if (window.shuranI18n) window.shuranI18n.apply();
             
             // 先检查认证状态，再决定是否加载数据
             await checkAuthAndLoadData();
@@ -5465,7 +5497,7 @@
                     
                     const btn = e.target.querySelector('.auth-btn');
                     btn.disabled = true;
-                    btn.textContent = '登录中...';
+                    btn.textContent = shuranText('auth.login.loading', '登录中...');
                     
                     try {
                         const success = await login(email, password);
@@ -5478,7 +5510,7 @@
                         console.error('登录错误:', error);
                     } finally {
                         btn.disabled = false;
-                        btn.textContent = '登录';
+                        btn.textContent = shuranText('auth.login.submit', '登录');
                     }
                 });
             }
@@ -6494,17 +6526,21 @@
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'password-toggle';
-                btn.setAttribute('aria-label', '显示密码');
+                btn.setAttribute('aria-label', shuranText('auth.password.show', '显示密码'));
+                btn.dataset.i18nAriaLabel = 'auth.password.show';
+                btn.dataset.i18nTitle = 'auth.password.show';
                 btn.setAttribute('aria-pressed', 'false');
-                btn.title = '显示密码';
+                btn.title = shuranText('auth.password.show', '显示密码');
                 btn.innerHTML = eyeOn + eyeOff;
                 wrap.appendChild(btn);
                 btn.addEventListener('click', () => {
                     const show = input.type === 'password';
                     input.type = show ? 'text' : 'password';
                     btn.setAttribute('aria-pressed', show ? 'true' : 'false');
-                    btn.setAttribute('aria-label', show ? '隐藏密码' : '显示密码');
-                    btn.title = show ? '隐藏密码' : '显示密码';
+                    btn.dataset.i18nAriaLabel = show ? 'auth.password.hide' : 'auth.password.show';
+                    btn.dataset.i18nTitle = show ? 'auth.password.hide' : 'auth.password.show';
+                    btn.setAttribute('aria-label', show ? shuranText('auth.password.hide', '隐藏密码') : shuranText('auth.password.show', '显示密码'));
+                    btn.title = show ? shuranText('auth.password.hide', '隐藏密码') : shuranText('auth.password.show', '显示密码');
                     wrap.classList.toggle('is-visible', show);
                 });
             });
@@ -6522,11 +6558,11 @@
             const desc = document.querySelector('.auth-header p');
             if (title && desc) {
                 if (tab === 'register') {
-                    title.textContent = '开卷';
-                    desc.textContent = '用手机号和邀请码注册';
+                    title.textContent = shuranText('auth.register.title', '开卷');
+                    desc.textContent = shuranText('auth.register.desc', '用手机号和邀请码注册');
                 } else {
-                    title.textContent = '入册';
-                    desc.textContent = '手机号或邮箱登录，新用户需邀请码';
+                    title.textContent = shuranText('auth.login.title', '入册');
+                    desc.textContent = shuranText('auth.login.desc', '手机号或邮箱登录，新用户需邀请码');
                 }
             }
         }
@@ -7484,12 +7520,12 @@
             
             const btn = e.target.querySelector('.auth-btn');
             btn.disabled = true;
-            btn.textContent = '注册中...';
+            btn.textContent = shuranText('auth.register.loading', '注册中...');
             
             await register(phone, password, name, inviteCode);
             
             btn.disabled = false;
-            btn.textContent = '注册';
+            btn.textContent = shuranText('auth.register.submit', '注册');
         });
         
         // 跳转到 Self-talk 页面
@@ -8833,12 +8869,12 @@
     
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
-    <script src="/static/reminder_notification.js?v=20260918desk1"></script>
-    <script src="/static/js/app-tabbar.js?v=20260918desk1"></script>
+    <script src="/static/reminder_notification.js?v=20260919i18n1"></script>
+    <script src="/static/js/app-tabbar.js?v=20260919i18n1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
     <script src="/static/js/daily-schedule.js?v=20260917upd5"></script>
-    <script src="/static/js/time-log.js?v=20260918desk3"></script>
-    <script src="/static/js/ideas.js?v=20260918desk3"></script>
-    <script src="/static/js/desktop-shell.js?v=20260918desk1"></script>
+    <script src="/static/js/time-log.js?v=20260919i18n1"></script>
+    <script src="/static/js/ideas.js?v=20260919i18n1"></script>
+    <script src="/static/js/desktop-shell.js?v=20260919i18n1"></script>
 </body>
 </html>

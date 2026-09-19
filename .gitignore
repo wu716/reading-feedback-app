@@ -29,6 +29,7 @@ secrets/
 
 # 数据库文件
 *.db
+*.db.bak
 *.sqlite
 *.sqlite3
 scripts/account_backup.json
@@ -93,6 +94,7 @@ uploads/**
 scripts/app.db.backup
 
 # 本机思考与未来规划（不上公开仓库）
+.cursor/plans/
 docs/ops/未来规划与待办.md
 docs/ops/快速唤起记-硬件与商店入口.md
 
