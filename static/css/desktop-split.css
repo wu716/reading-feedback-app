@@ -150,6 +150,11 @@
         overflow: auto;
     }
 
+    #schedule .schedule-later.is-collapsed {
+        max-height: none;
+        overflow: visible;
+    }
+
     #actions .actions-list {
         flex: none;
         min-height: 0;

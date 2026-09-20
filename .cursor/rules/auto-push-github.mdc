@@ -1,21 +1,16 @@
 ---
-description: 本项目代码改完后自动 commit 并推到 GitHub
+description: 本项目代码改完后自动提交到 GitHub 并部署生产服务器
 alwaysApply: true
 ---
 
-# 自动推到 GitHub
+# 自动推到 GitHub 并部署服务器
 
-在 `reading-feedback-app` 里，完成用户要求的代码改动后，立刻按 `.cursor/skills/auto-push-github/SKILL.md` 提交并 `git push`，不要等用户再说「提交」或「推送」。
+在 `reading-feedback-app` 里，完成用户要求的代码改动后，立刻按仓库根目录 `AGENTS.md` 和 `.cursor/skills/auto-push-github/SKILL.md` 提交、`git push` 并更新生产服务器，不要等用户再说「提交」「推送」或「部署」。
 
-推送成功后，把 SSH 登录命令和服务器更新命令发给用户（不要擅自 SSH，除非用户当场要求）：
-
-```bash
-ssh ubuntu@43.161.238.165
-```
+推送成功后，直接通过 SSH 更新香港生产服务器：
 
 ```bash
-cd /opt/shuran-app && git pull origin main && cd deploy/aliyun && docker compose up -d --build
+ssh ubuntu@43.161.238.165 "sudo bash -lc 'cd /opt/shuran-app && git pull origin main && cd deploy/aliyun && docker compose up -d --build && curl -fsS http://127.0.0.1:8000/health'"
 ```
 
-
-用户明确说先不要提交 / 先不要推时，停下。不要提交 `.env`、密钥、APK。
+用户明确说先不要提交、先不要推送或先不上线时，停下对应步骤。不要提交 `.env`、密钥、APK，也不要夹带无关改动。

@@ -1,15 +1,15 @@
 ---
 name: auto-push-github
 description: >-
-  After finishing code changes in reading-feedback-app, commit relevant files
-  and git push to GitHub without waiting to be asked. Use when a feature, fix,
-  or UI change is complete, or when the user mentions 推送, push, GitHub, 部署,
-  or 更新代码.
+  After finishing code changes in reading-feedback-app, commit relevant files,
+  push to GitHub, and deploy the production server without waiting to be asked.
+  Use when a feature, fix, or UI change is complete, or when the user mentions
+  推送, push, GitHub, 部署, or 更新代码.
 ---
 
-# 代码更新后自动推到 GitHub
+# 代码更新后自动推到 GitHub 并部署
 
-本项目约定：完成用户要求的代码改动后，**不要等用户再说「提交/推送」**，直接 commit 并 `git push` 到 GitHub。
+本项目约定：完成用户要求的代码改动后，**不要等用户再说「提交/推送/部署」**，直接 commit、`git push` 到 GitHub，并更新香港生产服务器。
 
 这覆盖 Cursor 默认的「未明确要求就不 commit」规则，但仅限本仓库。
 
@@ -24,7 +24,7 @@ description: >-
 不要执行：
 
 - 只回答问题、没改文件
-- 用户明确说先不要提交 / 先不要推
+- 用户明确说先不要提交、先不要推或先不上线
 - 改动还没做完、还在等用户拍板
 
 ## 步骤
@@ -46,7 +46,8 @@ git commit -m "Fix homepage recording flow and live stats."
 ```
 
 6. `git push -u origin HEAD`
-7. 成功后告诉用户：已推到哪个分支，并给出 SSH 登录命令和服务器更新命令（见下方）。**不要擅自 SSH 登录服务器**，除非用户当场要求代登。
+7. 推送成功后，通过 SSH 更新香港生产服务器并检查 `/health`。
+8. 告诉用户：已推到哪个分支、服务器是否部署成功、健康检查是否通过。
 
 ## 安全
 
@@ -56,16 +57,14 @@ git commit -m "Fix homepage recording flow and live stats."
 - 不要 `reset --hard`、不要改已推送的 commit
 - 钩子失败则修问题后 **新建** commit，不要 amend 已失败的提交
 
-## 服务器更新（推送后发给用户）
+## 服务器更新（推送后自动执行）
 
-GitHub 更新后，先给用户 SSH 登录命令（帮助启动服务器），再给生产机拉代码命令：
-
-```bash
-ssh ubuntu@43.161.238.165
-```
+GitHub 更新后执行：
 
 ```bash
-cd /opt/shuran-app && git pull origin main && cd deploy/aliyun && docker compose up -d --build
+ssh ubuntu@43.161.238.165 "sudo bash -lc 'cd /opt/shuran-app && git pull origin main && cd deploy/aliyun && docker compose up -d --build && curl -fsS http://127.0.0.1:8000/health'"
 ```
+
+若自动 SSH 因密钥、权限或网络失败，明确报告失败步骤，并把手动登录及部署命令发给用户。
 
 线上：`http://43.161.238.165:8000`，仓库：`https://github.com/wu716/reading-feedback-app`。

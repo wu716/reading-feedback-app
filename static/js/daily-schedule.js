@@ -11,6 +11,24 @@
     let nudgeOpen = false;
     let laterItems = [];
     let editingLaterId = null;
+    const laterOpenKey = 'shuran.scheduleLaterOpen';
+    let laterOpen = readLaterOpen();
+
+    function readLaterOpen() {
+        try {
+            return localStorage.getItem(laterOpenKey) === '1';
+        } catch (err) {
+            return false;
+        }
+    }
+
+    function rememberLaterOpen() {
+        try {
+            localStorage.setItem(laterOpenKey, laterOpen ? '1' : '0');
+        } catch (err) {
+            /* 忽略无痕模式或存储不可用的情况。 */
+        }
+    }
 
     function todayISO() {
         const now = new Date();
@@ -313,9 +331,29 @@
         return currentDay() === todayISO() ? '写进今天' : '写进这一天';
     }
 
+    function renderLaterShell() {
+        const root = document.getElementById('scheduleLater');
+        const toggle = document.getElementById('scheduleLaterToggle');
+        const body = document.getElementById('scheduleLaterBody');
+        const summary = document.getElementById('scheduleLaterSummary');
+        const count = laterItems.length;
+        if (root) root.classList.toggle('is-collapsed', !laterOpen);
+        if (toggle) toggle.setAttribute('aria-expanded', laterOpen ? 'true' : 'false');
+        if (body) body.hidden = !laterOpen;
+        if (summary) {
+            const countLabel = count ? `${count} 个` : '空';
+            summary.textContent = laterOpen ? `${countLabel} · 收起` : `${countLabel} · 展开`;
+        }
+    }
+
     function renderLater() {
+        renderLaterShell();
         const box = document.getElementById('scheduleLaterList');
         if (!box) return;
+        if (!laterOpen) {
+            box.innerHTML = '';
+            return;
+        }
         if (!laterItems.length) {
             box.innerHTML = '<p class="schedule-later-empty">先记下来，准备好了再写进这一天</p>';
             return;
@@ -652,6 +690,12 @@
                 e.preventDefault();
                 document.getElementById('scheduleLaterAddBtn')?.click();
             }
+        });
+        document.getElementById('scheduleLaterToggle')?.addEventListener('click', () => {
+            laterOpen = !laterOpen;
+            if (!laterOpen) editingLaterId = null;
+            rememberLaterOpen();
+            renderLater();
         });
         document.getElementById('scheduleDesignBtn')?.addEventListener('click', () => {
             mode = 'design';
