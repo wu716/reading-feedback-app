@@ -20,7 +20,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260920later2">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd4">
-    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260920later2">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260920habit1">
+    <link rel="stylesheet" href="/static/css/habit-program.css?v=20260920habit1">
     <style>
         :root {
             --ink: #1c1b19;
@@ -4046,6 +4047,7 @@
                 <h1 data-i18n="schedule.title">日程安排</h1>
                 <p class="flow-hint" id="scheduleHint">写下今天要做的事</p>
             </div>
+            <div id="habitFocusMount" class="habit-focus-shell"></div>
             <div class="home-schedule" id="homeSchedule">
                 <div class="home-schedule-head">
                     <div class="flow-toolbar">
@@ -5256,7 +5258,7 @@
         </div>
     </div>
 
-    <script src="/static/js/i18n.js?v=20260920later2"></script>
+    <script src="/static/js/i18n.js?v=20260920habit1"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -5427,6 +5429,9 @@
                 }
                 if (sectionId === 'schedule' && typeof loadDailySchedule === 'function') {
                     loadDailySchedule();
+                }
+                if (sectionId === 'schedule' && typeof loadHabitFocus === 'function') {
+                    loadHabitFocus();
                 }
                 if (sectionId === 'time-log' && typeof loadTimeLog === 'function') {
                     loadTimeLog();
@@ -6348,6 +6353,7 @@
             if (typeof loadActions === 'function') tasks.push(loadActions());
             if (typeof loadTodayDashboard === 'function') tasks.push(loadTodayDashboard());
             if (typeof loadDailySchedule === 'function') tasks.push(loadDailySchedule());
+            if (typeof loadHabitFocus === 'function') tasks.push(loadHabitFocus());
             if (typeof syncTimeLogChrome === 'function') syncTimeLogChrome();
             if (typeof loadPersonalStats === 'function') tasks.push(loadPersonalStats());
             if (typeof loadCurrentViewData === 'function') tasks.push(loadCurrentViewData());
@@ -6687,6 +6693,7 @@
             updateUserInfo(null);
             if (typeof loadPersonalStats === 'function') loadPersonalStats();
             if (typeof loadTodayDashboard === 'function') loadTodayDashboard();
+            if (typeof loadHabitFocus === 'function') loadHabitFocus();
             showMessage('已退出登录', 'info');
             
             // 确保显示登录模态框
@@ -6909,6 +6916,7 @@
             practice: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>',
             logs: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
             ai: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3"/></svg>',
+            habit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19c4-1 7-4 8-8 3 0 6-2 8-6 1 8-3 14-10 14H4Z"/><path d="M8 16c2-3 5-5 9-7"/></svg>',
             edit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
             done: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
             reopen: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>',
@@ -6971,6 +6979,7 @@
                             ? actionToolBtn(`showTimeManagementModal(${action.id})`, ACTION_TOOL_ICON.time, '设置时间')
                             : actionToolBtn(`showCountAndDaysModal(${action.id})`, ACTION_TOOL_ICON.count, '设置次数和天数'))}
                         ${isDone ? '' : actionToolBtn(`showPracticeModal(${action.id})`, ACTION_TOOL_ICON.practice, '记录实践反馈')}
+                        ${isDone ? '' : actionToolBtn(`openHabitProgram(${action.id})`, ACTION_TOOL_ICON.habit, window.shuranI18n ? window.shuranI18n.t('habit.action.start', '设为主要习惯') : '设为主要习惯')}
                         ${actionToolBtn(`showPracticeLogsModal(${action.id})`, ACTION_TOOL_ICON.logs, '查看记录')}
                         ${isDone ? '' : actionToolBtn(`openAIAdvice(${action.id})`, ACTION_TOOL_ICON.ai, 'AI建议')}
                         ${isDone ? '' : actionToolBtn(`showEditActionModal(${action.id})`, ACTION_TOOL_ICON.edit, '编辑')}
@@ -8875,11 +8884,12 @@
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
     <script src="/static/reminder_notification.js?v=20260920later2"></script>
-    <script src="/static/js/app-tabbar.js?v=20260920later2"></script>
+    <script src="/static/js/app-tabbar.js?v=20260920habit1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
-    <script src="/static/js/daily-schedule.js?v=20260920later2"></script>
-    <script src="/static/js/time-log.js?v=20260920later2"></script>
-    <script src="/static/js/ideas.js?v=20260920later2"></script>
-    <script src="/static/js/desktop-shell.js?v=20260920later2"></script>
+    <script src="/static/js/daily-schedule.js?v=20260920habit1"></script>
+    <script src="/static/js/habit-program.js?v=20260920habit1"></script>
+    <script src="/static/js/time-log.js?v=20260920habit1"></script>
+    <script src="/static/js/ideas.js?v=20260920habit1"></script>
+    <script src="/static/js/desktop-shell.js?v=20260920habit1"></script>
 </body>
 </html>
