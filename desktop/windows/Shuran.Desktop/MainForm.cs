@@ -98,7 +98,8 @@ sealed class MainForm : Form
         settings.IsZoomControlEnabled = true;
         settings.IsPinchZoomEnabled = false;
         settings.IsStatusBarEnabled = false;
-        _webView.CoreWebView2.Settings.UserAgent += " ShuranDesktop/1.6.0";
+        var appVersion = Application.ProductVersion.Split('+')[0];
+        _webView.CoreWebView2.Settings.UserAgent += $" ShuranDesktop/{appVersion}";
         _webView.CoreWebView2.NewWindowRequested += (_, e) =>
         {
             e.Handled = true;
