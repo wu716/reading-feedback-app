@@ -12,6 +12,14 @@
     let compact = document.body.classList.contains('tl-compact-page');
     let composerViewportHandler = null;
 
+    function t(key, fallback) {
+        return window.shuranI18n ? window.shuranI18n.t(key, fallback) : fallback;
+    }
+
+    function isEnglish() {
+        return !!(window.shuranI18n && window.shuranI18n.getLanguage() === 'en');
+    }
+
     function todayISO() {
         try {
             return new Intl.DateTimeFormat('en-CA', {
@@ -52,6 +60,15 @@
 
     function formatDuration(sec) {
         const s = Math.max(0, parseInt(sec, 10) || 0);
+        if (isEnglish()) {
+            if (s < 60) return `${s} sec`;
+            const minutes = Math.floor(s / 60);
+            const seconds = s % 60;
+            if (minutes < 60) return seconds ? `${minutes} min ${seconds} sec` : `${minutes} min`;
+            const hours = Math.floor(minutes / 60);
+            const rest = minutes % 60;
+            return rest ? `${hours} hr ${rest} min` : `${hours} hr`;
+        }
         if (s < 60) return `${s} 秒`;
         const m = Math.floor(s / 60);
         const r = s % 60;
@@ -383,31 +400,31 @@
     function kindCopy(kind, ctx) {
         if (kind === 'idea') {
             return {
-                title: '灵感',
-                hint: '先写下来，之后在「灵感」里能看到。',
-                placeholder: '一闪而过的念头',
+                title: t('capture.kind.idea', '灵感'),
+                hint: t('capture.idea.hint', '先写下来，之后在「灵感」里能看到。'),
+                placeholder: t('capture.idea.placeholder', '一闪而过的念头'),
             };
         }
         if (kind === 'todo') {
             return {
-                title: '待办',
-                hint: '先写下来，再选今天或以后。',
-                placeholder: '突然想起要做的事',
+                title: t('capture.kind.todo', '待办'),
+                hint: t('capture.todo.hint', '先写下来，再选今天或以后。'),
+                placeholder: t('capture.todo.placeholder', '突然想起要做的事'),
             };
         }
         if (ctx && ctx.isStart) {
             return {
-                title: '时刻',
-                hint: '写下才会记入时刻。',
-                placeholder: '这段在做什么',
+                title: t('capture.kind.moment', '时刻'),
+                hint: t('capture.moment.hint', '写下才会记入时刻。'),
+                placeholder: t('capture.moment.placeholder', '这段在做什么'),
             };
         }
         return {
-            title: '时刻',
+            title: t('capture.kind.moment', '时刻'),
             hint: ctx && ctx.duration
-                ? `距上一段 ${formatDuration(ctx.duration)}`
-                : '写下才会记入时刻。',
-            placeholder: '这段在做什么',
+                ? t('capture.moment.since', '距上一段 {duration}').replace('{duration}', formatDuration(ctx.duration))
+                : t('capture.moment.hint', '写下才会记入时刻。'),
+            placeholder: t('capture.moment.placeholder', '这段在做什么'),
         };
     }
 
@@ -441,8 +458,13 @@
         const payload = { kind: captureKind, text: label };
         if (captureKind === 'todo') payload.todo_when = captureTodoWhen;
         if (captureKind === 'moment' && ctx.loggedAt) payload.logged_at = ctx.loggedAt;
+        const activeHabit = typeof window.getActiveHabitProgram === 'function'
+            ? window.getActiveHabitProgram()
+            : null;
+        const habitLink = sheet.querySelector('#captureHabitLink');
+        if (activeHabit && habitLink?.checked) payload.habit_program_id = activeHabit.id;
         try {
-            await apiRequest('/api/capture/save', {
+            const result = await apiRequest('/api/capture/save', {
                 method: 'POST',
                 body: JSON.stringify(payload),
             });
@@ -459,13 +481,17 @@
             if (captureKind === 'todo' && captureTodoWhen === 'later' && typeof window.loadDailySchedule === 'function') {
                 window.loadDailySchedule();
             }
+            if (result.habit_linked && typeof window.loadHabitFocus === 'function') {
+                window.loadHabitFocus();
+            }
             if (typeof showMessage === 'function') {
                 const done = captureKind === 'idea'
-                    ? '已记入灵感'
+                    ? t('capture.saved.idea', '已记入灵感')
                     : (captureKind === 'todo'
-                        ? (captureTodoWhen === 'later' ? '已记入以后想做' : '已记入今日待办')
-                        : '已记入时刻');
-                showMessage(done, 'success');
+                        ? (captureTodoWhen === 'later' ? t('capture.saved.later', '已记入以后想做') : t('capture.saved.todo', '已记入今日待办'))
+                        : t('capture.saved.moment', '已记入时刻'));
+                const linked = t('capture.saved.linked', '{done}，已放入习惯复盘').replace('{done}', done);
+                showMessage(result.habit_linked ? linked : done, 'success');
             }
         } catch (e) {
             if (typeof showMessage === 'function') showMessage(e.message, 'error');
@@ -483,24 +509,34 @@
         const sheet = document.createElement('div');
         sheet.id = 'timeLogSheet';
         sheet.className = 'tl-sheet';
+        const activeHabit = typeof window.getActiveHabitProgram === 'function'
+            ? window.getActiveHabitProgram()
+            : null;
+        const habitLinkMarkup = activeHabit ? `
+            <label class="tl-habit-link" for="captureHabitLink">
+                <input type="checkbox" id="captureHabitLink">
+                <span>${escapeHtml(fmtHabitLink(activeHabit.title))}</span>
+            </label>
+        ` : '';
         sheet.innerHTML = `
             <h3 id="timeLogSheetTitle"></h3>
             <p id="timeLogSheetHint"></p>
-            <div class="tl-kind-picks" role="tablist" aria-label="记下到哪里">
-                <button type="button" data-kind="moment">时刻</button>
-                <button type="button" data-kind="idea">灵感</button>
-                <button type="button" data-kind="todo">待办</button>
+            <div class="tl-kind-picks" role="tablist" aria-label="${escapeHtml(t('capture.destination', '记下到哪里'))}">
+                <button type="button" data-kind="moment">${escapeHtml(t('capture.kind.moment', '时刻'))}</button>
+                <button type="button" data-kind="idea">${escapeHtml(t('capture.kind.idea', '灵感'))}</button>
+                <button type="button" data-kind="todo">${escapeHtml(t('capture.kind.todo', '待办'))}</button>
             </div>
             <div class="tl-when-picks" id="timeLogWhenPicks" hidden>
-                <button type="button" data-when="today">今天</button>
-                <button type="button" data-when="later">以后</button>
+                <button type="button" data-when="today">${escapeHtml(t('capture.todo.today', '今天'))}</button>
+                <button type="button" data-when="later">${escapeHtml(t('capture.todo.later', '以后'))}</button>
             </div>
             <textarea id="timeLogSheetInput" maxlength="500" enterkeyhint="done"></textarea>
+            ${habitLinkMarkup}
             <div class="tl-sheet-actions">
                 <span></span>
                 <div class="tl-sheet-actions-end">
-                    <button type="button" class="flow-ghost-btn" id="timeLogSheetCancel">稍后</button>
-                    <button type="button" class="flow-solid-btn" id="timeLogSheetSave">写下</button>
+                    <button type="button" class="flow-ghost-btn" id="timeLogSheetCancel">${escapeHtml(t('capture.postpone', '稍后'))}</button>
+                    <button type="button" class="flow-solid-btn" id="timeLogSheetSave">${escapeHtml(t('capture.write', '写下'))}</button>
                 </div>
             </div>
         `;
@@ -529,6 +565,10 @@
         if (input) {
             input.focus();
         }
+    }
+
+    function fmtHabitLink(title) {
+        return t('capture.habitLink', '放入「{title}」的本周复盘').replace('{title}', title || '');
     }
 
     function syncCaptureKindRow() {
@@ -722,6 +762,7 @@
         }
         try {
             await loadCapturePreference();
+            if (typeof window.loadHabitFocus === 'function') await window.loadHabitFocus();
             if (CAPTURE_KINDS.includes(kindOverride)) captureKind = kindOverride;
             const duration = durationSinceLast(clickedAt);
             openCaptureSheet({
