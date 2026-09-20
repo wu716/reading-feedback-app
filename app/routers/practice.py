@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, desc
 
 from app.database import get_db
+from app.habit_service import sync_practice_event
 from app.models import User, Action, PracticeLog
 from app.schemas import (
     PracticeLogCreate, PracticeLogUpdate, PracticeLogResponse,
@@ -60,6 +61,8 @@ async def create_practice_log(
     )
     
     db.add(db_log)
+    db.flush()
+    sync_practice_event(db, current_user.id, db_log)
     db.commit()
     db.refresh(db_log)
     
@@ -166,7 +169,8 @@ async def update_practice_log(
             setattr(log, field, value.value)
         else:
             setattr(log, field, value)
-    
+
+    sync_practice_event(db, current_user.id, log)
     db.commit()
     db.refresh(log)
     
@@ -195,6 +199,7 @@ async def delete_practice_log(
     # 软删除
     from datetime import datetime
     log.deleted_at = datetime.utcnow()
+    sync_practice_event(db, current_user.id, log)
     db.commit()
     
     return {"message": "已删除"}

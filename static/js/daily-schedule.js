@@ -566,6 +566,9 @@
             body: JSON.stringify(body),
         });
         render();
+        if (body.completed != null && typeof window.loadHabitFocus === 'function') {
+            window.loadHabitFocus();
+        }
     }
 
     async function saveText(id, value) {
@@ -680,6 +683,7 @@
             if (hint) hint.textContent = e.message || t('schedule.loadFailed', '加载失败');
         });
     };
+    window.getScheduleDay = currentDay;
 
     function onReady() {
         const root = document.getElementById('homeSchedule') || document.getElementById('schedule');

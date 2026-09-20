@@ -3,7 +3,6 @@ import logging
 from sqlalchemy import create_engine, MetaData, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from app.config import settings
 
@@ -15,7 +14,7 @@ if settings.is_production:
         engine = create_engine(
             DATABASE_URL,
             connect_args={"check_same_thread": False},
-            poolclass=StaticPool,
+            pool_pre_ping=True,
         )
     else:
         engine = create_engine(
@@ -29,7 +28,7 @@ else:
     engine = create_engine(
         DATABASE_URL,
         connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        pool_pre_ping=True,
     )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

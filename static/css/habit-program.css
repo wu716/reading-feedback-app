@@ -1,0 +1,440 @@
+.habit-focus-shell {
+    margin: 0 0 18px;
+}
+
+.habit-focus {
+    border: 1px solid #d8d3c9;
+    border-top: 3px solid #1c1b19;
+    border-radius: 8px;
+    background: #fffdf8;
+    color: #1c1b19;
+    overflow: hidden;
+}
+
+.habit-focus-head,
+.habit-empty {
+    padding: 18px;
+}
+
+.habit-focus-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    border-bottom: 1px solid #ece8df;
+}
+
+.habit-kicker {
+    margin: 0 0 5px;
+    color: #746f66;
+    font-size: 0.75rem;
+}
+
+.habit-focus h2,
+.habit-empty h2 {
+    margin: 0;
+    color: #1c1b19;
+    font-size: 1.15rem;
+    line-height: 1.4;
+    letter-spacing: 0;
+    overflow-wrap: anywhere;
+}
+
+.habit-mode-tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 2px 8px;
+    border: 1px solid #cbc4b8;
+    border-radius: 999px;
+    color: #665f54;
+    font-size: 0.72rem;
+    white-space: nowrap;
+}
+
+.habit-mode-tag.is-break {
+    border-color: #c57a70;
+    color: #8d3b34;
+    background: #fff7f5;
+}
+
+.habit-body {
+    padding: 16px 18px 18px;
+}
+
+.habit-design-lines {
+    display: grid;
+    gap: 9px;
+    margin-bottom: 16px;
+}
+
+.habit-design-line {
+    display: grid;
+    grid-template-columns: 100px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    font-size: 0.9rem;
+    line-height: 1.55;
+}
+
+.habit-design-line dt {
+    color: #8a8478;
+}
+
+.habit-design-line dd {
+    margin: 0;
+    color: #302d29;
+    overflow-wrap: anywhere;
+}
+
+.habit-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid #ece8df;
+    border-bottom: 1px solid #ece8df;
+}
+
+.habit-metric {
+    min-width: 0;
+    padding: 12px 8px;
+    text-align: center;
+}
+
+.habit-metric + .habit-metric {
+    border-left: 1px solid #ece8df;
+}
+
+.habit-metric strong {
+    display: block;
+    color: #1c1b19;
+    font-size: 1.15rem;
+    line-height: 1.2;
+}
+
+.habit-metric span {
+    display: block;
+    margin-top: 4px;
+    color: #817b70;
+    font-size: 0.7rem;
+    line-height: 1.3;
+}
+
+.habit-progress-track {
+    height: 5px;
+    margin: 13px 0 4px;
+    border-radius: 3px;
+    background: #ebe7de;
+    overflow: hidden;
+}
+
+.habit-progress-fill {
+    width: 0;
+    height: 100%;
+    background: #2f6f54;
+    transition: width 180ms ease;
+}
+
+.habit-actions,
+.habit-checkin-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.habit-actions button,
+.habit-checkin-row button,
+.habit-empty button {
+    min-height: 40px;
+    padding: 8px 13px;
+    border: 1px solid #cfc8bc;
+    border-radius: 6px;
+    background: #fff;
+    color: #302d29;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.habit-actions .habit-primary,
+.habit-empty .habit-primary {
+    border-color: #1c1b19;
+    background: #1c1b19;
+    color: #fffdf8;
+}
+
+.habit-checkin-row button[data-outcome="completed"] {
+    border-color: #7ca48f;
+    color: #245b43;
+}
+
+.habit-checkin-row button[data-outcome="missed"] {
+    color: #8b4b45;
+}
+
+.habit-today-state {
+    margin: 10px 0 0;
+    color: #6f685e;
+    font-size: 0.78rem;
+}
+
+.habit-signals {
+    margin-top: 16px;
+    border-top: 1px solid #ece8df;
+}
+
+.habit-signals h3 {
+    margin: 14px 0 4px;
+    color: #514c44;
+    font-size: 0.83rem;
+    letter-spacing: 0;
+}
+
+.habit-signal-row {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 9px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0ede6;
+    color: #444039;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.habit-signal-row:last-child {
+    border-bottom: 0;
+}
+
+.habit-signal-kind {
+    color: #8a8478;
+}
+
+.habit-empty p {
+    margin: 7px 0 14px;
+    color: #746f66;
+    font-size: 0.86rem;
+}
+
+.habit-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1300;
+    background: rgba(20, 19, 17, 0.42);
+}
+
+.habit-modal {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    z-index: 1301;
+    width: min(520px, calc(100vw - 28px));
+    max-height: min(760px, calc(100vh - 32px));
+    transform: translate(-50%, -50%);
+    overflow: auto;
+    border: 1px solid #d3cdc2;
+    border-radius: 8px;
+    background: #fffdf8;
+    box-shadow: 0 18px 60px rgba(20, 19, 17, 0.24);
+}
+
+.habit-modal-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid #e8e3da;
+    background: #fffdf8;
+}
+
+.habit-modal-head h3 {
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: 0;
+}
+
+.habit-modal-close {
+    width: 34px;
+    height: 34px;
+    border: 0;
+    background: transparent;
+    color: #625c53;
+    font-size: 1.25rem;
+    cursor: pointer;
+}
+
+.habit-form {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+}
+
+.habit-field {
+    display: grid;
+    gap: 6px;
+}
+
+.habit-field[hidden] {
+    display: none;
+}
+
+.habit-field label,
+.habit-field legend {
+    color: #514c44;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.habit-field input,
+.habit-field textarea,
+.habit-field select {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 42px;
+    padding: 9px 10px;
+    border: 1px solid #cfc8bc;
+    border-radius: 6px;
+    background: #fff;
+    color: #1c1b19;
+    font: inherit;
+    font-size: 0.9rem;
+}
+
+.habit-field textarea {
+    min-height: 74px;
+    resize: vertical;
+}
+
+.habit-mode-picks,
+.habit-scale-picks {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.habit-scale-picks {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.habit-mode-picks button,
+.habit-scale-picks label {
+    min-height: 40px;
+    border: 1px solid #cfc8bc;
+    border-radius: 6px;
+    background: #fff;
+    color: #514c44;
+    font: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+.habit-mode-picks button.is-on {
+    border-color: #1c1b19;
+    background: #1c1b19;
+    color: #fff;
+}
+
+.habit-scale-picks label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.habit-scale-picks input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.habit-scale-picks label:has(input:checked) {
+    border-color: #1c1b19;
+    background: #1c1b19;
+    color: #fff;
+}
+
+.habit-form-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 2px;
+}
+
+.habit-form-actions-end {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.habit-form-actions button {
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid #cfc8bc;
+    border-radius: 6px;
+    background: #fff;
+    color: #302d29;
+    font: inherit;
+    cursor: pointer;
+}
+
+.habit-form-actions .habit-save {
+    border-color: #1c1b19;
+    background: #1c1b19;
+    color: #fff;
+}
+
+.habit-form-actions .habit-pause {
+    color: #95493f;
+}
+
+.tl-habit-link {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 12px 0 2px;
+    padding: 10px 0;
+    border-top: 1px solid #ebe7de;
+    color: #4f4a42;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.tl-habit-link input {
+    width: 18px;
+    height: 18px;
+    margin: 1px 0 0;
+    accent-color: #1c1b19;
+}
+
+@media (max-width: 768px) {
+    .habit-focus-shell {
+        margin-bottom: 14px;
+    }
+
+    .habit-focus-head,
+    .habit-empty,
+    .habit-body {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .habit-design-line {
+        grid-template-columns: 54px minmax(0, 1fr);
+    }
+
+    .habit-actions button,
+    .habit-checkin-row button {
+        flex: 1 1 112px;
+    }
+
+    .habit-modal {
+        top: auto;
+        bottom: 0;
+        width: 100%;
+        max-height: min(86vh, 760px);
+        transform: translateX(-50%);
+        border-radius: 8px 8px 0 0;
+    }
+}

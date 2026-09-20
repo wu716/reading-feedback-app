@@ -35,3 +35,10 @@ class CaptureGuardTests(TestCase):
             CaptureIn(kind="todo", text="买牛奶", todo_when="someday")
         body = CaptureIn(kind="todo", text="买牛奶", todo_when="later")
         self.assertEqual(body.todo_when, "later")
+
+    def test_capture_can_optionally_link_active_habit(self):
+        body = CaptureIn(kind="idea", text="午饭后最容易忘记散步", habit_program_id=12)
+        self.assertEqual(body.habit_program_id, 12)
+
+        with self.assertRaises(ValidationError):
+            CaptureIn(kind="idea", text="记录", habit_program_id=0)

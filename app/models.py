@@ -46,6 +46,8 @@ class User(Base):
     self_talk_playback_logs = relationship(
         "SelfTalkPlaybackLog", back_populates="user", cascade="all, delete-orphan"
     )
+    habit_programs = relationship("HabitProgram", back_populates="user", cascade="all, delete-orphan")
+    habit_events = relationship("HabitEvent", back_populates="user", cascade="all, delete-orphan")
     used_invite_codes = relationship("InviteCode", back_populates="used_by_user")
 
 
@@ -79,6 +81,7 @@ class Action(Base):
     practice_logs = relationship("PracticeLog", back_populates="action", cascade="all, delete-orphan")
     self_talks = relationship("SelfTalk", back_populates="action")
     ai_advice_sessions = relationship("AIAdviceSession", back_populates="action")
+    habit_programs = relationship("HabitProgram", back_populates="action")
 
 
 class PracticeLog(Base):
@@ -100,6 +103,61 @@ class PracticeLog(Base):
     # 关系
     user = relationship("User", back_populates="practice_logs")
     action = relationship("Action", back_populates="practice_logs")
+
+
+class HabitProgram(Base):
+    """A focused behavior-change experiment. Only one is active per user."""
+    __tablename__ = "habit_programs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    action_id = Column(Integer, ForeignKey("actions.id", ondelete="SET NULL"), nullable=True, index=True)
+    mode = Column(String(20), nullable=False, default="build")  # build, break
+    title = Column(String(120), nullable=False)
+    anchor_text = Column(Text, nullable=False)
+    minimum_action = Column(Text, nullable=True)
+    replacement_action = Column(Text, nullable=True)
+    reason = Column(Text, nullable=True)
+    target_days_per_week = Column(Integer, nullable=False, default=5)
+    status = Column(String(20), nullable=False, default="active")  # active, paused, completed
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="habit_programs")
+    action = relationship("Action", back_populates="habit_programs")
+    events = relationship("HabitEvent", back_populates="program", cascade="all, delete-orphan")
+
+
+class HabitEvent(Base):
+    """Append-only evidence from check-ins, schedules, practice, or Capture."""
+    __tablename__ = "habit_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    habit_program_id = Column(
+        Integer,
+        ForeignKey("habit_programs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    event_date = Column(Date, nullable=False, index=True)
+    event_type = Column(String(30), nullable=False)  # check_in, execution, practice, signal
+    outcome = Column(String(20), nullable=True)  # completed, partial, missed
+    effort = Column(Integer, nullable=True)
+    urge = Column(Integer, nullable=True)
+    barrier = Column(String(120), nullable=True)
+    note = Column(Text, nullable=True)
+    source_kind = Column(String(30), nullable=True)
+    source_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="habit_events")
+    program = relationship("HabitProgram", back_populates="events")
 
 
 class Subscription(Base):
