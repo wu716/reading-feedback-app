@@ -6,6 +6,7 @@ import json
 from datetime import date, datetime, timedelta
 
 from app.database import get_db
+from app.habit_service import sync_practice_event
 from app.models import User, Action, PracticeLog, SelfTalkReminderSetting, SelfTalkReminderLog
 from app.schemas import (
     ActionCreate, ActionUpdate, ActionResponse, 
@@ -320,6 +321,8 @@ async def log_practice(
     )
     
     db.add(practice_log)
+    db.flush()
+    sync_practice_event(db, current_user.id, practice_log)
     
     # 情境型一次成功即可归档；习惯要长期做，不能因为今天做成了就标完成
     if practice_data.result.value == "success" and action.action_type != "habit":

@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user
 from app.database import get_db
-from app.models import DailyTodo, FutureAction, Idea, User
+from app.habit_service import add_capture_signal
+from app.models import DailyTodo, FutureAction, HabitProgram, Idea, User
 from app.routers.time_log import NodeCreate, punch_node
 
 router = APIRouter(prefix="/capture", tags=["快捷记下"])
@@ -58,6 +59,7 @@ class CaptureIn(BaseModel):
     text: str = Field(..., min_length=1, max_length=500)
     todo_when: Optional[str] = None
     logged_at: Optional[datetime] = None
+    habit_program_id: Optional[int] = Field(None, ge=1)
 
     @field_validator("kind")
     @classmethod
@@ -90,6 +92,7 @@ class CaptureOut(BaseModel):
     kind: str
     id: int
     todo_when: Optional[str] = None
+    habit_linked: bool = False
 
 
 class IdeaOut(BaseModel):
@@ -158,28 +161,57 @@ async def capture_note(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    habit_program = None
+    if body.habit_program_id:
+        habit_program = (
+            db.query(HabitProgram)
+            .filter(
+                HabitProgram.id == body.habit_program_id,
+                HabitProgram.user_id == current_user.id,
+                HabitProgram.status == "active",
+                HabitProgram.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not habit_program:
+            raise HTTPException(status_code=409, detail="当前习惯已经变化，请重新选择")
+
     if body.kind == "moment":
         node = await punch_node(
             NodeCreate(label=body.text, logged_at=body.logged_at),
             current_user,
             db,
         )
-        return CaptureOut(kind="moment", id=node.id)
+        if habit_program:
+            add_capture_signal(db, habit_program, "moment", node.id, node.log_date)
+            db.commit()
+        return CaptureOut(kind="moment", id=node.id, habit_linked=bool(habit_program))
 
     if body.kind == "idea":
         item = Idea(user_id=current_user.id, text=body.text)
         db.add(item)
+        db.flush()
+        if habit_program:
+            add_capture_signal(db, habit_program, "idea", item.id, beijing_today())
         db.commit()
         db.refresh(item)
-        return CaptureOut(kind="idea", id=item.id)
+        return CaptureOut(kind="idea", id=item.id, habit_linked=bool(habit_program))
 
     when = normalize_todo_when(body.todo_when)
     if when == "later":
         item = FutureAction(user_id=current_user.id, text=body.text)
         db.add(item)
+        db.flush()
+        if habit_program:
+            add_capture_signal(db, habit_program, "todo_later", item.id, beijing_today())
         db.commit()
         db.refresh(item)
-        return CaptureOut(kind="todo", id=item.id, todo_when="later")
+        return CaptureOut(
+            kind="todo",
+            id=item.id,
+            todo_when="later",
+            habit_linked=bool(habit_program),
+        )
 
     row = DailyTodo(
         user_id=current_user.id,
@@ -187,9 +219,17 @@ async def capture_note(
         todo_date=beijing_today(),
     )
     db.add(row)
+    db.flush()
+    if habit_program:
+        add_capture_signal(db, habit_program, "todo_today", row.id, row.todo_date)
     db.commit()
     db.refresh(row)
-    return CaptureOut(kind="todo", id=row.id, todo_when="today")
+    return CaptureOut(
+        kind="todo",
+        id=row.id,
+        todo_when="today",
+        habit_linked=bool(habit_program),
+    )
 
 
 @router.get("/ideas", response_model=IdeaListOut)

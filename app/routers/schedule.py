@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user
 from app.database import get_db
+from app.habit_service import sync_schedule_event
 from app.habit_due import quarter_bounds, suggest_for_day, week_bounds
 from app.models import Action, DailySchedule, DailyTask, FutureAction, User
 
@@ -414,6 +415,7 @@ async def update_task(
         task.text = body.text
     if body.completed is not None:
         task.completed = body.completed
+        sync_schedule_event(db, current_user.id, task, body.completed)
     if body.clear_note:
         task.note = None
     elif body.note is not None:
