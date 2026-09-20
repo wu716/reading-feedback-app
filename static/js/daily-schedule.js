@@ -14,6 +14,23 @@
     const laterOpenKey = 'shuran.scheduleLaterOpen';
     let laterOpen = readLaterOpen();
 
+    function t(key, fallback) {
+        if (window.shuranI18n && typeof window.shuranI18n.t === 'function') {
+            return window.shuranI18n.t(key, fallback);
+        }
+        return fallback;
+    }
+
+    function format(template, values) {
+        return String(template).replace(/\{(\w+)\}/g, (match, key) => (
+            Object.prototype.hasOwnProperty.call(values, key) ? String(values[key]) : match
+        ));
+    }
+
+    function withCount(template, count) {
+        return format(template, { count });
+    }
+
     function readLaterOpen() {
         try {
             return localStorage.getItem(laterOpenKey) === '1';
@@ -60,23 +77,25 @@
     }
 
     function familiarityLabel(value) {
-        if (value === 'familiar') return '熟悉';
-        if (value === 'unfamiliar') return '陌生';
+        if (value === 'familiar') return t('schedule.familiar', '熟悉');
+        if (value === 'unfamiliar') return t('schedule.unfamiliar', '陌生');
         return '';
     }
 
     function minutesLabel(mins) {
         if (mins == null) return '';
         const m = parseInt(mins, 10);
-        if (!m) return '未估时';
-        if (m < 60) return `${m} 分钟`;
+        if (!m) return t('schedule.unestimated', '未估时');
+        if (m < 60) return withCount(t('schedule.minutes', '{count} 分钟'), m);
         const h = Math.floor(m / 60);
         const r = m % 60;
-        return r ? `${h} 小时 ${r} 分` : `${h} 小时`;
+        return r
+            ? format(t('schedule.hoursMinutes', '{hours} 小时 {minutes} 分'), { hours: h, minutes: r })
+            : withCount(t('schedule.hours', '{count} 小时'), h);
     }
 
     async function api(path, options) {
-        if (typeof apiRequest !== 'function') throw new Error('请先登录');
+        if (typeof apiRequest !== 'function') throw new Error(t('schedule.signInRequired', '请先登录'));
         return apiRequest(`/api/schedule${path}`, options || {});
     }
 
@@ -86,24 +105,31 @@
 
     function dayLabel(iso) {
         const today = todayISO();
-        if (iso === today) return '今天';
+        if (iso === today) return t('schedule.today', '今天');
         const parts = String(iso).split('-');
         if (parts.length < 3) return iso;
-        return `${Number(parts[1])}月${Number(parts[2])}日`;
+        return format(t('schedule.monthDay', '{month}月{day}日'), {
+            month: Number(parts[1]),
+            day: Number(parts[2]),
+        });
     }
 
     function setHint() {
         const hint = document.getElementById('scheduleHint');
         if (!hint) return;
         if (mode === 'design') {
-            hint.textContent = '未填项可留空。点文字可改，也可拆开或删除';
+            hint.textContent = t('schedule.hint.design', '未填项可留空。点文字可改，也可拆开或删除');
             return;
         }
         if (mode === 'flow' && data.designed_at) {
-            hint.textContent = allDone() ? '今日已完成' : '勾选完成，也可记下执行情况。写错了点「修改」，也可删除';
+            hint.textContent = allDone()
+                ? t('schedule.hint.done', '今日已完成')
+                : t('schedule.hint.flow', '勾选完成，也可记下执行情况。写错了点「修改」，也可删除');
             return;
         }
-        hint.textContent = allDone() ? '今日已完成' : '写下今天要做的事。写错了点「修改」，也可拆开或删除';
+        hint.textContent = allDone()
+            ? t('schedule.hint.done', '今日已完成')
+            : t('schedule.hint.list', '写下今天要做的事。写错了点「修改」，也可拆开或删除');
     }
 
     function allDone() {
@@ -112,15 +138,17 @@
     }
 
     function renderDoneBtn(task) {
+        const label = escapeHtml(t('schedule.done', '完成'));
         if (task.completed) {
-            return '<button type="button" class="flow-done-btn is-on" data-act="toggle" aria-pressed="true">完成</button>';
+            return `<button type="button" class="flow-done-btn is-on" data-act="toggle" aria-pressed="true">${label}</button>`;
         }
-        return '<button type="button" class="flow-done-btn" data-act="toggle" aria-pressed="false" aria-label="完成"></button>';
+        return `<button type="button" class="flow-done-btn" data-act="toggle" aria-pressed="false" aria-label="${label}"></button>`;
     }
 
     function renderNote(task) {
         if (!task.completed && !(task.note || '').trim()) return '';
-        return `<input type="text" class="flow-note" maxlength="500" placeholder="执行情况" value="${escapeHtml(task.note || '')}" data-act="note" aria-label="执行情况">`;
+        const label = escapeHtml(t('schedule.note', '执行情况'));
+        return `<input type="text" class="flow-note" maxlength="500" placeholder="${label}" value="${escapeHtml(task.note || '')}" data-act="note" aria-label="${label}">`;
     }
 
     function renderToolbar() {
@@ -134,7 +162,7 @@
         if (doneBtn) doneBtn.hidden = mode !== 'design';
         if (backBtn) {
             backBtn.hidden = mode === 'list';
-            backBtn.textContent = '回到清单';
+            backBtn.textContent = t('schedule.backToList', '回到清单');
         }
         if (addRow) addRow.hidden = mode !== 'list';
         const later = document.getElementById('scheduleLater');
@@ -143,29 +171,29 @@
 
     function renderTitle(task) {
         if (editingId === task.id) {
-            return `<input type="text" class="flow-task-text-input" maxlength="500" value="${escapeHtml(task.text)}" data-act="text" aria-label="修改这一步">`;
+            return `<input type="text" class="flow-task-text-input" maxlength="500" value="${escapeHtml(task.text)}" data-act="text" aria-label="${escapeHtml(t('schedule.editStepAria', '修改这一步'))}">`;
         }
-        return `<div class="flow-task-text" data-act="edit" title="点此修改">${escapeHtml(task.text)}</div>`;
+        return `<div class="flow-task-text" data-act="edit" title="${escapeHtml(t('schedule.editTitle', '点此修改'))}">${escapeHtml(task.text)}</div>`;
     }
 
     function renderDeleteBtn() {
-        return '<button type="button" class="flow-mini-btn flow-danger" data-act="delete">删除</button>';
+        return `<button type="button" class="flow-mini-btn flow-danger" data-act="delete">${escapeHtml(t('schedule.delete', '删除'))}</button>`;
     }
 
     function renderSplitRow(task) {
         if (splitFor !== task.id) return '';
         return `
             <div class="flow-split-row">
-                <input type="text" maxlength="500" placeholder="写下更具体的一步" data-split-input>
-                <button type="button" class="flow-ghost-btn" data-act="split-save">加入</button>
+                <input type="text" maxlength="500" placeholder="${escapeHtml(t('schedule.split.placeholder', '写下更具体的一步'))}" data-split-input>
+                <button type="button" class="flow-ghost-btn" data-act="split-save">${escapeHtml(t('schedule.split.add', '加入'))}</button>
             </div>`;
     }
 
     function renderEditActions(showSplit) {
         return `
             <div class="flow-task-actions">
-                <button type="button" data-act="edit">修改</button>
-                ${showSplit ? '<button type="button" data-act="split">拆开</button>' : ''}
+                <button type="button" data-act="edit">${escapeHtml(t('schedule.edit', '修改'))}</button>
+                ${showSplit ? `<button type="button" data-act="split">${escapeHtml(t('schedule.split', '拆开'))}</button>` : ''}
                 ${renderDeleteBtn()}
             </div>`;
     }
@@ -201,12 +229,12 @@
                     ${renderTitle(task)}
                 </div>
                 <div class="flow-task-meta">
-                    <button type="button" class="flow-chip${task.familiarity === 'familiar' ? ' active' : ''}" data-act="fam" data-value="familiar">熟悉</button>
-                    <button type="button" class="flow-chip${task.familiarity === 'unfamiliar' ? ' active' : ''}" data-act="fam" data-value="unfamiliar">陌生</button>
-                    <input type="number" class="flow-minutes" min="0" max="1440" placeholder="分钟" value="${task.estimated_minutes ?? ''}" data-act="minutes" aria-label="预估分钟">
-                    <button type="button" class="flow-mini-btn" data-act="up">上移</button>
-                    <button type="button" class="flow-mini-btn" data-act="down">下移</button>
-                    ${index > 0 ? `<button type="button" class="flow-chip${parallelOn ? ' active' : ''}" data-act="parallel">与上一项并行</button>` : ''}
+                    <button type="button" class="flow-chip${task.familiarity === 'familiar' ? ' active' : ''}" data-act="fam" data-value="familiar">${escapeHtml(t('schedule.familiar', '熟悉'))}</button>
+                    <button type="button" class="flow-chip${task.familiarity === 'unfamiliar' ? ' active' : ''}" data-act="fam" data-value="unfamiliar">${escapeHtml(t('schedule.unfamiliar', '陌生'))}</button>
+                    <input type="number" class="flow-minutes" min="0" max="1440" placeholder="${escapeHtml(t('schedule.minutesPlaceholder', '分钟'))}" value="${task.estimated_minutes ?? ''}" data-act="minutes" aria-label="${escapeHtml(t('schedule.estimatedMinutes', '预估分钟'))}">
+                    <button type="button" class="flow-mini-btn" data-act="up">${escapeHtml(t('schedule.moveUp', '上移'))}</button>
+                    <button type="button" class="flow-mini-btn" data-act="down">${escapeHtml(t('schedule.moveDown', '下移'))}</button>
+                    ${index > 0 ? `<button type="button" class="flow-chip${parallelOn ? ' active' : ''}" data-act="parallel">${escapeHtml(t('schedule.parallelPrevious', '与上一项并行'))}</button>` : ''}
                 </div>
                 ${renderEditActions(true)}
                 ${renderSplitRow(task)}
@@ -265,13 +293,13 @@
             if (group.parallel) {
                 return `
                     <div class="flow-lane">
-                        <div class="flow-step-label">并行</div>
+                        <div class="flow-step-label">${escapeHtml(t('schedule.flow.parallel', '并行'))}</div>
                         <div class="flow-parallel${group.items.length > 1 ? ' has-many' : ''}">${inner}</div>
                     </div>`;
             }
             return `
                 <div class="flow-lane">
-                    <div class="flow-step-label">第 ${i + 1} 步</div>
+                    <div class="flow-step-label">${escapeHtml(withCount(t('schedule.flow.step', '第 {count} 步'), i + 1))}</div>
                     ${inner}
                 </div>`;
         }).join('');
@@ -306,7 +334,7 @@
         const visible = nudgeOpen ? suggestions : suggestions.slice(0, 1);
         box.classList.toggle('is-collapsed', collapsed);
         box.innerHTML = `
-            <div class="schedule-nudge-kicker">行动项 · 还没排进今天</div>
+            <div class="schedule-nudge-kicker">${escapeHtml(t('schedule.nudge.kicker', '行动项 · 还没排进今天'))}</div>
             ${visible.map((item, idx) => `
                 <div class="schedule-nudge-item" data-action-id="${item.action_id}">
                     <div class="schedule-nudge-copy">
@@ -314,21 +342,23 @@
                         ${collapsed ? '' : `<div class="schedule-nudge-why">${escapeHtml(item.reason || '')}</div>`}
                     </div>
                     <div class="schedule-nudge-actions">
-                        <button type="button" data-nudge-add="${item.action_id}">加入</button>
+                        <button type="button" data-nudge-add="${item.action_id}">${escapeHtml(t('schedule.nudge.add', '加入'))}</button>
                         ${collapsed && idx === 0
-                            ? `<button type="button" class="schedule-nudge-more" data-nudge-more>还有 ${rest} 个</button>`
+                            ? `<button type="button" class="schedule-nudge-more" data-nudge-more>${escapeHtml(withCount(t('schedule.nudge.more', '还有 {count} 个'), rest))}</button>`
                             : ''}
                     </div>
                 </div>
             `).join('')}
             ${nudgeOpen && rest > 0
-                ? '<button type="button" class="schedule-nudge-more is-footer" data-nudge-more>收起</button>'
+                ? `<button type="button" class="schedule-nudge-more is-footer" data-nudge-more>${escapeHtml(t('schedule.collapse', '收起'))}</button>`
                 : ''}
         `;
     }
 
     function laterIntoLabel() {
-        return currentDay() === todayISO() ? '写进今天' : '写进这一天';
+        return currentDay() === todayISO()
+            ? t('schedule.later.intoToday', '写进今天')
+            : t('schedule.later.intoDay', '写进这一天');
     }
 
     function renderLaterShell() {
@@ -339,10 +369,14 @@
         const count = laterItems.length;
         if (root) root.classList.toggle('is-collapsed', !laterOpen);
         if (toggle) toggle.setAttribute('aria-expanded', laterOpen ? 'true' : 'false');
-        if (body) body.hidden = !laterOpen;
+        if (body) body.hidden = false;
         if (summary) {
-            const countLabel = count ? `${count} 个` : '空';
-            summary.textContent = laterOpen ? `${countLabel} · 收起` : `${countLabel} · 展开`;
+            const countLabel = count
+                ? withCount(t('schedule.later.count', '{count} 个'), count)
+                : t('schedule.later.emptySummary', '空');
+            summary.textContent = laterOpen
+                ? `${countLabel} · ${t('schedule.later.collapseList', '收起列表')}`
+                : `${countLabel} · ${t('schedule.later.expandList', '展开列表')}`;
         }
     }
 
@@ -355,22 +389,22 @@
             return;
         }
         if (!laterItems.length) {
-            box.innerHTML = '<p class="schedule-later-empty">先记下来，准备好了再写进这一天</p>';
+            box.innerHTML = `<p class="schedule-later-empty">${escapeHtml(t('schedule.later.empty', '先记下来，准备好了再写进这一天'))}</p>`;
             return;
         }
         box.innerHTML = laterItems.map((item) => {
             const title = editingLaterId === item.id
-                ? `<input type="text" class="flow-task-text-input" maxlength="500" value="${escapeHtml(item.text)}" data-later-act="text" aria-label="修改以后想做">`
-                : `<div class="flow-task-text" data-later-act="edit" title="点此修改">${escapeHtml(item.text)}</div>`;
+                ? `<input type="text" class="flow-task-text-input" maxlength="500" value="${escapeHtml(item.text)}" data-later-act="text" aria-label="${escapeHtml(t('schedule.later.editAria', '修改以后想做'))}">`
+                : `<div class="flow-task-text" data-later-act="edit" title="${escapeHtml(t('schedule.editTitle', '点此修改'))}">${escapeHtml(item.text)}</div>`;
             return `
                 <article class="schedule-later-item" data-later-id="${item.id}">
                     <div class="flow-task-main">
                         ${title}
                     </div>
                     <div class="flow-task-actions">
-                        <button type="button" data-later-act="edit">修改</button>
+                        <button type="button" data-later-act="edit">${escapeHtml(t('schedule.edit', '修改'))}</button>
                         <button type="button" data-later-act="into">${laterIntoLabel()}</button>
-                        <button type="button" class="flow-mini-btn flow-danger" data-later-act="delete">删除</button>
+                        <button type="button" class="flow-mini-btn flow-danger" data-later-act="delete">${escapeHtml(t('schedule.delete', '删除'))}</button>
                     </div>
                 </article>`;
         }).join('');
@@ -391,7 +425,7 @@
         renderNudge();
         renderLater();
         if (!(data.tasks || []).length) {
-            list.innerHTML = '<p class="flow-empty">还没有行动</p>';
+            list.innerHTML = `<p class="flow-empty">${escapeHtml(t('schedule.emptyTasks', '还没有行动'))}</p>`;
             return;
         }
         if (mode === 'design') {
@@ -643,7 +677,7 @@
     window.loadDailySchedule = function loadDailySchedule() {
         return load(currentDay()).catch((e) => {
             const hint = document.getElementById('scheduleHint');
-            if (hint) hint.textContent = e.message || '加载失败';
+            if (hint) hint.textContent = e.message || t('schedule.loadFailed', '加载失败');
         });
     };
 
@@ -697,6 +731,7 @@
             rememberLaterOpen();
             renderLater();
         });
+        window.addEventListener('shuran-language-change', () => render());
         document.getElementById('scheduleDesignBtn')?.addEventListener('click', () => {
             mode = 'design';
             editingId = null;

@@ -18,9 +18,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260919i18n1">
+    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260920later2">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd4">
-    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260920later1">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260920later2">
     <style>
         :root {
             --ink: #1c1b19;
@@ -3647,13 +3647,13 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260919i18n1">
+    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260920later2">
 </head>
 <body>
     <script>
         (function () {
             if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-                location.replace('http://43.161.238.165:8000/?v=20260919i18n1');
+                location.replace('http://43.161.238.165:8000/?v=20260920later2');
                 return;
             }
             window.SHURAN_VERSION = '1.5.0';
@@ -4050,33 +4050,33 @@
                 <div class="home-schedule-head">
                     <div class="flow-toolbar">
                         <div class="flow-date-nav">
-                            <button type="button" id="schedulePrevDay" aria-label="前一天">‹</button>
+                            <button type="button" id="schedulePrevDay" aria-label="前一天" data-i18n-aria-label="schedule.prevDay">‹</button>
                             <div class="flow-date-label" id="scheduleDateLabel"></div>
-                            <button type="button" id="scheduleNextDay" aria-label="后一天">›</button>
+                            <button type="button" id="scheduleNextDay" aria-label="后一天" data-i18n-aria-label="schedule.nextDay">›</button>
                         </div>
                         <div>
-                            <button type="button" class="flow-ghost-btn" id="scheduleBackBtn" hidden>回到清单</button>
-                            <button type="button" class="flow-ghost-btn" id="scheduleDesignBtn" hidden>设计流程</button>
-                            <button type="button" class="flow-solid-btn" id="scheduleDoneBtn" hidden>做成当日流程</button>
+                            <button type="button" class="flow-ghost-btn" id="scheduleBackBtn" data-i18n="schedule.backToList" hidden>回到清单</button>
+                            <button type="button" class="flow-ghost-btn" id="scheduleDesignBtn" data-i18n="schedule.designFlow" hidden>设计流程</button>
+                            <button type="button" class="flow-solid-btn" id="scheduleDoneBtn" data-i18n="schedule.makeFlow" hidden>做成当日流程</button>
                         </div>
                     </div>
                 </div>
                 <div class="schedule-nudge" id="scheduleNudge" hidden></div>
                 <div class="flow-add-row" id="scheduleAddRow">
-                    <input type="text" id="scheduleAddInput" maxlength="500" placeholder="写下这一步">
-                    <button type="button" class="flow-solid-btn" id="scheduleAddBtn">写下</button>
+                    <input type="text" id="scheduleAddInput" maxlength="500" placeholder="写下这一步" data-i18n-placeholder="schedule.add.placeholder">
+                    <button type="button" class="flow-solid-btn" id="scheduleAddBtn" data-i18n="schedule.add.button">写下</button>
                 </div>
                 <div id="scheduleList" class="home-schedule-list"></div>
                 <div class="schedule-later is-collapsed" id="scheduleLater">
                     <button type="button" class="schedule-later-toggle" id="scheduleLaterToggle" aria-expanded="false" aria-controls="scheduleLaterBody">
-                        <span class="schedule-later-kicker">以后想做</span>
+                        <span class="schedule-later-kicker" data-i18n="schedule.later.title">以后想做</span>
                         <span class="schedule-later-summary" id="scheduleLaterSummary">展开</span>
                     </button>
-                    <div class="schedule-later-body" id="scheduleLaterBody" hidden>
-                        <p class="schedule-later-hint">还没规划也可以先记下来，不进今天、不提醒</p>
+                    <div class="schedule-later-body" id="scheduleLaterBody">
+                        <p class="schedule-later-hint" data-i18n="schedule.later.hint">还没规划也可以先记下来，不进今天、不提醒</p>
                         <div class="flow-add-row" id="scheduleLaterAddRow">
-                            <input type="text" id="scheduleLaterInput" maxlength="500" placeholder="想做，但还没具体规划">
-                            <button type="button" class="flow-solid-btn" id="scheduleLaterAddBtn">记下</button>
+                            <input type="text" id="scheduleLaterInput" maxlength="500" placeholder="想做，但还没具体规划" data-i18n-placeholder="schedule.later.placeholder">
+                            <button type="button" class="flow-solid-btn" id="scheduleLaterAddBtn" data-i18n="schedule.later.add">记下</button>
                         </div>
                         <div id="scheduleLaterList" class="schedule-later-list"></div>
                     </div>
@@ -5256,7 +5256,7 @@
         </div>
     </div>
 
-    <script src="/static/js/i18n.js?v=20260919i18n1"></script>
+    <script src="/static/js/i18n.js?v=20260920later2"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -8874,12 +8874,12 @@
     
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
-    <script src="/static/reminder_notification.js?v=20260919i18n1"></script>
-    <script src="/static/js/app-tabbar.js?v=20260919i18n1"></script>
+    <script src="/static/reminder_notification.js?v=20260920later2"></script>
+    <script src="/static/js/app-tabbar.js?v=20260920later2"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
-    <script src="/static/js/daily-schedule.js?v=20260920later1"></script>
-    <script src="/static/js/time-log.js?v=20260919i18n1"></script>
-    <script src="/static/js/ideas.js?v=20260919i18n1"></script>
-    <script src="/static/js/desktop-shell.js?v=20260919i18n1"></script>
+    <script src="/static/js/daily-schedule.js?v=20260920later2"></script>
+    <script src="/static/js/time-log.js?v=20260920later2"></script>
+    <script src="/static/js/ideas.js?v=20260920later2"></script>
+    <script src="/static/js/desktop-shell.js?v=20260920later2"></script>
 </body>
 </html>

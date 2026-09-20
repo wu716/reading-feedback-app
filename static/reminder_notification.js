@@ -6,7 +6,7 @@
 (function hopOffSingapore() {
     try {
         if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-            location.replace('http://43.161.238.165:8000/?v=20260919i18n1');
+            location.replace('http://43.161.238.165:8000/?v=20260920later2');
         }
     } catch (e) { /* ignore */ }
 })();

@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Shuran</string>
     <string name="app_url">http://43.161.238.165:8000/</string>
-    <string name="static_ui_version">20260919i18n1</string>
+    <string name="static_ui_version">20260920later2</string>
     <string name="loading">Opening Shuran…</string>
     <string name="network_error">Cannot connect to the server. Check your network and try again.</string>
     <string name="retry">Retry</string>

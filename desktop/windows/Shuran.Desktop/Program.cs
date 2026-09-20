@@ -4,7 +4,7 @@ namespace Shuran.Desktop;
 
 static class Program
 {
-    public const string DefaultUrl = "http://43.161.238.165:8000/?v=20260919i18n1";
+    public const string DefaultUrl = "http://43.161.238.165:8000/?v=20260920later2";
     const string MutexName = @"Local\Shuran.Desktop.SingleInstance";
 
     [STAThread]

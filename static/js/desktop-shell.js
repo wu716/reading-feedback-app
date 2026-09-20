@@ -7,6 +7,13 @@
     const RAIL_MAX = 980;
     let lastNarrow = null;
 
+    function t(key, fallback) {
+        if (window.shuranI18n && typeof window.shuranI18n.t === 'function') {
+            return window.shuranI18n.t(key, fallback);
+        }
+        return fallback;
+    }
+
     function isDesktop() {
         return window.innerWidth > 768;
     }
@@ -25,8 +32,8 @@
         if (running) running.hidden = !inApp;
         if (hint) {
             hint.textContent = inApp
-                ? '出门用手机看日程和「记」。本窗口可用 Ctrl+Shift+K 随时记下。'
-                : '不要用电脑管家打开安卓安装包。坐下做事用 Windows 应用，出门用手机。';
+                ? t('me.windows.running.hint', '出门用手机看日程和「记」。本窗口可用 Ctrl+Shift+K 随时记下。')
+                : t('me.windows.hint', '不要用电脑管家打开安卓安装包。坐下做事用 Windows 应用，出门用手机。');
         }
     }
 
@@ -48,7 +55,7 @@
     function syncToggle(rail) {
         const btn = document.getElementById('sidebarToggleBtn');
         if (!btn) return;
-        const label = rail ? '展开导航' : '收起导航';
+        const label = rail ? t('nav.expand', '展开导航') : t('nav.collapse', '收起导航');
         btn.title = label;
         btn.setAttribute('aria-label', label);
         btn.setAttribute('aria-expanded', rail ? 'false' : 'true');
@@ -101,6 +108,10 @@
         syncDesktopAppRows();
         apply();
         window.addEventListener('resize', onResize);
+        window.addEventListener('shuran-language-change', () => {
+            syncDesktopAppRows();
+            apply();
+        });
     }
 
     window.isShuranDesktopApp = isShuranDesktopApp;
