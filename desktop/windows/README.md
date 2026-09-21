@@ -8,12 +8,13 @@
 
 窗口按 **PerMonitorV2** DPI 感知，WebView 按显示器像素排版。荣耀电脑管家套 APK 会把安卓界面当位图放大，全屏必糊。
 
-## 本版能力（1.6.2）
+## 本版能力（1.6.3）
 
 - 双击打开，任务栏常驻；再开一次会唤起已有窗口，不会叠多个。
 - **Ctrl+Shift+K** 全局唤起「记」（对应手机三击音量减）。窗口内也可用 **Ctrl+K**。
 - 命令行加 `--capture` 可直接打开「记」。
 - 界面语言跟随网页端设置，可在「我的 → 语言」切换中文 / English。
+- 启动时自动检查桌面版本；确认后下载新版，自动重启并替换旧程序。
 
 ## 依赖
 
@@ -32,7 +33,7 @@ cd D:\projects\reading-feedback-app\desktop\windows
 成功后生成以下两个文件（都不要提交 git）：
 
 - `releases/shuran-windows.exe`：服务器下载页使用
-- `releases/shuran-windows-1.6.2.zip`：可直接通过微信发送给内测用户
+- `releases/shuran-windows-1.6.3.zip`：可直接通过微信发送给内测用户
 
 这是未签名的内测版本，仅发送给受邀测试用户。Windows 可能显示未知发布者提示；正式公开发布时再使用 MSIX 和可信签名。
 

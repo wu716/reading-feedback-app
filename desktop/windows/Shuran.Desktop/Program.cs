@@ -10,6 +10,7 @@ static class Program
     [STAThread]
     static void Main(string[] args)
     {
+        if (DesktopUpdater.TryApplyPendingUpdate(args)) return;
         using var mutex = new Mutex(true, MutexName, out var createdNew);
         if (!createdNew)
         {

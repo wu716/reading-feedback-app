@@ -3,6 +3,7 @@
 import json
 import logging
 import urllib.request
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
@@ -35,6 +36,7 @@ WINDOWS_CANDIDATES = [
     RELEASE_DIR / "shuran-windows.exe",
     RELEASE_DIR / "Shuran.exe",
 ]
+WINDOWS_PROJECT = REPO_ROOT / "desktop" / "windows" / "Shuran.Desktop" / "Shuran.Desktop.csproj"
 
 
 def find_windows_exe() -> Path | None:
@@ -50,6 +52,20 @@ def find_windows_exe() -> Path | None:
         if exes:
             return exes[0]
     return None
+
+
+def windows_version_name() -> str:
+    """Read the desktop shell version shipped with the repository."""
+    if not WINDOWS_PROJECT.is_file():
+        return ""
+    try:
+        root = ET.parse(WINDOWS_PROJECT).getroot()
+        for node in root.iter():
+            if node.tag.rsplit("}", 1)[-1] == "Version" and (node.text or "").strip():
+                return (node.text or "").strip()
+    except (OSError, ET.ParseError):
+        logger.exception("Failed to read Windows desktop version")
+    return ""
 
 
 def _iter_apk_candidates() -> list[Path]:
@@ -262,6 +278,8 @@ def build_info(request: Request | None = None) -> dict:
         "windows_available": windows_exe is not None,
         "windows_filename": "shuran-windows.exe",
         "windows_download_url": windows_download_url,
+        "windows_version": windows_version_name(),
+        "windows_update_in_place": True,
     }
     if apk is not None:
         size = apk.stat().st_size

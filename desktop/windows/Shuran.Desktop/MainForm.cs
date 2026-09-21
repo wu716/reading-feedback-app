@@ -123,6 +123,15 @@ sealed class MainForm : Form
         }
         RegisterCaptureHotkey();
         _webView.CoreWebView2.Navigate(_startUrl);
+        _ = CheckDesktopUpdateAsync();
+    }
+
+    async Task CheckDesktopUpdateAsync()
+    {
+        await Task.Delay(1200);
+        if (!Uri.TryCreate(_startUrl, UriKind.Absolute, out var pageUri)) return;
+        var baseUrl = $"{pageUri.Scheme}://{pageUri.Authority}";
+        await DesktopUpdater.CheckAndOfferAsync(this, baseUrl);
     }
 
     void RegisterCaptureHotkey()
