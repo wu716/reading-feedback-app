@@ -30,6 +30,11 @@ public class TimeLogVolumeKeyService extends AccessibilityService {
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
+        // AccessibilityService can be rebound after its hosting process is reclaimed.
+        // Always create a fresh controller so the detector does not retain stale state.
+        if (controller != null) {
+            controller.cancel();
+        }
         controller = new VolumeTripleTapController(this, handler);
         AccessibilityServiceInfo info = getServiceInfo();
         if (info != null) {
@@ -42,7 +47,28 @@ public class TimeLogVolumeKeyService extends AccessibilityService {
 
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
-        return controller != null && controller.onKeyEvent(event);
+        if (controller == null) {
+            controller = new VolumeTripleTapController(this, handler);
+        }
+        return controller.onKeyEvent(event);
+    }
+
+    @Override
+    public boolean onUnbind(android.content.Intent intent) {
+        // Ask Android to call onRebind if the service is attached again instead of
+        // treating the accessibility connection as permanently gone.
+        if (controller != null) {
+            controller.cancel();
+        }
+        return true;
+    }
+
+    @Override
+    public void onRebind(android.content.Intent intent) {
+        super.onRebind(intent);
+        if (controller == null) {
+            controller = new VolumeTripleTapController(this, handler);
+        }
     }
 
     @Override
