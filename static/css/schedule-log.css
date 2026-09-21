@@ -275,6 +275,7 @@
 .flow-sortable {
     cursor: grab;
     touch-action: pan-y;
+    user-select: none;
 }
 
 .flow-sortable:active,

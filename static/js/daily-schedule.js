@@ -15,6 +15,10 @@
     let dragPressTimer = null;
     let dragActive = false;
     let suppressClickUntil = 0;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let dragPointerId = null;
+    let dragScrollTimer = null;
     const laterOpenKey = 'shuran.scheduleLaterOpen';
     let laterOpen = readLaterOpen();
 
@@ -298,7 +302,7 @@
                 ? `<div class="flow-parent-path">${escapeHtml(task.parent_path.join(' / '))}</div>`
                 : '';
             return `
-                <article class="flow-task flow-sortable${task.completed ? ' is-done' : ''}" draggable="true" data-task-id="${task.id}">
+                <article class="flow-task flow-sortable${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
                     <div class="flow-task-main">${renderTitle(task)}</div>
                     ${path}
                     <div class="flow-task-meta">
@@ -791,6 +795,26 @@
             .forEach((item) => item.classList.remove('is-dragging', 'is-drop-target'));
     }
 
+    function stopDragAutoScroll() {
+        if (dragScrollTimer) {
+            clearInterval(dragScrollTimer);
+            dragScrollTimer = null;
+        }
+    }
+
+    function updateDragAutoScroll(clientY) {
+        const edge = 90;
+        let delta = 0;
+        if (clientY < edge) delta = -14;
+        if (clientY > window.innerHeight - edge) delta = 14;
+        if (!delta) {
+            stopDragAutoScroll();
+            return;
+        }
+        if (dragScrollTimer) return;
+        dragScrollTimer = setInterval(() => window.scrollBy(0, delta), 30);
+    }
+
     function dragTargetAt(x, y) {
         const element = document.elementFromPoint(x, y);
         return element?.closest('#scheduleList [data-task-id]') || null;
@@ -809,8 +833,10 @@
         if (!dragActive || sourceId == null) return;
         dragActive = false;
         suppressClickUntil = Date.now() + 500;
+        stopDragAutoScroll();
         clearDragClasses();
         dragTaskId = null;
+        dragPointerId = null;
         if (targetId == null || sourceId === targetId) return;
         const leaves = executionLeaves(data.tasks || []);
         const from = leaves.findIndex((item) => item.id === sourceId);
@@ -823,66 +849,33 @@
     }
 
     function bindDragSorting(list) {
-        list?.addEventListener('dragstart', (e) => {
-            if (mode !== 'design') {
-                e.preventDefault();
-                return;
-            }
-            const article = e.target.closest('[data-task-id]');
-            if (!article) return;
-            dragTaskId = parseInt(article.dataset.taskId, 10);
-            dragActive = true;
-            article.classList.add('is-dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', String(dragTaskId));
-        });
-
-        list?.addEventListener('dragover', (e) => {
-            if (!dragActive) return;
-            e.preventDefault();
-            markDragTarget(dragTargetAt(e.clientX, e.clientY));
-        });
-
-        list?.addEventListener('drop', async (e) => {
-            if (!dragActive) return;
-            e.preventDefault();
-            try {
-                const target = dragTargetAt(e.clientX, e.clientY);
-                await finishDrag(target ? parseInt(target.dataset.taskId, 10) : null);
-            } catch (err) {
-                if (typeof showMessage === 'function') showMessage(err.message, 'error');
-            }
-        });
-
-        list?.addEventListener('dragend', () => {
-            if (dragActive) {
-                dragActive = false;
-                dragTaskId = null;
-                clearDragClasses();
-            }
-        });
-
         list?.addEventListener('pointerdown', (e) => {
-            if (mode !== 'design' || e.pointerType === 'mouse') return;
+            if (mode !== 'design') return;
             if (e.target.closest('button, input, textarea, select')) return;
             const article = e.target.closest('[data-task-id]');
             if (!article) return;
             clearDragPress();
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            dragPointerId = e.pointerId;
             const id = parseInt(article.dataset.taskId, 10);
-            dragPressTimer = setTimeout(() => {
-                dragTaskId = id;
-                dragActive = true;
-                article.classList.add('is-dragging');
-                try { article.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-            }, 450);
+            if (e.pointerType !== 'mouse') {
+                dragPressTimer = setTimeout(() => startPointerDrag(article, id, e.pointerId), 450);
+            }
         });
 
         list?.addEventListener('pointermove', (e) => {
             if (!dragActive) {
-                if (dragPressTimer && Math.abs(e.movementY) > 8) clearDragPress();
+                const moved = Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY);
+                if (dragPressTimer && moved > 8) clearDragPress();
+                if (e.pointerType === 'mouse' && moved > 6) {
+                    const article = e.target.closest('[data-task-id]');
+                    if (article) startPointerDrag(article, parseInt(article.dataset.taskId, 10), e.pointerId);
+                }
                 return;
             }
             e.preventDefault();
+            updateDragAutoScroll(e.clientY);
             markDragTarget(dragTargetAt(e.clientX, e.clientY));
         });
 
@@ -900,8 +893,20 @@
             clearDragPress();
             dragActive = false;
             dragTaskId = null;
+            dragPointerId = null;
+            stopDragAutoScroll();
             clearDragClasses();
         });
+    }
+
+    function startPointerDrag(article, id, pointerId) {
+        if (dragActive) return;
+        clearDragPress();
+        dragTaskId = id;
+        dragPointerId = pointerId;
+        dragActive = true;
+        article.classList.add('is-dragging');
+        try { article.setPointerCapture(pointerId); } catch (err) { /* ignore */ }
     }
 
     function actionFromEvent(e) {
