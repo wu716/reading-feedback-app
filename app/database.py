@@ -71,6 +71,8 @@ def ensure_schema():
     add_column("reading_entries", "deleted_at", "deleted_at TIMESTAMP")
     add_column("daily_tasks", "note", "note TEXT")
     add_column("daily_tasks", "action_id", "action_id INTEGER")
+    add_column("daily_tasks", "priority", "priority INTEGER DEFAULT 0")
+    add_column("daily_tasks", "flow_order", "flow_order INTEGER DEFAULT 0")
     add_column("self_talk_reminder_logs", "detail", "detail TEXT")
     bool_default = "FALSE" if engine.dialect.name == "postgresql" else "0"
     add_column(

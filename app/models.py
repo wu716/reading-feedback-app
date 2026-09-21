@@ -234,6 +234,8 @@ class DailyTask(Base):
     completed = Column(Boolean, default=False)
     note = Column(Text, nullable=True)
     sort_order = Column(Integer, default=0)
+    priority = Column(Integer, nullable=False, default=0)  # 0普通，1重要，2最高
+    flow_order = Column(Integer, nullable=False, default=0)  # 跨父任务的执行阶段顺序
     familiarity = Column(String(20), nullable=True)
     estimated_minutes = Column(Integer, nullable=True)
     parallel_group = Column(Integer, nullable=True)

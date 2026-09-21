@@ -76,6 +76,31 @@
         return acc;
     }
 
+    function executionLeaves(tasks, parents, acc) {
+        const path = parents || [];
+        const output = acc || [];
+        (tasks || []).forEach((task) => {
+            const children = task.children || [];
+            if (children.length) {
+                executionLeaves(children, path.concat(task.text || ''), output);
+                return;
+            }
+            output.push(Object.assign({}, task, {
+                parent_path: path.filter(Boolean),
+            }));
+        });
+        return output.sort((a, b) => (
+            (a.flow_order ?? a.sort_order ?? 0) - (b.flow_order ?? b.sort_order ?? 0)
+            || a.id - b.id
+        ));
+    }
+
+    function priorityLabel(value) {
+        if (Number(value) >= 2) return t('schedule.priority.high', '最高');
+        if (Number(value) === 1) return t('schedule.priority.important', '重要');
+        return t('schedule.priority.normal', '普通');
+    }
+
     function familiarityLabel(value) {
         if (value === 'familiar') return t('schedule.familiar', '熟悉');
         if (value === 'unfamiliar') return t('schedule.unfamiliar', '陌生');
@@ -92,6 +117,23 @@
         return r
             ? format(t('schedule.hoursMinutes', '{hours} 小时 {minutes} 分'), { hours: h, minutes: r })
             : withCount(t('schedule.hours', '{count} 小时'), h);
+    }
+
+    function durationInputValue(mins) {
+        if (mins == null) return '';
+        return minutesLabel(mins);
+    }
+
+    function parseDuration(value) {
+        const raw = String(value || '').trim().toLowerCase();
+        if (!raw) return null;
+        if (/^\d+$/.test(raw)) return Math.min(1440, parseInt(raw, 10));
+        const hours = raw.match(/(\d+(?:\.\d+)?)\s*(?:小时|小時|h|hr|hrs)/);
+        const minutes = raw.match(/(\d+)\s*(?:分钟|分鐘|分|min|mins|m)/);
+        const h = hours ? Number(hours[1]) * 60 : 0;
+        const m = minutes ? Number(minutes[1]) : 0;
+        if (!hours && !minutes) return NaN;
+        return Math.min(1440, Math.round(h + m));
     }
 
     async function api(path, options) {
@@ -133,7 +175,7 @@
     }
 
     function allDone() {
-        const tasks = flatten(data.tasks || [], []);
+        const tasks = executionLeaves(data.tasks || []);
         return tasks.length > 0 && tasks.every((task) => task.completed);
     }
 
@@ -202,6 +244,7 @@
         const meta = [];
         const fam = familiarityLabel(task.familiarity);
         if (fam) meta.push(`<span class="flow-mark">${escapeHtml(fam)}</span>`);
+        if (task.priority) meta.push(`<span class="flow-mark priority-${task.priority}">${escapeHtml(priorityLabel(task.priority))}</span>`);
         if (task.estimated_minutes != null) {
             meta.push(`<span class="flow-mark">${escapeHtml(minutesLabel(task.estimated_minutes))}</span>`);
         }
@@ -243,6 +286,32 @@
         `;
     }
 
+    function renderDesignPlan(tasks) {
+        return tasks.map((task, index) => {
+            const prev = index > 0 ? tasks[index - 1] : null;
+            const parallelOn = !!(prev && task.parallel_group && task.parallel_group === prev.parallel_group);
+            const path = task.parent_path && task.parent_path.length
+                ? `<div class="flow-parent-path">${escapeHtml(task.parent_path.join(' / '))}</div>`
+                : '';
+            return `
+                <article class="flow-task${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
+                    <div class="flow-task-main">${renderTitle(task)}</div>
+                    ${path}
+                    <div class="flow-task-meta">
+                        <button type="button" class="flow-chip${task.priority === 2 ? ' active' : ''}" data-act="priority" data-value="2">${escapeHtml(t('schedule.priority.high', '最高'))}</button>
+                        <button type="button" class="flow-chip${task.priority === 1 ? ' active' : ''}" data-act="priority" data-value="1">${escapeHtml(t('schedule.priority.important', '重要'))}</button>
+                        <button type="button" class="flow-chip${!task.priority ? ' active' : ''}" data-act="priority" data-value="0">${escapeHtml(t('schedule.priority.normal', '普通'))}</button>
+                        <input type="text" class="flow-minutes" maxlength="20" placeholder="${escapeHtml(t('schedule.durationPlaceholder', '如 1小时30分'))}" value="${escapeHtml(durationInputValue(task.estimated_minutes))}" data-act="duration" aria-label="${escapeHtml(t('schedule.estimatedDuration', '预计用时'))}">
+                        ${index > 0 ? `<button type="button" class="flow-chip${parallelOn ? ' active' : ''}" data-act="parallel">${escapeHtml(t('schedule.parallelPrevious', '与上一项并行'))}</button>` : ''}
+                        ${index > 0 ? `<button type="button" class="flow-mini-btn" data-act="up">${escapeHtml(t('schedule.moveUp', '上移'))}</button>` : ''}
+                        ${index < tasks.length - 1 ? `<button type="button" class="flow-mini-btn" data-act="down">${escapeHtml(t('schedule.moveDown', '下移'))}</button>` : ''}
+                        ${index > 0 ? `<button type="button" class="flow-mini-btn" data-act="top">${escapeHtml(t('schedule.moveTop', '移到第一项'))}</button>` : ''}
+                    </div>
+                    ${renderEditActions(false)}
+                </article>`;
+        }).join('');
+    }
+
     function groupSiblings(tasks) {
         const groups = [];
         (tasks || []).forEach((task) => {
@@ -273,12 +342,17 @@
         const extra = [];
         if (fam) extra.push(fam);
         if (task.estimated_minutes != null) extra.push(minutesLabel(task.estimated_minutes));
+        if (task.priority) extra.push(priorityLabel(task.priority));
+        const path = task.parent_path && task.parent_path.length
+            ? `<div class="flow-parent-path">${escapeHtml(task.parent_path.join(' / '))}</div>`
+            : '';
         return `
             <article class="flow-task${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
                 <div class="flow-task-main">
                     ${renderDoneBtn(task)}
                     ${renderTitle(task)}
                 </div>
+                ${path}
                 ${extra.length ? `<div class="flow-task-meta">${extra.map((x) => `<span class="flow-mark">${escapeHtml(x)}</span>`).join('')}</div>` : ''}
                 ${renderNote(task)}
                 ${renderEditActions(false)}
@@ -429,9 +503,9 @@
             return;
         }
         if (mode === 'design') {
-            list.innerHTML = data.tasks.map((task, i, arr) => renderDesignTask(task, arr, i, false)).join('');
+            list.innerHTML = renderDesignPlan(executionLeaves(data.tasks));
         } else if (mode === 'flow') {
-            list.innerHTML = renderFlowGroups(data.tasks);
+            list.innerHTML = renderFlowGroups(executionLeaves(data.tasks));
         } else {
             list.innerHTML = data.tasks.map((task) => renderTask(task, false)).join('');
         }
@@ -625,6 +699,16 @@
     }
 
     async function moveTask(taskId, dir) {
+        if (mode === 'design') {
+            const leaves = executionLeaves(data.tasks || []);
+            const index = leaves.findIndex((item) => item.id === taskId);
+            const swap = index + dir;
+            if (index < 0 || swap < 0 || swap >= leaves.length) return;
+            const ordered = leaves.slice();
+            [ordered[index], ordered[swap]] = [ordered[swap], ordered[index]];
+            await reorderExecution(ordered);
+            return;
+        }
         const found = siblingsOf(taskId);
         if (!found) return;
         const swap = found.index + dir;
@@ -644,9 +728,29 @@
         await load(currentDay());
     }
 
+    async function reorderExecution(tasks) {
+        await api('/reorder', {
+            method: 'POST',
+            body: JSON.stringify({
+                task_date: currentDay(),
+                items: tasks.map((task, index) => ({
+                    id: task.id,
+                    sort_order: task.sort_order,
+                    flow_order: index,
+                    parallel_group: task.parallel_group,
+                    priority: task.priority ?? 0,
+                })),
+            }),
+        });
+        await load(currentDay());
+    }
+
     async function toggleParallel(taskId) {
-        const found = siblingsOf(taskId);
-        if (!found || found.index === 0) return;
+        const list = mode === 'design' ? executionLeaves(data.tasks || []) : null;
+        const found = list
+            ? { list, index: list.findIndex((item) => item.id === taskId) }
+            : siblingsOf(taskId);
+        if (!found || found.index <= 0) return;
         const current = found.list[found.index];
         const prev = found.list[found.index - 1];
         const on = !!(current.parallel_group && prev.parallel_group && current.parallel_group === prev.parallel_group);
@@ -662,6 +766,13 @@
             });
         }
         await patchTask(current.id, { parallel_group: group });
+    }
+
+    async function moveToTop(taskId) {
+        const leaves = executionLeaves(data.tasks || []);
+        const selected = leaves.find((item) => item.id === taskId);
+        if (!selected || leaves[0]?.id === taskId) return;
+        await reorderExecution([selected].concat(leaves.filter((item) => item.id !== taskId)));
     }
 
     function actionFromEvent(e) {
@@ -889,6 +1000,10 @@
                     await moveTask(id, 1);
                 } else if (act === 'parallel') {
                     await toggleParallel(id);
+                } else if (act === 'priority') {
+                    await patchTask(id, { priority: parseInt(actEl.dataset.value, 10) });
+                } else if (act === 'top') {
+                    await moveToTop(id);
                 }
             } catch (err) {
                 if (typeof showMessage === 'function') showMessage(err.message, 'error');
@@ -949,12 +1064,16 @@
             if (!article) return;
             const id = parseInt(article.dataset.taskId, 10);
             try {
-                if (e.target.dataset.act === 'minutes') {
+                if (e.target.dataset.act === 'duration') {
                     const raw = e.target.value;
                     if (raw === '') {
                         await patchTask(id, { clear_estimate: true });
                     } else {
-                        await patchTask(id, { estimated_minutes: parseInt(raw, 10) });
+                        const minutes = parseDuration(raw);
+                        if (!Number.isFinite(minutes)) {
+                            throw new Error(t('schedule.durationInvalid', '请输入例如 30分钟、1小时或1小时30分'));
+                        }
+                        await patchTask(id, { estimated_minutes: minutes });
                     }
                     return;
                 }

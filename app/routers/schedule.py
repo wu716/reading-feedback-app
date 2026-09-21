@@ -37,6 +37,7 @@ class TaskCreate(BaseModel):
     task_date: Optional[date] = None
     parent_id: Optional[int] = None
     action_id: Optional[int] = None
+    priority: int = Field(0, ge=0, le=2)
 
     @field_validator("text")
     @classmethod
@@ -55,6 +56,8 @@ class TaskUpdate(BaseModel):
     estimated_minutes: Optional[int] = Field(None, ge=0, le=24 * 60)
     sort_order: Optional[int] = None
     parallel_group: Optional[int] = None
+    priority: Optional[int] = Field(None, ge=0, le=2)
+    flow_order: Optional[int] = Field(None, ge=0)
     parent_id: Optional[int] = None
     clear_familiarity: bool = False
     clear_estimate: bool = False
@@ -93,6 +96,8 @@ class ReorderItem(BaseModel):
     sort_order: int
     parallel_group: Optional[int] = None
     parent_id: Optional[int] = None
+    priority: Optional[int] = Field(None, ge=0, le=2)
+    flow_order: Optional[int] = Field(None, ge=0)
 
 
 class ReorderBody(BaseModel):
@@ -112,6 +117,8 @@ class TaskOut(BaseModel):
     completed: bool
     note: Optional[str] = None
     sort_order: int
+    priority: int = 0
+    flow_order: int = 0
     familiarity: Optional[str] = None
     estimated_minutes: Optional[int] = None
     parallel_group: Optional[int] = None
@@ -228,6 +235,13 @@ def next_sort_order(db: Session, user_id: int, day: date, parent_id: Optional[in
     return max(t.sort_order for t in siblings) + 1
 
 
+def next_flow_order(db: Session, user_id: int, day: date) -> int:
+    tasks = visible_tasks(db, user_id, day)
+    if not tasks:
+        return 0
+    return max((t.flow_order or t.sort_order or 0) for t in tasks) + 1
+
+
 def collect_descendants(tasks: List[DailyTask], root_id: int) -> List[DailyTask]:
     by_parent = defaultdict(list)
     for task in tasks:
@@ -241,6 +255,20 @@ def collect_descendants(tasks: List[DailyTask], root_id: int) -> List[DailyTask]
 
     walk(root_id)
     return found
+
+
+def refresh_parent_completion(db: Session, user_id: int, task: DailyTask) -> None:
+    """Keep container completion derived from its direct children."""
+    parent = task.parent
+    while parent is not None:
+        children = [child for child in parent.children if child.deleted_at is None]
+        next_value = bool(children) and all(child.completed for child in children)
+        if parent.completed == next_value:
+            parent = parent.parent
+            continue
+        parent.completed = next_value
+        sync_schedule_event(db, user_id, parent, next_value)
+        parent = parent.parent
 
 
 def build_tree(tasks: List[DailyTask]) -> List[TaskOut]:
@@ -257,6 +285,8 @@ def build_tree(tasks: List[DailyTask]) -> List[TaskOut]:
             completed=bool(task.completed),
             note=task.note,
             sort_order=task.sort_order or 0,
+            priority=task.priority or 0,
+            flow_order=task.flow_order or task.sort_order or 0,
             familiarity=task.familiarity,
             estimated_minutes=task.estimated_minutes,
             parallel_group=task.parallel_group,
@@ -397,6 +427,8 @@ async def create_task(
         text=body.text,
         action_id=action_id,
         sort_order=next_sort_order(db, current_user.id, day, parent_id),
+        priority=body.priority,
+        flow_order=next_flow_order(db, current_user.id, day),
     )
     db.add(task)
     db.commit()
@@ -416,6 +448,7 @@ async def update_task(
     if body.completed is not None:
         task.completed = body.completed
         sync_schedule_event(db, current_user.id, task, body.completed)
+        refresh_parent_completion(db, current_user.id, task)
     if body.clear_note:
         task.note = None
     elif body.note is not None:
@@ -430,6 +463,10 @@ async def update_task(
         task.estimated_minutes = body.estimated_minutes
     if body.sort_order is not None:
         task.sort_order = body.sort_order
+    if body.priority is not None:
+        task.priority = body.priority
+    if body.flow_order is not None:
+        task.flow_order = body.flow_order
     if body.clear_parallel:
         task.parallel_group = None
     elif body.parallel_group is not None:
@@ -478,6 +515,10 @@ async def reorder_tasks(
             raise HTTPException(status_code=404, detail="行动不存在")
         task.sort_order = item.sort_order
         task.parallel_group = item.parallel_group
+        if item.priority is not None:
+            task.priority = item.priority
+        if item.flow_order is not None:
+            task.flow_order = item.flow_order
         if item.parent_id is not None:
             task.parent_id = item.parent_id
     db.commit()

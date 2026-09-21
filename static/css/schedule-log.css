@@ -352,6 +352,12 @@
     color: #5c3d36;
 }
 
+.flow-parent-path {
+    margin: 4px 0 0 26px;
+    color: #8a8478;
+    font-size: 0.72rem;
+}
+
 .flow-task-text-input {
     flex: 1;
     min-width: 0;
@@ -427,7 +433,7 @@
 }
 
 .flow-minutes {
-    width: 64px;
+    width: 112px;
     border: none;
     border-bottom: 1px solid #d8d1c4;
     border-radius: 0;
