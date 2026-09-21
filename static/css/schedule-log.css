@@ -272,6 +272,24 @@
     margin: 0;
 }
 
+.flow-sortable {
+    cursor: grab;
+    touch-action: pan-y;
+}
+
+.flow-sortable:active,
+.flow-sortable.is-dragging {
+    cursor: grabbing;
+}
+
+.flow-sortable.is-dragging {
+    opacity: 0.45;
+}
+
+.flow-sortable.is-drop-target {
+    border-top: 2px solid #9c3b32;
+}
+
 .flow-task.is-child {
     margin-left: 28px;
     padding-left: 12px;

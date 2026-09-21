@@ -11,6 +11,10 @@
     let nudgeOpen = false;
     let laterItems = [];
     let editingLaterId = null;
+    let dragTaskId = null;
+    let dragPressTimer = null;
+    let dragActive = false;
+    let suppressClickUntil = 0;
     const laterOpenKey = 'shuran.scheduleLaterOpen';
     let laterOpen = readLaterOpen();
 
@@ -294,7 +298,7 @@
                 ? `<div class="flow-parent-path">${escapeHtml(task.parent_path.join(' / '))}</div>`
                 : '';
             return `
-                <article class="flow-task${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
+                <article class="flow-task flow-sortable${task.completed ? ' is-done' : ''}" draggable="true" data-task-id="${task.id}">
                     <div class="flow-task-main">${renderTitle(task)}</div>
                     ${path}
                     <div class="flow-task-meta">
@@ -775,6 +779,131 @@
         await reorderExecution([selected].concat(leaves.filter((item) => item.id !== taskId)));
     }
 
+    function clearDragPress() {
+        if (dragPressTimer) {
+            clearTimeout(dragPressTimer);
+            dragPressTimer = null;
+        }
+    }
+
+    function clearDragClasses() {
+        document.querySelectorAll('#scheduleList .is-dragging, #scheduleList .is-drop-target')
+            .forEach((item) => item.classList.remove('is-dragging', 'is-drop-target'));
+    }
+
+    function dragTargetAt(x, y) {
+        const element = document.elementFromPoint(x, y);
+        return element?.closest('#scheduleList [data-task-id]') || null;
+    }
+
+    function markDragTarget(article) {
+        document.querySelectorAll('#scheduleList .is-drop-target')
+            .forEach((item) => item.classList.remove('is-drop-target'));
+        if (article && parseInt(article.dataset.taskId, 10) !== dragTaskId) {
+            article.classList.add('is-drop-target');
+        }
+    }
+
+    async function finishDrag(targetId) {
+        const sourceId = dragTaskId;
+        if (!dragActive || sourceId == null) return;
+        dragActive = false;
+        suppressClickUntil = Date.now() + 500;
+        clearDragClasses();
+        dragTaskId = null;
+        if (targetId == null || sourceId === targetId) return;
+        const leaves = executionLeaves(data.tasks || []);
+        const from = leaves.findIndex((item) => item.id === sourceId);
+        const to = leaves.findIndex((item) => item.id === targetId);
+        if (from < 0 || to < 0) return;
+        const ordered = leaves.slice();
+        const [moved] = ordered.splice(from, 1);
+        ordered.splice(to, 0, moved);
+        await reorderExecution(ordered);
+    }
+
+    function bindDragSorting(list) {
+        list?.addEventListener('dragstart', (e) => {
+            if (mode !== 'design') {
+                e.preventDefault();
+                return;
+            }
+            const article = e.target.closest('[data-task-id]');
+            if (!article) return;
+            dragTaskId = parseInt(article.dataset.taskId, 10);
+            dragActive = true;
+            article.classList.add('is-dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', String(dragTaskId));
+        });
+
+        list?.addEventListener('dragover', (e) => {
+            if (!dragActive) return;
+            e.preventDefault();
+            markDragTarget(dragTargetAt(e.clientX, e.clientY));
+        });
+
+        list?.addEventListener('drop', async (e) => {
+            if (!dragActive) return;
+            e.preventDefault();
+            try {
+                const target = dragTargetAt(e.clientX, e.clientY);
+                await finishDrag(target ? parseInt(target.dataset.taskId, 10) : null);
+            } catch (err) {
+                if (typeof showMessage === 'function') showMessage(err.message, 'error');
+            }
+        });
+
+        list?.addEventListener('dragend', () => {
+            if (dragActive) {
+                dragActive = false;
+                dragTaskId = null;
+                clearDragClasses();
+            }
+        });
+
+        list?.addEventListener('pointerdown', (e) => {
+            if (mode !== 'design' || e.pointerType === 'mouse') return;
+            if (e.target.closest('button, input, textarea, select')) return;
+            const article = e.target.closest('[data-task-id]');
+            if (!article) return;
+            clearDragPress();
+            const id = parseInt(article.dataset.taskId, 10);
+            dragPressTimer = setTimeout(() => {
+                dragTaskId = id;
+                dragActive = true;
+                article.classList.add('is-dragging');
+                try { article.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+            }, 450);
+        });
+
+        list?.addEventListener('pointermove', (e) => {
+            if (!dragActive) {
+                if (dragPressTimer && Math.abs(e.movementY) > 8) clearDragPress();
+                return;
+            }
+            e.preventDefault();
+            markDragTarget(dragTargetAt(e.clientX, e.clientY));
+        });
+
+        list?.addEventListener('pointerup', async (e) => {
+            clearDragPress();
+            if (!dragActive) return;
+            try {
+                const target = dragTargetAt(e.clientX, e.clientY);
+                await finishDrag(target ? parseInt(target.dataset.taskId, 10) : null);
+            } catch (err) {
+                if (typeof showMessage === 'function') showMessage(err.message, 'error');
+            }
+        });
+        list?.addEventListener('pointercancel', () => {
+            clearDragPress();
+            dragActive = false;
+            dragTaskId = null;
+            clearDragClasses();
+        });
+    }
+
     function actionFromEvent(e) {
         const actEl = e.target.closest('[data-act]');
         const article = e.target.closest('[data-task-id]');
@@ -803,6 +932,7 @@
         day = todayISO();
         const list = document.getElementById('scheduleList');
         const nudge = document.getElementById('scheduleNudge');
+        bindDragSorting(list);
 
         document.getElementById('schedulePrevDay')?.addEventListener('click', () => {
             nudgeOpen = false;
@@ -964,6 +1094,7 @@
         });
 
         list?.addEventListener('click', async (e) => {
+            if (Date.now() < suppressClickUntil) return;
             const hit = actionFromEvent(e);
             if (!hit) return;
             const { article, act, actEl, id } = hit;
