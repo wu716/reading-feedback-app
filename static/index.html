@@ -4045,7 +4045,7 @@
         <section id="schedule" class="content-section">
             <div class="section-header">
                 <h1 data-i18n="schedule.title">日程安排</h1>
-                <p class="flow-hint" id="scheduleHint">写下今天要做的事</p>
+                <p class="flow-hint" id="scheduleHint">添加一件事，即可安排熟悉程度和预计用时</p>
             </div>
             <div id="habitFocusMount" class="habit-focus-shell"></div>
             <div class="home-schedule" id="homeSchedule">
@@ -4058,15 +4058,14 @@
                         </div>
                         <div>
                             <button type="button" class="flow-ghost-btn" id="scheduleBackBtn" data-i18n="schedule.backToList" hidden>回到清单</button>
-                            <button type="button" class="flow-ghost-btn" id="scheduleDesignBtn" data-i18n="schedule.designFlow" hidden>设计流程</button>
                             <button type="button" class="flow-solid-btn" id="scheduleDoneBtn" data-i18n="schedule.makeFlow" hidden>做成当日流程</button>
                         </div>
                     </div>
                 </div>
                 <div class="schedule-nudge" id="scheduleNudge" hidden></div>
                 <div class="flow-add-row" id="scheduleAddRow">
-                    <input type="text" id="scheduleAddInput" maxlength="500" placeholder="写下这一步" data-i18n-placeholder="schedule.add.placeholder">
-                    <button type="button" class="flow-solid-btn" id="scheduleAddBtn" data-i18n="schedule.add.button">写下</button>
+                    <input type="text" id="scheduleAddInput" maxlength="500" placeholder="写下要做的事" data-i18n-placeholder="schedule.add.placeholder">
+                    <button type="button" class="flow-solid-btn" id="scheduleAddBtn" data-i18n="schedule.add.button">添加并设计</button>
                 </div>
                 <div id="scheduleList" class="home-schedule-list"></div>
                 <div class="schedule-later is-collapsed" id="scheduleLater">
@@ -5258,7 +5257,7 @@
         </div>
     </div>
 
-    <script src="/static/js/i18n.js?v=20260921drag1"></script>
+    <script src="/static/js/i18n.js?v=20260922schedule1"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -8886,7 +8885,7 @@
     <script src="/static/reminder_notification.js?v=20260920later2"></script>
     <script src="/static/js/app-tabbar.js?v=20260920habit1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
-    <script src="/static/js/daily-schedule.js?v=20260921drag1"></script>
+    <script src="/static/js/daily-schedule.js?v=20260922schedule1"></script>
     <script src="/static/js/habit-program.js?v=20260920habit1"></script>
     <script src="/static/js/time-log.js?v=20260920habit1"></script>
     <script src="/static/js/ideas.js?v=20260920habit1"></script>

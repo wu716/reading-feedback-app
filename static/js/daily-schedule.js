@@ -1,5 +1,5 @@
 /**
- * 日程安排：先写下具体行动，再可选进入流程设计。
+ * 日程安排：添加行动后在同一页完成可选的流程设计。
  */
 (function () {
     let day = null;
@@ -174,12 +174,12 @@
         if (mode === 'flow' && data.designed_at) {
             hint.textContent = allDone()
                 ? t('schedule.hint.done', '今日已完成')
-                : t('schedule.hint.flow', '勾选完成，也可记下执行情况。写错了点「修改」，也可删除');
+                : t('schedule.hint.flow', '勾选完成，也可记下执行情况。点任务内容即可修改，也可删除');
             return;
         }
         hint.textContent = allDone()
             ? t('schedule.hint.done', '今日已完成')
-            : t('schedule.hint.list', '写下今天要做的事。写错了点「修改」，也可拆开或删除');
+            : t('schedule.hint.list', '添加一件事，即可安排熟悉程度和预计用时');
     }
 
     function allDone() {
@@ -204,17 +204,15 @@
     function renderToolbar() {
         const label = document.getElementById('scheduleDateLabel');
         if (label) label.textContent = dayLabel(currentDay());
-        const designBtn = document.getElementById('scheduleDesignBtn');
         const doneBtn = document.getElementById('scheduleDoneBtn');
         const backBtn = document.getElementById('scheduleBackBtn');
         const addRow = document.getElementById('scheduleAddRow');
-        if (designBtn) designBtn.hidden = mode !== 'list' || !(data.tasks || []).length;
         if (doneBtn) doneBtn.hidden = mode !== 'design';
         if (backBtn) {
             backBtn.hidden = mode === 'list';
             backBtn.textContent = t('schedule.backToList', '回到清单');
         }
-        if (addRow) addRow.hidden = mode !== 'list';
+        if (addRow) addRow.hidden = mode === 'flow';
         const later = document.getElementById('scheduleLater');
         if (later) later.hidden = mode !== 'list';
     }
@@ -242,7 +240,6 @@
     function renderEditActions(showSplit) {
         return `
             <div class="flow-task-actions">
-                <button type="button" data-act="edit">${escapeHtml(t('schedule.edit', '修改'))}</button>
                 ${showSplit ? `<button type="button" data-act="split">${escapeHtml(t('schedule.split', '拆开'))}</button>` : ''}
                 ${renderDeleteBtn()}
             </div>`;
@@ -306,6 +303,8 @@
                     <div class="flow-task-main">${renderTitle(task)}</div>
                     ${path}
                     <div class="flow-task-meta">
+                        <button type="button" class="flow-chip${task.familiarity === 'familiar' ? ' active' : ''}" data-act="fam" data-value="familiar">${escapeHtml(t('schedule.familiar', '熟悉'))}</button>
+                        <button type="button" class="flow-chip${task.familiarity === 'unfamiliar' ? ' active' : ''}" data-act="fam" data-value="unfamiliar">${escapeHtml(t('schedule.unfamiliar', '陌生'))}</button>
                         <button type="button" class="flow-chip${task.priority === 2 ? ' active' : ''}" data-act="priority" data-value="2">${escapeHtml(t('schedule.priority.high', '最高'))}</button>
                         <button type="button" class="flow-chip${task.priority === 1 ? ' active' : ''}" data-act="priority" data-value="1">${escapeHtml(t('schedule.priority.important', '重要'))}</button>
                         <button type="button" class="flow-chip${!task.priority ? ' active' : ''}" data-act="priority" data-value="0">${escapeHtml(t('schedule.priority.normal', '普通'))}</button>
@@ -484,7 +483,6 @@
                         ${title}
                     </div>
                     <div class="flow-task-actions">
-                        <button type="button" data-later-act="edit">${escapeHtml(t('schedule.edit', '修改'))}</button>
                         <button type="button" data-later-act="into">${laterIntoLabel()}</button>
                         <button type="button" class="flow-mini-btn flow-danger" data-later-act="delete">${escapeHtml(t('schedule.delete', '删除'))}</button>
                     </div>
@@ -568,7 +566,7 @@
         render();
     }
 
-    async function addTask(text, parentId, actionId) {
+    async function addTask(text, parentId, actionId, openDesign) {
         const value = (text || '').trim();
         if (!value) return;
         data = await api('/tasks', {
@@ -581,6 +579,12 @@
             }),
         });
         splitFor = null;
+        if (openDesign) {
+            const tasks = flatten(data.tasks || [], []);
+            const newest = tasks.reduce((latest, task) => (!latest || task.id > latest.id ? task : latest), null);
+            mode = 'design';
+            editingId = newest ? newest.id : null;
+        }
         await loadSuggestions();
         render();
     }
@@ -671,6 +675,13 @@
             const input = document.querySelector(`#scheduleList [data-task-id="${editingId}"] [data-act="text"]`);
             if (input) await saveText(editingId, input.value);
         }
+        splitFor = null;
+        editingId = id;
+        render();
+    }
+
+    function openDesign(id) {
+        mode = 'design';
         splitFor = null;
         editingId = id;
         render();
@@ -949,7 +960,7 @@
         });
         document.getElementById('scheduleAddBtn')?.addEventListener('click', () => {
             const input = document.getElementById('scheduleAddInput');
-            addTask(input?.value).then(() => {
+            addTask(input?.value, null, null, true).then(() => {
                 if (input) input.value = '';
             }).catch((e) => {
                 if (typeof showMessage === 'function') showMessage(e.message, 'error');
@@ -982,12 +993,6 @@
             renderLater();
         });
         window.addEventListener('shuran-language-change', () => render());
-        document.getElementById('scheduleDesignBtn')?.addEventListener('click', () => {
-            mode = 'design';
-            editingId = null;
-            editingLaterId = null;
-            render();
-        });
         document.getElementById('scheduleDoneBtn')?.addEventListener('click', async () => {
             try {
                 data = await api('/design', {
@@ -1106,7 +1111,11 @@
             if (act === 'note' || act === 'text' || act === 'minutes') return;
             try {
                 if (act === 'edit') {
-                    await beginEdit(id);
+                    if (mode === 'list') {
+                        openDesign(id);
+                    } else {
+                        await beginEdit(id);
+                    }
                 } else if (act === 'toggle') {
                     const task = flatten(data.tasks || [], []).find((item) => item.id === id);
                     await patchTask(id, { completed: !(task && task.completed) });
