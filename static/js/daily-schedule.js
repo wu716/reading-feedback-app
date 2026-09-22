@@ -226,7 +226,8 @@
     }
 
     function renderDeleteBtn() {
-        return `<button type="button" class="flow-mini-btn flow-danger" data-act="delete">${escapeHtml(t('schedule.delete', '删除'))}</button>`;
+        const label = escapeHtml(t('schedule.delete', '删除'));
+        return `<button type="button" class="flow-mini-btn flow-danger" data-act="delete" aria-label="${label}">${label}</button>`;
     }
 
     function renderSplitRow(task) {
@@ -485,7 +486,7 @@
                     </div>
                     <div class="flow-task-actions">
                         <button type="button" data-later-act="into">${laterIntoLabel()}</button>
-                        <button type="button" class="flow-mini-btn flow-danger" data-later-act="delete">${escapeHtml(t('schedule.delete', '删除'))}</button>
+                        <button type="button" class="flow-mini-btn flow-danger" data-later-act="delete" aria-label="${escapeHtml(t('schedule.delete', '删除'))}">${escapeHtml(t('schedule.delete', '删除'))}</button>
                     </div>
                 </article>`;
         }).join('');

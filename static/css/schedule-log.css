@@ -425,20 +425,27 @@
 .flow-task-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 16px;
-    margin-top: 8px;
+    gap: 8px;
+    margin-top: 4px;
     margin-left: 26px;
 }
 
 .flow-task-actions button,
 .flow-mini-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border: none;
     background: transparent;
     color: #5c3d36;
     font-size: 0.86rem;
-    min-height: 28px;
-    padding: 0;
+    min-width: 44px;
+    min-height: 36px;
+    padding: 0 8px;
+    border-radius: 6px;
     cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(156, 59, 50, 0.12);
 }
 
 .flow-task-actions button.flow-danger,
