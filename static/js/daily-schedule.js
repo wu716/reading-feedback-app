@@ -188,11 +188,12 @@
     }
 
     function renderDoneBtn(task) {
-        const label = escapeHtml(t('schedule.done', '完成'));
+        const doneLabel = escapeHtml(t('schedule.done', '完成'));
         if (task.completed) {
-            return `<button type="button" class="flow-done-btn is-on" data-act="toggle" aria-pressed="true">${label}</button>`;
+            const undoLabel = escapeHtml(t('schedule.undoDone', '取消完成'));
+            return `<button type="button" class="flow-done-btn is-on" data-act="toggle" aria-pressed="true" aria-label="${undoLabel}">${undoLabel}</button>`;
         }
-        return `<button type="button" class="flow-done-btn" data-act="toggle" aria-pressed="false" aria-label="${label}"></button>`;
+        return `<button type="button" class="flow-done-btn" data-act="toggle" aria-pressed="false" aria-label="${doneLabel}"></button>`;
     }
 
     function renderNote(task) {
