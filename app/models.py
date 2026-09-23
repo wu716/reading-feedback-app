@@ -51,6 +51,20 @@ class User(Base):
     used_invite_codes = relationship("InviteCode", back_populates="used_by_user")
 
 
+class AuthCode(Base):
+    """绑定邮箱和重置密码使用的一次性验证码。"""
+    __tablename__ = "auth_codes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), nullable=False, index=True)
+    purpose = Column(String(30), nullable=False, index=True)
+    code_hash = Column(String(255), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    attempts = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class Action(Base):
     __tablename__ = "actions"
     

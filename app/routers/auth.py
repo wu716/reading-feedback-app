@@ -1,4 +1,9 @@
 from datetime import datetime, timedelta, timezone
+import hashlib
+import re
+import secrets
+import smtplib
+from email.mime.text import MIMEText
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -21,7 +26,7 @@ from app.auth import (
 )
 from app.config import settings
 from app.database import get_db
-from app.models import InviteCode, Subscription, User
+from app.models import AuthCode, InviteCode, Subscription, User
 from app.plans import PLAN_FREE, apply_plan, plan_catalog, resolve_user_plan
 from app.rate_limit import (
     clear_rate_hits,
@@ -30,7 +35,7 @@ from app.rate_limit import (
     record_rate_hit,
     seconds_until_slot,
 )
-from app.schemas import PasswordChange, PhoneBind, Token, UserCreate, UserLogin, UserResponse, UserUpdate
+from app.schemas import EmailBind, PasswordChange, PasswordResetConfirm, PasswordResetRequest, PhoneBind, Token, UserCreate, UserLogin, UserResponse, UserUpdate
 
 router = APIRouter(prefix="/auth", tags=["认证"])
 
@@ -42,6 +47,55 @@ LOGIN_HOURLY_LIMIT = 20
 LOGIN_HOURLY_WINDOW = 3600
 REGISTER_LIMIT = 8
 REGISTER_WINDOW = 3600
+CODE_EXPIRE_MINUTES = 10
+
+
+def _normalize_email(value: str) -> str:
+    email = (value or '').strip().lower()
+    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        raise HTTPException(status_code=400, detail='请填写有效的邮箱地址')
+    return email
+
+
+def _send_code_email(email: str, code: str, purpose: str) -> bool:
+    if not settings.SMTP_HOST:
+        return False
+    subject = '书然邮箱绑定验证码' if purpose == 'bind_email' else '书然重置密码验证码'
+    msg = MIMEText(f'你的{subject}是：{code}\n验证码 10 分钟内有效。如非本人操作，请忽略此邮件。', 'plain', 'utf-8')
+    msg['From'] = settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME
+    msg['To'] = email
+    msg['Subject'] = subject
+    try:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
+            if settings.SMTP_USE_TLS:
+                server.starttls()
+            if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
+                server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+            server.send_message(msg)
+        return True
+    except Exception:
+        return False
+
+
+def _issue_code(db: Session, email: str, purpose: str) -> str:
+    db.query(AuthCode).filter(AuthCode.email == email, AuthCode.purpose == purpose, AuthCode.used_at.is_(None)).update({'used_at': datetime.now(timezone.utc)})
+    code = f'{secrets.randbelow(1000000):06d}'
+    db.add(AuthCode(email=email, purpose=purpose, code_hash=hashlib.sha256(code.encode()).hexdigest(), expires_at=datetime.now(timezone.utc) + timedelta(minutes=CODE_EXPIRE_MINUTES)))
+    db.commit()
+    return code
+
+
+def _consume_code(db: Session, email: str, purpose: str, code: str) -> bool:
+    row = db.query(AuthCode).filter(AuthCode.email == email, AuthCode.purpose == purpose, AuthCode.used_at.is_(None)).order_by(AuthCode.id.desc()).first()
+    now = datetime.now(timezone.utc)
+    if not row or row.expires_at < now or row.attempts >= 5:
+        return False
+    row.attempts += 1
+    valid = secrets.compare_digest(row.code_hash, hashlib.sha256(code.encode()).hexdigest())
+    if valid:
+        row.used_at = now
+    db.commit()
+    return valid
 
 
 def _guard_invite_attempts(ip: str) -> None:
@@ -238,6 +292,61 @@ async def login(user_credentials: UserLogin, request: Request, db: Session = Dep
         "token_type": "bearer",
         "expires_in": expires_in,
     }
+
+
+@router.post('/email/bind-code')
+async def send_bind_email_code(payload: EmailBind, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    email = _normalize_email(payload.email)
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail='当前密码不正确')
+    if db.query(User).filter(User.email == email, User.id != current_user.id, User.deleted_at.is_(None)).first():
+        raise HTTPException(status_code=400, detail='该邮箱已被其他账户使用')
+    code = _issue_code(db, email, 'bind_email')
+    if not _send_code_email(email, code, 'bind_email'):
+        raise HTTPException(status_code=503, detail='邮件服务暂不可用，请稍后再试')
+    return {'message': '验证码已发送'}
+
+
+@router.put('/email', response_model=UserResponse)
+async def bind_email(payload: EmailBind, code: str, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    email = _normalize_email(payload.email)
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail='当前密码不正确')
+    if db.query(User).filter(User.email == email, User.id != current_user.id, User.deleted_at.is_(None)).first():
+        raise HTTPException(status_code=400, detail='该邮箱已被其他账户使用')
+    if not _consume_code(db, email, 'bind_email', code):
+        raise HTTPException(status_code=400, detail='验证码错误或已失效')
+    current_user.email = email
+    db.commit()
+    db.refresh(current_user)
+    return _as_user_response(current_user)
+
+
+@router.post('/password-reset/code')
+async def request_password_reset(payload: PasswordResetRequest, request: Request, db: Session = Depends(get_db)):
+    email = _normalize_email(payload.email)
+    user = db.query(User).filter(User.email == email, User.deleted_at.is_(None), User.is_active.is_(True)).first()
+    if user and not is_placeholder_email_for_reset(user.email):
+        code = _issue_code(db, email, 'reset_password')
+        _send_code_email(email, code, 'reset_password')
+    return {'message': '如果该邮箱已绑定，验证码将发送到邮箱'}
+
+
+def is_placeholder_email_for_reset(email: str) -> bool:
+    return email.lower().endswith('@phone.invalid')
+
+
+@router.post('/password-reset')
+async def reset_password(payload: PasswordResetConfirm, request: Request, db: Session = Depends(get_db)):
+    email = _normalize_email(payload.email)
+    user = db.query(User).filter(User.email == email, User.deleted_at.is_(None), User.is_active.is_(True)).first()
+    if not user or not _consume_code(db, email, 'reset_password', payload.code):
+        raise HTTPException(status_code=400, detail='验证码错误或已失效')
+    user.password_hash = get_password_hash(payload.new_password)
+    bump_token_version(user)
+    db.commit()
+    write_audit(db, 'password_reset', actor_user_id=user.id, ip=client_ip(request))
+    return {'message': '密码已重置，请使用新密码登录'}
 
 
 @router.put("/password")

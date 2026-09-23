@@ -4265,6 +4265,13 @@
                     </div>
                 </div>
 
+                <div class="me-group me-phone-only" id="meBindEmailGroup">
+                    <div class="me-group-title">绑定邮箱</div>
+                    <p class="me-hint">绑定后可用邮箱登录，也可用邮箱找回密码。需要验证当前密码。</p>
+                    <div class="me-inline-form"><input type="email" id="bindEmailInput" placeholder="邮箱地址" autocomplete="email"><input type="password" id="bindEmailPasswordInput" placeholder="当前密码" autocomplete="current-password"><button type="button" class="me-link-btn" onclick="sendBindEmailCode()">发送验证码</button></div>
+                    <div class="me-inline-form"><input type="text" id="bindEmailCodeInput" placeholder="6 位验证码" inputmode="numeric" maxlength="6"><button type="button" class="me-link-btn" onclick="bindUserEmail()">确认绑定</button></div>
+                </div>
+
                 <div class="me-group" id="meBindPhoneGroup" hidden>
                     <div class="me-group-title" data-i18n="me.bindPhone.group">绑定手机号</div>
                     <p class="me-hint" data-i18n="me.bindPhone.hint">绑定后可用手机号登录。一个号码只能绑定一个账户。验证码绑定稍后开放。</p>
@@ -4926,6 +4933,7 @@
                         <label for="loginPassword" data-i18n="auth.password.label">密码</label>
                         <input type="password" id="loginPassword" required placeholder="密码" data-i18n-placeholder="auth.password.placeholder" autocomplete="current-password">
                     </div>
+                    <button type="button" class="me-link-btn" onclick="showPasswordReset()">忘记密码？用邮箱重置</button>
                     <button type="submit" class="auth-btn" data-i18n="auth.login.submit">登录</button>
                 </form>
 
@@ -6617,6 +6625,21 @@
                 return false;
             }
         }
+
+        function showPasswordReset() {
+            const email = prompt('请输入已绑定的邮箱');
+            if (!email) return;
+            const code = prompt('请输入收到的 6 位验证码（先点击确定发送）');
+            if (code) resetPassword(email, code);
+            else apiRequest('/auth/password-reset/code', { method: 'POST', body: JSON.stringify({ email }) }).then(() => showMessage('如果邮箱已绑定，验证码将发送到邮箱', 'success')).catch(e => showMessage(e.message, 'error'));
+        }
+
+        async function resetPassword(email, code) {
+            const password = prompt('请输入新密码（至少 6 位）');
+            if (!password) return;
+            try { await apiRequest('/auth/password-reset', { method: 'POST', body: JSON.stringify({ email, code, new_password: password }) }); showMessage('密码已重置，请重新登录', 'success'); }
+            catch (e) { showMessage(e.message || '重置失败', 'error'); }
+        }
         
         // 用户注册
         async function register(phone, password, name, inviteCode) {
@@ -7755,6 +7778,21 @@
             } catch (error) {
                 showMessage(error.message || '绑定失败', 'error');
             }
+        }
+
+        async function sendBindEmailCode() {
+            const email = document.getElementById('bindEmailInput').value.trim();
+            const password = document.getElementById('bindEmailPasswordInput').value;
+            try { await apiRequest('/auth/email/bind-code', { method: 'POST', body: JSON.stringify({ email, current_password: password }) }); showMessage('验证码已发送，请查收邮箱', 'success'); }
+            catch (e) { showMessage(e.message || '发送失败', 'error'); }
+        }
+
+        async function bindUserEmail() {
+            const email = document.getElementById('bindEmailInput').value.trim();
+            const password = document.getElementById('bindEmailPasswordInput').value;
+            const code = document.getElementById('bindEmailCodeInput').value.trim();
+            try { currentUser = await apiRequest('/auth/email?code=' + encodeURIComponent(code), { method: 'PUT', body: JSON.stringify({ email, current_password: password }) }); refreshMeProfile(currentUser); showMessage('邮箱绑定成功，之后可用邮箱登录', 'success'); }
+            catch (e) { showMessage(e.message || '绑定失败', 'error'); }
         }
 
         const OWNER_SAVE_DB = 'shuran-owner';

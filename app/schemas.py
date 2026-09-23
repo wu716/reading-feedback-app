@@ -89,6 +89,21 @@ class PasswordChange(BaseModel):
     new_password: str = Field(..., min_length=6, max_length=100)
 
 
+class EmailBind(BaseModel):
+    email: str = Field(..., min_length=5, max_length=255)
+    current_password: str = Field(..., min_length=1, max_length=100)
+
+
+class PasswordResetRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=255)
+
+
+class PasswordResetConfirm(BaseModel):
+    email: str = Field(..., min_length=5, max_length=255)
+    code: str = Field(..., min_length=6, max_length=6)
+    new_password: str = Field(..., min_length=6, max_length=100)
+
+
 class UserUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=6)
     
