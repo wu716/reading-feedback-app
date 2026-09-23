@@ -273,14 +273,7 @@
 }
 
 .flow-sortable {
-    cursor: grab;
-    touch-action: pan-y;
     user-select: none;
-}
-
-.flow-sortable:active,
-.flow-sortable.is-dragging {
-    cursor: grabbing;
 }
 
 .flow-sortable.is-dragging {
@@ -403,6 +396,52 @@
     gap: 10px;
     margin-top: 8px;
     margin-left: 26px;
+}
+
+.flow-sort-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.flow-sort-copy {
+    flex: 1;
+    min-width: 0;
+}
+
+.flow-sort-index {
+    flex: 0 0 1.5em;
+    padding-top: 2px;
+    color: #a39b8e;
+    font-size: 0.78rem;
+    text-align: center;
+}
+
+.flow-sort-handle {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    margin-top: -2px;
+    border: 1px solid #e6e1d6;
+    border-radius: 6px;
+    background: transparent;
+    color: #8a8478;
+    font-size: 0.95rem;
+    line-height: 1;
+    letter-spacing: -0.12em;
+    cursor: grab;
+    touch-action: none;
+}
+
+.flow-sort-handle:active,
+.flow-sortable.is-dragging .flow-sort-handle {
+    cursor: grabbing;
+    border-color: #c9b9aa;
+    color: #5c3d36;
+}
+
+.flow-sort-controls {
+    margin-left: 54px;
 }
 
 .flow-chip,

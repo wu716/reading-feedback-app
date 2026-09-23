@@ -207,11 +207,18 @@
         if (label) label.textContent = dayLabel(currentDay());
         const doneBtn = document.getElementById('scheduleDoneBtn');
         const backBtn = document.getElementById('scheduleBackBtn');
+        const sortBtn = document.getElementById('scheduleSortBtn');
         const addRow = document.getElementById('scheduleAddRow');
         if (doneBtn) doneBtn.hidden = mode !== 'design';
         if (backBtn) {
             backBtn.hidden = mode === 'list';
             backBtn.textContent = t('schedule.backToList', '回到清单');
+        }
+        if (sortBtn) {
+            sortBtn.hidden = mode !== 'flow' && mode !== 'sort';
+            sortBtn.textContent = mode === 'sort'
+                ? t('schedule.finishOrder', '完成排序')
+                : t('schedule.adjustOrder', '调整顺序');
         }
         if (addRow) addRow.hidden = mode === 'flow';
         const later = document.getElementById('scheduleLater');
@@ -312,11 +319,34 @@
                         <button type="button" class="flow-chip${!task.priority ? ' active' : ''}" data-act="priority" data-value="0">${escapeHtml(t('schedule.priority.normal', '普通'))}</button>
                         <input type="text" class="flow-minutes" maxlength="20" placeholder="${escapeHtml(t('schedule.durationPlaceholder', '如 1小时30分'))}" value="${escapeHtml(durationInputValue(task.estimated_minutes))}" data-act="duration" aria-label="${escapeHtml(t('schedule.estimatedDuration', '预计用时'))}">
                         ${index > 0 ? `<button type="button" class="flow-chip${parallelOn ? ' active' : ''}" data-act="parallel">${escapeHtml(t('schedule.parallelPrevious', '与上一项并行'))}</button>` : ''}
-                        ${index > 0 ? `<button type="button" class="flow-mini-btn" data-act="up">${escapeHtml(t('schedule.moveUp', '上移'))}</button>` : ''}
-                        ${index < tasks.length - 1 ? `<button type="button" class="flow-mini-btn" data-act="down">${escapeHtml(t('schedule.moveDown', '下移'))}</button>` : ''}
-                        ${index > 0 ? `<button type="button" class="flow-mini-btn" data-act="top">${escapeHtml(t('schedule.moveTop', '移到第一项'))}</button>` : ''}
                     </div>
                     ${renderEditActions(false)}
+                </article>`;
+        }).join('');
+    }
+
+    function renderSortPlan(tasks) {
+        return tasks.map((task, index) => {
+            const prev = index > 0 ? tasks[index - 1] : null;
+            const parallelOn = !!(prev && task.parallel_group && task.parallel_group === prev.parallel_group);
+            const path = task.parent_path && task.parent_path.length
+                ? `<div class="flow-parent-path">${escapeHtml(task.parent_path.join(' / '))}</div>`
+                : '';
+            return `
+                <article class="flow-task flow-sortable${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
+                    <div class="flow-sort-row">
+                        <button type="button" class="flow-sort-handle" data-sort-handle aria-label="${escapeHtml(t('schedule.dragToSort', '拖动调整顺序'))}" title="${escapeHtml(t('schedule.dragToSort', '拖动调整顺序'))}">⋮⋮</button>
+                        <div class="flow-sort-index">${index + 1}</div>
+                        <div class="flow-sort-copy">
+                            <div class="flow-task-main">${renderTitle(task)}</div>
+                            ${path}
+                        </div>
+                    </div>
+                    <div class="flow-task-meta flow-sort-controls">
+                        ${index > 0 ? `<button type="button" class="flow-mini-btn" data-act="up">${escapeHtml(t('schedule.moveUp', '上移'))}</button>` : ''}
+                        ${index < tasks.length - 1 ? `<button type="button" class="flow-mini-btn" data-act="down">${escapeHtml(t('schedule.moveDown', '下移'))}</button>` : ''}
+                        ${index > 0 ? `<button type="button" class="flow-chip${parallelOn ? ' active' : ''}" data-act="parallel">${escapeHtml(t('schedule.parallelPrevious', '与上一项并行'))}</button>` : ''}
+                    </div>
                 </article>`;
         }).join('');
     }
@@ -512,6 +542,8 @@
         }
         if (mode === 'design') {
             list.innerHTML = renderDesignPlan(executionLeaves(data.tasks));
+        } else if (mode === 'sort') {
+            list.innerHTML = renderSortPlan(executionLeaves(data.tasks));
         } else if (mode === 'flow') {
             list.innerHTML = renderFlowGroups(executionLeaves(data.tasks));
         } else {
@@ -720,7 +752,7 @@
     }
 
     async function moveTask(taskId, dir) {
-        if (mode === 'design') {
+        if (mode === 'sort') {
             const leaves = executionLeaves(data.tasks || []);
             const index = leaves.findIndex((item) => item.id === taskId);
             const swap = index + dir;
@@ -767,7 +799,7 @@
     }
 
     async function toggleParallel(taskId) {
-        const list = mode === 'design' ? executionLeaves(data.tasks || []) : null;
+        const list = mode === 'sort' ? executionLeaves(data.tasks || []) : null;
         const found = list
             ? { list, index: list.findIndex((item) => item.id === taskId) }
             : siblingsOf(taskId);
@@ -863,8 +895,8 @@
 
     function bindDragSorting(list) {
         list?.addEventListener('pointerdown', (e) => {
-            if (mode !== 'design') return;
-            if (e.target.closest('button, input, textarea, select')) return;
+            if (mode !== 'sort') return;
+            if (!e.target.closest('[data-sort-handle]')) return;
             const article = e.target.closest('[data-task-id]');
             if (!article) return;
             clearDragPress();
@@ -1007,6 +1039,11 @@
             } catch (e) {
                 if (typeof showMessage === 'function') showMessage(e.message, 'error');
             }
+        });
+        document.getElementById('scheduleSortBtn')?.addEventListener('click', () => {
+            mode = mode === 'sort' ? 'flow' : 'sort';
+            editingId = null;
+            render();
         });
         document.getElementById('scheduleBackBtn')?.addEventListener('click', () => {
             mode = 'list';
