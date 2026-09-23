@@ -48,6 +48,8 @@ class User(Base):
     )
     habit_programs = relationship("HabitProgram", back_populates="user", cascade="all, delete-orphan")
     habit_events = relationship("HabitEvent", back_populates="user", cascade="all, delete-orphan")
+    ebooks = relationship("Ebook", back_populates="user", cascade="all, delete-orphan")
+    ebook_notes = relationship("EbookNote", back_populates="user", cascade="all, delete-orphan")
     used_invite_codes = relationship("InviteCode", back_populates="used_by_user")
 
 
@@ -63,6 +65,56 @@ class AuthCode(Base):
     used_at = Column(DateTime(timezone=True), nullable=True)
     attempts = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Ebook(Base):
+    """用户上传的 EPUB 及其轻量解析结果。"""
+    __tablename__ = "ebooks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    original_filename = Column(String(255), nullable=False)
+    storage_path = Column(Text, nullable=False)
+    file_size = Column(Integer, nullable=False)
+    chapter_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="ebooks")
+    chapters = relationship("EbookChapter", back_populates="ebook", cascade="all, delete-orphan", order_by="EbookChapter.chapter_index")
+    notes = relationship("EbookNote", back_populates="ebook", cascade="all, delete-orphan")
+
+
+class EbookChapter(Base):
+    __tablename__ = "ebook_chapters"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ebook_id = Column(Integer, ForeignKey("ebooks.id", ondelete="CASCADE"), nullable=False, index=True)
+    chapter_index = Column(Integer, nullable=False)
+    title = Column(String(255), nullable=False)
+    href = Column(Text, nullable=False)
+    text_content = Column(Text, nullable=False)
+
+    ebook = relationship("Ebook", back_populates="chapters")
+    notes = relationship("EbookNote", back_populates="chapter", cascade="all, delete-orphan")
+
+
+class EbookNote(Base):
+    __tablename__ = "ebook_notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    ebook_id = Column(Integer, ForeignKey("ebooks.id", ondelete="CASCADE"), nullable=False, index=True)
+    chapter_id = Column(Integer, ForeignKey("ebook_chapters.id", ondelete="CASCADE"), nullable=False)
+    selected_text = Column(Text, nullable=False)
+    note_text = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="ebook_notes")
+    ebook = relationship("Ebook", back_populates="notes")
+    chapter = relationship("EbookChapter", back_populates="notes")
 
 
 class Action(Base):

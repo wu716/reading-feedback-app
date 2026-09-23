@@ -1,0 +1,20 @@
+.epub-upload-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 16px 0 8px; }
+.epub-shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 18px; }
+.epub-book-card { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-height: 96px; padding: 16px; border: 1px solid #e6e1d6; border-radius: 8px; background: #fffdf8; color: #3e3934; text-align: left; cursor: pointer; }
+.epub-book-card:hover, .epub-book-card:focus-visible { border-color: #b89c8f; outline: none; }
+.epub-book-card span, .epub-empty { color: #8a8478; font-size: .84rem; }
+.epub-reader { margin-top: 18px; }
+.epub-reader-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.epub-reader-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; }
+.epub-chapters { display: flex; flex-direction: column; gap: 4px; border-right: 1px solid #eee7d8; padding-right: 12px; }
+.epub-chapters button { border: 0; border-radius: 5px; padding: 8px; background: transparent; color: #70685e; text-align: left; cursor: pointer; }
+.epub-chapters button.active, .epub-chapters button:hover { background: #f2ede5; color: #5c3d36; }
+.epub-content { min-width: 0; }
+.epub-chapter-text { max-width: 720px; color: #332f2a; font-family: "Noto Serif SC", "Songti SC", serif; font-size: 1.04rem; line-height: 2; }
+.epub-chapter-text p { margin: 0 0 1em; }
+.epub-note-box { max-width: 720px; margin-top: 26px; padding: 18px; border-left: 3px solid #9c3b32; background: #fffaf3; }
+.epub-prompt { margin: 0 0 10px; color: #5c3d36; font-weight: 600; }
+.epub-note-box blockquote { margin: 0 0 12px; color: #8a8478; font-size: .9rem; }
+.epub-note-box textarea { width: 100%; min-height: 100px; box-sizing: border-box; border: 1px solid #e6e1d6; border-radius: 5px; padding: 10px; background: #fff; resize: vertical; }
+.epub-note-actions { display: flex; gap: 10px; margin-top: 10px; }
+@media (max-width: 700px) { .epub-reader-layout { display: block; } .epub-chapters { display: flex; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid #eee7d8; padding: 0 0 8px; margin-bottom: 18px; } .epub-chapters button { flex: 0 0 auto; white-space: nowrap; } }

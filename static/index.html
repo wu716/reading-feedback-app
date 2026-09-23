@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260920later2">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd4">
     <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260923order1">
+    <link rel="stylesheet" href="/static/css/epub-reader.css?v=20260923epub1">
     <link rel="stylesheet" href="/static/css/habit-program.css?v=20260920habit1">
     <style>
         :root {
@@ -4099,6 +4100,7 @@
                     <button type="button" class="upload-tab active" data-tab="ai" onclick="switchUploadTab('ai')">AI 抽取行动项</button>
                     <button type="button" class="upload-tab" data-tab="manual" onclick="switchUploadTab('manual')">手动添加行动项</button>
                     <button type="button" class="upload-tab" data-tab="reading" onclick="switchUploadTab('reading')">阅读内容与笔记</button>
+                    <button type="button" class="upload-tab" data-tab="epub" onclick="switchUploadTab('epub')">EPUB 阅读</button>
                 </div>
 
                 <div class="upload-panel" data-panel="ai">
@@ -4154,6 +4156,39 @@
                         <textarea id="readingReflection" placeholder="读后感、摘录、思考…"></textarea>
                     </div>
                     <button type="button" class="btn" onclick="saveReadingEntry()">保存阅读记录</button>
+                </div>
+
+                <div class="upload-panel hidden" data-panel="epub">
+                    <h2>把书读成行动</h2>
+                    <p class="me-hint">目前支持 EPUB。单本不超过 120MB，每个账户最多 500MB。</p>
+                    <div class="epub-upload-row">
+                        <input type="file" id="epubFileInput" accept=".epub,application/epub+zip">
+                        <button type="button" class="btn" id="epubUploadBtn">上传 EPUB</button>
+                    </div>
+                    <div id="epubQuotaHint" class="me-hint"></div>
+                    <div id="epubShelf" class="epub-shelf"></div>
+                    <div id="epubReader" class="epub-reader" hidden>
+                        <div class="epub-reader-head">
+                            <button type="button" class="btn btn-secondary" id="epubBackBtn">返回书架</button>
+                            <strong id="epubBookTitle"></strong>
+                        </div>
+                        <div class="epub-reader-layout">
+                            <aside id="epubChapterList" class="epub-chapters"></aside>
+                            <article class="epub-content">
+                                <h3 id="epubChapterTitle"></h3>
+                                <div id="epubChapterText" class="epub-chapter-text"></div>
+                                <div id="epubNoteBox" class="epub-note-box" hidden>
+                                    <p class="epub-prompt">这段内容如果用于你的生活，具体可以做什么？</p>
+                                    <blockquote id="epubSelectedText"></blockquote>
+                                    <textarea id="epubNoteInput" maxlength="10000" placeholder="写下你的理解，尽量具体到一个行动"></textarea>
+                                    <div class="epub-note-actions">
+                                        <button type="button" class="btn btn-secondary" id="epubSaveNoteBtn">保存想法</button>
+                                        <button type="button" class="btn" id="epubActionBtn">生成行动项</button>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -6429,10 +6464,9 @@
         async function apiRequest(endpoint, options = {}) {
             const url = `${API_BASE}${endpoint}`;
             const { skipAuthRedirect, ...fetchOptions } = options;
+            const isFormData = typeof FormData !== 'undefined' && fetchOptions.body instanceof FormData;
             const config = {
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: isFormData ? {} : { 'Content-Type': 'application/json' },
                 ...fetchOptions
             };
             
@@ -8925,6 +8959,7 @@
     <script src="/static/js/app-tabbar.js?v=20260920habit1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
     <script src="/static/js/daily-schedule.js?v=20260923order1"></script>
+    <script src="/static/js/epub-reader.js?v=20260923epub1"></script>
     <script src="/static/js/habit-program.js?v=20260920habit1"></script>
     <script src="/static/js/time-log.js?v=20260920habit1"></script>
     <script src="/static/js/ideas.js?v=20260920habit1"></script>
