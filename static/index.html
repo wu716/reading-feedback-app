@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260920later2">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd4">
     <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260923order1">
-    <link rel="stylesheet" href="/static/css/epub-reader.css?v=20260923epub1">
+    <link rel="stylesheet" href="/static/css/epub-reader.css?v=20260923epub2">
     <link rel="stylesheet" href="/static/css/habit-program.css?v=20260920habit1">
     <style>
         :root {
@@ -3832,6 +3832,10 @@
                 <span class="nav-icon">程</span>
                 <span class="nav-text" data-i18n="nav.schedule">日程</span>
             </div>
+            <div class="nav-item" data-section="library" onclick="openEpubLibrary()" title="阅读" data-i18n-title="nav.reading">
+                <span class="nav-icon">读</span>
+                <span class="nav-text" data-i18n="nav.reading">阅读</span>
+            </div>
             <div class="nav-item" data-section="actions" onclick="navigateTo('actions')" title="行动" data-i18n-title="nav.actions">
                 <span class="nav-icon">行</span>
                 <span class="nav-text" data-i18n="nav.actions">行动</span>
@@ -4177,16 +4181,16 @@
                             <article class="epub-content">
                                 <h3 id="epubChapterTitle"></h3>
                                 <div id="epubChapterText" class="epub-chapter-text"></div>
-                                <div id="epubNoteBox" class="epub-note-box" hidden>
-                                    <p class="epub-prompt">这段内容如果用于你的生活，具体可以做什么？</p>
-                                    <blockquote id="epubSelectedText"></blockquote>
-                                    <textarea id="epubNoteInput" maxlength="10000" placeholder="写下你的理解，尽量具体到一个行动"></textarea>
-                                    <div class="epub-note-actions">
-                                        <button type="button" class="btn btn-secondary" id="epubSaveNoteBtn">保存想法</button>
-                                        <button type="button" class="btn" id="epubActionBtn">生成行动项</button>
-                                    </div>
-                                </div>
                             </article>
+                            <aside id="epubNoteBox" class="epub-note-box">
+                                <p class="epub-prompt">这段内容如果用于我的生活，具体可以做什么？</p>
+                                <blockquote id="epubSelectedText">先在正文中选中一句话</blockquote>
+                                <textarea id="epubNoteInput" maxlength="10000" placeholder="写下你的理解，尽量具体到一个行动"></textarea>
+                                <div class="epub-note-actions">
+                                    <button type="button" class="btn btn-secondary" id="epubSaveNoteBtn">保存想法</button>
+                                    <button type="button" class="btn" id="epubActionBtn">生成行动项</button>
+                                </div>
+                            </aside>
                         </div>
                     </div>
                 </div>
@@ -8959,7 +8963,7 @@
     <script src="/static/js/app-tabbar.js?v=20260920habit1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
     <script src="/static/js/daily-schedule.js?v=20260923order1"></script>
-    <script src="/static/js/epub-reader.js?v=20260923epub1"></script>
+    <script src="/static/js/epub-reader.js?v=20260923epub2"></script>
     <script src="/static/js/habit-program.js?v=20260920habit1"></script>
     <script src="/static/js/time-log.js?v=20260920habit1"></script>
     <script src="/static/js/ideas.js?v=20260920habit1"></script>

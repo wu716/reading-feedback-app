@@ -72,11 +72,13 @@
 
     async function openChapter(chapter) {
         currentChapter = chapter;
+        selectedText = '';
         const data = await api(`/${currentBook.id}/chapters/${chapter.id}`);
         $('epubChapterTitle').textContent = data.title;
         $('epubChapterText').innerHTML = esc(data.text).split(/\n+/).filter(Boolean).map((line) => `<p>${line}</p>`).join('');
         document.querySelectorAll('#epubChapterList button').forEach((button) => button.classList.toggle('active', Number(button.dataset.chapterId) === chapter.id));
-        $('epubNoteBox').hidden = true;
+        $('epubSelectedText').textContent = '先在正文中选中一句话';
+        $('epubNoteInput').value = '';
     }
 
     function captureSelection() {
@@ -91,6 +93,7 @@
 
     async function saveNote() {
         const note = $('epubNoteInput').value.trim();
+        if (!selectedText) return showMessage('请先在正文中选中一段内容', 'error');
         if (!note) return showMessage('请先写下你的想法', 'error');
         await api(`/${currentBook.id}/notes`, { method: 'POST', body: JSON.stringify({ chapter_id: currentChapter.id, selected_text: selectedText, note_text: note }) });
         showMessage('想法已保存', 'success');
@@ -98,10 +101,12 @@
 
     async function makeAction() {
         const note = $('epubNoteInput').value.trim();
+        if (!selectedText) return showMessage('请先在正文中选中一段内容', 'error');
         if (!note) return showMessage('请先写下你的想法', 'error');
         try {
             const action = await api(`/${currentBook.id}/action`, { method: 'POST', body: JSON.stringify({ chapter_id: currentChapter.id, selected_text: selectedText, note_text: note }) });
-            showMessage(`已生成行动项：${action.action_text}`, 'success');
+            await apiRequest('/api/schedule/tasks', { method: 'POST', body: JSON.stringify({ text: action.action_text, action_id: action.id, priority: 0 }) });
+            showMessage(`已生成行动项，并加入今天的日程：${action.action_text}`, 'success');
         } catch (error) {
             showMessage(error.message || '行动项生成失败', 'error');
         }
@@ -127,10 +132,16 @@
         $('epubChapterText').addEventListener('touchend', captureSelection);
         const originalSwitch = window.switchUploadTab;
         window.switchUploadTab = function (tab) {
-            originalSwitch(tab);
+            if (typeof originalSwitch === 'function') originalSwitch(tab);
             if (tab === 'epub') loadBooks();
         };
     }
+
+    window.openEpubLibrary = function () {
+        if (typeof navigateTo === 'function') navigateTo('upload');
+        document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.section === 'library'));
+        setTimeout(() => window.switchUploadTab?.('epub'), 0);
+    };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', onReady);
     else onReady();
