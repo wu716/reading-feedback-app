@@ -206,10 +206,15 @@
         const label = document.getElementById('scheduleDateLabel');
         if (label) label.textContent = dayLabel(currentDay());
         const doneBtn = document.getElementById('scheduleDoneBtn');
+        const designBtn = document.getElementById('scheduleDesignBtn');
         const backBtn = document.getElementById('scheduleBackBtn');
         const sortBtn = document.getElementById('scheduleSortBtn');
         const addRow = document.getElementById('scheduleAddRow');
         if (doneBtn) doneBtn.hidden = mode !== 'design';
+        if (designBtn) {
+            designBtn.hidden = mode !== 'list';
+            designBtn.disabled = flatten(data.tasks || [], []).length === 0;
+        }
         if (backBtn) {
             backBtn.hidden = mode === 'list';
             backBtn.textContent = t('schedule.backToList', '回到清单');
@@ -994,7 +999,7 @@
         });
         document.getElementById('scheduleAddBtn')?.addEventListener('click', () => {
             const input = document.getElementById('scheduleAddInput');
-            addTask(input?.value, null, null, true).then(() => {
+            addTask(input?.value, null, null, false).then(() => {
                 if (input) input.value = '';
             }).catch((e) => {
                 if (typeof showMessage === 'function') showMessage(e.message, 'error');
@@ -1039,6 +1044,13 @@
             } catch (e) {
                 if (typeof showMessage === 'function') showMessage(e.message, 'error');
             }
+        });
+        document.getElementById('scheduleDesignBtn')?.addEventListener('click', () => {
+            if (!flatten(data.tasks || [], []).length) return;
+            mode = 'design';
+            splitFor = null;
+            editingId = null;
+            render();
         });
         document.getElementById('scheduleSortBtn')?.addEventListener('click', () => {
             mode = mode === 'sort' ? 'flow' : 'sort';
