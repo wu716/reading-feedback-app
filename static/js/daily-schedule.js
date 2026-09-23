@@ -288,6 +288,7 @@
         return `
             <article class="flow-task${isChild ? ' is-child' : ''}" data-task-id="${task.id}">
                 <div class="flow-task-main">
+                    <button type="button" class="flow-sort-handle" data-sort-handle aria-label="${escapeHtml(t('schedule.dragToSort', '拖动调整顺序'))}" title="${escapeHtml(t('schedule.dragToSort', '拖动调整顺序'))}">⋮⋮</button>
                     ${renderTitle(task)}
                 </div>
                 <div class="flow-task-meta">
@@ -900,7 +901,7 @@
 
     function bindDragSorting(list) {
         list?.addEventListener('pointerdown', (e) => {
-            if (mode !== 'sort') return;
+            if (mode !== 'sort' && mode !== 'design') return;
             if (!e.target.closest('[data-sort-handle]')) return;
             const article = e.target.closest('[data-task-id]');
             if (!article) return;
