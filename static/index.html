@@ -4184,12 +4184,19 @@
                                 <div id="epubChapterText" class="epub-chapter-text"></div>
                             </article>
                             <aside id="epubNoteBox" class="epub-note-box">
+                                <div class="epub-note-kicker">读书批注</div>
                                 <p class="epub-prompt">这段内容如果用于我的生活，具体可以做什么？</p>
                                 <blockquote id="epubSelectedText">先在正文中选中一句话</blockquote>
                                 <textarea id="epubNoteInput" maxlength="10000" placeholder="写下你的理解，尽量具体到一个行动"></textarea>
+                                <div class="epub-action-choice" role="group" aria-label="行动项生成方式">
+                                    <label><input type="radio" name="epubActionMode" value="manual" checked> 我自己写</label>
+                                    <label><input type="radio" name="epubActionMode" value="ai"> AI 帮我提炼 <span>消耗 1 次</span></label>
+                                </div>
+                                <textarea id="epubActionInput" maxlength="500" placeholder="写下今天准备做的具体行动"></textarea>
+                                <p id="epubAiHint" class="epub-ai-hint" hidden>AI 会结合你的摘录和想法生成行动，并消耗一次 AI 抽取额度。</p>
                                 <div class="epub-note-actions">
                                     <button type="button" class="btn btn-secondary" id="epubSaveNoteBtn">保存想法</button>
-                                    <button type="button" class="btn" id="epubActionBtn">生成行动项</button>
+                                    <button type="button" class="btn" id="epubActionBtn">加入今天</button>
                                 </div>
                             </aside>
                         </div>

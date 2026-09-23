@@ -12,6 +12,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote
 from xml.etree import ElementTree as ET
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
@@ -41,6 +42,8 @@ class ActionFromNote(BaseModel):
     chapter_id: int
     selected_text: str = Field(..., min_length=1, max_length=10_000)
     note_text: str = Field(..., min_length=1, max_length=10_000)
+    mode: Literal["manual", "ai"] = "ai"
+    action_text: Optional[str] = Field(None, max_length=500)
 
 
 class TextParser(HTMLParser):
@@ -228,17 +231,30 @@ async def create_action_from_note(book_id: int, payload: ActionFromNote, current
     chapter = db.query(EbookChapter).filter(EbookChapter.id == payload.chapter_id, EbookChapter.ebook_id == book.id).first()
     if not chapter:
         raise HTTPException(404, "章节不存在")
-    enforce_ai_quota(db, current_user, kind="upload-notes")
-    content = f"原文：{payload.selected_text.strip()}\n我的想法：{payload.note_text.strip()}\n\n请回答：这段内容如果用于我的生活，具体可以做什么？"
-    try:
-        extracted = await extract_actions_from_notes(content, book.title)
-    except (AIExtractionError, AIValidationError) as exc:
-        raise HTTPException(422, f"行动项生成失败：{exc}")
-    if not extracted:
-        raise HTTPException(422, "这段内容暂时没有生成明确行动，请把想法写得更具体一些")
-    item = extracted[0]
-    action = Action(user_id=current_user.id, book_title=book.title, source_excerpt=payload.selected_text.strip(), action_text=item.action, tags=json.dumps(item.tags, ensure_ascii=False), frequency=item.frequency.value, duration_type="short_term", target_duration_days=30, target_frequency="daily", start_date=date.today())
+    selected = payload.selected_text.strip()
+    thought = payload.note_text.strip()
+    if payload.mode == "manual":
+        action_text = (payload.action_text or "").strip()
+        if not action_text:
+            raise HTTPException(422, "请写下要执行的具体行动")
+        tags = []
+        frequency = "daily"
+    else:
+        enforce_ai_quota(db, current_user, kind="upload-notes")
+        content = f"原文：{selected}\n我的想法：{thought}\n\n请回答：这段内容如果用于我的生活，具体可以做什么？"
+        try:
+            extracted = await extract_actions_from_notes(content, book.title)
+        except (AIExtractionError, AIValidationError) as exc:
+            raise HTTPException(422, f"行动项生成失败：{exc}")
+        if not extracted:
+            raise HTTPException(422, "这段内容暂时没有生成明确行动，请把想法写得更具体一些")
+        item = extracted[0]
+        action_text = item.action
+        tags = item.tags
+        frequency = item.frequency.value
+    db.add(EbookNote(user_id=current_user.id, ebook_id=book.id, chapter_id=chapter.id, selected_text=selected, note_text=thought))
+    action = Action(user_id=current_user.id, book_title=book.title, source_excerpt=selected, action_text=action_text, tags=json.dumps(tags, ensure_ascii=False), frequency=frequency, duration_type="short_term", target_duration_days=30, target_frequency="daily", start_date=date.today())
     db.add(action)
     db.commit()
     db.refresh(action)
-    return {"id": action.id, "action_text": action.action_text, "book_title": action.book_title, "source_excerpt": action.source_excerpt}
+    return {"id": action.id, "action_text": action.action_text, "book_title": action.book_title, "source_excerpt": action.source_excerpt, "mode": payload.mode, "used_ai": payload.mode == "ai"}

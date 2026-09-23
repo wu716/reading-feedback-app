@@ -79,6 +79,8 @@
         document.querySelectorAll('#epubChapterList button').forEach((button) => button.classList.toggle('active', Number(button.dataset.chapterId) === chapter.id));
         $('epubSelectedText').textContent = '先在正文中选中一句话';
         $('epubNoteInput').value = '';
+        $('epubActionInput').value = '';
+        updateActionMode();
     }
 
     function captureSelection() {
@@ -103,8 +105,11 @@
         const note = $('epubNoteInput').value.trim();
         if (!selectedText) return showMessage('请先在正文中选中一段内容', 'error');
         if (!note) return showMessage('请先写下你的想法', 'error');
+        const mode = document.querySelector('input[name="epubActionMode"]:checked')?.value || 'manual';
+        const actionText = $('epubActionInput').value.trim();
+        if (mode === 'manual' && !actionText) return showMessage('请写下要执行的具体行动', 'error');
         try {
-            const action = await api(`/${currentBook.id}/action`, { method: 'POST', body: JSON.stringify({ chapter_id: currentChapter.id, selected_text: selectedText, note_text: note }) });
+            const action = await api(`/${currentBook.id}/action`, { method: 'POST', body: JSON.stringify({ chapter_id: currentChapter.id, selected_text: selectedText, note_text: note, mode, action_text: mode === 'manual' ? actionText : null }) });
             await apiRequest('/api/schedule/tasks', { method: 'POST', body: JSON.stringify({ text: action.action_text, action_id: action.id, priority: 0 }) });
             showMessage(`已生成行动项，并加入今天的日程：${action.action_text}`, 'success');
         } catch (error) {
@@ -112,11 +117,23 @@
         }
     }
 
+    function updateActionMode() {
+        const mode = document.querySelector('input[name="epubActionMode"]:checked')?.value || 'manual';
+        const manualInput = $('epubActionInput');
+        const aiHint = $('epubAiHint');
+        const button = $('epubActionBtn');
+        if (manualInput) manualInput.hidden = mode !== 'manual';
+        if (aiHint) aiHint.hidden = mode !== 'ai';
+        if (button) button.textContent = mode === 'ai' ? 'AI 生成并加入今天' : '加入今天';
+    }
+
     function onReady() {
         if (!$('epubUploadBtn')) return;
         $('epubUploadBtn').addEventListener('click', uploadBook);
         $('epubSaveNoteBtn').addEventListener('click', () => saveNote().catch((e) => showMessage(e.message, 'error')));
         $('epubActionBtn').addEventListener('click', makeAction);
+        document.querySelectorAll('input[name="epubActionMode"]').forEach((input) => input.addEventListener('change', updateActionMode));
+        updateActionMode();
         $('epubBackBtn').addEventListener('click', () => { $('epubReader').hidden = true; $('epubShelf').hidden = false; });
         $('epubShelf').addEventListener('click', (event) => {
             const card = event.target.closest('[data-book-id]');
