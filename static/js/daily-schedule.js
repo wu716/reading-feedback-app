@@ -5,6 +5,7 @@
     let day = null;
     let data = { date: null, designed_at: null, tasks: [] };
     let mode = 'list';
+    let sortReturnMode = 'flow';
     let splitFor = null;
     let editingId = null;
     let suggestions = [];
@@ -168,7 +169,11 @@
         const hint = document.getElementById('scheduleHint');
         if (!hint) return;
         if (mode === 'design') {
-            hint.textContent = t('schedule.hint.design', '未填项可留空。点文字可改，也可拆开或删除');
+            hint.textContent = t('schedule.hint.design', '这里只设置任务属性；修改任务请回到清单');
+            return;
+        }
+        if (mode === 'sort') {
+            hint.textContent = t('schedule.hint.sort', '这里只调整顺序和并行关系');
             return;
         }
         if (mode === 'flow' && data.designed_at) {
@@ -220,12 +225,12 @@
             backBtn.textContent = t('schedule.backToList', '回到清单');
         }
         if (sortBtn) {
-            sortBtn.hidden = mode !== 'flow' && mode !== 'sort';
+            sortBtn.hidden = mode === 'list';
             sortBtn.textContent = mode === 'sort'
                 ? t('schedule.finishOrder', '完成排序')
                 : t('schedule.adjustOrder', '调整顺序');
         }
-        if (addRow) addRow.hidden = mode === 'flow';
+        if (addRow) addRow.hidden = mode !== 'list';
         const later = document.getElementById('scheduleLater');
         if (later) later.hidden = mode !== 'list';
     }
@@ -282,51 +287,36 @@
         `;
     }
 
-    function renderDesignTask(task, siblings, index, isChild) {
-        const prev = index > 0 ? siblings[index - 1] : null;
-        const parallelOn = !!(prev && task.parallel_group && task.parallel_group === prev.parallel_group);
-        return `
-            <article class="flow-task${isChild ? ' is-child' : ''}" data-task-id="${task.id}">
-                <div class="flow-task-main">
-                    <button type="button" class="flow-sort-handle" data-sort-handle aria-label="${escapeHtml(t('schedule.dragToSort', '拖动调整顺序'))}" title="${escapeHtml(t('schedule.dragToSort', '拖动调整顺序'))}">⋮⋮</button>
-                    ${renderTitle(task)}
-                </div>
-                <div class="flow-task-meta">
-                    <button type="button" class="flow-chip${task.familiarity === 'familiar' ? ' active' : ''}" data-act="fam" data-value="familiar">${escapeHtml(t('schedule.familiar', '熟悉'))}</button>
-                    <button type="button" class="flow-chip${task.familiarity === 'unfamiliar' ? ' active' : ''}" data-act="fam" data-value="unfamiliar">${escapeHtml(t('schedule.unfamiliar', '陌生'))}</button>
-                    <input type="number" class="flow-minutes" min="0" max="1440" placeholder="${escapeHtml(t('schedule.minutesPlaceholder', '分钟'))}" value="${task.estimated_minutes ?? ''}" data-act="minutes" aria-label="${escapeHtml(t('schedule.estimatedMinutes', '预估分钟'))}">
-                    <button type="button" class="flow-mini-btn" data-act="up">${escapeHtml(t('schedule.moveUp', '上移'))}</button>
-                    <button type="button" class="flow-mini-btn" data-act="down">${escapeHtml(t('schedule.moveDown', '下移'))}</button>
-                    ${index > 0 ? `<button type="button" class="flow-chip${parallelOn ? ' active' : ''}" data-act="parallel">${escapeHtml(t('schedule.parallelPrevious', '与上一项并行'))}</button>` : ''}
-                </div>
-                ${renderEditActions(true)}
-                ${renderSplitRow(task)}
-            </article>
-            ${(task.children || []).map((child, i, arr) => renderDesignTask(child, arr, i, true)).join('')}
-        `;
-    }
-
     function renderDesignPlan(tasks) {
-        return tasks.map((task, index) => {
-            const prev = index > 0 ? tasks[index - 1] : null;
-            const parallelOn = !!(prev && task.parallel_group && task.parallel_group === prev.parallel_group);
+        return tasks.map((task) => {
             const path = task.parent_path && task.parent_path.length
                 ? `<div class="flow-parent-path">${escapeHtml(task.parent_path.join(' / '))}</div>`
                 : '';
             return `
-                <article class="flow-task flow-sortable${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
-                    <div class="flow-task-main">${renderTitle(task)}</div>
+                <article class="flow-task${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
+                    <div class="flow-task-main"><div class="flow-task-text flow-task-text-static">${escapeHtml(task.text)}</div></div>
                     ${path}
-                    <div class="flow-task-meta">
-                        <button type="button" class="flow-chip${task.familiarity === 'familiar' ? ' active' : ''}" data-act="fam" data-value="familiar">${escapeHtml(t('schedule.familiar', '熟悉'))}</button>
-                        <button type="button" class="flow-chip${task.familiarity === 'unfamiliar' ? ' active' : ''}" data-act="fam" data-value="unfamiliar">${escapeHtml(t('schedule.unfamiliar', '陌生'))}</button>
-                        <button type="button" class="flow-chip${task.priority === 2 ? ' active' : ''}" data-act="priority" data-value="2">${escapeHtml(t('schedule.priority.high', '最高'))}</button>
-                        <button type="button" class="flow-chip${task.priority === 1 ? ' active' : ''}" data-act="priority" data-value="1">${escapeHtml(t('schedule.priority.important', '重要'))}</button>
-                        <button type="button" class="flow-chip${!task.priority ? ' active' : ''}" data-act="priority" data-value="0">${escapeHtml(t('schedule.priority.normal', '普通'))}</button>
-                        <input type="text" class="flow-minutes" maxlength="20" placeholder="${escapeHtml(t('schedule.durationPlaceholder', '如 1小时30分'))}" value="${escapeHtml(durationInputValue(task.estimated_minutes))}" data-act="duration" aria-label="${escapeHtml(t('schedule.estimatedDuration', '预计用时'))}">
-                        ${index > 0 ? `<button type="button" class="flow-chip${parallelOn ? ' active' : ''}" data-act="parallel">${escapeHtml(t('schedule.parallelPrevious', '与上一项并行'))}</button>` : ''}
+                    <div class="flow-task-attributes">
+                        <div class="flow-attribute-group">
+                            <span class="flow-attribute-label">${escapeHtml(t('schedule.familiarityLabel', '熟悉度'))}</span>
+                            <div class="flow-attribute-options">
+                                <button type="button" class="flow-chip${task.familiarity === 'familiar' ? ' active' : ''}" data-act="fam" data-value="familiar">${escapeHtml(t('schedule.familiar', '熟悉'))}</button>
+                                <button type="button" class="flow-chip${task.familiarity === 'unfamiliar' ? ' active' : ''}" data-act="fam" data-value="unfamiliar">${escapeHtml(t('schedule.unfamiliar', '陌生'))}</button>
+                            </div>
+                        </div>
+                        <div class="flow-attribute-group">
+                            <span class="flow-attribute-label">${escapeHtml(t('schedule.importanceLabel', '重要性'))}</span>
+                            <div class="flow-attribute-options">
+                                <button type="button" class="flow-chip${task.priority === 2 ? ' active' : ''}" data-act="priority" data-value="2">${escapeHtml(t('schedule.priority.high', '最高'))}</button>
+                                <button type="button" class="flow-chip${task.priority === 1 ? ' active' : ''}" data-act="priority" data-value="1">${escapeHtml(t('schedule.priority.important', '重要'))}</button>
+                                <button type="button" class="flow-chip${!task.priority ? ' active' : ''}" data-act="priority" data-value="0">${escapeHtml(t('schedule.priority.normal', '普通'))}</button>
+                            </div>
+                        </div>
+                        <label class="flow-attribute-group flow-duration-group">
+                            <span class="flow-attribute-label">${escapeHtml(t('schedule.estimatedDuration', '预计用时'))}</span>
+                            <input type="text" class="flow-minutes" maxlength="20" placeholder="${escapeHtml(t('schedule.durationPlaceholder', '如 1小时30分'))}" value="${escapeHtml(durationInputValue(task.estimated_minutes))}" data-act="duration" aria-label="${escapeHtml(t('schedule.estimatedDuration', '预计用时'))}">
+                        </label>
                     </div>
-                    ${renderEditActions(false)}
                 </article>`;
         }).join('');
     }
@@ -344,7 +334,7 @@
                         <button type="button" class="flow-sort-handle" data-sort-handle aria-label="${escapeHtml(t('schedule.dragToSort', '拖动调整顺序'))}" title="${escapeHtml(t('schedule.dragToSort', '拖动调整顺序'))}">⋮⋮</button>
                         <div class="flow-sort-index">${index + 1}</div>
                         <div class="flow-sort-copy">
-                            <div class="flow-task-main">${renderTitle(task)}</div>
+                            <div class="flow-task-main"><div class="flow-task-text flow-task-text-static">${escapeHtml(task.text)}</div></div>
                             ${path}
                         </div>
                     </div>
@@ -901,7 +891,7 @@
 
     function bindDragSorting(list) {
         list?.addEventListener('pointerdown', (e) => {
-            if (mode !== 'sort' && mode !== 'design') return;
+            if (mode !== 'sort') return;
             if (!e.target.closest('[data-sort-handle]')) return;
             const article = e.target.closest('[data-task-id]');
             if (!article) return;
@@ -1054,7 +1044,12 @@
             render();
         });
         document.getElementById('scheduleSortBtn')?.addEventListener('click', () => {
-            mode = mode === 'sort' ? 'flow' : 'sort';
+            if (mode === 'sort') {
+                mode = sortReturnMode;
+            } else {
+                sortReturnMode = mode;
+                mode = 'sort';
+            }
             editingId = null;
             render();
         });

@@ -364,6 +364,14 @@
     color: #5c3d36;
 }
 
+.flow-task-text-static {
+    cursor: default;
+}
+
+.flow-task-text-static:hover {
+    color: inherit;
+}
+
 .flow-parent-path {
     margin: 4px 0 0 26px;
     color: #8a8478;
@@ -396,6 +404,53 @@
     gap: 10px;
     margin-top: 8px;
     margin-left: 26px;
+}
+
+.flow-task-attributes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 18px 24px;
+    margin-top: 12px;
+}
+
+.flow-attribute-group {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+}
+
+.flow-attribute-label {
+    color: #a39b8e;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+}
+
+.flow-attribute-options {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid #e6e1d6;
+    border-radius: 7px;
+}
+
+.flow-attribute-options .flow-chip {
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 5px;
+}
+
+.flow-attribute-options .flow-chip.active {
+    background: #f1e8dc;
+}
+
+.flow-duration-group {
+    width: min(170px, 100%);
+}
+
+.flow-duration-group .flow-minutes {
+    width: 100%;
 }
 
 .flow-sort-row {
