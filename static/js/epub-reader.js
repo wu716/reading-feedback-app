@@ -4,6 +4,7 @@
     let currentChapter = null;
     let selectedText = '';
     let progressSaveTimer = null;
+    let progressRequest = null;
 
     const $ = (id) => document.getElementById(id);
     const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -73,6 +74,7 @@
     }
 
     async function openChapter(chapter, savedRatio = 0) {
+        if (currentChapter && currentBook) await persistProgress();
         currentChapter = chapter;
         selectedText = '';
         const data = await api(`/${currentBook.id}/chapters/${chapter.id}`);
@@ -89,15 +91,43 @@
         updateActionMode();
     }
 
-    function saveProgress() {
+    function progressPayload() {
         if (!currentBook || !currentChapter) return;
         const content = $('epubChapterText').parentElement;
         const max = Math.max(1, content.scrollHeight - content.clientHeight);
         const ratio = Math.round((content.scrollTop / max) * 10000);
+        return { bookId: currentBook.id, chapterId: currentChapter.id, scrollRatio: ratio };
+    }
+
+    function persistProgress() {
+        const payload = progressPayload();
+        if (!payload) return Promise.resolve();
         clearTimeout(progressSaveTimer);
-        progressSaveTimer = setTimeout(() => api(`/${currentBook.id}/progress`, {
-            method: 'PUT', body: JSON.stringify({ chapter_id: currentChapter.id, scroll_ratio: ratio })
-        }).then((data) => { currentBook.progress = data; }).catch(() => {}), 400);
+        progressRequest = api(`/${payload.bookId}/progress`, {
+            method: 'PUT', body: JSON.stringify({ chapter_id: payload.chapterId, scroll_ratio: payload.scrollRatio })
+        }).then((data) => {
+            if (currentBook?.id === payload.bookId) currentBook.progress = data;
+        }).catch(() => {}).finally(() => { progressRequest = null; });
+        return progressRequest;
+    }
+
+    function saveProgress() {
+        clearTimeout(progressSaveTimer);
+        progressSaveTimer = setTimeout(() => persistProgress(), 400);
+    }
+
+    function saveProgressBeforeLeaving() {
+        const payload = progressPayload();
+        if (!payload) return;
+        clearTimeout(progressSaveTimer);
+        const token = localStorage.getItem('authToken');
+        if (!token || typeof API_BASE === 'undefined') return;
+        fetch(`${API_BASE}/api/ebooks/${payload.bookId}/progress`, {
+            method: 'PUT',
+            keepalive: true,
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ chapter_id: payload.chapterId, scroll_ratio: payload.scrollRatio })
+        }).catch(() => {});
     }
 
     function captureSelection() {
@@ -174,7 +204,7 @@
         updateActionMode();
         document.querySelectorAll('input[name="epubThoughtType"]').forEach((input) => input.addEventListener('change', updateThoughtType));
         updateThoughtType();
-        $('epubBackBtn').addEventListener('click', () => { $('epubReader').hidden = true; $('epubShelf').hidden = false; });
+        $('epubBackBtn').addEventListener('click', async () => { await persistProgress(); $('epubReader').hidden = true; $('epubShelf').hidden = false; });
         $('epubShelf').addEventListener('click', (event) => {
             const card = event.target.closest('[data-book-id]');
             const book = books.find((item) => item.id === Number(card?.dataset.bookId));
@@ -188,6 +218,10 @@
         $('epubChapterText').addEventListener('mouseup', captureSelection);
         $('epubChapterText').addEventListener('touchend', captureSelection);
         $('epubChapterText').parentElement.addEventListener('scroll', saveProgress, { passive: true });
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') saveProgressBeforeLeaving();
+        });
+        window.addEventListener('pagehide', saveProgressBeforeLeaving);
         const originalSwitch = window.switchUploadTab;
         window.switchUploadTab = function (tab) {
             if (typeof originalSwitch === 'function') originalSwitch(tab);
