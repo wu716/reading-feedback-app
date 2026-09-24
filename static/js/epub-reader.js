@@ -114,7 +114,10 @@
         const note = $('epubNoteInput').value.trim();
         if (!selectedText) return showMessage('请先在正文中选中一段内容', 'error');
         if (!note) return showMessage('请先写下你的想法', 'error');
-        await api(`/${currentBook.id}/notes`, { method: 'POST', body: JSON.stringify({ chapter_id: currentChapter.id, selected_text: selectedText, note_text: note }) });
+        const thoughtType = document.querySelector('input[name="epubThoughtType"]:checked')?.value || 'concept';
+        const relationType = $('epubRelationType').value || null;
+        if (thoughtType === 'relation' && !relationType) return showMessage('请选择关系类型', 'error');
+        await api(`/${currentBook.id}/notes`, { method: 'POST', body: JSON.stringify({ chapter_id: currentChapter.id, selected_text: selectedText, note_text: note, thought_type: thoughtType, relation_type: relationType }) });
         showMessage('想法已保存', 'success');
     }
 
@@ -122,11 +125,13 @@
         const note = $('epubNoteInput').value.trim();
         if (!selectedText) return showMessage('请先在正文中选中一段内容', 'error');
         if (!note) return showMessage('请先写下你的想法', 'error');
+        const thoughtType = document.querySelector('input[name="epubThoughtType"]:checked')?.value || 'concept';
+        if (thoughtType !== 'process') return showMessage('只有流程类想法可以加入今天', 'error');
         const mode = document.querySelector('input[name="epubActionMode"]:checked')?.value || 'manual';
         const actionText = $('epubActionInput').value.trim();
         if (mode === 'manual' && !actionText) return showMessage('请写下要执行的具体行动', 'error');
         try {
-            const action = await api(`/${currentBook.id}/action`, { method: 'POST', body: JSON.stringify({ chapter_id: currentChapter.id, selected_text: selectedText, note_text: note, mode, action_text: mode === 'manual' ? actionText : null }) });
+            const action = await api(`/${currentBook.id}/action`, { method: 'POST', body: JSON.stringify({ chapter_id: currentChapter.id, selected_text: selectedText, note_text: note, mode, action_text: mode === 'manual' ? actionText : null, thought_type: thoughtType }) });
             await apiRequest('/api/schedule/tasks', { method: 'POST', body: JSON.stringify({ text: action.action_text, action_id: action.id, priority: 0 }) });
             showMessage(`已生成行动项，并加入今天的日程：${action.action_text}`, 'success');
         } catch (error) {
@@ -144,6 +149,17 @@
         if (button) button.textContent = mode === 'ai' ? 'AI 生成并加入今天' : '加入今天';
     }
 
+    function updateThoughtType() {
+        const type = document.querySelector('input[name="epubThoughtType"]:checked')?.value || 'concept';
+        const relation = $('epubRelationType');
+        const prompt = $('epubThoughtPrompt');
+        if (relation) relation.hidden = type !== 'relation';
+        if (prompt) prompt.textContent = type === 'concept' ? '这段内容让我理解了什么概念或模型？' : type === 'relation' ? '这段内容揭示了什么关系？由此形成了什么判断？' : '这段内容让我以后具体怎么做？';
+        document.querySelector('.epub-action-choice')?.toggleAttribute('hidden', type !== 'process');
+        $('epubActionInput')?.toggleAttribute('hidden', type !== 'process');
+        $('epubActionBtn')?.toggleAttribute('hidden', type !== 'process');
+    }
+
     function onReady() {
         if (!$('epubUploadBtn')) return;
         $('epubUploadBtn').addEventListener('click', uploadBook);
@@ -156,6 +172,8 @@
         $('epubActionBtn').addEventListener('click', makeAction);
         document.querySelectorAll('input[name="epubActionMode"]').forEach((input) => input.addEventListener('change', updateActionMode));
         updateActionMode();
+        document.querySelectorAll('input[name="epubThoughtType"]').forEach((input) => input.addEventListener('change', updateThoughtType));
+        updateThoughtType();
         $('epubBackBtn').addEventListener('click', () => { $('epubReader').hidden = true; $('epubShelf').hidden = false; });
         $('epubShelf').addEventListener('click', (event) => {
             const card = event.target.closest('[data-book-id]');

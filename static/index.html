@@ -4610,9 +4610,22 @@
                             </article>
                             <aside id="epubNoteBox" class="epub-note-box">
                                 <div class="epub-note-kicker">读书批注</div>
-                                <p class="epub-prompt">这段内容如果用于我的生活，具体可以做什么？</p>
+                                <p class="epub-prompt" id="epubThoughtPrompt">这段内容让我理解了什么概念或模型？</p>
                                 <blockquote id="epubSelectedText">先在正文中选中一句话</blockquote>
-                                <textarea id="epubNoteInput" maxlength="10000" placeholder="写下你的理解，尽量具体到一个行动"></textarea>
+                                <div class="epub-thought-types" role="group" aria-label="学习成果类型">
+                                    <label><input type="radio" name="epubThoughtType" value="concept" checked> 概念 / 模型</label>
+                                    <label><input type="radio" name="epubThoughtType" value="relation"> 关系</label>
+                                    <label><input type="radio" name="epubThoughtType" value="process"> 流程</label>
+                                </div>
+                                <select id="epubRelationType" hidden>
+                                    <option value="">选择关系类型</option>
+                                    <option value="comparison">比较关系：大于、等于、约等于</option>
+                                    <option value="classification">分类关系：属于、包含</option>
+                                    <option value="set">集合关系：交集、无交集</option>
+                                    <option value="correlation">相关关系</option>
+                                    <option value="causation">因果关系</option>
+                                </select>
+                                <textarea id="epubNoteInput" maxlength="10000" placeholder="写下你的理解"></textarea>
                                 <div class="epub-action-choice" role="group" aria-label="行动项生成方式">
                                     <label><input type="radio" name="epubActionMode" value="manual" checked> 我自己写</label>
                                     <label><input type="radio" name="epubActionMode" value="ai"> AI 帮我提炼 <span>消耗 1 次</span></label>
@@ -9398,7 +9411,7 @@
     <script src="/static/js/app-tabbar.js?v=20260924mobile1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
     <script src="/static/js/daily-schedule.js?v=20260924single2"></script>
-    <script src="/static/js/epub-reader.js?v=20260924reading-progress1"></script>
+    <script src="/static/js/epub-reader.js?v=20260924thought-types1"></script>
     <script src="/static/js/habit-program.js?v=20260920habit1"></script>
     <script src="/static/js/time-log.js?v=20260920habit1"></script>
     <script src="/static/js/ideas.js?v=20260920habit1"></script>

@@ -85,6 +85,8 @@ def ensure_schema():
         "reading_reminder_time",
         "reading_reminder_time VARCHAR(8)",
     )
+    add_column("ebook_notes", "thought_type", "thought_type VARCHAR(20) DEFAULT 'concept'")
+    add_column("ebook_notes", "relation_type", "relation_type VARCHAR(30)")
     add_column("users", "phone", "phone VARCHAR(20)")
     add_column("users", "phone_verified", f"phone_verified BOOLEAN DEFAULT {bool_default}")
     add_column("users", "real_name", "real_name VARCHAR(100)")

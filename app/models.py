@@ -128,6 +128,8 @@ class EbookNote(Base):
     chapter_id = Column(Integer, ForeignKey("ebook_chapters.id", ondelete="CASCADE"), nullable=False)
     selected_text = Column(Text, nullable=False)
     note_text = Column(Text, nullable=False)
+    thought_type = Column(String(20), nullable=False, default="concept")
+    relation_type = Column(String(30), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -36,6 +36,8 @@ class NoteCreate(BaseModel):
     chapter_id: int
     selected_text: str = Field(..., min_length=1, max_length=10_000)
     note_text: str = Field(..., min_length=1, max_length=10_000)
+    thought_type: Literal["concept", "relation", "process"] = "concept"
+    relation_type: Optional[Literal["comparison", "classification", "set", "correlation", "causation"]] = None
 
 
 class ActionFromNote(BaseModel):
@@ -44,6 +46,8 @@ class ActionFromNote(BaseModel):
     note_text: str = Field(..., min_length=1, max_length=10_000)
     mode: Literal["manual", "ai"] = "ai"
     action_text: Optional[str] = Field(None, max_length=500)
+    thought_type: Literal["concept", "relation", "process"] = "process"
+    relation_type: Optional[Literal["comparison", "classification", "set", "correlation", "causation"]] = None
 
 
 class ProgressUpdate(BaseModel):
@@ -245,16 +249,18 @@ async def create_note(book_id: int, payload: NoteCreate, current_user: User = De
     chapter = db.query(EbookChapter).filter(EbookChapter.id == payload.chapter_id, EbookChapter.ebook_id == book.id).first()
     if not chapter:
         raise HTTPException(404, "章节不存在")
-    note = EbookNote(user_id=current_user.id, ebook_id=book.id, chapter_id=chapter.id, selected_text=payload.selected_text.strip(), note_text=payload.note_text.strip())
+    note = EbookNote(user_id=current_user.id, ebook_id=book.id, chapter_id=chapter.id, selected_text=payload.selected_text.strip(), note_text=payload.note_text.strip(), thought_type=payload.thought_type, relation_type=payload.relation_type)
     db.add(note)
     db.commit()
     db.refresh(note)
-    return {"id": note.id, "selected_text": note.selected_text, "note_text": note.note_text, "created_at": note.created_at}
+    return {"id": note.id, "selected_text": note.selected_text, "note_text": note.note_text, "thought_type": note.thought_type, "relation_type": note.relation_type, "created_at": note.created_at}
 
 
 @router.post("/{book_id}/action", status_code=status.HTTP_201_CREATED)
 async def create_action_from_note(book_id: int, payload: ActionFromNote, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     book = _owned_book(db, book_id, current_user.id)
+    if payload.thought_type != "process":
+        raise HTTPException(422, "只有流程类想法可以生成行动项")
     chapter = db.query(EbookChapter).filter(EbookChapter.id == payload.chapter_id, EbookChapter.ebook_id == book.id).first()
     if not chapter:
         raise HTTPException(404, "章节不存在")
@@ -279,7 +285,7 @@ async def create_action_from_note(book_id: int, payload: ActionFromNote, current
         action_text = item.action
         tags = item.tags
         frequency = item.frequency.value
-    db.add(EbookNote(user_id=current_user.id, ebook_id=book.id, chapter_id=chapter.id, selected_text=selected, note_text=thought))
+    db.add(EbookNote(user_id=current_user.id, ebook_id=book.id, chapter_id=chapter.id, selected_text=selected, note_text=thought, thought_type=payload.thought_type, relation_type=payload.relation_type))
     action = Action(user_id=current_user.id, book_title=book.title, source_excerpt=selected, action_text=action_text, tags=json.dumps(tags, ensure_ascii=False), frequency=frequency, duration_type="short_term", target_duration_days=30, target_frequency="daily", start_date=date.today())
     db.add(action)
     db.commit()
