@@ -3004,6 +3004,60 @@
         #actions .action-item.is-done { border-left-color: #8f887e; }
         #actions .action-tool-ico { background: #f4efe4; color: #8c5b4c; }
 
+        /* 今日页：日历与概览也使用同一套暖色层次。 */
+        #overview .widget-card {
+            border-color: #e6e1d6;
+            border-radius: 12px;
+            background: #fffdf8 !important;
+            box-shadow: 0 6px 18px rgba(68, 58, 45, .035);
+        }
+        #overview .block-title { color: #302d28; font-family: Georgia, 'Songti SC', 'STSong', serif; }
+        #overview .calendar-header .nav-btn {
+            background: #3d3934 !important;
+            color: #fffdf8 !important;
+        }
+        #overview .month-year { color: #665e54 !important; }
+        #overview .weekday-header { color: #8c5b4c; }
+        #overview .calendar-day { color: #4a443d; }
+        #overview .calendar-day:hover { background-color: #f8eee9; }
+        #overview .calendar-day.today,
+        #overview .calendar-day.has-events.today,
+        #overview .calendar-day.important.today {
+            background-color: #a85e4e !important;
+            border-color: #a85e4e !important;
+            color: #fffdf8;
+        }
+        #overview .calendar-day.selected:not(.today) {
+            background-color: #f8eee9;
+            box-shadow: inset 0 0 0 2px #b98270;
+        }
+        #overview .calendar-day.has-events:not(.today) { background-color: #f8eee9; border-color: #c9a899; }
+        #overview .calendar-day .event-indicator { background: #a85e4e; }
+        #overview .today-todos { border-top-color: #e6e1d6 !important; }
+        #overview .reading-remind-row { border-bottom-color: #eee9df; }
+        #overview .me-row-title { color: #403a33; }
+        #overview .me-row-desc { color: #9a9285; }
+        #overview .me-switch input:checked + .me-switch-ui { background: #a85e4e; }
+        #overview .todo-add-input,
+        #overview .todo-remind-input,
+        #overview .me-control {
+            border: 1px solid #ded8ce;
+            background: #fffdf8;
+            color: #665e54;
+        }
+        #overview .todo-add-input:focus,
+        #overview .todo-remind-input:focus { border-color: #b98270; outline: 2px solid rgba(168, 94, 78, .12); }
+        #overview .todo-add-btn {
+            background: #3d3934;
+            color: #fffdf8;
+            border: 1px solid #5b4038;
+        }
+        #overview .stat-item { background: #fbfaf6; border-color: #eee9df; }
+        #overview .stat-item.clickable.expanded { background: #f8eee9; }
+        #overview .stat-value { color: #a85e4e; }
+        #overview .duration-step { border-color: #c9a899; background: #fffdf8; color: #8c5b4c; }
+        #overview .progress-bar { background: #a85e4e; }
+
         /* 今日概览样式 */
         .overview-stats {
             display: flex;
