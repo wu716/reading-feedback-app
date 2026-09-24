@@ -2964,6 +2964,46 @@
         }
         #user-center .me-plan-table td { border-color: #eee9df; color: #655d54; }
 
+        /* 行动页：去除遗留的蓝色模板色，保留清楚的状态层次。 */
+        #actions.content-section { color: #302d28; }
+        #actions > .section-header h1,
+        #actions > .card h2 { color: #302d28; font-family: Georgia, 'Songti SC', 'STSong', serif; }
+        #actions > .card {
+            border: 1px solid #e6e1d6;
+            border-radius: 12px;
+            background: #fffdf8;
+            box-shadow: 0 6px 18px rgba(68, 58, 45, .035);
+        }
+        #actions .actions-toolbar { padding-right: 0; }
+        #actions .actions-toolbar h2 { font-size: 1.45rem; font-weight: 600; }
+        #actions .btn-small {
+            border-color: #c9a899;
+            border-radius: 7px;
+            background: #f8eee9;
+            color: #7d493d;
+        }
+        #actions .btn-small:hover { background: #f1e2db; }
+        #actions .action-filter-row {
+            border-color: #ded5c9;
+            border-radius: 8px;
+            background: #fbfaf6;
+        }
+        #actions .action-type-filter { color: #766e63; background: transparent; }
+        #actions .action-type-filter:hover,
+        #actions .action-type-filter:active { color: #7d493d; background: #f8eee9; }
+        #actions .action-type-filter.active { background: #3d3934; color: #fffdf8; }
+        #actions .action-item {
+            border: 1px solid #e6e1d6;
+            border-left: 4px solid #a85e4e;
+            border-radius: 10px;
+            background: #fbfaf6;
+            box-shadow: none;
+        }
+        #actions .action-item h3 { color: #302d28; }
+        #actions .action-item p { color: #766e63; }
+        #actions .action-item.is-done { border-left-color: #8f887e; }
+        #actions .action-tool-ico { background: #f4efe4; color: #8c5b4c; }
+
         /* 今日概览样式 */
         .overview-stats {
             display: flex;
