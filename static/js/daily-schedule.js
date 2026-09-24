@@ -6,6 +6,8 @@
     let data = { date: null, designed_at: null, tasks: [] };
     let mode = 'list';
     let sortReturnMode = 'flow';
+    let newTaskFamiliarity = null;
+    let newTaskPriority = 0;
     let splitFor = null;
     let editingId = null;
     let suggestions = [];
@@ -202,9 +204,9 @@
     }
 
     function renderNote(task) {
-        if (!task.completed && !(task.note || '').trim()) return '';
-        const label = escapeHtml(t('schedule.note', '执行情况'));
-        return `<input type="text" class="flow-note" maxlength="500" placeholder="${label}" value="${escapeHtml(task.note || '')}" data-act="note" aria-label="${label}">`;
+        if (mode !== 'list' && !task.completed && !(task.note || '').trim()) return '';
+        const label = escapeHtml(t('schedule.note', '执行反馈'));
+        return `<div class="flow-feedback"><span class="flow-feedback-label">${label}</span><input type="text" class="flow-note" maxlength="500" placeholder="${label}" value="${escapeHtml(task.note || '')}" data-act="note" aria-label="${label}"></div>`;
     }
 
     function renderToolbar() {
@@ -233,6 +235,22 @@
         if (addRow) addRow.hidden = mode !== 'list';
         const later = document.getElementById('scheduleLater');
         if (later) later.hidden = mode !== 'list';
+        updateAddComposer();
+    }
+
+    function updateAddComposer() {
+        const addRow = document.getElementById('scheduleAddRow');
+        if (!addRow) return;
+        addRow.querySelectorAll('[data-new-act="fam"]').forEach((button) => {
+            const active = button.dataset.value === newTaskFamiliarity;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        addRow.querySelectorAll('[data-new-act="priority"]').forEach((button) => {
+            const active = Number(button.dataset.value) === newTaskPriority;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
     }
 
     function renderTitle(task) {
@@ -264,21 +282,35 @@
             </div>`;
     }
 
+    function renderQuickAttributes(task) {
+        return `
+            <div class="flow-task-attributes">
+                <div class="flow-attribute-group">
+                    <span class="flow-attribute-label">${escapeHtml(t('schedule.familiarityLabel', '熟悉度'))}</span>
+                    <div class="flow-attribute-options">
+                        <button type="button" class="flow-chip${task.familiarity === 'familiar' ? ' active' : ''}" data-act="fam" data-value="familiar">${escapeHtml(t('schedule.familiar', '熟悉'))}</button>
+                        <button type="button" class="flow-chip${task.familiarity === 'unfamiliar' ? ' active' : ''}" data-act="fam" data-value="unfamiliar">${escapeHtml(t('schedule.unfamiliar', '陌生'))}</button>
+                    </div>
+                </div>
+                <div class="flow-attribute-group">
+                    <span class="flow-attribute-label">${escapeHtml(t('schedule.importanceLabel', '重要性'))}</span>
+                    <div class="flow-attribute-options">
+                        <button type="button" class="flow-chip${task.priority === 2 ? ' active' : ''}" data-act="priority" data-value="2">${escapeHtml(t('schedule.priority.high', '最高'))}</button>
+                        <button type="button" class="flow-chip${task.priority === 1 ? ' active' : ''}" data-act="priority" data-value="1">${escapeHtml(t('schedule.priority.important', '重要'))}</button>
+                        <button type="button" class="flow-chip${!task.priority ? ' active' : ''}" data-act="priority" data-value="0">${escapeHtml(t('schedule.priority.normal', '普通'))}</button>
+                    </div>
+                </div>
+            </div>`;
+    }
+
     function renderTask(task, isChild) {
-        const meta = [];
-        const fam = familiarityLabel(task.familiarity);
-        if (fam) meta.push(`<span class="flow-mark">${escapeHtml(fam)}</span>`);
-        if (task.priority) meta.push(`<span class="flow-mark priority-${task.priority}">${escapeHtml(priorityLabel(task.priority))}</span>`);
-        if (task.estimated_minutes != null) {
-            meta.push(`<span class="flow-mark">${escapeHtml(minutesLabel(task.estimated_minutes))}</span>`);
-        }
         return `
             <article class="flow-task${isChild ? ' is-child' : ''}${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
                 <div class="flow-task-main">
                     ${renderDoneBtn(task)}
                     ${renderTitle(task)}
                 </div>
-                ${meta.length ? `<div class="flow-task-meta">${meta.join('')}</div>` : ''}
+                ${renderQuickAttributes(task)}
                 ${renderNote(task)}
                 ${renderEditActions(true)}
                 ${renderSplitRow(task)}
@@ -596,7 +628,7 @@
         render();
     }
 
-    async function addTask(text, parentId, actionId, openDesign) {
+    async function addTask(text, parentId, actionId, openDesign, attributes) {
         const value = (text || '').trim();
         if (!value) return;
         data = await api('/tasks', {
@@ -606,6 +638,8 @@
                 task_date: currentDay(),
                 parent_id: parentId || null,
                 action_id: actionId || null,
+                familiarity: attributes?.familiarity || null,
+                priority: Number.isInteger(attributes?.priority) ? attributes.priority : 0,
             }),
         });
         splitFor = null;
@@ -990,11 +1024,27 @@
         });
         document.getElementById('scheduleAddBtn')?.addEventListener('click', () => {
             const input = document.getElementById('scheduleAddInput');
-            addTask(input?.value, null, null, false).then(() => {
+            addTask(input?.value, null, null, false, {
+                familiarity: newTaskFamiliarity,
+                priority: newTaskPriority,
+            }).then(() => {
                 if (input) input.value = '';
+                newTaskFamiliarity = null;
+                newTaskPriority = 0;
+                updateAddComposer();
             }).catch((e) => {
                 if (typeof showMessage === 'function') showMessage(e.message, 'error');
             });
+        });
+        document.getElementById('scheduleAddRow')?.addEventListener('click', (e) => {
+            const button = e.target.closest('[data-new-act]');
+            if (!button) return;
+            if (button.dataset.newAct === 'fam') {
+                newTaskFamiliarity = newTaskFamiliarity === button.dataset.value ? null : button.dataset.value;
+            } else if (button.dataset.newAct === 'priority') {
+                newTaskPriority = parseInt(button.dataset.value, 10);
+            }
+            updateAddComposer();
         });
         document.getElementById('scheduleAddInput')?.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {

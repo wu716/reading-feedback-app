@@ -38,6 +38,7 @@ class TaskCreate(BaseModel):
     parent_id: Optional[int] = None
     action_id: Optional[int] = None
     priority: int = Field(0, ge=0, le=2)
+    familiarity: Optional[str] = None
 
     @field_validator("text")
     @classmethod
@@ -46,6 +47,15 @@ class TaskCreate(BaseModel):
         if not text:
             raise ValueError("行动内容不能为空")
         return text
+
+    @field_validator("familiarity")
+    @classmethod
+    def check_familiarity(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or value == "":
+            return None
+        if value not in FAMILIARITY_VALUES:
+            raise ValueError("熟悉程度只能是 familiar 或 unfamiliar")
+        return value
 
 
 class TaskUpdate(BaseModel):
@@ -428,6 +438,7 @@ async def create_task(
         action_id=action_id,
         sort_order=next_sort_order(db, current_user.id, day, parent_id),
         priority=body.priority,
+        familiarity=body.familiarity,
         flow_order=next_flow_order(db, current_user.id, day),
     )
     db.add(task)

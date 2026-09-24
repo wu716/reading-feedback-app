@@ -114,12 +114,25 @@
 }
 
 .flow-add-row {
+    display: grid;
+    gap: 12px;
+    margin: 18px 0 8px;
+    padding-bottom: 6px;
+}
+
+.flow-add-main {
     display: flex;
     align-items: baseline;
     gap: 12px;
-    margin: 18px 0 8px;
     border-bottom: 1px solid #d8d1c4;
-    padding-bottom: 6px;
+}
+
+.flow-add-attributes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px 24px;
+    padding-bottom: 10px;
 }
 
 .flow-add-row input {
@@ -334,6 +347,27 @@
     color: #6b6560;
     font-size: 0.86rem;
     font-family: "Noto Serif SC", "Songti SC", serif;
+}
+
+.flow-feedback {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    width: calc(100% - 26px);
+    margin: 8px 0 0 26px;
+}
+
+.flow-feedback-label {
+    flex-shrink: 0;
+    color: #a39b8e;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+}
+
+.flow-feedback .flow-note {
+    width: auto;
+    flex: 1;
+    margin: 0;
 }
 
 .flow-note:focus {
