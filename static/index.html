@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260920later2">
+    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260924mobile1">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd4">
     <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260924single2">
     <link rel="stylesheet" href="/static/css/epub-reader.css?v=20260924epub4">
@@ -5781,7 +5781,7 @@
         }
 
         const PRIMARY_TABS_DESKTOP = new Set(['overview', 'schedule', 'actions', 'upload', 'self-talk', 'user-center']);
-        const PRIMARY_TABS_PHONE = new Set(['schedule', 'self-talk', 'user-center']);
+        const PRIMARY_TABS_PHONE = new Set(['schedule', 'actions', 'self-talk', 'user-center']);
         const SECTION_PARENT_SHARED = { stats: 'user-center', guide: 'user-center', owner: 'user-center', 'time-log': 'user-center', ideas: 'user-center' };
 
         function primaryTabs() {
@@ -5790,7 +5790,7 @@
 
         function sectionParentOf(sectionId) {
             if (SECTION_PARENT_SHARED[sectionId]) return SECTION_PARENT_SHARED[sectionId];
-            if (isMobileNav() && (sectionId === 'overview' || sectionId === 'actions' || sectionId === 'upload')) {
+            if (isMobileNav() && (sectionId === 'overview' || sectionId === 'upload')) {
                 return 'user-center';
             }
             return null;
@@ -9395,7 +9395,7 @@
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
     <script src="/static/reminder_notification.js?v=20260920later2"></script>
-    <script src="/static/js/app-tabbar.js?v=20260920habit1"></script>
+    <script src="/static/js/app-tabbar.js?v=20260924mobile1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
     <script src="/static/js/daily-schedule.js?v=20260924single2"></script>
     <script src="/static/js/epub-reader.js?v=20260923epub2"></script>

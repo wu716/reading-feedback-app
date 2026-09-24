@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEDULE_JS = ROOT / "static" / "js" / "daily-schedule.js"
 INDEX_HTML = ROOT / "static" / "index.html"
 SCHEDULE_API = ROOT / "app" / "routers" / "schedule.py"
+APP_TABBAR_JS = ROOT / "static" / "js" / "app-tabbar.js"
 
 
 class ScheduleUiSeparationTests(unittest.TestCase):
@@ -20,6 +21,7 @@ class ScheduleUiSeparationTests(unittest.TestCase):
         )[0]
         cls.index = INDEX_HTML.read_text(encoding="utf-8")
         cls.api = SCHEDULE_API.read_text(encoding="utf-8")
+        cls.tabbar = APP_TABBAR_JS.read_text(encoding="utf-8")
 
     def test_design_mode_contains_attributes_but_no_ordering_controls(self):
         self.assertIn("flow-task-attributes", self.design)
@@ -47,6 +49,13 @@ class ScheduleUiSeparationTests(unittest.TestCase):
         self.assertIn("mode !== 'list' && !task.completed", self.source)
         self.assertIn("familiarity: Optional[str] = None", self.api)
         self.assertIn("familiarity=body.familiarity", self.api)
+
+    def test_mobile_navigation_exposes_reading_and_actions(self):
+        self.assertIn("{ id: 'reading'", self.tabbar)
+        self.assertIn("{ id: 'actions'", self.tabbar)
+        self.assertIn("tab.action === 'reading'", self.tabbar)
+        self.assertIn("const PRIMARY_TABS_PHONE = new Set(['schedule', 'actions', 'self-talk', 'user-center'])", self.index)
+        self.assertNotIn("sectionId === 'actions'", self.index.split("function sectionParentOf", 1)[1].split("function primaryTabFor", 1)[0])
 
 
 if __name__ == "__main__":

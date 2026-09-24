@@ -1,6 +1,8 @@
 (function () {
     const TABS = [
         { id: 'schedule', labelKey: 'nav.schedule', label: '日程', icon: '程' },
+        { id: 'reading', labelKey: 'nav.reading', label: '阅读', icon: '读', action: 'reading' },
+        { id: 'actions', labelKey: 'nav.actions', label: '行动', icon: '行' },
         { id: 'capture', labelKey: 'nav.capture', label: '记', icon: '记', action: 'capture' },
         { id: 'self-talk', labelKey: 'nav.selfTalk', label: 'Self-talk', icon: '谈' },
         { id: 'user-center', labelKey: 'nav.me', label: '我的', icon: '我' },
@@ -25,6 +27,8 @@
         if (path.includes('self_talk')) return 'self-talk';
         if (path.includes('dashboard') || path.includes('user_center')) return 'user-center';
         const hash = (location.hash || '').replace('#', '');
+        if (hash === 'actions') return 'actions';
+        if (hash === 'upload' && document.getElementById('upload')?.classList.contains('epub-only')) return 'reading';
         if (hash === 'self-talk') return 'self-talk';
         if (hash === 'schedule' || hash === '') return 'schedule';
         return 'user-center';
@@ -39,6 +43,12 @@
     }
 
     function go(tab) {
+        if (tab.action === 'reading') {
+            if (typeof window.openEpubLibrary === 'function') window.openEpubLibrary();
+            else location.href = '/static/index.html#upload';
+            setTimeout(highlight, 0);
+            return;
+        }
         if (tab.action === 'capture') {
             openCapture();
             return;
