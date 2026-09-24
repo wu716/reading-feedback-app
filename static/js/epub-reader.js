@@ -161,6 +161,7 @@
 
     window.openEpubLibrary = function () {
         if (typeof navigateTo === 'function') navigateTo('upload');
+        document.getElementById('upload')?.classList.add('epub-only');
         document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.section === 'library'));
         setTimeout(() => window.switchUploadTab?.('epub'), 0);
     };

@@ -29,7 +29,7 @@
             --cinnabar: #9c3b32;
             --paper: #f3efe6;
             --line: #e6e1d6;
-            accent-color: #667eea;
+            accent-color: #a85e4e;
         }
 
         * {
@@ -2783,6 +2783,72 @@
             font-size: .92rem;
         }
         #upload #epubUploadBtn:hover { background: #51463f; transform: none; }
+        #upload .upload-panel[data-panel="ai"],
+        #upload .upload-panel[data-panel="manual"],
+        #upload .upload-panel[data-panel="reading"] { max-width: 760px; }
+        #upload .upload-panel[data-panel="ai"] .form-group,
+        #upload .upload-panel[data-panel="manual"] .form-group,
+        #upload .upload-panel[data-panel="reading"] .form-group { margin-bottom: 20px; }
+        #upload .upload-panel label { color: #665e54; font-weight: 600; }
+        #upload .upload-panel input[type="text"],
+        #upload .upload-panel input[type="number"],
+        #upload .upload-panel input[type="email"],
+        #upload .upload-panel textarea {
+            border: 1px solid #ded8ce;
+            border-radius: 7px;
+            background: #fffdf8;
+            color: #302d28;
+            box-shadow: none;
+        }
+        #upload .upload-panel input:focus,
+        #upload .upload-panel textarea:focus {
+            border-color: #b98270;
+            outline: 2px solid rgba(168, 94, 78, .12);
+        }
+        #upload .upload-panel .btn,
+        #upload .upload-panel #uploadBtn {
+            width: 100%;
+            min-height: 46px;
+            border: 1px solid #5b4038;
+            border-radius: 7px;
+            background: #3d3934;
+            color: #fffdf8;
+            box-shadow: none;
+        }
+        #upload .upload-panel .btn:hover,
+        #upload .upload-panel #uploadBtn:hover { background: #51463f; transform: none; }
+
+        .app-header {
+            background: #3d3934;
+            color: #fffdf8;
+            box-shadow: 0 2px 12px rgba(68, 58, 45, .12);
+        }
+        .app-header .user-info {
+            background: rgba(255, 253, 248, .1);
+            border: 1px solid rgba(255, 253, 248, .14);
+        }
+        .nav-item { color: #766e63; }
+        .nav-item:hover { background: #fbfaf6; color: #8c5b4c; }
+        .nav-item.active {
+            background: linear-gradient(90deg, rgba(168, 94, 78, .1), transparent);
+            border-left-color: #a85e4e;
+            color: #8c5b4c;
+        }
+        .nav-icon { background: #f7eee8; color: #a85e4e; }
+        .nav-item.active .nav-icon { background: #a85e4e; color: #fffdf8; }
+        #upload-nav-item { display: none; }
+        #upload.epub-only .upload-tabs,
+        #upload.epub-only .upload-panel:not([data-panel="epub"]) { display: none; }
+        #upload.epub-only > .section-header p { display: none; }
+        #upload.epub-only > .section-header h1::after {
+            content: '书架与阅读';
+            display: block;
+            margin-top: 8px;
+            color: #9a9285;
+            font-family: inherit;
+            font-size: .9rem;
+            font-weight: 400;
+        }
         @media (max-width: 600px) {
             #upload .upload-panel { padding: 24px 18px 28px; }
             #upload .epub-upload-row { flex-direction: column; }
@@ -2871,10 +2937,21 @@
             background: #fffdf8;
             color: #766e63;
         }
-        #user-center .me-chip:has(input:checked) {
+        #user-center .me-chip span {
+            border: 1px solid #ded5c9;
+            border-radius: 7px;
+            background: #fffdf8;
+            color: #766e63;
+        }
+        #user-center .me-chip input:checked + span {
             border-color: #b98270;
             background: #f8eee9;
             color: #7d493d;
+        }
+        #user-center .me-control {
+            border: 1px solid #e1d9ce;
+            background: #f8f5ef;
+            color: #665e54;
         }
         #user-center .me-switch-ui { background: #d7d0c6; }
         #user-center .me-switch input:checked + .me-switch-ui { background: #a85e4e; }
@@ -4045,7 +4122,7 @@
                 <span class="nav-icon">行</span>
                 <span class="nav-text" data-i18n="nav.actions">行动</span>
             </div>
-            <div class="nav-item" data-section="upload" onclick="navigateTo('upload')" title="上传笔记" data-i18n-title="nav.upload">
+            <div class="nav-item" id="upload-nav-item" data-section="upload" onclick="navigateTo('upload')" title="上传笔记" data-i18n-title="nav.upload">
                 <span class="nav-icon">笔</span>
                 <span class="nav-text" data-i18n="nav.upload">上传笔记</span>
             </div>
@@ -5667,6 +5744,8 @@
         }
 
         function navigateTo(sectionId) {
+            const uploadSection = document.getElementById('upload');
+            if (uploadSection && sectionId === 'upload') uploadSection.classList.remove('epub-only');
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
             });
