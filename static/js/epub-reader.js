@@ -130,6 +130,11 @@
     function onReady() {
         if (!$('epubUploadBtn')) return;
         $('epubUploadBtn').addEventListener('click', uploadBook);
+        $('epubFileInput')?.addEventListener('change', (event) => {
+            const name = $('epubFileName');
+            const file = event.target.files?.[0];
+            if (name) name.textContent = file ? file.name : '选择一本 EPUB 书籍';
+        });
         $('epubSaveNoteBtn').addEventListener('click', () => saveNote().catch((e) => showMessage(e.message, 'error')));
         $('epubActionBtn').addEventListener('click', makeAction);
         document.querySelectorAll('input[name="epubActionMode"]').forEach((input) => input.addEventListener('change', updateActionMode));

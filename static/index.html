@@ -2681,6 +2681,114 @@
             display: none;
         }
 
+        /* 阅读入口：与阅读器保持同一套安静、纸张般的视觉语气。 */
+        #upload.content-section { color: #302d28; }
+        #upload > .section-header { max-width: 980px; }
+        #upload > .section-header h1 {
+            color: #302d28;
+            font-family: Georgia, 'Songti SC', 'STSong', serif;
+            font-weight: 600;
+            letter-spacing: .02em;
+        }
+        #upload > .section-header p { color: #8a8478; }
+        #upload > .card {
+            max-width: 980px;
+            padding: 0;
+            overflow: hidden;
+            border: 1px solid #e6e1d6;
+            border-radius: 12px;
+            background: #fffdf8;
+            box-shadow: 0 8px 24px rgba(68, 58, 45, .04);
+        }
+        #upload .upload-tabs {
+            gap: 0;
+            margin: 0;
+            padding: 8px 14px 0;
+            border-bottom: 1px solid #e6e1d6;
+            background: #fbfaf6;
+        }
+        #upload .upload-tab {
+            position: relative;
+            padding: 13px 16px 12px;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            color: #8a8478;
+            font-size: .92rem;
+            transition: color .18s ease;
+        }
+        #upload .upload-tab::after {
+            content: '';
+            position: absolute;
+            right: 16px;
+            bottom: -1px;
+            left: 16px;
+            height: 2px;
+            background: transparent;
+        }
+        #upload .upload-tab:hover,
+        #upload .upload-tab.active { color: #6e4036; background: transparent; }
+        #upload .upload-tab.active::after { background: #a85e4e; }
+        #upload .upload-panel { padding: 30px 34px 36px; }
+        #upload .upload-panel h2 {
+            margin: 0 0 9px;
+            color: #302d28;
+            font-family: Georgia, 'Songti SC', 'STSong', serif;
+            font-size: 1.45rem;
+            font-weight: 600;
+        }
+        #upload .upload-panel .me-hint { color: #9a9285; }
+        #upload .upload-panel[data-panel="epub"] { padding-top: 34px; }
+        #upload .epub-upload-row {
+            display: flex;
+            align-items: stretch;
+            gap: 12px;
+            margin: 28px 0 10px;
+            padding: 18px;
+            border: 1px dashed #d7cfc1;
+            border-radius: 10px;
+            background: #fbfaf6;
+        }
+        #upload .epub-file-picker {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+            flex: 1;
+            padding: 0 14px;
+            border: 1px solid #ded8ce;
+            border-radius: 7px;
+            background: #fffdf8;
+            color: #6f685d;
+            cursor: pointer;
+        }
+        #upload .epub-file-picker:hover { border-color: #b89c8f; }
+        #upload .epub-file-picker input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+        #upload .epub-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #upload #epubUploadBtn {
+            width: auto;
+            min-width: 132px;
+            min-height: 44px;
+            border: 1px solid #5b4038;
+            border-radius: 7px;
+            background: #3d3934;
+            color: #fffdf8;
+            box-shadow: none;
+            font-size: .92rem;
+        }
+        #upload #epubUploadBtn:hover { background: #51463f; transform: none; }
+        @media (max-width: 600px) {
+            #upload .upload-panel { padding: 24px 18px 28px; }
+            #upload .epub-upload-row { flex-direction: column; }
+            #upload #epubUploadBtn { width: 100%; }
+        }
+
         /* 今日概览样式 */
         .overview-stats {
             display: flex;
@@ -4165,11 +4273,15 @@
 
                 <div class="upload-panel hidden" data-panel="epub">
                     <h2>把书读成行动</h2>
-                    <p class="me-hint">目前支持 EPUB。单本不超过 120MB，每个账户最多 500MB。</p>
+                    <p class="me-hint">把一本书放进书架，边读边留下真正想实践的事。</p>
                     <div class="epub-upload-row">
-                        <input type="file" id="epubFileInput" accept=".epub,application/epub+zip">
-                        <button type="button" class="btn" id="epubUploadBtn">上传 EPUB</button>
+                        <label class="epub-file-picker" for="epubFileInput">
+                            <input type="file" id="epubFileInput" accept=".epub,application/epub+zip">
+                            <span class="epub-file-name" id="epubFileName">选择一本 EPUB 书籍</span>
+                        </label>
+                        <button type="button" class="btn" id="epubUploadBtn">上传到书架</button>
                     </div>
+                    <p class="me-hint">支持 EPUB，单本不超过 120MB；每个账户最多 500MB。</p>
                     <div id="epubQuotaHint" class="me-hint"></div>
                     <div id="epubShelf" class="epub-shelf"></div>
                     <div id="epubReader" class="epub-reader" hidden>
