@@ -75,7 +75,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20260923epub2"
+STATIC_UI_VERSION = "20260924reading-progress1"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",

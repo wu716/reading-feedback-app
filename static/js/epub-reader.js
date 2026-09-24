@@ -3,6 +3,7 @@
     let currentBook = null;
     let currentChapter = null;
     let selectedText = '';
+    let progressSaveTimer = null;
 
     const $ = (id) => document.getElementById(id);
     const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -67,20 +68,36 @@
         $('epubShelf').hidden = true;
         $('epubReader').hidden = false;
         $('epubChapterList').innerHTML = book.chapters.map((chapter) => `<button type="button" data-chapter-id="${chapter.id}">${esc(chapter.title)}</button>`).join('');
-        await openChapter(book.chapters[0]);
+        const savedChapter = book.progress && book.chapters.find((item) => item.id === book.progress.chapter_id);
+        await openChapter(savedChapter || book.chapters[0], savedChapter ? book.progress.scroll_ratio : 0);
     }
 
-    async function openChapter(chapter) {
+    async function openChapter(chapter, savedRatio = 0) {
         currentChapter = chapter;
         selectedText = '';
         const data = await api(`/${currentBook.id}/chapters/${chapter.id}`);
         $('epubChapterTitle').textContent = data.title;
         $('epubChapterText').innerHTML = esc(data.text).split(/\n+/).filter(Boolean).map((line) => `<p>${line}</p>`).join('');
+        requestAnimationFrame(() => {
+            const content = $('epubChapterText').parentElement;
+            content.scrollTop = Math.round((content.scrollHeight - content.clientHeight) * Math.min(10000, Math.max(0, savedRatio)) / 10000);
+        });
         document.querySelectorAll('#epubChapterList button').forEach((button) => button.classList.toggle('active', Number(button.dataset.chapterId) === chapter.id));
         $('epubSelectedText').textContent = '先在正文中选中一句话';
         $('epubNoteInput').value = '';
         $('epubActionInput').value = '';
         updateActionMode();
+    }
+
+    function saveProgress() {
+        if (!currentBook || !currentChapter) return;
+        const content = $('epubChapterText').parentElement;
+        const max = Math.max(1, content.scrollHeight - content.clientHeight);
+        const ratio = Math.round((content.scrollTop / max) * 10000);
+        clearTimeout(progressSaveTimer);
+        progressSaveTimer = setTimeout(() => api(`/${currentBook.id}/progress`, {
+            method: 'PUT', body: JSON.stringify({ chapter_id: currentChapter.id, scroll_ratio: ratio })
+        }).then((data) => { currentBook.progress = data; }).catch(() => {}), 400);
     }
 
     function captureSelection() {
@@ -152,6 +169,7 @@
         });
         $('epubChapterText').addEventListener('mouseup', captureSelection);
         $('epubChapterText').addEventListener('touchend', captureSelection);
+        $('epubChapterText').parentElement.addEventListener('scroll', saveProgress, { passive: true });
         const originalSwitch = window.switchUploadTab;
         window.switchUploadTab = function (tab) {
             if (typeof originalSwitch === 'function') originalSwitch(tab);

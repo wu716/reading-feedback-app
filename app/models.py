@@ -50,6 +50,7 @@ class User(Base):
     habit_events = relationship("HabitEvent", back_populates="user", cascade="all, delete-orphan")
     ebooks = relationship("Ebook", back_populates="user", cascade="all, delete-orphan")
     ebook_notes = relationship("EbookNote", back_populates="user", cascade="all, delete-orphan")
+    ebook_progress = relationship("EbookProgress", back_populates="user", cascade="all, delete-orphan")
     used_invite_codes = relationship("InviteCode", back_populates="used_by_user")
 
 
@@ -84,6 +85,24 @@ class Ebook(Base):
     user = relationship("User", back_populates="ebooks")
     chapters = relationship("EbookChapter", back_populates="ebook", cascade="all, delete-orphan", order_by="EbookChapter.chapter_index")
     notes = relationship("EbookNote", back_populates="ebook", cascade="all, delete-orphan")
+    progress = relationship("EbookProgress", back_populates="ebook", cascade="all, delete-orphan")
+
+
+class EbookProgress(Base):
+    """用户在每本书中的最后阅读章节和正文位置。"""
+    __tablename__ = "ebook_progress"
+    __table_args__ = (UniqueConstraint("user_id", "ebook_id", name="uq_ebook_progress_user_book"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    ebook_id = Column(Integer, ForeignKey("ebooks.id", ondelete="CASCADE"), nullable=False, index=True)
+    chapter_id = Column(Integer, ForeignKey("ebook_chapters.id", ondelete="CASCADE"), nullable=False)
+    scroll_ratio = Column(Integer, nullable=False, default=0)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="ebook_progress")
+    ebook = relationship("Ebook", back_populates="progress")
+    chapter = relationship("EbookChapter")
 
 
 class EbookChapter(Base):

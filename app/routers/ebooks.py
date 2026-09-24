@@ -22,7 +22,7 @@ from app.ai_quota import enforce_ai_quota
 from app.ai_service import AIExtractionError, AIValidationError, extract_actions_from_notes
 from app.auth import get_current_active_user
 from app.database import get_db
-from app.models import Action, Ebook, EbookChapter, EbookNote, User
+from app.models import Action, Ebook, EbookChapter, EbookNote, EbookProgress, User
 
 router = APIRouter(prefix="/ebooks", tags=["EPUB阅读"])
 
@@ -44,6 +44,11 @@ class ActionFromNote(BaseModel):
     note_text: str = Field(..., min_length=1, max_length=10_000)
     mode: Literal["manual", "ai"] = "ai"
     action_text: Optional[str] = Field(None, max_length=500)
+
+
+class ProgressUpdate(BaseModel):
+    chapter_id: int
+    scroll_ratio: int = Field(0, ge=0, le=10000)
 
 
 class TextParser(HTMLParser):
@@ -138,7 +143,12 @@ def _book_response(book: Ebook):
         "chapter_count": book.chapter_count,
         "created_at": book.created_at,
         "chapters": [{"id": c.id, "index": c.chapter_index, "title": c.title} for c in book.chapters],
+        "progress": _progress_response(book.progress[0]) if book.progress else None,
     }
+
+
+def _progress_response(progress):
+    return {"chapter_id": progress.chapter_id, "scroll_ratio": progress.scroll_ratio, "updated_at": progress.updated_at}
 
 
 @router.get("")
@@ -210,6 +220,23 @@ async def get_chapter(book_id: int, chapter_id: int, current_user: User = Depend
     if not chapter:
         raise HTTPException(404, "章节不存在")
     return {"id": chapter.id, "title": chapter.title, "index": chapter.chapter_index, "text": chapter.text_content}
+
+
+@router.put("/{book_id}/progress")
+async def update_progress(book_id: int, payload: ProgressUpdate, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    book = _owned_book(db, book_id, current_user.id)
+    chapter = db.query(EbookChapter).filter(EbookChapter.id == payload.chapter_id, EbookChapter.ebook_id == book.id).first()
+    if not chapter:
+        raise HTTPException(404, "章节不存在")
+    progress = db.query(EbookProgress).filter(EbookProgress.user_id == current_user.id, EbookProgress.ebook_id == book.id).first()
+    if progress is None:
+        progress = EbookProgress(user_id=current_user.id, ebook_id=book.id)
+        db.add(progress)
+    progress.chapter_id = chapter.id
+    progress.scroll_ratio = payload.scroll_ratio
+    db.commit()
+    db.refresh(progress)
+    return _progress_response(progress)
 
 
 @router.post("/{book_id}/notes", status_code=status.HTTP_201_CREATED)
