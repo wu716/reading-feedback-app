@@ -329,13 +329,53 @@
                 align-items: stretch;
             }
         }
+        /* 与书然阅读页一致的安静数据页。 */
+        body {
+            background: #f3efe6;
+            color: #302d28;
+            padding: 32px clamp(18px, 4vw, 64px) 56px;
+        }
+        .header { color: #302d28; margin-bottom: 28px; }
+        .header h1 { font-family: Georgia, 'Songti SC', 'STSong', serif; font-size: 2.1rem; font-weight: 600; }
+        .header p { color: #8a8478; }
+        .back-btn {
+            border: 1px solid #d8cfc3;
+            background: transparent;
+            color: #6e4036;
+            border-radius: 7px;
+        }
+        .back-btn:hover { background: #f8eee9; }
+        .time-selector,
+        .view-tabs,
+        .stat-card,
+        .chart-card,
+        .insight-panel {
+            border: 1px solid #e6e1d6;
+            border-radius: 10px;
+            background: #fffdf8;
+            box-shadow: 0 6px 18px rgba(68, 58, 45, .035);
+        }
+        .time-selector h3 { color: #8c5b4c; font-family: Georgia, 'Songti SC', 'STSong', serif; }
+        .time-btn { border-color: #ded5c9; background: #fffdf8; color: #766e63; border-radius: 7px; }
+        .time-btn:hover { border-color: #b98270; color: #7d493d; }
+        .time-btn.active { border-color: #a85e4e; background: #a85e4e; color: #fffdf8; }
+        .tab-btn { color: #766e63; border-radius: 7px; }
+        .tab-btn.active { background: #3d3934; color: #fffdf8; }
+        .stat-card:hover { transform: none; box-shadow: 0 6px 18px rgba(68, 58, 45, .06); }
+        .stat-number { color: #a85e4e; }
+        .stat-label { color: #665e54; }
+        .stat-trend { color: #8c5b4c; }
+        .stat-trend.down { color: #a85e4e; }
+        .chart-title { color: #403a33; }
+        .insight-title { color: #8c5b4c; }
+        .icon { display: none; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <a href="/static/index.html" class="back-btn">← 返回主页</a>
-            <h1>📊 数据可视化仪表盘</h1>
+            <h1>数据可视化仪表盘</h1>
             <p>深入分析你的行为数据，发现成长规律</p>
         </div>
         
@@ -353,10 +393,10 @@
         
         <!-- 视图切换 -->
         <div class="view-tabs">
-            <button class="tab-btn active" onclick="switchView('comprehensive')">📈 综合视图</button>
-            <button class="tab-btn" onclick="switchView('trigger')">🎯 情境触发型</button>
-            <button class="tab-btn" onclick="switchView('habit')">🔄 习惯养成型</button>
-            <button class="tab-btn" onclick="switchView('comparison')">⚖️ 对比分析</button>
+            <button class="tab-btn active" onclick="switchView('comprehensive')">综合视图</button>
+            <button class="tab-btn" onclick="switchView('trigger')">情境触发型</button>
+            <button class="tab-btn" onclick="switchView('habit')">习惯养成型</button>
+            <button class="tab-btn" onclick="switchView('comparison')">对比分析</button>
         </div>
         
         <!-- 综合视图 -->
@@ -387,7 +427,6 @@
             <div class="charts-grid">
                 <div class="chart-card full-width">
                     <div class="chart-title">
-                        <span class="icon">📊</span>
                         <span>整体趋势分析</span>
                     </div>
                     <div id="compTrendChart" class="chart-container large"></div>
@@ -395,7 +434,6 @@
                 
                 <div class="chart-card">
                     <div class="chart-title">
-                        <span class="icon">🎯</span>
                         <span>触发型行为分布</span>
                     </div>
                     <div id="compTriggerPie" class="chart-container"></div>
@@ -403,7 +441,6 @@
                 
                 <div class="chart-card">
                     <div class="chart-title">
-                        <span class="icon">🔄</span>
                         <span>习惯型坚持进度</span>
                     </div>
                     <div id="compHabitBar" class="chart-container"></div>
@@ -413,7 +450,6 @@
             <!-- AI洞察 -->
             <div class="insight-panel" id="comprehensiveInsights">
                 <div class="insight-title">
-                    <span>🤖</span>
                     <span>AI 数据洞察</span>
                 </div>
                 <div id="comprehensiveInsightsContent">
