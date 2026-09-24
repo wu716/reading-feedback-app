@@ -7535,12 +7535,12 @@
                     streakDetails.innerHTML = `
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 20px;">
                             ${response.streak_actions.slice(0, 6).map(action => `
-                                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
-                                    <h4 style="margin-bottom: 8px; color: #333;">${action.action_text}</h4>
-                                    <div style="font-size: 14px; color: #666;">
-                                        <div>🔥 当前连续: ${action.current_streak} 天</div>
-                                        <div>🏆 最长连续: ${action.longest_streak} 天</div>
-                                        <div>📊 总实践: ${action.total_practices} 次</div>
+                                <div style="background: #fbfaf6; padding: 15px; border-radius: 8px; border-left: 4px solid #a85e4e;">
+                                    <h4 style="margin-bottom: 8px; color: #302d28;">${action.action_text}</h4>
+                                    <div style="font-size: 14px; color: #766e63;">
+                                        <div>当前连续：${action.current_streak} 天</div>
+                                        <div>最长连续：${action.longest_streak} 天</div>
+                                        <div>总实践：${action.total_practices} 次</div>
                                     </div>
                                 </div>
                             `).join('')}

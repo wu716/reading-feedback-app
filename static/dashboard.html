@@ -367,7 +367,18 @@
         .stat-trend { color: #8c5b4c; }
         .stat-trend.down { color: #a85e4e; }
         .chart-title { color: #403a33; }
-        .insight-title { color: #8c5b4c; }
+        .insight-title {
+            color: #8c5b4c;
+            gap: 0;
+        }
+        .insight-title::before {
+            content: '';
+            width: 3px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 2px;
+            background: #a85e4e;
+        }
         .icon { display: none; }
     </style>
 </head>
@@ -482,7 +493,6 @@
             <div class="charts-grid">
                 <div class="chart-card full-width">
                     <div class="chart-title">
-                        <span class="icon">📈</span>
                         <span>成功率趋势</span>
                     </div>
                     <div id="triggerTrendChart" class="chart-container"></div>
@@ -490,7 +500,6 @@
                 
                 <div class="chart-card">
                     <div class="chart-title">
-                        <span class="icon">🏷️</span>
                         <span>场景分类分布</span>
                     </div>
                     <div id="triggerCategoryChart" class="chart-container"></div>
@@ -498,7 +507,6 @@
                 
                 <div class="chart-card">
                     <div class="chart-title">
-                        <span class="icon">🔥</span>
                         <span>TOP5 高频场景</span>
                     </div>
                     <div id="triggerTopChart" class="chart-container"></div>
@@ -506,7 +514,6 @@
                 
                 <div class="chart-card full-width">
                     <div class="chart-title">
-                        <span class="icon">📅</span>
                         <span>活动日历热力图</span>
                     </div>
                     <div id="triggerHeatmapChart" class="chart-container"></div>
@@ -515,7 +522,6 @@
             
             <div class="insight-panel">
                 <div class="insight-title">
-                    <span>💡</span>
                     <span>触发型行为洞察</span>
                 </div>
                 <div id="triggerInsightsContent">
@@ -548,7 +554,6 @@
             <div class="charts-grid">
                 <div class="chart-card full-width">
                     <div class="chart-title">
-                        <span class="icon">📅</span>
                         <span>习惯坚持日历</span>
                     </div>
                     <div id="habitCalendarChart" class="chart-container large"></div>
@@ -556,7 +561,6 @@
                 
                 <div class="chart-card">
                     <div class="chart-title">
-                        <span class="icon">📊</span>
                         <span>习惯进度概览</span>
                     </div>
                     <div id="habitProgressChart" class="chart-container"></div>
@@ -564,7 +568,6 @@
                 
                 <div class="chart-card">
                     <div class="chart-title">
-                        <span class="icon">📈</span>
                         <span>每周完成趋势</span>
                     </div>
                     <div id="habitWeeklyChart" class="chart-container"></div>
@@ -572,7 +575,6 @@
                 
                 <div class="chart-card full-width">
                     <div class="chart-title">
-                        <span class="icon">🎯</span>
                         <span>习惯完成进度环</span>
                     </div>
                     <div id="habitGaugeChart" class="chart-container"></div>
@@ -581,7 +583,6 @@
             
             <div class="insight-panel">
                 <div class="insight-title">
-                    <span>💡</span>
                     <span>习惯养成洞察</span>
                 </div>
                 <div id="habitInsightsContent">
@@ -595,7 +596,6 @@
             <div class="charts-grid">
                 <div class="chart-card full-width">
                     <div class="chart-title">
-                        <span class="icon">⚖️</span>
                         <span>触发型 vs 习惯型对比</span>
                     </div>
                     <div id="comparisonRadarChart" class="chart-container large"></div>
@@ -603,7 +603,6 @@
                 
                 <div class="chart-card">
                     <div class="chart-title">
-                        <span class="icon">📊</span>
                         <span>成功率对比</span>
                     </div>
                     <div id="comparisonBarChart" class="chart-container"></div>
@@ -611,7 +610,6 @@
                 
                 <div class="chart-card">
                     <div class="chart-title">
-                        <span class="icon">📈</span>
                         <span>活动量对比</span>
                     </div>
                     <div id="comparisonVolumeChart" class="chart-container"></div>
@@ -620,7 +618,6 @@
             
             <div class="insight-panel">
                 <div class="insight-title">
-                    <span>💡</span>
                     <span>对比分析洞察</span>
                 </div>
                 <div id="comparisonInsightsContent">
