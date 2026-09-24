@@ -2789,6 +2789,103 @@
             #upload #epubUploadBtn { width: 100%; }
         }
 
+        /* 个人页：延续阅读器的纸张感与低饱和层次。 */
+        #user-center.content-section { color: #302d28; }
+        #user-center .me-page {
+            max-width: 900px;
+            padding: 8px 0 48px;
+        }
+        #user-center .me-profile {
+            position: relative;
+            min-height: 104px;
+            padding: 24px 26px;
+            margin-bottom: 18px;
+            border: 1px solid #e2dbcf;
+            border-radius: 12px;
+            background: #3d3934;
+            color: #fffdf8;
+            box-shadow: 0 8px 24px rgba(68, 58, 45, .06);
+        }
+        #user-center .me-avatar {
+            background: #b56b58;
+            border: 1px solid rgba(255, 253, 248, .35);
+        }
+        #user-center .me-profile-name { font-family: Georgia, 'Songti SC', 'STSong', serif; font-weight: 600; }
+        #user-center .me-edit {
+            border: 1px solid rgba(255, 253, 248, .3);
+            background: transparent;
+            color: #fffdf8;
+        }
+        #user-center .me-edit:hover { background: rgba(255, 253, 248, .1); }
+        #user-center .me-group {
+            margin-bottom: 16px;
+            border: 1px solid #e6e1d6;
+            border-radius: 10px;
+            background: #fffdf8;
+            box-shadow: 0 4px 14px rgba(68, 58, 45, .025);
+        }
+        #user-center .me-group-title {
+            padding: 17px 20px 7px;
+            color: #8c5b4c;
+            font-family: Georgia, 'Songti SC', 'STSong', serif;
+            font-size: .82rem;
+            font-weight: 600;
+            letter-spacing: .08em;
+        }
+        #user-center .me-hint {
+            padding: 4px 20px 13px;
+            color: #9a9285;
+        }
+        #user-center .me-row {
+            min-height: 58px;
+            padding: 12px 20px;
+            border-bottom-color: #eee9df;
+            background: transparent;
+            color: #302d28;
+        }
+        #user-center .me-row:hover,
+        #user-center .me-row:active:not(.me-row-static) { background: #fbfaf6; }
+        #user-center .me-row-icon {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #e6d8cc;
+            border-radius: 7px;
+            background: #f7eee8;
+            color: #a85e4e;
+        }
+        #user-center .me-row-title { color: #403a33; font-size: .94rem; }
+        #user-center .me-row-desc { color: #9a9285; }
+        #user-center .me-chevron { color: #b8aa9c; }
+        #user-center .me-link-btn,
+        #user-center .me-btn-primary {
+            border: 1px solid #c9a899;
+            background: #f8eee9;
+            color: #7d493d;
+            border-radius: 7px;
+        }
+        #user-center .me-link-btn:hover,
+        #user-center .me-btn-primary:hover { background: #f1e2db; }
+        #user-center .me-chip {
+            border-color: #ded5c9;
+            border-radius: 7px;
+            background: #fffdf8;
+            color: #766e63;
+        }
+        #user-center .me-chip:has(input:checked) {
+            border-color: #b98270;
+            background: #f8eee9;
+            color: #7d493d;
+        }
+        #user-center .me-switch-ui { background: #d7d0c6; }
+        #user-center .me-switch input:checked + .me-switch-ui { background: #a85e4e; }
+        #user-center .owner-table-wrap { margin: 0 20px 18px; }
+        #user-center .me-plan-table { border-color: #e6e1d6; }
+        #user-center .me-plan-table th {
+            background: #f8f5ef;
+            color: #7d493d;
+        }
+        #user-center .me-plan-table td { border-color: #eee9df; color: #655d54; }
+
         /* 今日概览样式 */
         .overview-stats {
             display: flex;
