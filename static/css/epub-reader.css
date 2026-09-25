@@ -41,4 +41,117 @@
 #epubNoteBox .epub-note-actions .btn:not(.btn-secondary) { background: #30352f !important; color: #fff !important; border: 1px solid #30352f !important; box-shadow: 0 4px 10px rgba(48, 53, 47, .14) !important; }
 #epubNoteBox .epub-note-actions .btn:not(.btn-secondary):hover { background: #222621 !important; border-color: #222621 !important; box-shadow: 0 5px 14px rgba(34, 38, 33, .18) !important; }
 @media (max-width: 900px) { .epub-reader { padding: 18px 14px; } .epub-reader-layout { grid-template-columns: 150px minmax(0, 1fr); } .epub-content { padding: 8px 24px 60px; } .epub-note-box { grid-column: 2; padding: 28px 0 60px; border-left: 0; border-top: 1px solid #e5e3dd; overflow: visible; } }
-@media (max-width: 700px) { .epub-reader-layout { display: flex; flex-direction: column; overflow: auto; } .epub-chapters { display: flex; flex-direction: row; flex: 0 0 auto; overflow-x: auto; border-right: 0; border-bottom: 1px solid #eee7d8; padding: 0 0 8px; } .epub-chapters button { flex: 0 0 auto; white-space: nowrap; } .epub-content { overflow: visible; padding: 24px 4px 48px; } .epub-note-box { flex: 0 0 auto; padding: 28px 4px 48px; } }
+@media (max-width: 700px) {
+    .epub-reader {
+        padding: 12px 12px calc(18px + env(safe-area-inset-bottom));
+    }
+
+    .epub-reader-head {
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .epub-reader-head strong {
+        min-width: 0;
+        padding-top: 8px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        font-size: .98rem;
+        line-height: 1.35;
+    }
+
+    .epub-reader-layout {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        overflow: auto;
+    }
+
+    .epub-chapters {
+        display: flex;
+        flex-direction: row;
+        flex: 0 0 auto;
+        min-width: 0;
+        overflow-x: auto;
+        border-right: 0;
+        border-bottom: 1px solid #eee7d8;
+        padding: 0 0 8px;
+    }
+
+    .epub-chapters button {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .epub-content {
+        min-width: 0;
+        overflow: visible;
+        padding: 20px 4px 32px;
+    }
+
+    .epub-content h3 {
+        margin-bottom: 18px;
+        font-size: 1.3rem;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+    }
+
+    .epub-chapter-text {
+        min-width: 0;
+        font-size: 1rem;
+        line-height: 1.9;
+        overflow-wrap: anywhere;
+    }
+
+    .epub-note-box {
+        flex: 0 0 auto;
+        min-width: 0;
+        padding: 24px 4px calc(48px + env(safe-area-inset-bottom));
+        border-top: 1px solid #e5e3dd;
+        overflow: visible;
+    }
+
+    .epub-prompt {
+        margin-bottom: 14px;
+        font-size: 1.02rem;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    .epub-note-box blockquote {
+        margin-bottom: 16px;
+        overflow-wrap: anywhere;
+    }
+
+    .epub-thought-types {
+        gap: 6px;
+    }
+
+    .epub-thought-types label {
+        flex: 1 1 auto;
+        min-width: 0;
+        text-align: center;
+    }
+
+    .epub-action-choice {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+
+    .epub-action-choice label {
+        min-height: 42px;
+        padding: 4px 8px;
+        text-align: center;
+    }
+
+    .epub-note-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    #epubNoteBox .epub-note-actions .btn {
+        width: 100%;
+        min-height: 48px !important;
+    }
+}
