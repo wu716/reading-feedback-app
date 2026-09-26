@@ -1,6 +1,6 @@
 .epub-upload-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 16px 0 8px; }
-.epub-shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 18px; }
-.epub-book-card { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-height: 96px; padding: 16px; border: 1px solid #e6e1d6; border-radius: 8px; background: #fffdf8; color: #3e3934; text-align: left; cursor: pointer; }
+.epub-shelf { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; margin-top: 18px; }
+.epub-book-card { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-height: 132px; padding: 16px; border: 1px solid #e6e1d6; border-radius: 8px; background: #fffdf8; color: #3e3934; text-align: left; cursor: pointer; }
 .epub-book-actions { display: flex; gap: 8px; width: 100%; margin-top: auto; padding-top: 8px; border-top: 1px solid #eee7dc; }
 .epub-book-actions button { border: 1px solid #d8cbbd; border-radius: 6px; background: #fffdf8; color: #765541; cursor: pointer; padding: 5px 9px; font-size: .78rem; }
 .epub-book-actions button:hover { background: #f5eee6; }
