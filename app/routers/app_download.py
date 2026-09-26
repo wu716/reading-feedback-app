@@ -251,12 +251,14 @@ def build_info(request: Request | None = None) -> dict:
         int(meta.get("minVersionCode") or 0),
         MIN_SHELL_VERSION_CODE,
     )
-    reported_code = max(
-        int(meta.get("versionCode") or 0),
-        min_code,
-        int(apk_code or 0),
-    )
-    reported_name = str(meta.get("versionName") or "") or MIN_SHELL_VERSION_NAME
+    metadata_code = int(meta.get("versionCode") or 0)
+    package_code = int(apk_code or 0)
+    package_ready = apk is not None and package_code >= max(metadata_code, min_code)
+    # Never advertise metadata for a different (usually older) APK file.
+    reported_code = package_code if apk is not None else 0
+    reported_name = (
+        str(meta.get("versionName") or "") or MIN_SHELL_VERSION_NAME
+    ) if package_ready else ""
     if _version_less(reported_name, MIN_SHELL_VERSION_NAME):
         reported_name = MIN_SHELL_VERSION_NAME
     min_name = str(meta.get("minVersionName") or "") or MIN_SHELL_VERSION_NAME
@@ -264,7 +266,7 @@ def build_info(request: Request | None = None) -> dict:
         min_name = MIN_SHELL_VERSION_NAME
     # 只有确认有可用安装包才标 available，避免客户端反复下到旧包死循环。
     info = {
-        "available": apk is not None,
+        "available": package_ready,
         "filename": meta["filename"],
         "versionCode": reported_code,
         "versionName": reported_name,
