@@ -138,6 +138,16 @@
         $('epubSelectedText').textContent = `“${selectedText}”`;
         $('epubNoteInput').value = '';
         $('epubNoteBox').hidden = false;
+        if (window.matchMedia('(max-width: 700px)').matches) {
+            $('epubNoteBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(() => $('epubNoteInput')?.focus({ preventScroll: true }), 350);
+        }
+    }
+
+    function openMobileNoteBox() {
+        if (!window.matchMedia('(max-width: 700px)').matches) return;
+        $('epubNoteBox')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        showMessage('请先在正文中选中一句话，再写下你的理解', 'info');
     }
 
     async function saveNote() {
@@ -200,6 +210,7 @@
         });
         $('epubSaveNoteBtn').addEventListener('click', () => saveNote().catch((e) => showMessage(e.message, 'error')));
         $('epubActionBtn').addEventListener('click', makeAction);
+        $('epubMobileNoteTrigger')?.addEventListener('click', openMobileNoteBox);
         document.querySelectorAll('input[name="epubActionMode"]').forEach((input) => input.addEventListener('change', updateActionMode));
         updateActionMode();
         document.querySelectorAll('input[name="epubThoughtType"]').forEach((input) => input.addEventListener('change', updateThoughtType));
