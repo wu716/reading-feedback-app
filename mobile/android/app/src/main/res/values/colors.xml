@@ -5,4 +5,5 @@
     <color name="ic_launcher_background">#1A3A6E</color>
     <color name="white">#FFFFFF</color>
     <color name="punch_bg">#F3EFE6</color>
+    <color name="reader_background">#F8F8F6</color>
 </resources>
