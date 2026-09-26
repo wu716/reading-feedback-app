@@ -20,7 +20,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260924mobile1">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd4">
-    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260926task-mobile1">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260926task-mobile2">
     <link rel="stylesheet" href="/static/css/epub-reader.css?v=20260926notes1">
     <link rel="stylesheet" href="/static/css/habit-program.css?v=20260920habit1">
     <style>
@@ -4493,6 +4493,10 @@
                                 <button type="button" class="flow-chip active" data-new-act="priority" data-value="0" aria-pressed="true" data-i18n="schedule.priority.normal">普通</button>
                             </div>
                         </div>
+                        <label class="flow-attribute-group flow-duration-group">
+                            <span class="flow-attribute-label" data-i18n="schedule.estimatedDuration">预计用时</span>
+                            <input type="text" id="scheduleAddDuration" class="flow-minutes" maxlength="20" placeholder="如 1小时30分" data-i18n-placeholder="schedule.durationPlaceholder" aria-label="预计用时">
+                        </label>
                     </div>
                 </div>
                 <div id="scheduleList" class="home-schedule-list"></div>
@@ -9411,7 +9415,7 @@
     <script src="/static/reminder_notification.js?v=20260920later2"></script>
     <script src="/static/js/app-tabbar.js?v=20260924mobile1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
-    <script src="/static/js/daily-schedule.js?v=20260924single2"></script>
+                                    <script src="/static/js/daily-schedule.js?v=20260926duration1"></script>
     <script src="/static/js/epub-reader.js?v=20260926notes1"></script>
     <script src="/static/js/habit-program.js?v=20260920habit1"></script>
     <script src="/static/js/time-log.js?v=20260920habit1"></script>

@@ -8,6 +8,7 @@
     let sortReturnMode = 'flow';
     let newTaskFamiliarity = null;
     let newTaskPriority = 0;
+    let newTaskDuration = '';
     let splitFor = null;
     let editingId = null;
     let suggestions = [];
@@ -644,6 +645,7 @@
                 action_id: actionId || null,
                 familiarity: attributes?.familiarity || null,
                 priority: Number.isInteger(attributes?.priority) ? attributes.priority : 0,
+                estimated_minutes: Number.isInteger(attributes?.estimatedMinutes) ? attributes.estimatedMinutes : null,
             }),
         });
         splitFor = null;
@@ -1028,13 +1030,23 @@
         });
         document.getElementById('scheduleAddBtn')?.addEventListener('click', () => {
             const input = document.getElementById('scheduleAddInput');
+            const durationValue = newTaskDuration.trim();
+            const estimatedMinutes = durationValue ? parseDuration(durationValue) : null;
+            if (durationValue && !Number.isFinite(estimatedMinutes)) {
+                if (typeof showMessage === 'function') showMessage(t('schedule.durationInvalid', '请输入例如 30分钟、1小时或1小时30分'), 'error');
+                return;
+            }
             addTask(input?.value, null, null, false, {
                 familiarity: newTaskFamiliarity,
                 priority: newTaskPriority,
+                estimatedMinutes,
             }).then(() => {
                 if (input) input.value = '';
+                const durationInput = document.getElementById('scheduleAddDuration');
+                if (durationInput) durationInput.value = '';
                 newTaskFamiliarity = null;
                 newTaskPriority = 0;
+                newTaskDuration = '';
                 updateAddComposer();
             }).catch((e) => {
                 if (typeof showMessage === 'function') showMessage(e.message, 'error');
@@ -1055,6 +1067,9 @@
                 e.preventDefault();
                 document.getElementById('scheduleAddBtn')?.click();
             }
+        });
+        document.getElementById('scheduleAddDuration')?.addEventListener('input', (e) => {
+            newTaskDuration = e.target.value;
         });
         document.getElementById('scheduleLaterAddBtn')?.addEventListener('click', () => {
             const input = document.getElementById('scheduleLaterInput');

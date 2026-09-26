@@ -39,6 +39,7 @@ class TaskCreate(BaseModel):
     action_id: Optional[int] = None
     priority: int = Field(0, ge=0, le=2)
     familiarity: Optional[str] = None
+    estimated_minutes: Optional[int] = Field(None, ge=0, le=24 * 60)
 
     @field_validator("text")
     @classmethod
@@ -439,6 +440,7 @@ async def create_task(
         sort_order=next_sort_order(db, current_user.id, day, parent_id),
         priority=body.priority,
         familiarity=body.familiarity,
+        estimated_minutes=body.estimated_minutes,
         flow_order=next_flow_order(db, current_user.id, day),
     )
     db.add(task)

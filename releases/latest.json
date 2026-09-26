@@ -1,8 +1,8 @@
 {
-  "versionCode": 24,
-  "versionName": "1.5.8",
+  "versionCode": 25,
+  "versionName": "1.5.9",
   "filename": "shuran.apk",
-  "notes": "手机阅读器笔记入口与状态栏优化。请覆盖安装，登录会保留。",
+  "notes": "任务规划支持在添加任务时直接设置预计用时。请覆盖安装，登录会保留。",
   "require_shell": true,
   "force": true,
   "minVersionCode": 20,
