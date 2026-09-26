@@ -236,7 +236,7 @@
         }
         if (addRow) addRow.hidden = mode !== 'list';
         const later = document.getElementById('scheduleLater');
-        if (later) later.hidden = false;
+        if (later) later.hidden = mode !== 'list';
         updateAddComposer();
     }
 

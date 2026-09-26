@@ -102,11 +102,11 @@
     }
 
     #schedule.content-section.active > .home-schedule {
-        flex: 0 1 auto;
-        min-height: auto;
+        flex: 1 1 auto;
+        min-height: 0;
         display: flex;
         flex-direction: column;
-        overflow: visible;
+        overflow: hidden;
     }
 
     #actions.content-section.active {
@@ -138,9 +138,9 @@
     }
 
     #schedule .home-schedule-list {
-        flex: 0 1 auto;
-        min-height: 72px;
-        overflow: visible;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
         max-height: none;
     }
 
