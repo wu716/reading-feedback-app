@@ -15,6 +15,17 @@
     padding: 28px 30px 36px;
 }
 
+/* 设计/拆解任务时，底部的“以后想做”不应占用主任务区空间。 */
+#schedule .home-schedule.is-planning .schedule-later {
+    display: none;
+}
+
+#schedule .home-schedule.is-planning .home-schedule-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+}
+
 .home-schedule-head {
     display: flex;
     flex-wrap: wrap;
