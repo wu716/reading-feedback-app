@@ -242,6 +242,28 @@ async def get_book(book_id: int, current_user: User = Depends(get_current_active
     return _book_response(_owned_book(db, book_id, current_user.id))
 
 
+@router.get("/{book_id}/notes")
+async def list_book_notes(book_id: int, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    book = _owned_book(db, book_id, current_user.id)
+    return {"items": [{
+        "id": note.id, "chapter_id": note.chapter_id, "chapter_title": note.chapter.title,
+        "selected_text": note.selected_text, "note_text": note.note_text,
+        "thought_type": note.thought_type, "relation_type": note.relation_type,
+        "created_at": note.created_at,
+    } for note in sorted(book.notes, key=lambda item: item.created_at or 0, reverse=True)]}
+
+
+@router.delete("/{book_id}")
+async def delete_book(book_id: int, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    book = _owned_book(db, book_id, current_user.id)
+    storage_path = Path(book.storage_path)
+    db.delete(book)
+    db.commit()
+    if storage_path.exists():
+        storage_path.unlink()
+    return {"deleted": True, "book_id": book_id}
+
+
 @router.get("/{book_id}/chapters/{chapter_id}")
 async def get_chapter(book_id: int, chapter_id: int, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     book = _owned_book(db, book_id, current_user.id)

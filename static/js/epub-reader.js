@@ -25,10 +25,35 @@
             return;
         }
         shelf.innerHTML = books.map((book) => `
-            <button type="button" class="epub-book-card" data-book-id="${book.id}">
+            <div class="epub-book-card" data-book-id="${book.id}">
                 <strong>${esc(book.title)}</strong>
                 <span>${book.chapter_count} 个章节 · ${Math.round(book.file_size / 1024 / 1024)}MB</span>
-            </button>`).join('');
+                <div class="epub-book-actions"><button type="button" data-book-action="notes">查看笔记</button><button type="button" data-book-action="delete">删除书籍</button></div>
+            </div>`).join('');
+    }
+
+    function downloadNotes(book, notes) {
+        const blob = new Blob([JSON.stringify({ book: book.title, exported_at: new Date().toISOString(), notes }, null, 2)], { type: 'application/json' });
+        const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `${book.title}-读书笔记.json`; link.click(); URL.revokeObjectURL(link.href);
+    }
+
+    async function viewNotes(book) {
+        const data = await api(`/${book.id}/notes`);
+        if (!data.items?.length) return showMessage('这本书还没有保存的想法', 'info');
+        const old = document.getElementById('epubNotesOverlay'); old?.remove();
+        const overlay = document.createElement('div'); overlay.id = 'epubNotesOverlay'; overlay.className = 'epub-notes-overlay';
+        overlay.innerHTML = `<div class="epub-notes-dialog"><div class="epub-notes-dialog-head"><strong>${esc(book.title)} · 我的笔记</strong><button type="button" data-close>关闭</button></div><div class="epub-notes-list">${data.items.map((note) => `<article><div class="epub-note-meta">${esc(note.chapter_title)} · ${esc(note.thought_type)}${note.relation_type ? ` · ${esc(note.relation_type)}` : ''}</div><blockquote>${esc(note.selected_text)}</blockquote><p>${esc(note.note_text)}</p></article>`).join('')}</div><button type="button" class="btn btn-secondary" data-download>下载笔记备份</button></div>`;
+        document.body.appendChild(overlay);
+        overlay.querySelector('[data-close]').onclick = () => overlay.remove();
+        overlay.querySelector('[data-download]').onclick = () => downloadNotes(book, data.items);
+    }
+
+    async function deleteBook(book) {
+        const data = await api(`/${book.id}/notes`);
+        if (data.items?.length) downloadNotes(book, data.items);
+        if (!confirm(`确定删除《${book.title}》吗？${data.items?.length ? `已先下载 ${data.items.length} 条笔记备份。` : ''}\n书籍、章节和数据库中的笔记都会删除。`)) return;
+        await api(`/${book.id}`, { method: 'DELETE' });
+        showMessage('书籍已删除', 'success'); await loadBooks();
     }
 
     async function loadBooks() {
@@ -219,6 +244,9 @@
         $('epubShelf').addEventListener('click', (event) => {
             const card = event.target.closest('[data-book-id]');
             const book = books.find((item) => item.id === Number(card?.dataset.bookId));
+            const action = event.target.closest('[data-book-action]')?.dataset.bookAction;
+            if (book && action === 'notes') return viewNotes(book).catch((e) => showMessage(e.message, 'error'));
+            if (book && action === 'delete') return deleteBook(book).catch((e) => showMessage(e.message, 'error'));
             if (book) openBook(book).catch((e) => showMessage(e.message, 'error'));
         });
         $('epubChapterList').addEventListener('click', (event) => {
