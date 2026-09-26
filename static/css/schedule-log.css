@@ -12,18 +12,7 @@
     max-width: none;
     background: #fffcf6;
     border: 1px solid #e6e1d6;
-    padding: 28px 30px 36px;
-}
-
-/* 设计/拆解任务时，底部的“以后想做”不应占用主任务区空间。 */
-#schedule .home-schedule.is-planning .schedule-later {
-    display: none;
-}
-
-#schedule .home-schedule.is-planning .home-schedule-list {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: auto;
+    padding: 22px 22px 28px;
 }
 
 .home-schedule-head {
@@ -126,15 +115,15 @@
 
 .flow-add-row {
     display: grid;
-    gap: 16px;
-    margin: 24px 0 14px;
-    padding-bottom: 10px;
+    gap: 12px;
+    margin: 18px 0 8px;
+    padding-bottom: 6px;
 }
 
 .flow-add-main {
     display: flex;
     align-items: baseline;
-    gap: 16px;
+    gap: 12px;
     border-bottom: 1px solid #d8d1c4;
 }
 
@@ -142,8 +131,8 @@
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: 16px 28px;
-    padding-bottom: 14px;
+    gap: 14px 24px;
+    padding-bottom: 10px;
 }
 
 .flow-add-row input {
@@ -151,8 +140,8 @@
     border: none;
     background: transparent;
     border-radius: 0;
-    padding: 12px 0;
-    font-size: 1.04rem;
+    padding: 8px 0;
+    font-size: 0.98rem;
     font-family: "Noto Serif SC", "Songti SC", serif;
 }
 

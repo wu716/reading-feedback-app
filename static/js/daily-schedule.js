@@ -217,8 +217,6 @@
         const backBtn = document.getElementById('scheduleBackBtn');
         const sortBtn = document.getElementById('scheduleSortBtn');
         const addRow = document.getElementById('scheduleAddRow');
-        const schedule = document.getElementById('homeSchedule');
-        if (schedule) schedule.classList.toggle('is-planning', mode !== 'list');
         if (doneBtn) doneBtn.hidden = mode !== 'design';
         if (designBtn) {
             designBtn.hidden = mode !== 'list';
