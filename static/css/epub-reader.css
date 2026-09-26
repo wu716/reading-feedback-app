@@ -24,7 +24,7 @@
 .epub-chapters { display: flex; flex-direction: column; gap: 4px; border-right: 1px solid #e5e3dd; padding: 8px 24px 80px 0; }
 .epub-chapters button { border: 0; border-radius: 5px; padding: 8px; background: transparent; color: #70685e; text-align: left; cursor: pointer; }
 .epub-chapters button.active, .epub-chapters button:hover { background: #f2ede5; color: #5c3d36; }
-.epub-content { min-width: 0; min-height: 0; overflow: auto; padding: 8px clamp(32px, 4vw, 64px) 80px; }
+.epub-content { min-width: 0; min-height: 0; overflow: auto; padding: 8px clamp(32px, 4vw, 64px) 180px; scroll-padding-bottom: 180px; }
 .epub-content { position: relative; z-index: 0; }
 .epub-content h3 { margin: 0 0 28px; font-size: 1.55rem; font-weight: 650; letter-spacing: -.02em; }
 .epub-mobile-note-trigger { display: none; }
@@ -54,7 +54,7 @@
 #epubNoteBox .epub-note-actions .btn-secondary:hover { background: #f5f4f0 !important; color: #25231f !important; border-color: #bdb9b0 !important; }
 #epubNoteBox .epub-note-actions .btn:not(.btn-secondary) { background: #30352f !important; color: #fff !important; border: 1px solid #30352f !important; box-shadow: 0 4px 10px rgba(48, 53, 47, .14) !important; }
 #epubNoteBox .epub-note-actions .btn:not(.btn-secondary):hover { background: #222621 !important; border-color: #222621 !important; box-shadow: 0 5px 14px rgba(34, 38, 33, .18) !important; }
-@media (max-width: 900px) { .epub-reader { padding: 18px 14px; } .epub-reader-layout { grid-template-columns: 150px minmax(0, 1fr); } .epub-content { padding: 8px 24px 60px; } .epub-note-box { grid-column: 2; padding: 28px 0 60px; border-left: 0; border-top: 1px solid #e5e3dd; overflow: visible; } }
+@media (max-width: 900px) { .epub-reader { padding: 18px 14px; } .epub-reader-layout { grid-template-columns: 150px minmax(0, 1fr); } .epub-content { padding: 8px 24px 140px; scroll-padding-bottom: 140px; } .epub-note-box { grid-column: 2; padding: 28px 0 60px; border-left: 0; border-top: 1px solid #e5e3dd; overflow: visible; } }
 @media (max-width: 700px) {
     .epub-reader {
         padding: 12px 12px calc(18px + env(safe-area-inset-bottom));
@@ -102,7 +102,8 @@
         flex: 0 0 auto;
         min-width: 0;
         overflow: visible;
-        padding: 20px 4px 32px;
+        padding: 20px 4px 120px;
+        scroll-padding-bottom: 120px;
         isolation: isolate;
     }
 
