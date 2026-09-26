@@ -510,7 +510,7 @@
         const count = laterItems.length;
         if (root) root.classList.toggle('is-collapsed', !laterOpen);
         if (toggle) toggle.setAttribute('aria-expanded', laterOpen ? 'true' : 'false');
-        if (body) body.hidden = false;
+        if (body) body.hidden = !laterOpen;
         if (summary) {
             const countLabel = count
                 ? withCount(t('schedule.later.count', '{count} 个'), count)

@@ -115,9 +115,9 @@
 
 .flow-add-row {
     display: grid;
-    gap: 12px;
-    margin: 18px 0 8px;
-    padding-bottom: 6px;
+    gap: 8px;
+    margin: 12px 0 4px;
+    padding-bottom: 4px;
 }
 
 .flow-add-main {
@@ -131,8 +131,8 @@
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: 14px 24px;
-    padding-bottom: 10px;
+    gap: 10px 20px;
+    padding-bottom: 6px;
 }
 
 .flow-add-row input {
@@ -140,8 +140,8 @@
     border: none;
     background: transparent;
     border-radius: 0;
-    padding: 8px 0;
-    font-size: 0.98rem;
+    padding: 5px 0;
+    font-size: 0.94rem;
     font-family: "Noto Serif SC", "Songti SC", serif;
 }
 
@@ -652,8 +652,8 @@
 }
 
 .schedule-later {
-    margin-top: 28px;
-    padding-top: 18px;
+    margin-top: 12px;
+    padding-top: 8px;
     border-top: 1px solid #e6e1d6;
 }
 
@@ -662,8 +662,8 @@
 }
 
 .schedule-later.is-collapsed {
-    margin-top: 18px;
-    padding-top: 10px;
+    margin-top: 8px;
+    padding-top: 6px;
 }
 
 .schedule-later-toggle {
@@ -672,7 +672,7 @@
     justify-content: space-between;
     gap: 12px;
     width: 100%;
-    min-height: 32px;
+    min-height: 26px;
     border: none;
     background: transparent;
     color: inherit;

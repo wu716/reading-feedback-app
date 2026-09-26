@@ -4496,6 +4496,20 @@
                     </div>
                 </div>
                 <div id="scheduleList" class="home-schedule-list"></div>
+                <div class="schedule-later is-collapsed" id="scheduleLater">
+                    <button type="button" class="schedule-later-toggle" id="scheduleLaterToggle" aria-expanded="false" aria-controls="scheduleLaterBody">
+                        <span class="schedule-later-kicker" data-i18n="schedule.later.title">以后想做</span>
+                        <span class="schedule-later-summary" id="scheduleLaterSummary">展开</span>
+                    </button>
+                    <div class="schedule-later-body" id="scheduleLaterBody" hidden>
+                        <p class="schedule-later-hint" data-i18n="schedule.later.hint">还没规划也可以先记下来，不进今天、不提醒</p>
+                        <div class="flow-add-row" id="scheduleLaterAddRow">
+                            <input type="text" id="scheduleLaterInput" maxlength="500" placeholder="想做，但还没具体规划" data-i18n-placeholder="schedule.later.placeholder">
+                            <button type="button" class="flow-solid-btn" id="scheduleLaterAddBtn" data-i18n="schedule.later.add">记下</button>
+                        </div>
+                        <div id="scheduleLaterList" class="schedule-later-list"></div>
+                    </div>
+                </div>
             </div>
         </section>
         
