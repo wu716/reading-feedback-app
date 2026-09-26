@@ -12,7 +12,7 @@
     max-width: none;
     background: #fffcf6;
     border: 1px solid #e6e1d6;
-    padding: 22px 22px 28px;
+    padding: 28px 30px 36px;
 }
 
 .home-schedule-head {
@@ -115,15 +115,15 @@
 
 .flow-add-row {
     display: grid;
-    gap: 12px;
-    margin: 18px 0 8px;
-    padding-bottom: 6px;
+    gap: 16px;
+    margin: 24px 0 14px;
+    padding-bottom: 10px;
 }
 
 .flow-add-main {
     display: flex;
     align-items: baseline;
-    gap: 12px;
+    gap: 16px;
     border-bottom: 1px solid #d8d1c4;
 }
 
@@ -131,8 +131,8 @@
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: 14px 24px;
-    padding-bottom: 10px;
+    gap: 16px 28px;
+    padding-bottom: 14px;
 }
 
 .flow-add-row input {
@@ -140,8 +140,8 @@
     border: none;
     background: transparent;
     border-radius: 0;
-    padding: 8px 0;
-    font-size: 0.98rem;
+    padding: 12px 0;
+    font-size: 1.04rem;
     font-family: "Noto Serif SC", "Songti SC", serif;
 }
 
