@@ -300,6 +300,10 @@
                         <button type="button" class="flow-chip${!task.priority ? ' active' : ''}" data-act="priority" data-value="0">${escapeHtml(t('schedule.priority.normal', '普通'))}</button>
                     </div>
                 </div>
+                <label class="flow-attribute-group flow-duration-group">
+                    <span class="flow-attribute-label">${escapeHtml(t('schedule.estimatedDuration', '预计用时'))}</span>
+                    <input type="text" class="flow-minutes" maxlength="20" placeholder="${escapeHtml(t('schedule.durationPlaceholder', '如 1小时30分'))}" value="${escapeHtml(durationInputValue(task.estimated_minutes))}" data-act="duration" aria-label="${escapeHtml(t('schedule.estimatedDuration', '预计用时'))}">
+                </label>
             </div>`;
     }
 
