@@ -1,8 +1,8 @@
 {
-  "versionCode": 26,
-  "versionName": "1.5.10",
+  "versionCode": 27,
+  "versionName": "1.5.11",
   "filename": "shuran.apk",
-  "notes": "任务规划支持直接设置预计用时，并优化电脑端日程空白区域。请覆盖安装，登录会保留。",
+  "notes": "优化电脑端任务排序拖动体验，仅使用左侧手柄拖动。请覆盖安装，登录会保留。",
   "require_shell": true,
   "force": true,
   "minVersionCode": 20,

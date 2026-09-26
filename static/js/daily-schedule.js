@@ -18,6 +18,7 @@
     let dragTaskId = null;
     let dragPressTimer = null;
     let dragActive = false;
+    let dragArmed = false;
     let suppressClickUntil = 0;
     let dragStartX = 0;
     let dragStartY = 0;
@@ -932,9 +933,11 @@
     function bindDragSorting(list) {
         list?.addEventListener('pointerdown', (e) => {
             if (mode !== 'sort') return;
+            dragArmed = false;
             if (!e.target.closest('[data-sort-handle]')) return;
             const article = e.target.closest('[data-task-id]');
             if (!article) return;
+            dragArmed = true;
             clearDragPress();
             dragStartX = e.clientX;
             dragStartY = e.clientY;
@@ -947,6 +950,7 @@
 
         list?.addEventListener('pointermove', (e) => {
             if (!dragActive) {
+                if (!dragArmed || dragPointerId !== e.pointerId) return;
                 const moved = Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY);
                 if (dragPressTimer && moved > 8) clearDragPress();
                 if (e.pointerType === 'mouse' && moved > 6) {
@@ -956,12 +960,12 @@
                 return;
             }
             e.preventDefault();
-            updateDragAutoScroll(e.clientY);
             markDragTarget(dragTargetAt(e.clientX, e.clientY));
         });
 
         list?.addEventListener('pointerup', async (e) => {
             clearDragPress();
+            dragArmed = false;
             if (!dragActive) return;
             try {
                 const target = dragTargetAt(e.clientX, e.clientY);
@@ -972,6 +976,7 @@
         });
         list?.addEventListener('pointercancel', () => {
             clearDragPress();
+            dragArmed = false;
             dragActive = false;
             dragTaskId = null;
             dragPointerId = null;
