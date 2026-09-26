@@ -944,6 +944,59 @@ body.tl-composing .tl-fab {
     cursor: pointer;
 }
 
+@media (max-width: 639px) {
+    /* 任务展示区：属性和操作分成独立行，避免窄屏互相挤压。 */
+    .flow-task {
+        min-width: 0;
+        padding: 16px 0 14px;
+        overflow: visible;
+    }
+
+    .flow-task-main,
+    .flow-task-text {
+        min-width: 0;
+    }
+
+    .flow-task-attributes {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+        margin: 14px 0 0 26px;
+    }
+
+    .flow-attribute-group {
+        min-width: 0;
+    }
+
+    .flow-attribute-options {
+        width: 100%;
+        box-sizing: border-box;
+        justify-content: stretch;
+    }
+
+    .flow-attribute-options .flow-chip {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 0 6px;
+        white-space: nowrap;
+    }
+
+    .flow-task-actions {
+        clear: both;
+        align-items: center;
+        gap: 8px 18px;
+        margin: 14px 0 0 26px;
+        padding-top: 10px;
+        border-top: 1px solid #f0ebe3;
+    }
+
+    .flow-task-actions button,
+    .flow-task-actions .flow-mini-btn {
+        min-height: 40px;
+        padding: 0 4px;
+    }
+}
+
 .tl-kind-picks button.is-on,
 .tl-when-picks button.is-on {
     background: #1c1b19;
