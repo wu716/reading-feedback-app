@@ -1,6 +1,6 @@
 {
-  "versionCode": 29,
-  "versionName": "1.5.13",
+  "versionCode": 30,
+  "versionName": "1.5.14",
   "filename": "shuran.apk",
   "notes": "修复任务列表滚动，并恢复排序页面隐藏以后想做区域。请覆盖安装，登录会保留。",
   "require_shell": true,

@@ -30,6 +30,7 @@ MAX_BOOK_BYTES = 120 * 1024 * 1024
 MAX_USER_BYTES = 500 * 1024 * 1024
 MAX_CHAPTER_TEXT = 2_000_000
 BOOK_ROOT = Path("uploads") / "ebooks"
+GENERIC_CHAPTER_TITLES = {"converted ebook", "converted epub", "ebook"}
 
 
 class NoteCreate(BaseModel):
@@ -61,16 +62,22 @@ class TextParser(HTMLParser):
         self.parts = []
         self.title = ""
         self.in_title = False
+        self.heading = ""
+        self.in_heading = False
 
     def handle_starttag(self, tag, attrs):
         if tag.lower() in {"br", "p", "div", "li", "h1", "h2", "h3", "h4", "section"}:
             self.parts.append("\n")
         if tag.lower() == "title":
             self.in_title = True
+        if tag.lower() in {"h1", "h2", "h3", "h4"} and not self.heading:
+            self.in_heading = True
 
     def handle_endtag(self, tag):
         if tag.lower() == "title":
             self.in_title = False
+        if tag.lower() in {"h1", "h2", "h3", "h4"}:
+            self.in_heading = False
         if tag.lower() in {"p", "div", "li", "h1", "h2", "h3", "h4", "section"}:
             self.parts.append("\n")
 
@@ -80,6 +87,8 @@ class TextParser(HTMLParser):
             return
         if self.in_title and not self.title:
             self.title = value
+        if self.in_heading and not self.heading:
+            self.heading = value
         self.parts.append(value)
 
     @property
@@ -111,12 +120,24 @@ def _parse_epub(path: Path):
             metadata = _find(opf, "title")
             title = (metadata[0].text or "").strip() if metadata else ""
             manifest = {}
+            toc_path = None
             for item in _find(opf, "item"):
                 item_id = item.attrib.get("id")
                 href = item.attrib.get("href")
                 media = item.attrib.get("media-type", "")
                 if item_id and href and ("html" in media or "xhtml" in media):
                     manifest[item_id] = posixpath.normpath(posixpath.join(opf_dir, unquote(href)))
+                if media == "application/x-dtbncx+xml" and href:
+                    toc_path = posixpath.normpath(posixpath.join(opf_dir, unquote(href)))
+            toc_titles = {}
+            if toc_path and toc_path in names:
+                toc = ET.fromstring(book.read(toc_path))
+                for nav_point in _find(toc, "navPoint"):
+                    label = next(iter(_find(nav_point, "text")), None)
+                    content = next(iter(_find(nav_point, "content")), None)
+                    if label is not None and content is not None:
+                        src = posixpath.normpath(posixpath.join(opf_dir, unquote(content.attrib.get("src", "").split("#", 1)[0])))
+                        toc_titles.setdefault(src, (label.text or "").strip())
             spine = []
             for itemref in _find(opf, "itemref"):
                 href = manifest.get(itemref.attrib.get("idref"))
@@ -130,7 +151,11 @@ def _parse_epub(path: Path):
                 parser.feed(book.read(href).decode("utf-8", "replace"))
                 text = parser.text[:MAX_CHAPTER_TEXT]
                 if text:
-                    chapters.append({"chapter_index": len(chapters), "title": parser.title or f"第 {index + 1} 章", "href": href, "text_content": text})
+                    chapter_title = parser.heading or parser.title
+                    if chapter_title.strip().casefold() in GENERIC_CHAPTER_TITLES:
+                        chapter_title = ""
+                    chapter_title = toc_titles.get(href) or chapter_title
+                    chapters.append({"chapter_index": len(chapters), "title": chapter_title or f"第 {index + 1} 章", "href": href, "text_content": text})
             if not chapters:
                 raise ValueError("EPUB 中没有可阅读的章节")
             return title, chapters
