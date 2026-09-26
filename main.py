@@ -58,7 +58,7 @@ _openapi_enabled = None if settings.is_production else "/openapi.json"
 app = FastAPI(
     title=settings.app_name,
     description="读书笔记实践反馈系统 - 从学习到行动的完整闭环",
-    version="1.0.5",
+    version="1.0.6",
     docs_url=_docs_enabled,
     redoc_url=_redoc_enabled,
     openapi_url=_openapi_enabled,
@@ -75,7 +75,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20260926epub-shelf2"
+STATIC_UI_VERSION = "20260926epub-reading3"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",

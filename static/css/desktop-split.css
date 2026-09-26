@@ -101,6 +101,60 @@
         margin-bottom: 12px;
     }
 
+    /* 阅读页按内容排版，避免书架外层卡片被分屏布局撑满。 */
+    body:has(#upload.epub-only.active) .app-header {
+        background: #faf7f1;
+        color: #3d3934;
+        border-bottom: 1px solid #e9e1d6;
+        box-shadow: none;
+    }
+
+    body:has(#upload.epub-only.active) .app-header .header-icon-btn {
+        background: #eee7dd;
+        color: #5b4b41;
+    }
+
+    body:has(#upload.epub-only.active) .app-header .reminder-bell-btn {
+        background: transparent;
+    }
+
+    body:has(#upload.epub-only.active) .app-header .header-mark {
+        border-color: #a97869;
+        color: #8c5b4c;
+    }
+
+    body:has(#upload.epub-only.active) .app-main {
+        background: #f5f0e8;
+    }
+
+    body:has(#upload.epub-only.active) .app-sidebar {
+        background: #faf7f1;
+        box-shadow: inset -1px 0 #e9e1d6;
+    }
+
+    #upload.epub-only.active {
+        align-items: center;
+        overflow: auto;
+        padding: 18px 16px 56px;
+    }
+
+    #upload.epub-only.active > .section-header,
+    #upload.epub-only.active > .card {
+        width: min(100%, 1060px);
+        max-width: 1060px;
+        flex: 0 0 auto;
+    }
+
+    #upload.epub-only.active > .section-header {
+        margin-bottom: 18px;
+    }
+
+    #upload.epub-only.active > .card {
+        min-height: auto;
+        overflow: visible;
+        box-shadow: 0 12px 36px rgba(68, 58, 45, .045);
+    }
+
     #schedule.content-section.active > .home-schedule {
         flex: 1 1 auto;
         min-height: 0;
@@ -121,7 +175,7 @@
         display: block;
     }
 
-    #upload.content-section.active > .card,
+    #upload.content-section.active:not(.epub-only) > .card,
     #stats.content-section.active > .card,
     #owner.content-section.active > .owner-page {
         flex: 1 1 auto;
@@ -348,7 +402,7 @@
         margin-bottom: 0;
     }
 
-    #upload.content-section.active > .card,
+    #upload.content-section.active:not(.epub-only) > .card,
     #actions.content-section.active > .card {
         max-width: 960px;
     }
