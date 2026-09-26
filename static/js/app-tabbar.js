@@ -28,6 +28,7 @@
         if (path.includes('dashboard') || path.includes('user_center')) return 'user-center';
         const hash = (location.hash || '').replace('#', '');
         if (hash === 'actions') return 'actions';
+        if (hash === 'ebook-notes') return 'reading';
         if (hash === 'upload' && document.getElementById('upload')?.classList.contains('epub-only')) return 'reading';
         if (hash === 'self-talk') return 'self-talk';
         if (hash === 'schedule' || hash === '') return 'schedule';

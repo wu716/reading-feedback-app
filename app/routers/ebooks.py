@@ -187,6 +187,25 @@ async def list_books(current_user: User = Depends(get_current_active_user), db: 
     return {"items": [_book_response(book) for book in books], "used_bytes": used, "limit_bytes": MAX_USER_BYTES}
 
 
+@router.get("/notes")
+async def list_all_book_notes(current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    rows = (
+        db.query(EbookNote, Ebook.title, EbookChapter.title)
+        .join(Ebook, EbookNote.ebook_id == Ebook.id)
+        .join(EbookChapter, EbookNote.chapter_id == EbookChapter.id)
+        .filter(EbookNote.user_id == current_user.id, Ebook.user_id == current_user.id, EbookChapter.ebook_id == Ebook.id)
+        .order_by(EbookNote.created_at.desc(), EbookNote.id.desc())
+        .all()
+    )
+    return {"items": [{
+        "id": note.id, "book_id": note.ebook_id, "book_title": book_title,
+        "chapter_id": note.chapter_id, "chapter_title": chapter_title,
+        "selected_text": note.selected_text, "note_text": note.note_text,
+        "thought_type": note.thought_type, "relation_type": note.relation_type,
+        "created_at": note.created_at,
+    } for note, book_title, chapter_title in rows]}
+
+
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_book(file: UploadFile = File(...), current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     filename = os.path.basename(file.filename or "book.epub")

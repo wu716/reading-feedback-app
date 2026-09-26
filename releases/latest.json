@@ -1,8 +1,8 @@
 {
-  "versionCode": 36,
-  "versionName": "1.5.20",
+  "versionCode": 37,
+  "versionName": "1.5.21",
   "filename": "shuran.apk",
-  "notes": "修复任务列表滚动，并恢复排序页面隐藏以后想做区域。请覆盖安装，登录会保留。",
+  "notes": "新增 EPUB 读书笔记总览：按书籍或想法类型整理，并可定位原文。",
   "require_shell": true,
   "force": true,
   "minVersionCode": 20,

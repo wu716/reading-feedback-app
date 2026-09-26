@@ -102,32 +102,32 @@
     }
 
     /* 阅读页按内容排版，避免书架外层卡片被分屏布局撑满。 */
-    body:has(#upload.epub-only.active) .app-header {
+    body:has(:is(#upload.epub-only.active, #ebook-notes.active)) .app-header {
         background: #faf7f1;
         color: #3d3934;
         border-bottom: 1px solid #e9e1d6;
         box-shadow: none;
     }
 
-    body:has(#upload.epub-only.active) .app-header .header-icon-btn {
+    body:has(:is(#upload.epub-only.active, #ebook-notes.active)) .app-header .header-icon-btn {
         background: #eee7dd;
         color: #5b4b41;
     }
 
-    body:has(#upload.epub-only.active) .app-header .reminder-bell-btn {
+    body:has(:is(#upload.epub-only.active, #ebook-notes.active)) .app-header .reminder-bell-btn {
         background: transparent;
     }
 
-    body:has(#upload.epub-only.active) .app-header .header-mark {
+    body:has(:is(#upload.epub-only.active, #ebook-notes.active)) .app-header .header-mark {
         border-color: #a97869;
         color: #8c5b4c;
     }
 
-    body:has(#upload.epub-only.active) .app-main {
+    body:has(:is(#upload.epub-only.active, #ebook-notes.active)) .app-main {
         background: #f5f0e8;
     }
 
-    body:has(#upload.epub-only.active) .app-sidebar {
+    body:has(:is(#upload.epub-only.active, #ebook-notes.active)) .app-sidebar {
         background: #faf7f1;
         box-shadow: inset -1px 0 #e9e1d6;
     }

@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260924mobile1">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd4">
     <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260926task-mobile2">
-    <link rel="stylesheet" href="/static/css/epub-reader.css?v=20260926notes-color1">
+    <link rel="stylesheet" href="/static/css/epub-reader.css?v=20260926notes-page1">
     <link rel="stylesheet" href="/static/css/habit-program.css?v=20260920habit1">
     <style>
         :root {
@@ -4051,7 +4051,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260926reading3">
+    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20260926notes-page1">
 </head>
 <body>
     <script>
@@ -4589,8 +4589,13 @@
                 </div>
 
                 <div class="upload-panel hidden" data-panel="epub">
-                    <h2>把书读成行动</h2>
-                    <p class="me-hint">把一本书放进书架，边读边留下真正想实践的事。</p>
+                    <div class="epub-library-heading">
+                        <div>
+                            <h2>把书读成行动</h2>
+                            <p class="me-hint">把一本书放进书架，边读边留下真正想实践的事。</p>
+                        </div>
+                        <button type="button" id="epubAllNotesBtn" class="epub-all-notes-btn">全部读书笔记</button>
+                    </div>
                     <div class="epub-upload-row">
                         <label class="epub-file-picker" for="epubFileInput">
                             <input type="file" id="epubFileInput" accept=".epub,application/epub+zip">
@@ -4610,6 +4615,7 @@
                             <aside id="epubChapterList" class="epub-chapters"></aside>
                             <article class="epub-content">
                                 <h3 id="epubChapterTitle"></h3>
+                                <p id="epubSourceStatus" class="epub-source-status" hidden></p>
                                 <button type="button" class="epub-mobile-note-trigger" id="epubMobileNoteTrigger">选中正文后做笔记</button>
                                 <div id="epubChapterText" class="epub-chapter-text"></div>
                             </article>
@@ -4645,6 +4651,30 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <section id="ebook-notes" class="content-section">
+            <div class="epub-notes-page">
+                <button type="button" class="epub-notes-back" id="epubNotesBackBtn">← 返回书架</button>
+                <div class="epub-notes-page-head">
+                    <div>
+                        <p class="epub-notes-eyebrow">阅读 · 留下的想法</p>
+                        <h1>我的读书笔记</h1>
+                        <p id="epubNotesSummary">按书籍回看，或按想法类型整理。</p>
+                    </div>
+                    <button type="button" id="epubNotesExportBtn" class="epub-notes-export">下载笔记备份</button>
+                </div>
+                <div class="epub-notes-toolbar">
+                    <div class="epub-notes-views" role="group" aria-label="笔记整理方式">
+                        <button type="button" data-notes-view="book" aria-pressed="true">按书籍</button>
+                        <button type="button" data-notes-view="type" aria-pressed="false">按类型</button>
+                    </div>
+                    <label class="epub-notes-filter">书籍
+                        <select id="epubNotesBookFilter"><option value="">全部书籍</option></select>
+                    </label>
+                </div>
+                <div id="epubNotesGroups" class="epub-notes-groups" aria-live="polite"></div>
             </div>
         </section>
         
@@ -5815,6 +5845,7 @@
         }
 
         function primaryTabFor(sectionId) {
+            if (sectionId === 'ebook-notes') return 'library';
             return sectionParentOf(sectionId) || sectionId;
         }
 
@@ -5832,6 +5863,10 @@
         function handlePageBack() {
             closeMobileSidebar();
             const current = currentSectionId();
+            if (current === 'ebook-notes') {
+                window.openEpubLibrary?.();
+                return true;
+            }
             const parent = sectionParentOf(current);
             if (parent) {
                 navigateTo(parent);
@@ -5848,6 +5883,10 @@
             const sidebar = document.querySelector('.app-sidebar');
             if (sidebar && sidebar.classList.contains('mobile-open')) {
                 closeMobileSidebar();
+                return 'consumed';
+            }
+            if (!document.getElementById('epubReader')?.hidden) {
+                document.getElementById('epubBackBtn')?.click();
                 return 'consumed';
             }
             const openModal = document.querySelector('.practice-modal:not(.hidden)');
@@ -5923,6 +5962,9 @@
                 }
                 if (sectionId === 'upload') {
                     refreshAiExtractQuota();
+                }
+                if (sectionId === 'ebook-notes' && typeof window.loadEpubNotesPage === 'function') {
+                    window.loadEpubNotesPage();
                 }
                 if (sectionId === 'self-talk') {
                     ensureSelfTalkFrame();
@@ -9413,10 +9455,10 @@
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
     <script src="/static/reminder_notification.js?v=20260920later2"></script>
-    <script src="/static/js/app-tabbar.js?v=20260924mobile1"></script>
+    <script src="/static/js/app-tabbar.js?v=20260926notes-page1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
                                     <script src="/static/js/daily-schedule.js?v=20260926schedule-layout1"></script>
-    <script src="/static/js/epub-reader.js?v=20260926notes-color1"></script>
+    <script src="/static/js/epub-reader.js?v=20260926notes-page1"></script>
     <script src="/static/js/habit-program.js?v=20260920habit1"></script>
     <script src="/static/js/time-log.js?v=20260920habit1"></script>
     <script src="/static/js/ideas.js?v=20260920habit1"></script>
