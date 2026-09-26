@@ -1,8 +1,8 @@
 {
-  "versionCode": 27,
-  "versionName": "1.5.11",
+  "versionCode": 28,
+  "versionName": "1.5.12",
   "filename": "shuran.apk",
-  "notes": "优化电脑端任务排序拖动体验，仅使用左侧手柄拖动。请覆盖安装，登录会保留。",
+  "notes": "优化任务排序目标提示，仅高亮目标小方框，不再显示红线或淡化整条任务。请覆盖安装，登录会保留。",
   "require_shell": true,
   "force": true,
   "minVersionCode": 20,

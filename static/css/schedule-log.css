@@ -290,11 +290,7 @@
 }
 
 .flow-sortable.is-dragging {
-    opacity: 0.45;
-}
-
-.flow-sortable.is-drop-target {
-    border-top: 2px solid #9c3b32;
+    opacity: 1;
 }
 
 .flow-task.is-child {
@@ -527,6 +523,13 @@
     cursor: grabbing;
     border-color: #c9b9aa;
     color: #5c3d36;
+}
+
+.flow-sort-handle.is-drop-target {
+    border-color: #9c3b32;
+    background: #f1e8dc;
+    color: #9c3b32;
+    box-shadow: 0 0 0 2px rgba(156, 59, 50, 0.12);
 }
 
 .flow-sort-controls {

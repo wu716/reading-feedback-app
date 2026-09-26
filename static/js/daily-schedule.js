@@ -873,7 +873,7 @@
     }
 
     function clearDragClasses() {
-        document.querySelectorAll('#scheduleList .is-dragging, #scheduleList .is-drop-target')
+        document.querySelectorAll('#scheduleList .is-dragging, #scheduleList [data-sort-handle].is-drop-target')
             .forEach((item) => item.classList.remove('is-dragging', 'is-drop-target'));
     }
 
@@ -899,14 +899,15 @@
 
     function dragTargetAt(x, y) {
         const element = document.elementFromPoint(x, y);
-        return element?.closest('#scheduleList [data-task-id]') || null;
+        const handle = element?.closest('#scheduleList [data-sort-handle]');
+        return handle?.closest('[data-task-id]') || null;
     }
 
     function markDragTarget(article) {
-        document.querySelectorAll('#scheduleList .is-drop-target')
+        document.querySelectorAll('#scheduleList [data-sort-handle].is-drop-target')
             .forEach((item) => item.classList.remove('is-drop-target'));
         if (article && parseInt(article.dataset.taskId, 10) !== dragTaskId) {
-            article.classList.add('is-drop-target');
+            article.querySelector('[data-sort-handle]')?.classList.add('is-drop-target');
         }
     }
 
