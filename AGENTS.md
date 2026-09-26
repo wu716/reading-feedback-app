@@ -35,6 +35,7 @@ curl -fsS http://127.0.0.1:8000/health
 - 如果生产服务器部署没有完成，必须明确说明失败发生在哪一步，并向用户提供可直接复制执行的完整服务器部署命令，至少包括 SSH 登录、进入项目目录、拉取 `origin/main`、重新构建启动容器和健康检查。
 - 如果代码没有成功推送到 GitHub，必须明确说明推送失败原因，并向用户提供详细的可执行操作流程和完整命令，至少包括进入项目目录、检查状态和差异、暂存本次相关文件、创建提交、推送到 `origin/main`，以及推送后的提交校验命令。
 - 不能只报告“部署失败”或“推送失败”，也不能把本地提交、GitHub 推送和生产服务器部署混为同一个成功状态。
+- Windows PowerShell 进入项目目录使用 `cd D:\projects\reading-feedback-app` 或 `Set-Location D:\projects\reading-feedback-app`；`cd /d` 只适用于 `cmd.exe`，不得提供给 PowerShell 用户。
 
 ## 提交安全边界
 
