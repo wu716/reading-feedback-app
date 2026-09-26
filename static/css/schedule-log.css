@@ -281,7 +281,7 @@
     border: none;
     border-bottom: 1px solid #eee7d8;
     border-radius: 0;
-    padding: 14px 0 12px;
+    padding: 8px 0 7px;
     margin: 0;
 }
 
@@ -338,11 +338,11 @@
 .flow-note {
     display: block;
     width: calc(100% - 26px);
-    margin: 6px 0 0 26px;
+    margin: 4px 0 0 26px;
     border: none;
     border-bottom: 1px solid #eee7d8;
     border-radius: 0;
-    padding: 4px 0;
+    padding: 2px 0;
     background: transparent;
     color: #6b6560;
     font-size: 0.86rem;
@@ -352,9 +352,9 @@
 .flow-feedback {
     display: flex;
     align-items: baseline;
-    gap: 10px;
+    gap: 8px;
     width: calc(100% - 26px);
-    margin: 8px 0 0 26px;
+    margin: 4px 0 0 26px;
 }
 
 .flow-feedback-label {
@@ -383,14 +383,14 @@
 .flow-task-main {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 8px;
 }
 
 .flow-task-text {
     flex: 1;
-    line-height: 1.65;
+    line-height: 1.4;
     font-family: "Noto Serif SC", "Songti SC", serif;
-    font-size: 1rem;
+    font-size: 0.96rem;
     cursor: pointer;
 }
 
@@ -422,8 +422,8 @@
     background: transparent;
     color: inherit;
     font-family: "Noto Serif SC", "Songti SC", serif;
-    font-size: 1rem;
-    line-height: 1.65;
+    font-size: 0.96rem;
+    line-height: 1.4;
 }
 
 .flow-task-text-input:focus {
@@ -435,8 +435,8 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
-    margin-top: 8px;
+    gap: 8px;
+    margin-top: 5px;
     margin-left: 26px;
 }
 
@@ -444,13 +444,13 @@
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: 18px 24px;
-    margin-top: 12px;
+    gap: 10px 20px;
+    margin-top: 6px;
 }
 
 .flow-attribute-group {
     display: grid;
-    gap: 7px;
+    gap: 4px;
     min-width: 0;
 }
 
@@ -470,8 +470,8 @@
 }
 
 .flow-attribute-options .flow-chip {
-    min-height: 30px;
-    padding: 0 10px;
+    min-height: 26px;
+    padding: 0 8px;
     border-radius: 5px;
 }
 
@@ -553,8 +553,8 @@
 .flow-task-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 4px;
+    gap: 4px;
+    margin-top: 2px;
     margin-left: 26px;
 }
 
@@ -568,8 +568,8 @@
     color: #5c3d36;
     font-size: 0.86rem;
     min-width: 44px;
-    min-height: 36px;
-    padding: 0 8px;
+    min-height: 28px;
+    padding: 0 6px;
     border-radius: 6px;
     cursor: pointer;
     touch-action: manipulation;
@@ -599,8 +599,8 @@
 .flow-split-row {
     display: flex;
     align-items: baseline;
-    gap: 12px;
-    margin-top: 10px;
+    gap: 8px;
+    margin-top: 6px;
     margin-left: 26px;
     border-bottom: 1px solid #eee7d8;
 }
