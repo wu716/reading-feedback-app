@@ -42,7 +42,7 @@
         if (!data.items?.length) return showMessage('这本书还没有保存的想法', 'info');
         const old = document.getElementById('epubNotesOverlay'); old?.remove();
         const overlay = document.createElement('div'); overlay.id = 'epubNotesOverlay'; overlay.className = 'epub-notes-overlay';
-        overlay.innerHTML = `<div class="epub-notes-dialog"><div class="epub-notes-dialog-head"><strong>${esc(book.title)} · 我的笔记</strong><button type="button" data-close>关闭</button></div><div class="epub-notes-list">${data.items.map((note) => `<article><div class="epub-note-meta">${esc(note.chapter_title)} · ${esc(note.thought_type)}${note.relation_type ? ` · ${esc(note.relation_type)}` : ''}</div><blockquote>${esc(note.selected_text)}</blockquote><p>${esc(note.note_text)}</p></article>`).join('')}</div><button type="button" class="btn btn-secondary" data-download>下载笔记备份</button></div>`;
+        overlay.innerHTML = `<div class="epub-notes-dialog"><div class="epub-notes-dialog-head"><strong>${esc(book.title)} · 我的笔记</strong><button type="button" data-close>关闭</button></div><div class="epub-notes-list">${data.items.map((note) => `<article><div class="epub-note-meta">${esc(note.chapter_title)} · ${esc(note.thought_type)}${note.relation_type ? ` · ${esc(note.relation_type)}` : ''}</div><blockquote>${esc(note.selected_text)}</blockquote><p>${esc(note.note_text)}</p></article>`).join('')}</div><button type="button" class="epub-notes-download" data-download>下载笔记备份</button></div>`;
         document.body.appendChild(overlay);
         overlay.querySelector('[data-close]').onclick = () => overlay.remove();
         overlay.querySelector('[data-download]').onclick = () => downloadNotes(book, data.items);

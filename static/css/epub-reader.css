@@ -13,6 +13,8 @@
 .epub-note-meta { color: #84624d; font-size: .82rem; }
 .epub-notes-list blockquote { margin: 10px 0; padding-left: 12px; border-left: 3px solid #d8b99e; color: #6d665e; }
 .epub-notes-list p { margin: 0; white-space: pre-wrap; line-height: 1.7; }
+.epub-notes-download { display: inline-flex; align-items: center; justify-content: center; width: auto; min-height: 40px; margin-top: 18px; padding: 8px 16px; border: 1px solid #c9b6a2; border-radius: 8px; background: #f2e9de; color: #5b4038; font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer; }
+.epub-notes-download:hover, .epub-notes-download:focus-visible { background: #e9dbc9; border-color: #ae9278; outline: none; }
 .epub-book-card:hover, .epub-book-card:focus-visible { border-color: #b89c8f; outline: none; }
 .epub-book-card span, .epub-empty { color: #8a8478; font-size: .84rem; }
 .epub-reader { position: fixed; inset: 0; z-index: 1200; display: flex; flex-direction: column; margin: 0; padding: 32px clamp(20px, 5vw, 80px); background: #f8f8f6; color: #25231f; overflow: hidden; }
