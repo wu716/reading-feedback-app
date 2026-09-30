@@ -326,14 +326,22 @@
     }
 
     function renderDesignPlan(tasks) {
-        return tasks.map((task) => {
+        return tasks.map((task, index) => {
             const path = task.parent_path && task.parent_path.length
                 ? `<div class="flow-parent-path">${escapeHtml(task.parent_path.join(' / '))}</div>`
                 : '';
             return `
-                <article class="flow-task${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
-                    <div class="flow-task-main"><div class="flow-task-text flow-task-text-static">${escapeHtml(task.text)}</div></div>
+                <article class="flow-task flow-sortable${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
+                    <div class="flow-sort-row">
+                        <button type="button" class="flow-sort-handle" data-sort-handle aria-label="${escapeHtml(t('schedule.dragToSort', '拖动调整顺序'))}" title="${escapeHtml(t('schedule.dragToSort', '拖动调整顺序'))}">⋮⋮</button>
+                        <div class="flow-sort-index">${index + 1}</div>
+                        <div class="flow-sort-copy"><div class="flow-task-main"><div class="flow-task-text flow-task-text-static">${escapeHtml(task.text)}</div></div></div>
+                    </div>
                     ${path}
+                    <div class="flow-task-meta flow-sort-controls">
+                        ${index > 0 ? `<button type="button" class="flow-mini-btn" data-act="up">${escapeHtml(t('schedule.moveUp', '上移'))}</button>` : ''}
+                        ${index < tasks.length - 1 ? `<button type="button" class="flow-mini-btn" data-act="down">${escapeHtml(t('schedule.moveDown', '下移'))}</button>` : ''}
+                    </div>
                     <div class="flow-task-attributes">
                         <div class="flow-attribute-group">
                             <span class="flow-attribute-label">${escapeHtml(t('schedule.familiarityLabel', '熟悉度'))}</span>
@@ -789,7 +797,7 @@
     }
 
     async function moveTask(taskId, dir) {
-        if (mode === 'sort') {
+        if (mode === 'sort' || mode === 'design') {
             const leaves = executionLeaves(data.tasks || []);
             const index = leaves.findIndex((item) => item.id === taskId);
             const swap = index + dir;
@@ -825,7 +833,7 @@
                 task_date: currentDay(),
                 items: tasks.map((task, index) => ({
                     id: task.id,
-                    sort_order: task.sort_order,
+                    sort_order: index,
                     flow_order: index,
                     parallel_group: task.parallel_group,
                     priority: task.priority ?? 0,
@@ -899,8 +907,7 @@
 
     function dragTargetAt(x, y) {
         const element = document.elementFromPoint(x, y);
-        const handle = element?.closest('#scheduleList [data-sort-handle]');
-        return handle?.closest('[data-task-id]') || null;
+        return element?.closest('#scheduleList [data-task-id]') || null;
     }
 
     function markDragTarget(article) {
@@ -933,7 +940,7 @@
 
     function bindDragSorting(list) {
         list?.addEventListener('pointerdown', (e) => {
-            if (mode !== 'sort') return;
+            if (mode !== 'sort' && mode !== 'design') return;
             dragArmed = false;
             if (!e.target.closest('[data-sort-handle]')) return;
             const article = e.target.closest('[data-task-id]');
