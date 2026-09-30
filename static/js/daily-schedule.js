@@ -1095,7 +1095,12 @@
         document.getElementById('scheduleLaterInput')?.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                document.getElementById('scheduleLaterAddBtn')?.click();
+                const input = e.target;
+                addLater(input.value).then(() => {
+                    input.value = '';
+                }).catch((err) => {
+                    if (typeof showMessage === 'function') showMessage(err.message, 'error');
+                });
             }
         });
         document.getElementById('scheduleLaterToggle')?.addEventListener('click', () => {
