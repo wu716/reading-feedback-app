@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, Date, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, Date, UniqueConstraint, Index, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime, date
@@ -51,7 +51,77 @@ class User(Base):
     ebooks = relationship("Ebook", back_populates="user", cascade="all, delete-orphan")
     ebook_notes = relationship("EbookNote", back_populates="user", cascade="all, delete-orphan")
     ebook_progress = relationship("EbookProgress", back_populates="user", cascade="all, delete-orphan")
+    method_cards = relationship("MethodCard", back_populates="user", cascade="all, delete-orphan")
     used_invite_codes = relationship("InviteCode", back_populates="used_by_user")
+
+
+class MethodCard(Base):
+    """A reusable situation and first step, independent of daily habit targets."""
+    __tablename__ = "method_cards"
+    __table_args__ = (UniqueConstraint("user_id", "client_key", name="uq_method_card_client"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    client_key = Column(String(36), nullable=False)
+    title = Column(String(120), nullable=False)
+    situation = Column(String(500), nullable=False)
+    first_step = Column(String(500), nullable=False)
+    source_title = Column(String(255), nullable=True)
+    source_excerpt = Column(Text, nullable=True)
+    source_note_id = Column(Integer, nullable=True)
+    state = Column(String(20), nullable=False, default="active")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="method_cards")
+    uses = relationship("MethodUse", back_populates="card", cascade="all, delete-orphan")
+
+
+class MethodUse(Base):
+    __tablename__ = "method_uses"
+    __table_args__ = (
+        UniqueConstraint("user_id", "client_key", name="uq_method_use_client"),
+        Index("uq_method_pending_card", "user_id", "card_id", unique=True,
+              sqlite_where=text("finished_at IS NULL"), postgresql_where=text("finished_at IS NULL")),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    card_id = Column(Integer, ForeignKey("method_cards.id", ondelete="CASCADE"), nullable=False, index=True)
+    client_key = Column(String(36), nullable=False)
+    situation_snapshot = Column(String(500), nullable=False)
+    step_snapshot = Column(String(500), nullable=False)
+    outcome = Column(String(20), nullable=True)
+    barrier = Column(String(30), nullable=True)
+    note = Column(String(500), nullable=True)
+    started_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    card = relationship("MethodCard", back_populates="uses")
+
+
+class MethodVisit(Base):
+    """First-party, session-level counts. No method text or device fingerprint."""
+    __tablename__ = "method_visits"
+    __table_args__ = (UniqueConstraint("session_key", "event_name", name="uq_method_visit_session_event"),)
+
+    id = Column(Integer, primary_key=True)
+    session_key = Column(String(36), nullable=False)
+    event_name = Column(String(30), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class ProductFeedback(Base):
+    __tablename__ = "product_feedback"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    session_key = Column(String(36), nullable=False)
+    category = Column(String(30), nullable=False)
+    message = Column(String(1500), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 
 class AuthCode(Base):

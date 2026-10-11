@@ -6,7 +6,8 @@
     const messages = {
         'zh-CN': {
             'app.title': '书然',
-            'app.tagline': '把读书笔记，变成真正在做的行动',
+            'app.tagline': '让学过的方法，用得上',
+            'nav.methods': '方法',
             'auth.colophon': '开卷有益 · 知行合一',
             'nav.collapse': '收起导航',
             'nav.expand': '展开导航',
@@ -291,7 +292,8 @@
         },
         en: {
             'app.title': 'Shuran',
-            'app.tagline': 'Turn reading notes into action you actually take',
+            'app.tagline': 'Use what you have learned',
+            'nav.methods': 'Methods',
             'auth.colophon': 'Read well · Act well',
             'nav.collapse': 'Collapse navigation',
             'nav.expand': 'Expand navigation',

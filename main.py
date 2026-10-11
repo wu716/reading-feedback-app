@@ -14,7 +14,7 @@ from app.config import settings
 from app.database import ensure_schema, get_db
 from app.legacy_origin import canonical_url, is_legacy_singapore, keep_on_legacy_origin
 from app.scheduler import start_scheduler
-from app.routers import auth, actions, practice, dashboard, ai_advice, today, app_download, owner, schedule, time_log, capture, habit_programs, ebooks
+from app.routers import auth, actions, practice, dashboard, ai_advice, today, app_download, owner, schedule, time_log, capture, habit_programs, ebooks, methods
 from app.self_talk.router import router as self_talk_router
 from app.routers.self_talk_reminders import router as self_talk_reminders_router
 from app.ai_service import test_ai_connection
@@ -57,8 +57,8 @@ _openapi_enabled = None if settings.is_production else "/openapi.json"
 # 创建 FastAPI 应用
 app = FastAPI(
     title=settings.app_name,
-    description="读书笔记实践反馈系统 - 从学习到行动的完整闭环",
-    version="1.0.8",
+    description="书然 - 把学过的方法变成情境卡片，通过实际使用找到适合自己的办法",
+    version="1.5.25",
     docs_url=_docs_enabled,
     redoc_url=_redoc_enabled,
     openapi_url=_openapi_enabled,
@@ -75,7 +75,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20260926epub-notes-page1"
+STATIC_UI_VERSION = "20261010methods1"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
@@ -119,7 +119,7 @@ async def disable_page_cache(request: Request, call_next):
     """WebView 常把旧 HTML/JS 存下来，页面资源一律禁止缓存。"""
     response = await call_next(request)
     path = request.url.path
-    if path == "/" or path.endswith((".html", ".js", ".css")):
+    if path == "/" or path.startswith("/api/methods") or path.endswith((".html", ".js", ".css")):
         response.headers["Cache-Control"] = NO_STORE_HEADERS["Cache-Control"]
         response.headers["Pragma"] = NO_STORE_HEADERS["Pragma"]
         response.headers["Expires"] = NO_STORE_HEADERS["Expires"]
@@ -144,6 +144,7 @@ app.include_router(time_log.router, prefix="/api")
 app.include_router(capture.router, prefix="/api")
 app.include_router(habit_programs.router, prefix="/api")
 app.include_router(ebooks.router, prefix="/api")
+app.include_router(methods.router, prefix="/api")
 app.include_router(app_download.router)
 
 
@@ -194,7 +195,7 @@ async def root(request: Request):
 @app.get("/health")
 async def health_check():
     logger.info("健康检查被调用")
-    return {"status": "healthy", "message": "服务就绪"}
+    return {"status": "healthy", "message": "服务就绪", "version": app.version, "ui_version": STATIC_UI_VERSION}
 
 
 @app.get("/api/time")

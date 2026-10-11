@@ -56,7 +56,7 @@
             <div class="epub-note-card-meta"><span>${esc(note.book_title)}</span><span>${esc(note.chapter_title)}</span><span class="epub-note-tag">${esc(label)}${relation ? ` · ${esc(relation)}` : ''}</span>${date ? `<time>${esc(date)}</time>` : ''}</div>
             <blockquote>${esc(note.selected_text)}</blockquote>
             <p>${esc(note.note_text)}</p>
-            <div class="epub-note-card-actions"><button type="button" class="epub-note-source" data-note-source="${note.id}">定位原文 →</button></div>
+            <div class="epub-note-card-actions"><button type="button" class="epub-note-source" data-note-source="${note.id}">定位原文 →</button>${note.thought_type === 'process' ? `<button type="button" class="epub-note-source" data-note-method="${note.id}">做成方法卡</button>` : ''}</div>
         </article>`;
     }
 
@@ -368,6 +368,12 @@
             renderNotesPage();
         }));
         $('epubNotesGroups').addEventListener('click', (event) => {
+            const methodButton = event.target.closest('[data-note-method]');
+            if (methodButton) {
+                const methodNote = allNotes.find((item) => item.id === Number(methodButton.dataset.noteMethod));
+                if (methodNote) window.ShuranMethods?.fromNote(methodNote);
+                return;
+            }
             const button = event.target.closest('[data-note-source]');
             const note = allNotes.find((item) => item.id === Number(button?.dataset.noteSource));
             if (note) openNoteSource(note).catch((error) => showMessage(error.message || '打开原文失败', 'error'));

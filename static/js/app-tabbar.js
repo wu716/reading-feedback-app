@@ -1,10 +1,9 @@
 (function () {
     const TABS = [
+        { id: 'methods', labelKey: 'nav.methods', label: '方法', icon: '法' },
         { id: 'schedule', labelKey: 'nav.schedule', label: '日程', icon: '程' },
         { id: 'reading', labelKey: 'nav.reading', label: '阅读', icon: '读', action: 'reading' },
-        { id: 'actions', labelKey: 'nav.actions', label: '行动', icon: '行' },
         { id: 'capture', labelKey: 'nav.capture', label: '记', icon: '记', action: 'capture' },
-        { id: 'self-talk', labelKey: 'nav.selfTalk', label: 'Self-talk', icon: '谈' },
         { id: 'user-center', labelKey: 'nav.me', label: '我的', icon: '我' },
     ];
 
@@ -24,14 +23,15 @@
 
     function currentTab() {
         const path = location.pathname || '';
-        if (path.includes('self_talk')) return 'self-talk';
+        if (path.includes('self_talk')) return 'user-center';
         if (path.includes('dashboard') || path.includes('user_center')) return 'user-center';
         const hash = (location.hash || '').replace('#', '');
-        if (hash === 'actions') return 'actions';
+        if (hash === 'methods' || hash === '') return 'methods';
+        if (hash === 'actions') return 'user-center';
         if (hash === 'ebook-notes') return 'reading';
         if (hash === 'upload' && document.getElementById('upload')?.classList.contains('epub-only')) return 'reading';
-        if (hash === 'self-talk') return 'self-talk';
-        if (hash === 'schedule' || hash === '') return 'schedule';
+        if (hash === 'self-talk') return 'user-center';
+        if (hash === 'schedule') return 'schedule';
         return 'user-center';
     }
 

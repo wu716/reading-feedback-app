@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
-from app.models import User, Action, PracticeLog, AnonymizedData
+from app.models import User, Action, PracticeLog, AnonymizedData, MethodCard, MethodVisit, ProductFeedback
 from app.config import settings
 import logging
 
@@ -121,6 +121,12 @@ def anonymize_user_data_on_deletion(db: Session, user_id: int) -> None:
                 "logs": logs_data
             })
         
+        # New method cards and their snapshots are private content, not research data.
+        for card in db.query(MethodCard).filter(MethodCard.user_id == user_id).all():
+            db.delete(card)
+        db.query(ProductFeedback).filter(ProductFeedback.user_id == user_id).delete(synchronize_session=False)
+        db.query(MethodVisit).filter(MethodVisit.user_id == user_id).update({"user_id": None}, synchronize_session=False)
+        db.flush()
         logger.info(f"用户 {user_id} 数据匿名化完成")
         
     except Exception as e:

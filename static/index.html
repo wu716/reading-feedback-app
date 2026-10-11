@@ -6,7 +6,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>书然</title>
+    <title>书然 · 让学过的方法用得上</title>
+    <meta name="description" content="把学过的方法写成一张情境卡片：遇到什么，先做什么。实际试过后，用几秒钟留下反馈，找到适合自己的办法。">
     <link rel="icon" href="/static/icons/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/app-icon-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/app-icon-192.png">
@@ -23,6 +24,7 @@
     <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260926task-mobile2">
     <link rel="stylesheet" href="/static/css/epub-reader.css?v=20260926notes-page1">
     <link rel="stylesheet" href="/static/css/habit-program.css?v=20260920habit1">
+    <link rel="stylesheet" href="/static/css/methods.css?v=20261010methods1">
     <style>
         :root {
             --ink: #1c1b19;
@@ -4226,7 +4228,11 @@
     <!-- 侧边导航栏 -->
     <aside class="app-sidebar">
         <nav class="sidebar-nav">
-            <div class="nav-item active" data-section="overview" onclick="navigateTo('overview')" title="今日" data-i18n-title="nav.today">
+            <div class="nav-item active" data-section="methods" onclick="navigateTo('methods')" title="方法卡">
+                <span class="nav-icon">法</span>
+                <span class="nav-text" data-i18n="nav.methods">方法</span>
+            </div>
+            <div class="nav-item" data-section="overview" onclick="navigateTo('overview')" title="今日" data-i18n-title="nav.today">
                 <span class="nav-icon">今</span>
                 <span class="nav-text" data-i18n="nav.today">今日</span>
             </div>
@@ -4262,8 +4268,46 @@
         <!-- 全局消息提示 -->
         <div id="message"></div>
         
+        <section id="methods" class="content-section active">
+            <div class="methods-page">
+                <div class="method-intro">
+                    <div class="method-kicker">书然 / 方法卡</div>
+                    <h1>遇到老问题，<br>先用一个办法。</h1>
+                    <p>把学过的方法写成「什么时候用，先做什么」。<br>实际试过，再留下几秒钟的反馈。</p>
+                    <div class="method-intro-actions">
+                        <button type="button" class="method-button primary" id="methodNewBtn">＋ 写一张方法卡</button>
+                        <button type="button" class="method-button" id="methodFeedbackBtn">告诉我们哪里不好用</button>
+                    </div>
+                </div>
+                <div class="method-demo-banner" id="methodDemoBanner" hidden>
+                    <div><strong id="methodDemoTitle"></strong><p id="methodDemoHint"></p></div>
+                    <button type="button" class="method-button" id="methodDemoAction"></button>
+                </div>
+                <div class="method-stats" id="methodStats" aria-live="polite"></div>
+                <div class="method-toolbar">
+                    <div class="method-filters" aria-label="方法卡筛选">
+                        <button type="button" data-method-filter="active" aria-pressed="true">在用</button>
+                        <button type="button" data-method-filter="helpful" aria-pressed="false">有帮助</button>
+                        <button type="button" data-method-filter="paused" aria-pressed="false">暂放</button>
+                    </div>
+                    <label class="method-search"><input type="search" id="methodSearch" placeholder="用情境或关键词找方法" aria-label="搜索方法卡" maxlength="100"></label>
+                </div>
+                <div class="method-grid" id="methodGrid" aria-live="polite"></div>
+                <p class="method-limit" id="methodLimit" hidden></p>
+                <div class="method-examples">
+                    <h2>想不到怎么写？选一个示例，再改成自己的情况。</h2>
+                    <div class="method-example-list">
+                        <button type="button" data-method-example="start">坐下后迟迟没开始</button>
+                        <button type="button" data-method-example="overload">事情太多，开始逃避</button>
+                        <button type="button" data-method-example="interruption">临时事情打乱安排</button>
+                    </div>
+                </div>
+                <p class="method-footnote">例子只是写法参考。你遇到相应情境时再试，用不上也可以调整。<br>匿名统计体验次数，卡片与摘录不会加入这些统计。<button type="button" id="methodPrivacyFeedbackBtn">主动提交的产品意见</button>会提供给开发者。网页版 1.5.25。</p>
+            </div>
+        </section>
+
         <!-- 首页概览区 -->
-        <section id="overview" class="content-section active">
+        <section id="overview" class="content-section">
             <div class="section-header">
                 <h1 data-i18n="nav.today">今日</h1>
             </div>
@@ -4822,6 +4866,11 @@
                         </span>
                         <span class="me-chevron">›</span>
                     </button>
+                    <button type="button" class="me-row" onclick="navigateTo('self-talk')">
+                        <span class="me-row-icon" aria-hidden="true">谈</span>
+                        <span class="me-row-main"><span class="me-row-title" data-i18n="nav.selfTalk">Self-talk</span></span>
+                        <span class="me-chevron">›</span>
+                    </button>
                     <button type="button" class="me-row" onclick="navigateTo('upload')">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
@@ -5110,6 +5159,12 @@
                 <p>生成邀请码，给用户开通套餐</p>
             </div>
             <div class="owner-page">
+                <div class="method-market" id="methodMarket">
+                    <h2>方法卡 · 近 7 天使用反馈</h2>
+                    <p>查看实际使用记录和用户意见。访问按浏览器会话统计，访客体验与账号内尝试分别展示。</p>
+                    <button type="button" class="method-button" id="methodMarketRefresh">刷新反馈</button>
+                    <div id="methodMarketBody" aria-live="polite">进入后加载真实数据。</div>
+                </div>
                 <div class="me-group">
                     <div class="me-group-title">生成邀请码</div>
                     <p class="me-hint">四位数字，一次性，7 天有效。一次最多 5 个，不要囤积。</p>
@@ -5785,7 +5840,54 @@
         </div>
     </div>
 
-    <script src="/static/js/i18n.js?v=20260922reversible1"></script>
+    <dialog class="method-dialog" id="methodEditor" aria-labelledby="methodEditorTitle">
+        <div class="method-dialog-head">
+            <div><h2 id="methodEditorTitle">写一张方法卡</h2><p>先写清两个地方，其他信息可以以后补。</p></div>
+            <button type="button" class="method-dialog-close" data-method-close aria-label="关闭">×</button>
+        </div>
+        <form id="methodEditorForm">
+            <div class="method-field"><label for="methodSituation">遇到什么情境？</label><textarea id="methodSituation" required maxlength="500" placeholder="例如：坐到图书馆，打开书却开始刷手机。"></textarea><small>写能观察到的情境，例如时间、地点或正在做的事。</small></div>
+            <div class="method-field"><label for="methodFirstStep">先做哪一步？</label><textarea id="methodFirstStep" required maxlength="500" placeholder="例如：把手机放进包里，打开题目，只写第一行。"></textarea><small>写一个具体动作，让现在的自己容易开始。</small></div>
+            <details class="method-optional">
+                <summary>名称与来源（选填）</summary>
+                <div class="method-field" id="methodExistingSourceField" hidden><label for="methodExistingSource">从已有行动带入</label><select id="methodExistingSource"><option value="">选择已有行动</option></select></div>
+                <div class="method-field"><label for="methodTitleInput">卡片名称</label><input id="methodTitleInput" maxlength="120" placeholder="留空时使用第一步作为名称"></div>
+                <div class="method-field"><label for="methodSourceTitle">方法来源</label><input id="methodSourceTitle" maxlength="255" placeholder="书名、文章，或自己的经验"></div>
+                <div class="method-field"><label for="methodSourceExcerpt">原文或笔记</label><textarea id="methodSourceExcerpt" maxlength="2000" placeholder="保存你认可的那段方法（可选）。"></textarea></div>
+            </details>
+            <p class="method-dialog-error" id="methodEditorError" role="alert"></p>
+            <div class="method-dialog-actions"><button type="button" class="method-button" data-method-close>取消</button><button type="submit" class="method-button primary" id="methodSaveBtn">保存方法卡</button></div>
+        </form>
+    </dialog>
+    <dialog class="method-dialog" id="methodUseDialog" aria-labelledby="methodUseTitle">
+        <div class="method-dialog-head"><div><h2 id="methodUseTitle">先做这一步</h2><p>先去试，之后回来点一下反馈即可。</p></div><button type="button" class="method-dialog-close" data-method-close aria-label="关闭">×</button></div>
+        <p class="method-situation" id="methodUseSituation"></p>
+        <p class="method-step" id="methodUseStep"></p>
+        <div class="method-outcomes" aria-label="这次尝试的结果">
+            <button type="button" data-outcome="helpful" aria-pressed="false">试了，有帮助</button>
+            <button type="button" data-outcome="not_helpful" aria-pressed="false">试了，没帮助</button>
+            <button type="button" data-outcome="not_used" aria-pressed="false">这次没用上</button>
+        </div>
+        <p class="method-dialog-error" id="methodUseError" role="alert"></p>
+        <form id="methodUseDetailsForm" hidden>
+            <details class="method-optional"><summary>补充原因（选填，结果已经保存）</summary>
+                <div class="method-field"><label for="methodBarrier">卡在哪里？</label><select id="methodBarrier"><option value="">暂不填写</option><option value="forgot">当时没想起来</option><option value="too_hard">这一步还是太麻烦</option><option value="interrupted">被其他事情打断</option><option value="not_suitable">方法不适合这个情境</option><option value="other">其他</option></select></div>
+                <div class="method-field"><label for="methodUseNote">补充一句</label><textarea id="methodUseNote" maxlength="500" placeholder="下次想改哪里？（可选）"></textarea></div>
+                <button type="submit" class="method-button">保存补充</button>
+            </details>
+        </form>
+    </dialog>
+    <dialog class="method-dialog" id="methodFeedbackDialog" aria-labelledby="methodProductFeedbackTitle">
+        <div class="method-dialog-head"><div><h2 id="methodProductFeedbackTitle">告诉我们实际感受</h2><p>意见会发送给开发者，帮助决定下一步改什么。</p></div><button type="button" class="method-dialog-close" data-method-close aria-label="关闭">×</button></div>
+        <form id="methodProductFeedbackForm">
+            <div class="method-field"><label for="methodFeedbackCategory">这次想说什么？</label><select id="methodFeedbackCategory"><option value="problem">哪里不好用</option><option value="suggestion">我想改进的地方</option><option value="useful">对我有帮助的地方</option></select></div>
+            <div class="method-field"><label for="methodFeedbackMessage">具体发生了什么？</label><textarea id="methodFeedbackMessage" required minlength="3" maxlength="1500" placeholder="例如：我保存了方法，但第二天找不到入口。"></textarea></div>
+            <p class="method-dialog-error" id="methodFeedbackError" role="alert"></p>
+            <div class="method-dialog-actions"><button type="submit" class="method-button primary" id="methodFeedbackSubmit">提交意见</button></div>
+        </form>
+    </dialog>
+
+    <script src="/static/js/i18n.js?v=20261010methods1"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -5827,8 +5929,8 @@
             if (overlay) overlay.classList.toggle('visible', open);
         }
 
-        const PRIMARY_TABS_DESKTOP = new Set(['overview', 'schedule', 'actions', 'upload', 'self-talk', 'user-center']);
-        const PRIMARY_TABS_PHONE = new Set(['schedule', 'actions', 'self-talk', 'user-center']);
+        const PRIMARY_TABS_DESKTOP = new Set(['methods', 'overview', 'schedule', 'actions', 'upload', 'self-talk', 'user-center']);
+        const PRIMARY_TABS_PHONE = new Set(['methods', 'schedule', 'user-center']);
         const SECTION_PARENT_SHARED = { stats: 'user-center', guide: 'user-center', owner: 'user-center', 'time-log': 'user-center', ideas: 'user-center' };
 
         function primaryTabs() {
@@ -5840,6 +5942,7 @@
             if (isMobileNav() && (sectionId === 'overview' || sectionId === 'upload')) {
                 return 'user-center';
             }
+            if (isMobileNav() && (sectionId === 'actions' || sectionId === 'self-talk')) return 'user-center';
             return null;
         }
 
@@ -5849,7 +5952,7 @@
         }
 
         function defaultSection() {
-            return isMobileNav() ? 'schedule' : 'overview';
+            return 'methods';
         }
 
         function updateHeaderBackButton() {
@@ -5879,6 +5982,7 @@
         }
 
         window.handleAppBack = function () {
+            if (window.ShuranMethods?.closeDialog()) return 'consumed';
             const sidebar = document.querySelector('.app-sidebar');
             if (sidebar && sidebar.classList.contains('mobile-open')) {
                 closeMobileSidebar();
@@ -5958,7 +6062,9 @@
                 }
                 if (sectionId === 'owner') {
                     loadOwnerConsole();
+                    window.ShuranMethods?.loadMarket();
                 }
+                if (sectionId === 'methods') window.ShuranMethods?.load();
                 if (sectionId === 'upload') {
                     refreshAiExtractQuota();
                 }
@@ -6020,7 +6126,7 @@
             const hash = location.hash.slice(1);
             if (hash && document.getElementById(hash)) {
                 navigateTo(hash);
-            } else if (isMobileNav()) {
+            } else {
                 navigateTo(defaultSection());
             }
             
@@ -6858,6 +6964,7 @@
         }
 
         function saveAuthSession(token, email, expiresInSeconds) {
+            const previousToken = localStorage.getItem('authToken');
             authToken = token;
             localStorage.setItem('authToken', token);
             if (email) localStorage.setItem('userEmail', email);
@@ -6866,14 +6973,17 @@
             localStorage.setItem('authTokenExpiresAt', String(expiresAt));
             persistAuthCookie(token, email || localStorage.getItem('userEmail') || '', ttl);
             syncNativeAuthToken(token);
+            if (previousToken !== token) window.dispatchEvent(new Event('shuran-auth-change'));
         }
 
         function clearAuthSession() {
+            const hadToken = !!localStorage.getItem('authToken');
             authToken = null;
             localStorage.removeItem('authToken');
             localStorage.removeItem('userEmail');
             localStorage.removeItem('authTokenExpiresAt');
             persistAuthCookie('', '', 0);
+            if (hadToken) window.dispatchEvent(new Event('shuran-auth-change'));
             if (window.reminderNotificationService) {
                 window.reminderNotificationService.stop();
             }
@@ -7041,11 +7151,13 @@
         function showAuthModal(immediate) {
             if (document.readyState === 'loading') return;
             if (authCheckInProgress && !immediate) return;
+            if (!immediate && currentSectionId() === 'methods') return;
 
             clearTimeout(showAuthModalTimer);
             const delay = immediate ? 0 : 450;
             showAuthModalTimer = setTimeout(() => {
                 if (localStorage.getItem('authToken') && !isAuthSessionExpired()) return;
+                if (!immediate && currentSectionId() === 'methods') return;
                 revealAuthModal();
             }, delay);
         }
@@ -9454,13 +9566,14 @@
     <!-- Self-talk 提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
     <script src="/static/reminder_notification.js?v=20260920later2"></script>
-    <script src="/static/js/app-tabbar.js?v=20260926notes-page1"></script>
+    <script src="/static/js/app-tabbar.js?v=20261010methods1"></script>
     <script src="/static/js/today-dashboard.js?v=20260915a"></script>
                                     <script src="/static/js/daily-schedule.js?v=20260930schedule-sort2"></script>
-    <script src="/static/js/epub-reader.js?v=20260926notes-page1"></script>
+    <script src="/static/js/epub-reader.js?v=20261010methods1"></script>
     <script src="/static/js/habit-program.js?v=20260920habit1"></script>
     <script src="/static/js/time-log.js?v=20260920habit1"></script>
     <script src="/static/js/ideas.js?v=20260920habit1"></script>
     <script src="/static/js/desktop-shell.js?v=20260920habit1"></script>
+    <script src="/static/js/methods.js?v=20261010methods1"></script>
 </body>
 </html>

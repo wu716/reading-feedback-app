@@ -19,6 +19,9 @@ from app.models import (
     DailyTodo,
     Idea,
     InviteCode,
+    MethodCard,
+    MethodUse,
+    ProductFeedback,
     PracticeLog,
     ReadingEntry,
     SelfTalk,
@@ -63,6 +66,20 @@ def build_backup_zip(db: Session) -> bytes:
     audits = db.query(AuditLog).order_by(AuditLog.id.desc()).limit(2000).all()
 
     files = {
+        "method_cards.csv": _csv_bytes(
+            ["id", "user_id", "title", "situation", "first_step", "source_title", "source_excerpt", "state", "created_at"],
+            [[m.id, m.user_id, m.title, m.situation, m.first_step, m.source_title or "", m.source_excerpt or "", m.state, _cell(m.created_at)]
+             for m in db.query(MethodCard).filter(MethodCard.deleted_at.is_(None)).all()],
+        ),
+        "method_uses.csv": _csv_bytes(
+            ["id", "user_id", "card_id", "situation", "first_step", "outcome", "barrier", "note", "started_at", "finished_at"],
+            [[m.id, m.user_id, m.card_id, m.situation_snapshot, m.step_snapshot, m.outcome or "", m.barrier or "", m.note or "", _cell(m.started_at), _cell(m.finished_at)]
+             for m in db.query(MethodUse).join(MethodCard).filter(MethodCard.deleted_at.is_(None)).all()],
+        ),
+        "product_feedback.csv": _csv_bytes(
+            ["id", "user_id", "category", "message", "created_at"],
+            [[m.id, _cell(m.user_id), m.category, m.message, _cell(m.created_at)] for m in db.query(ProductFeedback).all()],
+        ),
         "users.csv": _csv_bytes(
             ["id", "name", "real_name", "phone", "email", "plan", "plan_expires_at", "is_active", "created_at", "deleted_at"],
             [
