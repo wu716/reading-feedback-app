@@ -1,8 +1,8 @@
 {
-  "versionCode": 37,
-  "versionName": "1.5.21",
+  "versionCode": 42,
+  "versionName": "2.0",
   "filename": "shuran.apk",
-  "notes": "新增 EPUB 读书笔记总览：按书籍或想法类型整理，并可定位原文。",
+  "notes": "书然 2.0：方法卡成为首页，支持保存情境与第一步、记录尝试反馈和提交产品意见。",
   "require_shell": true,
   "force": true,
   "minVersionCode": 20,

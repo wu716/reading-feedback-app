@@ -58,7 +58,7 @@ _openapi_enabled = None if settings.is_production else "/openapi.json"
 app = FastAPI(
     title=settings.app_name,
     description="书然 - 把学过的方法变成情境卡片，通过实际使用找到适合自己的办法",
-    version="1.5.25",
+    version="2.0",
     docs_url=_docs_enabled,
     redoc_url=_redoc_enabled,
     openapi_url=_openapi_enabled,
@@ -75,7 +75,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20261010methods1"
+STATIC_UI_VERSION = "20261012v2"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",

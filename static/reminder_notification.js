@@ -1192,7 +1192,7 @@ function shuranShowContinueUsing() {
     wrap.appendChild(skip);
 }
 
-window.SHURAN_VERSION = window.SHURAN_VERSION || '1.5.0';
+window.SHURAN_VERSION = window.SHURAN_VERSION || '2.0';
 window.SHURAN_MIN_SHELL_CODE = 20;
 window.SHURAN_MIN_SHELL_NAME = '1.5.4';
 
@@ -1207,7 +1207,7 @@ function shuranIsOwner() {
 function fillAppVersionLabel() {
     const label = document.getElementById('appVersionLabel');
     if (!label) return;
-    const version = window.SHURAN_VERSION || '1.5.0';
+    const version = window.SHURAN_VERSION || '2.0';
     const shell = shuranShellInfo();
     const group = label.closest ? label.closest('.me-group') : null;
     const hint = document.getElementById('appVersionHint')

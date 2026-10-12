@@ -41,10 +41,16 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $built = Join-Path $ProjectDir "app\build\outputs\apk\release\app-release.apk"
+$gradleFile = Join-Path $ProjectDir "app\build.gradle"
+$versionNameLine = Select-String -Path $gradleFile -Pattern 'versionName\s+"([0-9A-Za-z._-]+)"' | Select-Object -First 1
+$versionCodeLine = Select-String -Path $gradleFile -Pattern 'versionCode\s+(\d+)' | Select-Object -First 1
+if (-not $versionNameLine -or -not $versionCodeLine) { throw "无法从 build.gradle 读取安装包版本" }
+$versionName = $versionNameLine.Matches[0].Groups[1].Value
+$versionCode = [int]$versionCodeLine.Matches[0].Groups[1].Value
 if (-not (Test-Path $DistDir)) {
     New-Item -ItemType Directory -Path $DistDir | Out-Null
 }
-$outApk = Join-Path $DistDir "shuran-1.0.0.apk"
+$outApk = Join-Path $DistDir "shuran-$versionName.apk"
 Copy-Item $built $outApk -Force
 
 $repoRoot = (Resolve-Path (Join-Path $ProjectDir "..\..")).Path
@@ -56,9 +62,6 @@ $releaseApk = Join-Path $releaseDir "shuran.apk"
 Copy-Item $built $releaseApk -Force
 
 # 服务端用 sidecar 拒绝过期安装包，避免再下发 1.5.2 造成更新死循环。
-$versionCodeLine = Select-String -Path (Join-Path $ProjectDir "app\build.gradle") -Pattern "versionCode\s+(\d+)" | Select-Object -First 1
-if (-not $versionCodeLine) { throw "无法从 build.gradle 读取 versionCode" }
-$versionCode = [int]$versionCodeLine.Matches[0].Groups[1].Value
 Set-Content -Path ($releaseApk + ".versioncode") -Value "$versionCode" -Encoding ascii
 Set-Content -Path ($outApk + ".versioncode") -Value "$versionCode" -Encoding ascii
 

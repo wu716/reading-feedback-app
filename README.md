@@ -4,7 +4,7 @@
 
 首发核心：保存「情境 + 第一步」方法卡，在实际遇到问题时尝试，记录「有帮助 / 没帮助 / 没用上」。未登录可在浏览器里体验，登录后保存到账号；站长可查看近 7 天实际使用与主动提交的意见。
 
-版本：网页及 Android 源码 `1.5.25` / `versionCode 41`。Android 源码版本不代表新的 APK 已经生成；下载入口继续以实际构建产物为准。
+版本：网页及 Android 安装包 `2.0` / `versionCode 42`。下载入口以 `/download/info` 的实际可用状态为准。
 
 设计、指标口径与发布说明见 [方法卡首发设计](docs/product/method-cards-launch.md)；本地应用、产品规划与服务器发布见 [Codex 交接](docs/product/shuran-local-codex-handoff.md)。
 

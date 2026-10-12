@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 GITHUB_APK_URL = (
     "https://github.com/wu716/reading-feedback-app/releases/download/"
-    "android-1.5.4/shuran.apk"
+    "android-2.0/shuran.apk"
 )
 # 线上 latest.json 若过旧，1.3.4 会误以为已是最新。接口永不低于此门槛。
 MIN_SHELL_VERSION_CODE = 20
@@ -29,7 +29,6 @@ RELEASE_DIR = REPO_ROOT / "releases"
 LATEST_META = RELEASE_DIR / "latest.json"
 APK_CANDIDATES = [
     RELEASE_DIR / "shuran.apk",
-    REPO_ROOT / "mobile" / "android" / "dist" / "shuran-1.0.0.apk",
     REPO_ROOT / "static" / "releases" / "shuran.apk",
 ]
 WINDOWS_CANDIDATES = [
@@ -75,6 +74,17 @@ def _iter_apk_candidates() -> list[Path]:
         if path.is_file() and path not in seen:
             found.append(path)
             seen.add(path)
+    dist_dir = REPO_ROOT / "mobile" / "android" / "dist"
+    if dist_dir.is_dir():
+        dist_apks = sorted(
+            dist_dir.glob("shuran-*.apk"),
+            key=lambda item: item.stat().st_mtime,
+            reverse=True,
+        )
+        for path in dist_apks:
+            if path not in seen:
+                found.append(path)
+                seen.add(path)
     if RELEASE_DIR.is_dir():
         apks = sorted(
             RELEASE_DIR.glob("*.apk"),
@@ -321,7 +331,17 @@ async def download_apk(request: Request):
         apk = fetch_apk_from_canonical()
     if not apk:
         apk = ensure_apk()
-    if apk and apk_meets_min(apk, MIN_SHELL_VERSION_CODE):
+    meta = load_latest_meta()
+    required_code = max(
+        MIN_SHELL_VERSION_CODE,
+        int(meta.get("minVersionCode") or 0),
+        int(meta.get("versionCode") or 0),
+    )
+    if (
+        apk
+        and apk_meets_min(apk, required_code)
+        and (read_apk_version_code(apk) or 0) >= required_code
+    ):
         return FileResponse(
             path=str(apk),
             media_type="application/vnd.android.package-archive",

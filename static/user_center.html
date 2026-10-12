@@ -624,7 +624,7 @@
                 return;
             }
             if (card) card.hidden = false;
-            const web = window.SHURAN_VERSION || '1.5.0';
+            const web = window.SHURAN_VERSION || '2.0';
             if (window.ShuranNative && typeof window.ShuranNative.getAppVersion === 'function') {
                 const name = window.ShuranNative.getAppVersion();
                 label.textContent = name ? ('调试 页面 ' + web + ' · 安装包 ' + name) : ('调试 页面 ' + web);
@@ -665,9 +665,9 @@
             }, 3000);
         }
     </script>
-    <script>window.SHURAN_VERSION = '1.5.0';</script>
+    <script>window.SHURAN_VERSION = '2.0';</script>
     <script src="/static/js/time-picker.js?v=20260825time1"></script>
-    <script src="/static/reminder_notification.js?v=20260920later2"></script>
+    <script src="/static/reminder_notification.js?v=20261012v2"></script>
 </body>
 </html>
 
