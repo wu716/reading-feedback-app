@@ -2,8 +2,8 @@
     const TABS = [
         { id: 'methods', labelKey: 'nav.methods', label: '方法', icon: '法' },
         { id: 'schedule', labelKey: 'nav.schedule', label: '日程', icon: '程' },
-        { id: 'reading', labelKey: 'nav.reading', label: '阅读', icon: '读', action: 'reading' },
-        { id: 'capture', labelKey: 'nav.capture', label: '记', icon: '记', action: 'capture' },
+        { id: 'projects', labelKey: 'nav.projects', label: '项目', icon: '项', action: 'projects' },
+        { id: 'capture', labelKey: 'nav.capture', label: '记', icon: '记' },
         { id: 'user-center', labelKey: 'nav.me', label: '我的', icon: '我' },
     ];
 
@@ -15,7 +15,7 @@
         if (id === 'self-talk' && location.pathname.includes('self_talk')) {
             return location.pathname + location.search;
         }
-        if (id === 'user-center' && (location.pathname.includes('dashboard') || location.pathname.includes('user_center'))) {
+        if (id === 'user-center' && location.pathname.includes('user_center')) {
             return location.pathname + location.search;
         }
         return '/static/index.html#' + id;
@@ -24,12 +24,12 @@
     function currentTab() {
         const path = location.pathname || '';
         if (path.includes('self_talk')) return 'user-center';
-        if (path.includes('dashboard') || path.includes('user_center')) return 'user-center';
+        if (path.includes('projects')) return 'projects';
+        if (path.includes('user_center')) return 'user-center';
         const hash = (location.hash || '').replace('#', '');
         if (hash === 'methods' || hash === '') return 'methods';
         if (hash === 'actions') return 'user-center';
-        if (hash === 'ebook-notes') return 'reading';
-        if (hash === 'upload' && document.getElementById('upload')?.classList.contains('epub-only')) return 'reading';
+        if (hash === 'capture' || hash === 'time-log' || hash === 'ideas') return 'capture';
         if (hash === 'self-talk') return 'user-center';
         if (hash === 'schedule') return 'schedule';
         return 'user-center';
@@ -44,14 +44,8 @@
     }
 
     function go(tab) {
-        if (tab.action === 'reading') {
-            if (typeof window.openEpubLibrary === 'function') window.openEpubLibrary();
-            else location.href = '/static/index.html#upload';
-            setTimeout(highlight, 0);
-            return;
-        }
-        if (tab.action === 'capture') {
-            openCapture();
+        if (tab.action === 'projects') {
+            location.href = '/static/projects.html';
             return;
         }
         if (typeof navigateTo === 'function') {
@@ -78,7 +72,7 @@
             bar.className = 'app-tabbar';
             bar.setAttribute('aria-label', t('tabbar.aria', '出门时用'));
             bar.innerHTML = TABS.map((t) => `
-                <button type="button" class="tab-item${t.action === 'capture' ? ' tab-capture' : ''}" data-tab="${t.id}">
+                <button type="button" class="tab-item${t.id === 'capture' ? ' tab-capture' : ''}" data-tab="${t.id}">
                     <span class="tab-icon">${t.icon}</span>
                     <span class="tab-text" data-tab-label="${t.id}">${window.shuranI18n ? window.shuranI18n.t(t.labelKey, t.label) : t.label}</span>
                 </button>

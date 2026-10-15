@@ -326,22 +326,14 @@
     }
 
     function renderDesignPlan(tasks) {
-        return tasks.map((task, index) => {
+        return tasks.map((task) => {
             const path = task.parent_path && task.parent_path.length
                 ? `<div class="flow-parent-path">${escapeHtml(task.parent_path.join(' / '))}</div>`
                 : '';
             return `
-                <article class="flow-task flow-sortable${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
-                    <div class="flow-sort-row">
-                        <button type="button" class="flow-sort-handle" data-sort-handle aria-label="${escapeHtml(t('schedule.dragToSort', '拖动调整顺序'))}" title="${escapeHtml(t('schedule.dragToSort', '拖动调整顺序'))}">⋮⋮</button>
-                        <div class="flow-sort-index">${index + 1}</div>
-                        <div class="flow-sort-copy"><div class="flow-task-main"><div class="flow-task-text flow-task-text-static">${escapeHtml(task.text)}</div></div></div>
-                    </div>
+                <article class="flow-task${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
+                    <div class="flow-task-main"><div class="flow-task-text flow-task-text-static">${escapeHtml(task.text)}</div></div>
                     ${path}
-                    <div class="flow-task-meta flow-sort-controls">
-                        ${index > 0 ? `<button type="button" class="flow-mini-btn" data-act="up">${escapeHtml(t('schedule.moveUp', '上移'))}</button>` : ''}
-                        ${index < tasks.length - 1 ? `<button type="button" class="flow-mini-btn" data-act="down">${escapeHtml(t('schedule.moveDown', '下移'))}</button>` : ''}
-                    </div>
                     <div class="flow-task-attributes">
                         <div class="flow-attribute-group">
                             <span class="flow-attribute-label">${escapeHtml(t('schedule.familiarityLabel', '熟悉度'))}</span>

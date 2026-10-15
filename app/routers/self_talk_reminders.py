@@ -18,7 +18,6 @@ from app.self_talk.reminder_schemas import (
 from app.self_talk.reminder_service import (
     ReminderService,
     check_todo_reminders,
-    check_reading_reminders,
 )
 
 logger = logging.getLogger(__name__)
@@ -44,8 +43,6 @@ def _setting_response(setting: SelfTalkReminderSetting, reminder_days=None) -> R
         inactive_days_threshold=setting.inactive_days_threshold,
         browser_notification=setting.browser_notification,
         email_notification=setting.email_notification,
-        reading_reminder_enabled=bool(getattr(setting, "reading_reminder_enabled", False)),
-        reading_reminder_time=getattr(setting, "reading_reminder_time", None),
         created_at=setting.created_at,
         updated_at=setting.updated_at,
     )
@@ -109,8 +106,6 @@ async def create_reminder_settings(
                 inactive_days_threshold=settings.inactive_days_threshold,
                 browser_notification=settings.browser_notification,
                 email_notification=settings.email_notification,
-                reading_reminder_enabled=settings.reading_reminder_enabled,
-                reading_reminder_time=settings.reading_reminder_time,
             )
             db.add(setting)
             db.commit()
@@ -261,7 +256,6 @@ async def get_pending_reminders(
         from datetime import datetime, timedelta
 
         check_todo_reminders(db, user_id=current_user.id)
-        check_reading_reminders(db, user_id=current_user.id)
         
         recent_time = datetime.now() - timedelta(days=7)
         
@@ -271,7 +265,8 @@ async def get_pending_reminders(
                 SelfTalkReminderLog.user_id == current_user.id,
                 SelfTalkReminderLog.triggered_at >= recent_time,
                 SelfTalkReminderLog.dismissed_at.is_(None),
-                SelfTalkReminderLog.action_taken == False
+                SelfTalkReminderLog.action_taken == False,
+                SelfTalkReminderLog.reminder_type != "reading"
             )
             .order_by(SelfTalkReminderLog.triggered_at.desc())
             .limit(50)
@@ -285,7 +280,7 @@ async def get_pending_reminders(
                 current_user.name,
                 log.detail,
             )
-            if log.reminder_type in ("todo", "reading"):
+            if log.reminder_type == "todo":
                 action_url = "/static/index.html#overview"
                 action_label = "查看今日"
             elif log.reminder_type == "action_practice":

@@ -14,7 +14,7 @@ from app.config import settings
 from app.database import ensure_schema, get_db
 from app.legacy_origin import canonical_url, is_legacy_singapore, keep_on_legacy_origin
 from app.scheduler import start_scheduler
-from app.routers import auth, actions, practice, dashboard, ai_advice, today, app_download, owner, schedule, time_log, capture, habit_programs, ebooks, methods
+from app.routers import auth, actions, practice, ai_advice, today, app_download, owner, schedule, time_log, capture, habit_programs, methods, projects
 from app.self_talk.router import router as self_talk_router
 from app.routers.self_talk_reminders import router as self_talk_reminders_router
 from app.ai_service import test_ai_connection
@@ -58,7 +58,7 @@ _openapi_enabled = None if settings.is_production else "/openapi.json"
 app = FastAPI(
     title=settings.app_name,
     description="书然 - 把学过的方法变成情境卡片，通过实际使用找到适合自己的办法",
-    version="2.0",
+    version="2.0.1",
     docs_url=_docs_enabled,
     redoc_url=_redoc_enabled,
     openapi_url=_openapi_enabled,
@@ -75,7 +75,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20261012v2"
+STATIC_UI_VERSION = "20261015product1"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
@@ -134,7 +134,6 @@ app.include_router(auth.router)
 app.include_router(owner.router)
 app.include_router(actions.router, prefix="/api")
 app.include_router(practice.router, prefix="/api")
-app.include_router(dashboard.router, prefix="/api")
 app.include_router(ai_advice.router)  # AI建议路由（已有前缀 /api/ai-advice）
 app.include_router(self_talk_router)
 app.include_router(self_talk_reminders_router)  # Self-talk 提醒路由
@@ -143,8 +142,8 @@ app.include_router(schedule.router, prefix="/api")
 app.include_router(time_log.router, prefix="/api")
 app.include_router(capture.router, prefix="/api")
 app.include_router(habit_programs.router, prefix="/api")
-app.include_router(ebooks.router, prefix="/api")
 app.include_router(methods.router, prefix="/api")
+app.include_router(projects.router, prefix="/api")
 app.include_router(app_download.router)
 
 

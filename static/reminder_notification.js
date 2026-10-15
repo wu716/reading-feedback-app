@@ -306,8 +306,6 @@ class ReminderNotificationService {
                 dailyTime: settings.daily_reminder_time || '20:00',
                 reminderDays: settings.reminder_days || [0, 1, 2, 3, 4, 5, 6],
                 systemNotification: settings.browser_notification !== false,
-                readingEnabled: !!settings.reading_reminder_enabled,
-                readingTime: settings.reading_reminder_time || '21:00',
             }));
             window.ShuranNative.requestPermission();
             window.ShuranNative.pollNow();
@@ -938,7 +936,7 @@ class ReminderNotificationService {
         this.dismissReminder(reminderData.log_id, actionTaken);
         this.closeDropdown();
         const type = reminderData.reminder_type;
-        if (type === 'todo' || type === 'reading') {
+        if (type === 'todo') {
             if (typeof navigateTo === 'function') {
                 navigateTo('overview');
                 return;

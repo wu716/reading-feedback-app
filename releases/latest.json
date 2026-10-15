@@ -1,8 +1,8 @@
 {
-  "versionCode": 42,
-  "versionName": "2.0",
+  "versionCode": 43,
+  "versionName": "2.0.1",
   "filename": "shuran.apk",
-  "notes": "书然 2.0：方法卡成为首页，支持保存情境与第一步、记录尝试反馈和提交产品意见。",
+  "notes": "书然 2.0.1：项目、阶段、前置任务、时间片和流程库；阅读与旧统计入口退出，历史数据保留。",
   "require_shell": true,
   "force": true,
   "minVersionCode": 20,

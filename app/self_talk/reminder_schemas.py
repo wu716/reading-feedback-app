@@ -25,8 +25,6 @@ class ReminderSettingBase(BaseModel):
     browser_notification: bool = True
     email_notification: bool = True
 
-    reading_reminder_enabled: bool = False
-    reading_reminder_time: Optional[str] = Field(None, pattern=r'^\d{2}:\d{2}(:\d{2})?$')
 
 
 class ReminderSettingCreate(ReminderSettingBase):
@@ -45,8 +43,6 @@ class ReminderSettingUpdate(BaseModel):
     inactive_days_threshold: Optional[int] = None
     browser_notification: Optional[bool] = None
     email_notification: Optional[bool] = None
-    reading_reminder_enabled: Optional[bool] = None
-    reading_reminder_time: Optional[str] = None
 
 
 class ReminderSettingResponse(ReminderSettingBase):

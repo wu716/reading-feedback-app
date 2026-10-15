@@ -1,0 +1,277 @@
+(() => {
+  'use strict';
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const esc = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const state = { overview: {goals:[], projects:[]}, templates:[], sessions:[], projectId:null, taskId:null, active:null, detailMode:'attributes' };
+  let noticeTimer;
+
+  function notice(message, error = false) {
+    const box = $('#notice'); box.textContent = message; box.classList.toggle('error', error); box.hidden = false;
+    clearTimeout(noticeTimer); noticeTimer = setTimeout(() => box.hidden = true, 5000);
+  }
+  async function request(path, options = {}) {
+    const token = localStorage.getItem('authToken');
+    if (!token) { location.href = '/static/index.html#user-center'; throw new Error('请先登录'); }
+    const response = await fetch('/api/projects' + path, {
+      ...options, headers: {'Authorization':'Bearer ' + token, ...(options.body ? {'Content-Type':'application/json'} : {}), ...(options.headers || {})}
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : '操作失败，请稍后重试');
+    return data;
+  }
+  const post = (path, body) => request(path, {method:'POST',body:JSON.stringify(body)});
+  const patch = (path, body) => request(path, {method:'PATCH',body:JSON.stringify(body)});
+  const put = (path, body) => request(path, {method:'PUT',body:JSON.stringify(body)});
+  function currentProject() { return state.overview.projects.find(p => p.id === state.projectId); }
+  function currentTask() { return currentProject()?.tasks.find(t => t.id === state.taskId); }
+  function allTasks() { return state.overview.projects.flatMap(p => p.tasks.map(t => ({...t, project_title:p.title}))); }
+  function taskOptions(selectedId, includeEmpty = true) {
+    return (includeEmpty ? '<option value="">选择任务</option>' : '') + allTasks().filter(t => t.state !== 'completed').map(t =>
+      `<option value="${t.id}" ${t.id === selectedId ? 'selected' : ''} ${t.blocked_by.length ? 'disabled' : ''}>${esc(t.project_title)} · ${esc(t.title)}${t.blocked_by.length ? '（等待前置）' : ''}</option>`).join('');
+  }
+  function localInput(iso) {
+    if (!iso) return '';
+    const d = new Date(iso), shifted = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+    return shifted.toISOString().slice(0,16);
+  }
+  function dtLabel(iso) { return iso ? new Date(iso).toLocaleString('zh-CN', {hour12:false}) : '进行中'; }
+  function stageName(stage) { return stage.state === 'current' ? '当前阶段' : stage.state === 'next' ? '下一阶段' : '已结束'; }
+  function goalOptions(selected) { return '<option value="">暂不关联</option>' + state.overview.goals.map(g => `<option value="${g.id}" ${g.id === selected ? 'selected' : ''}>${esc(g.title)}</option>`).join(''); }
+  function stageOptions(project, selected) { return (project?.stages || []).filter(s => s.state !== 'closed').map(s => `<option value="${s.id}" ${s.id === selected ? 'selected' : ''}>${esc(s.title)} · ${stageName(s)}</option>`).join(''); }
+
+  async function refresh() {
+    const [overview, templates, sessions] = await Promise.all([request('/overview'), request('/templates'), request('/sessions')]);
+    state.overview = overview; state.templates = templates.items; state.sessions = sessions.items;
+    if (!overview.projects.some(p => p.id === state.projectId)) state.projectId = overview.projects[0]?.id ?? null;
+    if (!currentProject()?.tasks.some(t => t.id === state.taskId)) state.taskId = null;
+    state.active = state.sessions.find(s => !s.ended_at) || null;
+    render();
+  }
+  async function afterChange(message) { await refresh(); if (message) notice(message); }
+  async function run(task) { try { await task(); } catch (error) { notice(error.message, true); } }
+
+  function renderGoals() {
+    $('#goalList').innerHTML = state.overview.goals.length ? state.overview.goals.map(g =>
+      `<span class="chip">${esc(g.title)}${g.horizon_end ? `<small>至 ${esc(g.horizon_end)}</small>` : ''} <button type="button" class="plain-action" data-act="edit-goal" data-id="${g.id}" aria-label="修改目标 ${esc(g.title)}">修改</button></span>`).join('') : '<p class="empty">先从一个近期目标开始；简单事项也可以不建目标。</p>';
+    $('#projectGoal').innerHTML = goalOptions(null);
+  }
+  function renderProjects() {
+    const projects = state.overview.projects;
+    $('#projectSelect').innerHTML = projects.length ? projects.map(p => `<option value="${p.id}" ${p.id === state.projectId ? 'selected' : ''}>${esc(p.title)}</option>`).join('') : '<option value="">还没有项目</option>';
+    const project = currentProject(); $('#projectOutcome').textContent = project?.outcome || '';
+    $('#taskStage').innerHTML = stageOptions(project, project?.stages.find(s => s.state === 'current')?.id);
+    $('#stageBoard').innerHTML = project ? project.stages.map(s => {
+      const tasks = project.tasks.filter(t => t.stage_id === s.id);
+      return `<article class="stage ${esc(s.state)}"><div class="stage-header"><h3>${esc(s.title)}</h3><span class="state-tag">${stageName(s)}</span></div>
+        ${tasks.length ? tasks.map(t => `<div class="task-row ${t.blocked_by.length ? 'blocked' : ''} ${t.state === 'completed' ? 'done' : ''}"><button type="button" data-act="select-task" data-id="${t.id}">${esc(t.title)}<small>${t.blocked_by.length ? '等待前置任务' : t.state === 'completed' ? '已完成' : t.state === 'partial' ? '部分完成' : t.state === 'rework' ? '需要返工' : '可以推进'} · 原估计 ${t.original_estimate_minutes ?? '未填'} 分 · 实耗 ${t.actual_minutes} 分</small></button></div>`).join('') : '<p class="stage-empty">这里还没有任务</p>'}
+        ${s.state === 'next' ? `<form class="stage-change" data-stage="${s.id}"><select name="decision" aria-label="当前阶段如何处理"><option value="continue">继续当前阶段</option><option value="adjust">调整范围并切换</option><option value="close">结束当前阶段</option></select><input name="reason" placeholder="结束时说明原因" aria-label="阶段结束原因"><button type="submit">确认切换</button></form>` : ''}</article>`;
+    }).join('') : '<p class="empty">建立项目后，这里会出现当前阶段和下一阶段。</p>';
+  }
+  function renderTaskDetail() {
+    const root = $('#taskDetail'), task = currentTask(), project = currentProject();
+    if (!task) { root.hidden = true; return; }
+    root.hidden = false;
+    const choices = project.tasks.filter(t => t.id !== task.id).map(t => `<option value="${t.id}">${esc(t.title)}</option>`).join('');
+    const prereq = task.prerequisite_ids.map(id => project.tasks.find(t => t.id === id)).filter(Boolean);
+    root.innerHTML = `<div class="detail-header"><h3>${esc(task.title)}</h3><button type="button" class="secondary" data-act="close-detail">收起</button></div>
+      <p class="task-metrics">原估计 ${task.original_estimate_minutes ?? '未填'} 分 · 当前估计 ${task.estimated_minutes ?? '未填'} 分 · 实际投入 ${task.actual_minutes} 分${task.difference_minutes == null ? '' : ` · 差额 ${task.difference_minutes > 0 ? '+' : ''}${task.difference_minutes} 分`}</p>
+      <div class="detail-actions" role="tablist" aria-label="任务操作分区"><button type="button" class="${state.detailMode === 'attributes' ? '' : 'secondary'}" data-act="detail-mode" data-mode="attributes">内容与估时</button><button type="button" class="${state.detailMode === 'dependencies' ? '' : 'secondary'}" data-act="detail-mode" data-mode="dependencies">前置与检查项</button><button type="button" class="${state.detailMode === 'completion' ? '' : 'secondary'}" data-act="detail-mode" data-mode="completion">安排与验收</button></div>
+      <div class="detail-zone" ${state.detailMode === 'attributes' ? '' : 'hidden'}><h4>内容与估时</h4><form id="detailForm" class="detail-grid">
+        <label>任务 <input name="title" maxlength="500" required value="${esc(task.title)}"></label><label>阶段 <select name="stage_id">${stageOptions(project, task.stage_id)}</select></label>
+        <label>当前估计分钟 <input name="estimated_minutes" type="number" min="0" value="${task.estimated_minutes ?? ''}"></label><label>熟悉程度 <select name="familiarity"><option value="">未标记</option><option value="familiar" ${task.familiarity === 'familiar' ? 'selected' : ''}>熟悉</option><option value="unfamiliar" ${task.familiarity === 'unfamiliar' ? 'selected' : ''}>陌生</option></select></label>
+        <label class="wide">为什么对目标有用 <textarea name="goal_reason" rows="2">${esc(task.goal_reason)}</textarea></label><label class="wide">怎样算完成 <textarea name="acceptance_criteria" rows="2">${esc(task.acceptance_criteria)}</textarea></label>
+        <label class="wide">开始前预演（第一步、材料、难处、卡住怎么办） <textarea name="rehearsal_note" rows="3">${esc(task.rehearsal_note)}</textarea></label><label class="wide">流程步骤（每行一项） <textarea name="steps" rows="3">${esc(task.steps.join('\n'))}</textarea></label>
+        <label class="wide">难点或阻碍 <textarea name="blocker_note" rows="2">${esc(task.blocker_note)}</textarea></label><button type="submit">保存任务内容</button></form></div>
+      <div class="detail-zone" ${state.detailMode === 'dependencies' ? '' : 'hidden'}><h4>前置任务</h4><p>${prereq.length ? prereq.map(t => `${esc(t.title)} <button type="button" class="secondary" data-act="remove-dep" data-id="${t.id}">移除</button>`).join(' · ') : '没有前置限制，可以开始。'}</p>
+        <form id="dependencyForm"><label>必须先完成 <select name="prerequisite_id">${choices}</select></label><button type="submit" ${choices ? '' : 'disabled'}>添加前置</button></form>
+        <h4>检查项</h4><ul>${task.checklist.map(item => `<li><label class="check"><input type="checkbox" data-act="toggle-check" data-id="${item.id}" ${item.done ? 'checked' : ''}>${esc(item.text)}</label></li>`).join('') || '<li>还没有检查项</li>'}</ul>
+        <form id="checklistForm"><label>新增检查项 <input name="text" maxlength="500" required></label><button type="submit">添加</button></form></div>
+      <div class="detail-zone" ${state.detailMode === 'completion' ? '' : 'hidden'}><h4>安排与验收</h4>
+        <form id="scheduleTaskForm"><label>安排到哪天 <input name="task_date" type="date" required></label><button type="submit">写入日程</button></form>
+        <p>完成时核对标准：${esc(task.acceptance_criteria || '尚未填写，可先判断实际结果。')}</p>
+        <form id="finishTaskForm"><label>结果 <select name="result"><option value="completed">完成</option><option value="partial">部分完成</option><option value="rework">需要返工</option></select></label><label>结果说明 <input name="outcome_note" value="${esc(task.outcome_note)}"></label><label>估时偏差原因 <input name="variance_reason" value="${esc(task.variance_reason)}"></label><button type="submit">保存验收</button></form>
+        <div class="detail-actions"><button type="button" class="secondary" data-act="save-template">保存为流程</button></div></div>`;
+    const date = $('#scheduleTaskForm [name=task_date]', root); if (date) date.value = new Date().toLocaleDateString('en-CA');
+  }
+
+  function renderExecution() {
+    const selected = Number($('#focusTask').value) || state.taskId;
+    $('#focusTask').innerHTML = taskOptions(selected);
+    $('#manualTask').innerHTML = taskOptions(null);
+    const active = state.active;
+    $('.focus-panel').classList.toggle('break', active?.kind === 'break');
+    $('#startWork').disabled = !!active;
+    $('#pauseWork').disabled = !active;
+    $('#endWork').disabled = !active;
+    $('#switchWork').disabled = !active || active.kind !== 'work';
+    $('#actualStopWrap').hidden = !active;
+    tick();
+  }
+  function tick() {
+    const active = state.active;
+    const planned = active?.planned_minutes || Number($('#workMinutes').value) || 20;
+    const elapsed = active ? Math.max(0, Math.floor((Date.now() - Date.parse(active.started_at)) / 1000)) : 0;
+    const remaining = Math.max(0, planned*60 - elapsed);
+    $('#timerDisplay').textContent = `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
+    $('#timerCaption').textContent = active ? `${active.kind === 'break' ? '休息中' : '工作中'} · ${dtLabel(active.started_at)} 开始` : '准备开始工作片';
+    $('#timeDecision').hidden = !active || remaining > 0;
+  }
+  function renderSessions() {
+    const names = new Map(allTasks().map(t => [t.id, t.title]));
+    $('#sessionList').innerHTML = state.sessions.length ? state.sessions.slice(0,40).map(s => {
+      const assessment = s.assessment || {};
+      return `<article class="session-card ${s.kind}"><div><strong>${s.kind === 'break' ? '休息' : esc(names.get(s.project_task_id) || s.label || '工作片')}</strong><div class="session-meta">${dtLabel(s.started_at)} → ${dtLabel(s.ended_at)} · ${s.duration_minutes ?? '进行中'} 分 · ${s.source === 'timer' ? '计时' : s.source === 'moment' ? '确认时刻' : '补记'}</div></div>
+        ${s.ended_at ? `<details><summary>更正时间</summary><form class="correct-form" data-id="${s.id}"><label>开始 <input name="started_at" type="datetime-local" required value="${localInput(s.started_at)}"></label><label>结束 <input name="ended_at" type="datetime-local" required value="${localInput(s.ended_at)}"></label><label>更正原因 <input name="correction_note" maxlength="2000" required></label><button type="submit">保存更正</button></form></details>
+        <p><a href="/static/index.html#time-log">在「记」中回看目标相关的重要性</a></p>` : ''}</article>`;
+    }).join('') : '<p class="empty">还没有实际时间片。开始计时，或事后补记。</p>';
+  }
+  function renderTemplates() {
+    $('#templateList').innerHTML = state.templates.length ? state.templates.map(t => `<article class="template-card"><h3>${esc(t.title)}</h3><p>${t.steps.length} 个步骤 · ${t.checklist.length} 个检查项${t.acceptance_criteria ? ` · ${esc(t.acceptance_criteria)}` : ''}</p><div class="detail-actions"><button type="button" class="secondary" data-act="edit-template" data-id="${t.id}">修改流程</button><button type="button" data-act="instantiate" data-id="${t.id}" ${state.projectId ? '' : 'disabled'}>生成可编辑任务</button></div></article>`).join('') : '<p class="empty">从空白写一个流程，或从已有任务保存。</p>';
+  }
+  function render() { renderGoals(); renderProjects(); renderTaskDetail(); renderExecution(); renderSessions(); renderTemplates(); }
+  function formData(form) { return Object.fromEntries(new FormData(form)); }
+  function nullableNumber(value) { return value === '' || value == null ? null : Number(value); }
+  function lines(value) { return String(value || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean); }
+
+  document.addEventListener('submit', event => {
+    const form = event.target;
+    if (!form.matches('form')) return;
+    event.preventDefault();
+    run(async () => {
+      const body = formData(form);
+      if (form.id === 'goalForm') {
+        await post('/goals', {title:body.title, horizon_end:body.horizon_end || null}); form.reset(); await afterChange('目标已保存');
+      } else if (form.id === 'projectForm') {
+        const result = await post('', {title:body.title, outcome:body.outcome || null, goal_id:nullableNumber(body.goal_id)});
+        state.projectId = result.id; form.reset(); await afterChange('项目已建立');
+      } else if (form.id === 'taskForm') {
+        if (!state.projectId) throw new Error('请先建立项目');
+        const task = await post(`/${state.projectId}/tasks`, {title:body.title, stage_id:nullableNumber(body.stage_id),
+          estimated_minutes:nullableNumber(body.estimated_minutes), familiarity:body.familiarity || null,
+          goal_reason:body.goal_reason || null, acceptance_criteria:body.acceptance_criteria || null});
+        state.taskId = task.id; form.reset(); await afterChange('任务已加入阶段');
+      } else if (form.classList.contains('stage-change')) {
+        await post(`/stages/${form.dataset.stage}/activate`, {decision:body.decision, reason:body.reason || null});
+        await afterChange(body.decision === 'continue' ? '继续当前阶段' : '阶段已调整');
+      } else if (form.id === 'detailForm') {
+        await patch(`/tasks/${state.taskId}`, {title:body.title, stage_id:nullableNumber(body.stage_id), estimated_minutes:nullableNumber(body.estimated_minutes), familiarity:body.familiarity || null,
+          goal_reason:body.goal_reason || null, acceptance_criteria:body.acceptance_criteria || null,
+          rehearsal_note:body.rehearsal_note || null, blocker_note:body.blocker_note || null, steps:lines(body.steps)});
+        await afterChange('任务内容已保存');
+      } else if (form.id === 'dependencyForm') {
+        await post(`/tasks/${state.taskId}/dependencies`, {prerequisite_id:Number(body.prerequisite_id)}); await afterChange('前置关系已保存');
+      } else if (form.id === 'checklistForm') {
+        await post(`/tasks/${state.taskId}/checklist`, {text:body.text}); await afterChange('检查项已添加');
+      } else if (form.id === 'finishTaskForm') {
+        const result = await post(`/tasks/${state.taskId}/finish`, {result:body.result, outcome_note:body.outcome_note || null, variance_reason:body.variance_reason || null});
+        await afterChange(result.unchecked_count ? `验收已保存；仍有 ${result.unchecked_count} 个检查项未完成` : '验收已保存');
+      } else if (form.id === 'scheduleTaskForm') {
+        await post(`/tasks/${state.taskId}/schedule`, {task_date:body.task_date}); await afterChange('已写入当天日程');
+      } else if (form.id === 'manualForm') {
+        const source = body.source;
+        await post('/sessions/manual', {project_task_id:nullableNumber(body.project_task_id), source, kind:'work',
+          time_log_node_id:source === 'moment' ? nullableNumber(body.time_log_node_id) : null,
+          started_at:new Date(body.started_at).toISOString(), ended_at:new Date(body.ended_at).toISOString()});
+        form.reset(); $('#momentNodeLabel').hidden = true; await afterChange('实际投入已保存');
+      } else if (form.classList.contains('correct-form')) {
+        await patch(`/sessions/${form.dataset.id}`, {started_at:new Date(body.started_at).toISOString(), ended_at:new Date(body.ended_at).toISOString(), correction_note:body.correction_note});
+        await afterChange('片段已更正');
+      } else if (form.id === 'templateForm') {
+        const payload = {title:body.title, steps:lines(body.steps), checklist:lines(body.checklist), common_problems:body.common_problems || null, acceptance_criteria:body.acceptance_criteria || null};
+        if (body.id) await put(`/templates/${body.id}`, payload); else await post('/templates', payload);
+        form.reset(); await afterChange('流程已保存');
+      }
+    });
+  });
+
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-act], [data-next]');
+    if (!button) return;
+    run(async () => {
+      const id = Number(button.dataset.id), action = button.dataset.act;
+      if (action === 'select-task') { state.taskId = id; state.detailMode = 'attributes'; renderTaskDetail(); $('#taskDetail').scrollIntoView({behavior:'smooth',block:'start'}); }
+      else if (action === 'close-detail') { state.taskId = null; renderTaskDetail(); }
+      else if (action === 'detail-mode') { state.detailMode = button.dataset.mode; renderTaskDetail(); }
+      else if (action === 'remove-dep') { await request(`/tasks/${state.taskId}/dependencies/${id}`, {method:'DELETE'}); await afterChange('前置关系已移除'); }
+      else if (action === 'edit-goal') {
+        const goal = state.overview.goals.find(g => g.id === id), title = window.prompt('修改目标', goal.title);
+        if (title && title.trim()) { await patch(`/goals/${id}`, {title:title.trim()}); await afterChange('目标已修改；历史评价仍保留当时目标文字'); }
+      }
+      else if (action === 'save-template') { await post(`/tasks/${state.taskId}/save-template`, {}); await afterChange('已从任务保存流程'); }
+      else if (action === 'edit-template') {
+        const template = state.templates.find(t => t.id === id), form = $('#templateForm');
+        form.elements.id.value = template.id; form.elements.title.value = template.title;
+        form.elements.steps.value = template.steps.join('\n'); form.elements.checklist.value = template.checklist.join('\n');
+        form.elements.common_problems.value = template.common_problems || '';
+        form.elements.acceptance_criteria.value = template.acceptance_criteria || '';
+        form.scrollIntoView({behavior:'smooth',block:'center'});
+      }
+      else if (action === 'instantiate') {
+        const project = currentProject(), stage = project?.stages.find(s => s.state === 'current');
+        if (!project) throw new Error('请先建立项目');
+        const task = await post(`/templates/${id}/instantiate`, {project_id:project.id, stage_id:stage?.id || null});
+        state.taskId = task.id; await afterChange('已生成可编辑任务');
+      }
+      else if (button.dataset.next) await chooseNext(button.dataset.next);
+    });
+  });
+  document.addEventListener('change', event => {
+    const el = event.target;
+    if (el.id === 'projectSelect') { state.projectId = Number(el.value) || null; state.taskId = null; render(); }
+    if (el.matches('[data-act=toggle-check]')) run(async () => { await patch(`/checklist/${el.dataset.id}?done=${el.checked}`, {}); await afterChange('检查项已更新'); });
+    if (el.id === 'manualSource' || el.matches('#manualForm [name=started_at]')) run(loadMomentChoices);
+    if (el.id === 'workMinutes' && !state.active) tick();
+  });
+
+  async function loadMomentChoices() {
+    const source = $('#manualSource').value, box = $('#momentNodeLabel');
+    box.hidden = source !== 'moment';
+    if (source !== 'moment') return;
+    const started = $('#manualForm [name=started_at]').value;
+    if (!started) { $('#momentNode').innerHTML = '<option value="">先填写开始时间</option>'; return; }
+    const token = localStorage.getItem('authToken');
+    const day = started.slice(0,10);
+    const response = await fetch(`/api/time-log?log_date=${encodeURIComponent(day)}`, {headers:{Authorization:'Bearer ' + token}});
+    if (!response.ok) throw new Error('加载时刻记录失败');
+    const data = await response.json();
+    $('#momentNode').innerHTML = '<option value="">选择并确认来源</option>' + (data.nodes || []).map(n => `<option value="${n.id}">${esc(dtLabel(n.logged_at))} · ${esc(n.label || '未填写')}</option>`).join('');
+  }
+
+  async function stopCurrent(message) {
+    if (!state.active) return;
+    const endInput = $('#actualStopAt');
+    const endedAt = endInput.value ? new Date(endInput.value).toISOString() : null;
+    await post(`/sessions/${state.active.id}/stop`, endedAt ? {ended_at:endedAt} : {});
+    endInput.value = '';
+    await afterChange(message);
+  }
+  async function startWork(taskId = Number($('#focusTask').value)) {
+    if (!taskId) throw new Error('请先选择可开始的任务');
+    const minutes = Number($('#workMinutes').value) || 20;
+    if (state.active) await post('/sessions/switch', {from_session_id:state.active.id, project_task_id:taskId, kind:'work', planned_minutes:minutes});
+    else await post('/sessions/start', {project_task_id:taskId, kind:'work', planned_minutes:minutes});
+    await afterChange('工作片已开始');
+  }
+  async function chooseNext(choice) {
+    if (choice === 'break') {
+      if (!state.active) throw new Error('没有进行中的片段');
+      await post('/sessions/switch', {from_session_id:state.active.id, kind:'break', planned_minutes:Number($('#breakMinutes').value) || 5});
+      await afterChange('休息开始；这段时间不计任务实耗');
+    } else if (choice === 'continue') {
+      const taskId = state.active?.project_task_id || Number($('#focusTask').value);
+      await startWork(taskId);
+    } else if (choice === 'switch') {
+      const taskId = Number($('#focusTask').value);
+      if (!taskId || taskId === state.active?.project_task_id) throw new Error('请先在“当前任务”选择另一项');
+      await startWork(taskId);
+    }
+  }
+  $('#startWork').addEventListener('click', () => run(() => startWork()));
+  $('#pauseWork').addEventListener('click', () => run(() => stopCurrent('已暂停；暂停期间不计任务实耗')));
+  $('#endWork').addEventListener('click', () => run(() => stopCurrent('片段已结束')));
+  $('#switchWork').addEventListener('click', () => run(() => chooseNext('switch')));
+  $('#resetTemplate').addEventListener('click', () => $('#templateForm').reset());
+
+  setInterval(tick, 1000);
+  refresh().catch(error => notice(error.message, true));
+})();

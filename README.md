@@ -4,11 +4,11 @@
 
 首发核心：保存「情境 + 第一步」方法卡，在实际遇到问题时尝试，记录「有帮助 / 没帮助 / 没用上」。未登录可在浏览器里体验，登录后保存到账号；站长可查看近 7 天实际使用与主动提交的意见。
 
-版本：网页及 Android 安装包 `2.0` / `versionCode 42`。下载入口以 `/download/info` 的实际可用状态为准。
+版本：网页及 Android 源码 `2.0.1` / `versionCode 43`。下载入口以 `/download/info` 的实际可用安装包状态为准。
 
 设计、指标口径与发布说明见 [方法卡首发设计](docs/product/method-cards-launch.md)；本地应用、产品规划与服务器发布见 [Codex 交接](docs/product/shuran-local-codex-handoff.md)。
 
-这是 **书然** 的源代码仓库：一款手机端阅读反馈应用（Android 现已提供，后续计划上架 App Store）。
+这是 **书然** 的源代码仓库：一款面向个人项目、日程与时间反思的应用（Android 已有安装包，后续计划上架 App Store）。
 
 - 软件名称：书然（Shuran）
 - 著作权人：书然项目作者（GitHub: [wu716](https://github.com/wu716)）

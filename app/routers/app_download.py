@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 GITHUB_APK_URL = (
     "https://github.com/wu716/reading-feedback-app/releases/download/"
-    "android-2.0/shuran.apk"
+    "android-2.0.1/shuran.apk"
 )
 # 线上 latest.json 若过旧，1.3.4 会误以为已是最新。接口永不低于此门槛。
 MIN_SHELL_VERSION_CODE = 20

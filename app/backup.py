@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""每日逻辑备份：导出关键表为 CSV，保留 7 天。不含密码哈希和录音文件。"""
+"""每日逻辑备份：导出关键表为 CSV，保留 7 天；原文件仍需另备份上传卷。"""
 import csv
 import io
 import logging
@@ -17,6 +17,10 @@ from app.models import (
     AiCallLog,
     AuditLog,
     DailyTodo,
+    Ebook,
+    EbookChapter,
+    EbookNote,
+    EbookProgress,
     Idea,
     InviteCode,
     MethodCard,
@@ -28,6 +32,10 @@ from app.models import (
     Subscription,
     TimeLogNode,
     User,
+)
+from app.project_models import (
+    Goal, Project, ProjectStage, ProjectTask, TaskDependency,
+    TaskChecklistItem, WorkSession, TimeActivityAssessment, ProcessTemplate,
 )
 
 logger = logging.getLogger(__name__)
@@ -51,11 +59,18 @@ def _cell(value) -> str:
     return str(value)
 
 
+def _model_csv(db: Session, model) -> bytes:
+    """Archive every row and column, including soft-deleted history."""
+    columns = list(model.__table__.columns)
+    return _csv_bytes([col.name for col in columns], [
+        [_cell(getattr(row, col.name)) for col in columns] for row in db.query(model).all()
+    ])
+
+
 def build_backup_zip(db: Session) -> bytes:
     users = db.query(User).all()
     actions = db.query(Action).filter(Action.deleted_at.is_(None)).all()
     practices = db.query(PracticeLog).filter(PracticeLog.deleted_at.is_(None)).all()
-    readings = db.query(ReadingEntry).filter(ReadingEntry.deleted_at.is_(None)).all()
     talks = db.query(SelfTalk).filter(SelfTalk.deleted_at.is_(None)).all()
     todos = db.query(DailyTodo).filter(DailyTodo.deleted_at.is_(None)).all()
     ideas = db.query(Idea).filter(Idea.deleted_at.is_(None)).all()
@@ -106,13 +121,7 @@ def build_backup_zip(db: Session) -> bytes:
             ["id", "user_id", "action_id", "date", "result", "notes"],
             [[p.id, p.user_id, p.action_id, _cell(p.date), p.result, p.notes or ""] for p in practices],
         ),
-        "readings.csv": _csv_bytes(
-            ["id", "user_id", "book_title", "duration_minutes", "entry_date", "content", "reflection"],
-            [
-                [r.id, r.user_id, r.book_title or "", r.duration_minutes, _cell(r.entry_date), r.content, r.reflection or ""]
-                for r in readings
-            ],
-        ),
+        "readings.csv": _model_csv(db, ReadingEntry),
         "self_talks.csv": _csv_bytes(
             ["id", "user_id", "created_at", "transcript"],
             [[t.id, t.user_id, _cell(t.created_at), t.transcript or ""] for t in talks],
@@ -162,11 +171,28 @@ def build_backup_zip(db: Session) -> bytes:
         ),
     }
 
+    for name, model in {
+        "ebooks.csv": Ebook,
+        "ebook_chapters.csv": EbookChapter,
+        "ebook_notes.csv": EbookNote,
+        "ebook_progress.csv": EbookProgress,
+        "goals.csv": Goal,
+        "projects.csv": Project,
+        "project_stages.csv": ProjectStage,
+        "project_tasks.csv": ProjectTask,
+        "task_dependencies.csv": TaskDependency,
+        "task_checklist_items.csv": TaskChecklistItem,
+        "work_sessions.csv": WorkSession,
+        "time_activity_assessments.csv": TimeActivityAssessment,
+        "process_templates.csv": ProcessTemplate,
+    }.items():
+        files[name] = _model_csv(db, model)
+
     raw = io.BytesIO()
     with zipfile.ZipFile(raw, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for name, content in files.items():
             zf.writestr(name, content)
-        zf.writestr("README.txt", "书然备份。不含密码哈希和录音文件。录音在 uploads/self_talks。\n")
+        zf.writestr("README.txt", "书然 CSV 逻辑备份，不含密码哈希和上传原文件。完整恢复请另用 pg_dump -Fc 和 uploads 卷备份。\n")
     return raw.getvalue()
 
 

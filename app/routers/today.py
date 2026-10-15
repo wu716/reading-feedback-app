@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""今日待办、阅读记录、今日概览 API"""
+"""今日待办与概览 API"""
 import logging
 import re
 from datetime import date, datetime
@@ -17,7 +17,6 @@ from app.models import (
     Action,
     DailyTodo,
     PracticeLog,
-    ReadingEntry,
     SelfTalk,
     SelfTalkPlaybackLog,
     User,
@@ -103,33 +102,6 @@ class DailyTodoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ReadingEntryCreate(BaseModel):
-    book_title: Optional[str] = Field(None, max_length=255)
-    content: str = Field("", max_length=20000)
-    reflection: Optional[str] = Field(None, max_length=20000)
-    duration_minutes: int = Field(0, ge=0, le=24 * 60)
-    entry_date: Optional[date] = None
-
-
-class ReadingEntryUpdate(BaseModel):
-    book_title: Optional[str] = Field(None, max_length=255)
-    content: Optional[str] = Field(None, min_length=1, max_length=20000)
-    reflection: Optional[str] = Field(None, max_length=20000)
-    duration_minutes: Optional[int] = Field(None, ge=0, le=24 * 60)
-
-
-class ReadingEntryResponse(BaseModel):
-    id: int
-    book_title: Optional[str]
-    content: str
-    reflection: Optional[str]
-    duration_minutes: int
-    entry_date: date
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class TodayActionItem(BaseModel):
     id: int
     book_title: str
@@ -162,9 +134,6 @@ class TodaySelfTalkPlaybackItem(BaseModel):
 
 class TodayOverviewResponse(BaseModel):
     date: date
-    reading_total_minutes: int
-    reading_goal_minutes: int
-    reading_entries: List[ReadingEntryResponse]
     actions_completed: int
     actions_total: int
     action_items: List[TodayActionItem]
@@ -351,104 +320,6 @@ async def delete_daily_todo(
     return {"message": "已删除"}
 
 
-# ---------- Reading Entries ----------
-
-
-@router.get("/reading-entries", response_model=List[ReadingEntryResponse])
-async def list_reading_entries(
-    entry_date: Optional[date] = Query(None),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    target = entry_date or beijing_today()
-    rows = (
-        db.query(ReadingEntry)
-        .filter(
-            ReadingEntry.user_id == current_user.id,
-            ReadingEntry.entry_date == target,
-            ReadingEntry.deleted_at.is_(None),
-        )
-        .order_by(ReadingEntry.id.desc())
-        .all()
-    )
-    return rows
-
-
-@router.post("/reading-entries", response_model=ReadingEntryResponse, status_code=status.HTTP_201_CREATED)
-async def create_reading_entry(
-    body: ReadingEntryCreate,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    row = ReadingEntry(
-        user_id=current_user.id,
-        book_title=body.book_title,
-        content=(body.content or "").strip(),
-        reflection=body.reflection.strip() if body.reflection else None,
-        duration_minutes=body.duration_minutes,
-        entry_date=body.entry_date or beijing_today(),
-    )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    return row
-
-
-@router.patch("/reading-entries/{entry_id}", response_model=ReadingEntryResponse)
-async def update_reading_entry(
-    entry_id: int,
-    body: ReadingEntryUpdate,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    row = (
-        db.query(ReadingEntry)
-        .filter(
-            ReadingEntry.id == entry_id,
-            ReadingEntry.user_id == current_user.id,
-            ReadingEntry.deleted_at.is_(None),
-        )
-        .first()
-    )
-    if not row:
-        raise HTTPException(status_code=404, detail="阅读记录不存在")
-
-    if body.book_title is not None:
-        row.book_title = body.book_title
-    if body.content is not None:
-        row.content = body.content.strip()
-    if body.reflection is not None:
-        row.reflection = body.reflection.strip() or None
-    if body.duration_minutes is not None:
-        row.duration_minutes = body.duration_minutes
-    row.updated_at = datetime.utcnow()
-    db.commit()
-    db.refresh(row)
-    return row
-
-
-@router.delete("/reading-entries/{entry_id}")
-async def delete_reading_entry(
-    entry_id: int,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    row = (
-        db.query(ReadingEntry)
-        .filter(
-            ReadingEntry.id == entry_id,
-            ReadingEntry.user_id == current_user.id,
-            ReadingEntry.deleted_at.is_(None),
-        )
-        .first()
-    )
-    if not row:
-        raise HTTPException(status_code=404, detail="阅读记录不存在")
-    row.deleted_at = datetime.utcnow()
-    db.commit()
-    return {"message": "已删除"}
-
-
 # ---------- Overview ----------
 
 
@@ -459,18 +330,6 @@ async def get_today_overview(
     db: Session = Depends(get_db),
 ):
     target = overview_date or beijing_today()
-
-    reading_entries = (
-        db.query(ReadingEntry)
-        .filter(
-            ReadingEntry.user_id == current_user.id,
-            ReadingEntry.entry_date == target,
-            ReadingEntry.deleted_at.is_(None),
-        )
-        .order_by(ReadingEntry.id.desc())
-        .all()
-    )
-    reading_total = sum(e.duration_minutes or 0 for e in reading_entries)
 
     actions = (
         db.query(Action)
@@ -561,9 +420,6 @@ async def get_today_overview(
 
     return TodayOverviewResponse(
         date=target,
-        reading_total_minutes=reading_total,
-        reading_goal_minutes=120,
-        reading_entries=reading_entries,
         actions_completed=actions_completed,
         actions_total=actions_total,
         action_items=action_items,

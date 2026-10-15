@@ -278,10 +278,6 @@
     background: #fff;
 }
 
-.reading-remind-row .tp-field {
-    flex: 0 0 auto;
-}
-
 @media (min-width: 768px) {
     .tp-overlay {
         align-items: center;

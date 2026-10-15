@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>项目与时间 · 书然</title>
+  <link rel="stylesheet" href="/static/css/projects.css?v=20261015project1">
+  <script defer src="/static/js/projects.js?v=20261015project1"></script>
+</head>
+<body>
+  <header class="app-head">
+    <a class="brand" href="/static/index.html#schedule">书然</a>
+    <nav aria-label="主要页面">
+      <a href="/static/index.html#schedule">日程</a>
+      <a class="active" href="/static/projects.html">项目</a>
+      <a href="/static/index.html#capture">记</a>
+      <a href="/static/index.html#user-center">我的</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="page-intro">
+      <p class="eyebrow">把计划接到真实投入</p>
+      <h1>个人项目</h1>
+      <p>先写清一个结果，把眼下能推进的事放进当前阶段。想到后续步骤时，先放到下一阶段。</p>
+    </div>
+
+    <section class="surface" aria-labelledby="goalTitle">
+      <div class="section-head"><div><span class="section-number">01</span><h2 id="goalTitle">目标</h2></div><p>从一周开始也可以</p></div>
+      <form id="goalForm" class="inline-form">
+        <label>想达成什么结果 <input name="title" maxlength="200" required placeholder="例如：这周完成论文第一版"></label>
+        <label>计划到 <input name="horizon_end" type="date"></label>
+        <button type="submit">保存目标</button>
+      </form>
+      <div id="goalList" class="chip-list" aria-live="polite"></div>
+    </section>
+
+    <section class="surface" aria-labelledby="projectTitle">
+      <div class="section-head"><div><span class="section-number">02</span><h2 id="projectTitle">项目与阶段</h2></div><p>每个项目围绕一个可交付结果</p></div>
+      <form id="projectForm" class="project-form">
+        <label>项目名称 <input name="title" maxlength="200" required placeholder="例如：论文第一版"></label>
+        <label>要交付的结果 <input name="outcome" maxlength="4000" placeholder="例如：一份可打开、含目录和三节正文的 PDF"></label>
+        <label>关联目标 <select name="goal_id" id="projectGoal"><option value="">暂不关联</option></select></label>
+        <button type="submit">新建项目</button>
+      </form>
+      <div class="project-select-row"><label>当前查看 <select id="projectSelect" aria-label="选择项目"></select></label><span id="projectOutcome"></span></div>
+      <div id="stageBoard" class="stage-board" aria-live="polite"></div>
+    </section>
+
+    <section class="surface" aria-labelledby="taskTitle">
+      <div class="section-head"><div><span class="section-number">03</span><h2 id="taskTitle">任务内容</h2></div><p>先写下一步，需要时再补细节</p></div>
+      <form id="taskForm" class="task-create">
+        <label>下一步 <input name="title" maxlength="500" required placeholder="能开始、能核对的一件事"></label>
+        <label>放进 <select name="stage_id" id="taskStage"></select></label>
+        <details class="optional-fields"><summary>补充估时与完成标准</summary>
+          <div class="field-grid">
+            <label>预计分钟 <input name="estimated_minutes" type="number" min="0" max="100000" placeholder="可稍后估"></label>
+            <label>熟悉程度 <select name="familiarity"><option value="">暂不标记</option><option value="familiar">熟悉</option><option value="unfamiliar">陌生</option></select></label>
+            <label class="wide">对目标的作用 <textarea name="goal_reason" rows="2" maxlength="4000"></textarea></label>
+            <label class="wide">怎样算完成 <textarea name="acceptance_criteria" rows="2" maxlength="4000"></textarea></label>
+          </div>
+        </details>
+        <button type="submit">加入阶段</button>
+      </form>
+      <div id="taskDetail" class="task-detail" hidden></div>
+    </section>
+
+    <section class="surface" aria-labelledby="executionTitle">
+      <div class="section-head"><div><span class="section-number">04</span><h2 id="executionTitle">现在做</h2></div><p>一次只把注意力给一个主要任务</p></div>
+      <div class="execution-grid">
+        <div class="focus-panel">
+          <label>当前任务 <select id="focusTask"></select></label>
+          <div id="timerDisplay" class="timer-display">20:00</div>
+          <div id="timerCaption" class="timer-caption">准备开始工作片</div>
+          <div class="duration-row"><label>工作 <input id="workMinutes" type="number" min="1" max="180" value="20"> 分</label><label>休息 <input id="breakMinutes" type="number" min="1" max="180" value="5"> 分</label></div>
+          <div class="control-row" id="timerControls">
+            <button type="button" id="startWork">开始工作</button>
+            <button type="button" id="pauseWork" class="secondary" disabled>暂停</button>
+            <button type="button" id="endWork" class="secondary" disabled>结束片段</button>
+            <button type="button" id="switchWork" class="secondary" disabled>切换任务</button>
+          </div>
+          <label id="actualStopWrap" hidden>忘记结束时，填实际结束时间 <input id="actualStopAt" type="datetime-local"></label>
+          <div id="timeDecision" class="time-decision" hidden><p>这一片到时了。哪里卡住？可以先拆出下一步，也可以继续推进。</p><button type="button" data-next="continue">继续</button><button type="button" data-next="switch">切换</button><button type="button" data-next="break">休息</button></div>
+        </div>
+        <div class="reflection-panel">
+          <h3>事后补记</h3><p>只记录实际工作或休息的区间。重叠时会提示更正。</p>
+          <form id="manualForm">
+            <label>任务 <select name="project_task_id" id="manualTask"></select></label>
+            <label>开始 <input type="datetime-local" name="started_at" required></label>
+            <label>结束 <input type="datetime-local" name="ended_at" required></label>
+            <label>来源 <select name="source" id="manualSource"><option value="manual">手动补记</option><option value="moment">确认“记·时刻”的区间</option></select></label>
+            <label id="momentNodeLabel" hidden>时刻记录 <select name="time_log_node_id" id="momentNode"></select></label>
+            <button type="submit">保存实际投入</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="surface" aria-labelledby="reviewTitle">
+      <div class="section-head"><div><span class="section-number">05</span><h2 id="reviewTitle">片段与更正</h2></div><p>重要性评价在「记 → 时间日志」</p></div>
+      <div id="sessionList" class="session-list" aria-live="polite"></div>
+    </section>
+
+    <section class="surface" aria-labelledby="templateTitle">
+      <div class="section-head"><div><span class="section-number">06</span><h2 id="templateTitle">流程库</h2></div><p>可从空白建立，也可从任务保存</p></div>
+      <form id="templateForm" class="template-form">
+        <input name="id" type="hidden">
+        <label>流程名称 <input name="title" maxlength="200" required placeholder="例如：提交一份文稿"></label>
+        <label>步骤（每行一项） <textarea name="steps" rows="3" placeholder="第一步…"></textarea></label>
+        <label>检查项（每行一项） <textarea name="checklist" rows="3" placeholder="提交前检查…"></textarea></label>
+        <label>常见难点 <textarea name="common_problems" rows="2"></textarea></label>
+        <label>验收标准 <textarea name="acceptance_criteria" rows="2"></textarea></label>
+        <div class="form-actions"><button type="submit">保存流程</button><button type="button" id="resetTemplate" class="secondary">清空表单</button></div>
+      </form>
+      <div id="templateList" class="template-list" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <div id="notice" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

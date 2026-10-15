@@ -50,13 +50,14 @@ class ScheduleUiSeparationTests(unittest.TestCase):
         self.assertIn("familiarity: Optional[str] = None", self.api)
         self.assertIn("familiarity=body.familiarity", self.api)
 
-    def test_mobile_navigation_exposes_methods_reading_and_existing_tools(self):
+    def test_mobile_navigation_exposes_methods_projects_capture_and_existing_tools(self):
         self.assertIn("{ id: 'methods'", self.tabbar)
-        self.assertIn("{ id: 'reading'", self.tabbar)
+        self.assertIn("{ id: 'projects'", self.tabbar)
+        self.assertIn("{ id: 'capture'", self.tabbar)
         self.assertIn("navigateTo('actions')", self.index)
         self.assertIn("navigateTo('self-talk')", self.index)
-        self.assertIn("tab.action === 'reading'", self.tabbar)
-        self.assertIn("const PRIMARY_TABS_PHONE = new Set(['methods', 'schedule', 'user-center'])", self.index)
+        self.assertNotIn("tab.action === 'reading'", self.tabbar)
+        self.assertIn("const PRIMARY_TABS_PHONE = new Set(['methods', 'schedule', 'capture', 'user-center'])", self.index)
         self.assertIn("sectionId === 'actions'", self.index.split("function sectionParentOf", 1)[1].split("function primaryTabFor", 1)[0])
 
 

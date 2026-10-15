@@ -29,10 +29,15 @@ public final class ReminderNotifications {
     public static final String EXTRA_OPEN_PATH = "open_path";
     public static final int DAILY_NOTIFICATION_ID = 9001;
     public static final int TEST_NOTIFICATION_ID = 9002;
-    public static final int READING_NOTIFICATION_ID = 9003;
     public static final int DELIVERY_NOTIFICATION_ID = 9000;
 
     private ReminderNotifications() {}
+
+    /** Clear the notification left by an older APK without affecting todo reminders. */
+    public static void cancelLegacyReading(Context context) {
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        if (manager != null) manager.cancel(9003);
+    }
 
     public static void ensureChannel(Context context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {

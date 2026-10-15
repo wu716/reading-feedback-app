@@ -99,13 +99,13 @@ public final class ReminderScheduler {
     }
 
     public static void restore(Context context) {
+        clearLegacyReading(context);
         SharedPreferences p = prefs(context);
         if (!p.getBoolean(KEY_SYSTEM, true)) {
             return;
         }
         boolean enabled = p.getBoolean(KEY_ENABLED, false);
         boolean hasLocal = p.getBoolean(KEY_DAILY_ENABLED, false)
-                || p.getBoolean(KEY_READING_ENABLED, false)
                 || hasStoredTodos(p);
         // 旧版 401/登出曾把 enabled 清掉但留下时间；升级后自动恢复，不要求当天再登录。
         if (!enabled && hasLocal && !p.getBoolean(KEY_USER_DISABLED, false)) {
@@ -157,21 +157,13 @@ public final class ReminderScheduler {
         String daysCsv = days == null
                 ? p.getString(KEY_DAYS, "0,1,2,3,4,5,6")
                 : joinDays(days);
-        boolean readingEnabled = settings.has("readingEnabled")
-                ? settings.optBoolean("readingEnabled", false)
-                : p.getBoolean(KEY_READING_ENABLED, false);
-        String readingTime = settings.has("readingTime")
-                ? settings.optString("readingTime", "21:00")
-                : p.getString(KEY_READING_TIME, "21:00");
 
         SharedPreferences.Editor editor = p.edit()
                 .putBoolean(KEY_ENABLED, enabled)
                 .putBoolean(KEY_DAILY_ENABLED, dailyEnabled)
                 .putBoolean(KEY_SYSTEM, system)
                 .putString(KEY_DAILY_TIME, time)
-                .putString(KEY_DAYS, daysCsv)
-                .putBoolean(KEY_READING_ENABLED, readingEnabled)
-                .putString(KEY_READING_TIME, readingTime);
+                .putString(KEY_DAYS, daysCsv);
         if (settings.has("enabled")) {
             editor.putBoolean(KEY_USER_DISABLED, !enabled);
         }
@@ -258,9 +250,6 @@ public final class ReminderScheduler {
             if (ACTION_DAILY.equals(action)) {
                 fillDaily(context, delivery);
                 scheduleDaily(context);
-            } else if (ACTION_READING.equals(action)) {
-                fillReading(context, delivery);
-                scheduleReading(context);
             } else if (ACTION_TODO.equals(action)) {
                 fillTodo(context, intent, delivery);
             } else if (ACTION_TEST.equals(action)) {
@@ -273,8 +262,6 @@ public final class ReminderScheduler {
             Log.e(TAG, "deliverLocal failed", e);
             if (ACTION_DAILY.equals(action)) {
                 scheduleDaily(context);
-            } else if (ACTION_READING.equals(action)) {
-                scheduleReading(context);
             } else if (ACTION_POLL.equals(action)) {
                 schedulePoll(context);
             }
@@ -310,28 +297,6 @@ public final class ReminderScheduler {
         );
         markFired(context, KEY_LAST_DAILY_FIRE);
         prefs(context).edit().putString(KEY_DAILY_SHOWN, todayStamp()).commit();
-    }
-
-    private static void fillReading(Context context, Delivery delivery) {
-        delivery.userVisible = true;
-        delivery.notificationId = ReminderNotifications.READING_NOTIFICATION_ID;
-        delivery.notification = ReminderNotifications.build(
-                context,
-                context.getString(R.string.notification_reading_title),
-                context.getString(R.string.notification_reading_body),
-                "/static/index.html#overview"
-        );
-        if (recentlyFired(context, KEY_LAST_READING_FIRE)) {
-            Log.i(TAG, "reading alarm debounce");
-            return;
-        }
-        ReminderNotifications.showPrepared(
-                context,
-                delivery.notificationId,
-                delivery.notification
-        );
-        markFired(context, KEY_LAST_READING_FIRE);
-        prefs(context).edit().putString(KEY_READING_SHOWN, todayStamp()).commit();
     }
 
     private static void fillTodo(Context context, Intent intent, Delivery delivery) {
@@ -480,7 +445,6 @@ public final class ReminderScheduler {
     private static void scheduleLocked(Context context) {
         schedulePoll(context);
         scheduleDaily(context);
-        scheduleReading(context);
         scheduleTodos(context);
     }
 
@@ -491,7 +455,6 @@ public final class ReminderScheduler {
         }
         return !p.getBoolean(KEY_USER_DISABLED, false)
                 && (p.getBoolean(KEY_DAILY_ENABLED, false)
-                || p.getBoolean(KEY_READING_ENABLED, false)
                 || hasStoredTodos(p));
     }
 
@@ -531,26 +494,6 @@ public final class ReminderScheduler {
         }
         long at = System.currentTimeMillis() + POLL_INTERVAL_MS;
         setWakeup(context, am, at, pi, REQ_POLL, false);
-    }
-
-    private static void scheduleReading(Context context) {
-        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (am == null) {
-            return;
-        }
-        PendingIntent pi = pending(context, ACTION_READING, REQ_READING);
-        PendingIntent backup = pending(context, ACTION_READING, REQ_READING_BACKUP);
-        if (!masterOn(context)
-                || !prefs(context).getBoolean(KEY_READING_ENABLED, false)
-                || !prefs(context).getBoolean(KEY_SYSTEM, true)) {
-            am.cancel(pi);
-            am.cancel(backup);
-            return;
-        }
-        long at = nextClockMillis(prefs(context).getString(KEY_READING_TIME, "21:00"));
-        setWakeup(context, am, at, pi, REQ_READING_SHOW, true);
-        setBackupWakeup(am, at, backup);
-        Log.i(TAG, "reading alarm " + formatAt(at));
     }
 
     private static void scheduleTodos(Context context) {
@@ -616,7 +559,29 @@ public final class ReminderScheduler {
         }
     }
 
+    /** Remove alarms and the notification left by older APKs, even if reminders are disabled. */
+    private static void clearLegacyReading(Context context) {
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (am != null) {
+            PendingIntent primary = pending(context, ACTION_READING, REQ_READING);
+            PendingIntent backup = pending(context, ACTION_READING, REQ_READING_BACKUP);
+            am.cancel(primary);
+            am.cancel(backup);
+            primary.cancel();
+            backup.cancel();
+            showActivity(context, REQ_READING_SHOW).cancel();
+        }
+        prefs(context).edit()
+                .remove(KEY_READING_ENABLED)
+                .remove(KEY_READING_TIME)
+                .remove(KEY_READING_SHOWN)
+                .remove(KEY_LAST_READING_FIRE)
+                .apply();
+        ReminderNotifications.cancelLegacyReading(context);
+    }
+
     private static void cancelAll(Context context) {
+        clearLegacyReading(context);
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am == null) {
             return;
@@ -624,8 +589,6 @@ public final class ReminderScheduler {
         am.cancel(pending(context, ACTION_DAILY, REQ_DAILY));
         am.cancel(pending(context, ACTION_DAILY, REQ_DAILY_BACKUP));
         am.cancel(pending(context, ACTION_POLL, REQ_POLL));
-        am.cancel(pending(context, ACTION_READING, REQ_READING));
-        am.cancel(pending(context, ACTION_READING, REQ_READING_BACKUP));
         am.cancel(pending(context, ACTION_TEST, REQ_TEST));
         cancelTodoAlarms(context);
     }

@@ -2,12 +2,12 @@
 <resources>
     <string name="app_name">Shuran</string>
     <string name="app_url">http://43.161.238.165:8000/</string>
-    <string name="static_ui_version">20261012v2</string>
+    <string name="static_ui_version">20261015product1</string>
     <string name="loading">Opening Shuran…</string>
     <string name="network_error">Cannot connect to the server. Check your network and try again.</string>
     <string name="retry">Retry</string>
     <string name="notification_channel_name">Reminders</string>
-    <string name="notification_channel_desc">Daily reminders, todos, and reading reminders appear in notifications and the top banner.</string>
+    <string name="notification_channel_desc">Daily reminders and todos appear in notifications and the top banner.</string>
     <string name="notification_delivery_channel_name">Reminder delivery</string>
     <string name="notification_delivery_channel_desc">Used only for background delivery. It is not shown as a reminder.</string>
     <string name="notification_delivery_body">Delivering reminder…</string>
@@ -19,8 +19,6 @@
     <string name="notification_test_toast">Test notification sent. Pull down the notification shade to view it.</string>
     <string name="notification_exit_test_body">This is a due-time test after exiting the app. If you see this, background reminders are working.</string>
     <string name="notification_need_permission">Allow notification permission before testing.</string>
-    <string name="notification_reading_title">Time to read</string>
-    <string name="notification_reading_body">It is your daily reading time. Open Today and record it.</string>
     <string name="notification_todo_title">Todo reminder</string>
     <string name="notification_todo_fallback">You have a todo due now.</string>
     <string name="update_title">Update required</string>

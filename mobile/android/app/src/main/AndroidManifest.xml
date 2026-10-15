@@ -92,7 +92,6 @@
             android:enabled="true">
             <intent-filter>
                 <action android:name="com.shuran.app.REMINDER_DAILY" />
-                <action android:name="com.shuran.app.REMINDER_READING" />
                 <action android:name="com.shuran.app.REMINDER_TODO" />
                 <action android:name="com.shuran.app.REMINDER_POLL" />
                 <action android:name="com.shuran.app.REMINDER_TEST" />

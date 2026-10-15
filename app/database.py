@@ -49,50 +49,52 @@ def create_tables():
 
 
 def ensure_schema():
-    """为已有数据库补齐新增列。create_all 不会 ALTER 旧表。"""
-    create_tables()
-    inspector = inspect(engine)
-    existing_tables = set(inspector.get_table_names())
+    """幂等增量升级；本轮 DDL 在一个事务内完成，不重写旧业务行。"""
+    from app import models, project_models  # noqa: F401 - register every table
 
-    def add_column(table, column, ddl):
-        if table not in existing_tables:
-            return
-        cols = {c["name"] for c in inspector.get_columns(table)}
-        if column in cols:
-            return
-        with engine.begin() as conn:
+    with engine.begin() as conn:
+        Base.metadata.create_all(bind=conn)
+        inspector = inspect(conn)
+        existing_tables = set(inspector.get_table_names())
+
+        def add_column(table, column, ddl):
+            if table not in existing_tables:
+                return
+            cols = {c["name"] for c in inspector.get_columns(table)}
+            if column in cols:
+                return
             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {ddl}"))
-        logger.info("已为 %s 添加列 %s", table, column)
+            inspector.clear_cache()
+            logger.info("已为 %s 添加列 %s", table, column)
 
-    add_column("daily_todos", "remind_time", "remind_time VARCHAR(8)")
-    add_column("daily_todos", "reminded_at", "reminded_at TIMESTAMP")
-    add_column("daily_todos", "deleted_at", "deleted_at TIMESTAMP")
-    add_column("daily_todos", "updated_at", "updated_at TIMESTAMP")
-    add_column("reading_entries", "deleted_at", "deleted_at TIMESTAMP")
-    add_column("daily_tasks", "note", "note TEXT")
-    add_column("daily_tasks", "action_id", "action_id INTEGER")
-    add_column("daily_tasks", "priority", "priority INTEGER DEFAULT 0")
-    add_column("daily_tasks", "flow_order", "flow_order INTEGER DEFAULT 0")
-    add_column("self_talk_reminder_logs", "detail", "detail TEXT")
-    bool_default = "FALSE" if engine.dialect.name == "postgresql" else "0"
-    add_column(
-        "self_talk_reminder_settings",
-        "reading_reminder_enabled",
-        f"reading_reminder_enabled BOOLEAN DEFAULT {bool_default}",
-    )
-    add_column(
-        "self_talk_reminder_settings",
-        "reading_reminder_time",
-        "reading_reminder_time VARCHAR(8)",
-    )
-    add_column("ebook_notes", "thought_type", "thought_type VARCHAR(20) DEFAULT 'concept'")
-    add_column("ebook_notes", "relation_type", "relation_type VARCHAR(30)")
-    add_column("users", "phone", "phone VARCHAR(20)")
-    add_column("users", "phone_verified", f"phone_verified BOOLEAN DEFAULT {bool_default}")
-    add_column("users", "real_name", "real_name VARCHAR(100)")
-    add_column("users", "plan_expires_at", "plan_expires_at DATE")
-    add_column("users", "token_version", "token_version INTEGER DEFAULT 0")
-    add_column("users", "capture_kind", "capture_kind VARCHAR(20) DEFAULT 'moment'")
+        add_column("daily_todos", "remind_time", "remind_time VARCHAR(8)")
+        add_column("daily_todos", "reminded_at", "reminded_at TIMESTAMP")
+        add_column("daily_todos", "deleted_at", "deleted_at TIMESTAMP")
+        add_column("daily_todos", "updated_at", "updated_at TIMESTAMP")
+        add_column("reading_entries", "deleted_at", "deleted_at TIMESTAMP")
+        add_column("daily_tasks", "note", "note TEXT")
+        add_column("daily_tasks", "action_id", "action_id INTEGER")
+        add_column("daily_tasks", "priority", "priority INTEGER DEFAULT 0")
+        add_column("daily_tasks", "flow_order", "flow_order INTEGER DEFAULT 0")
+        add_column("daily_tasks", "project_task_id", "project_task_id INTEGER REFERENCES project_tasks(id) ON DELETE SET NULL")
+        if "daily_tasks" in existing_tables:
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_daily_tasks_project_task_id ON daily_tasks (project_task_id)"))
+        add_column("self_talk_reminder_logs", "detail", "detail TEXT")
+        bool_default = "FALSE" if engine.dialect.name == "postgresql" else "0"
+        add_column("self_talk_reminder_settings", "reading_reminder_enabled",
+                   f"reading_reminder_enabled BOOLEAN DEFAULT {bool_default}")
+        add_column("self_talk_reminder_settings", "reading_reminder_time", "reading_reminder_time VARCHAR(8)")
+        add_column("ebook_notes", "thought_type", "thought_type VARCHAR(20) DEFAULT 'concept'")
+        add_column("ebook_notes", "relation_type", "relation_type VARCHAR(30)")
+        add_column("users", "phone", "phone VARCHAR(20)")
+        add_column("users", "phone_verified", f"phone_verified BOOLEAN DEFAULT {bool_default}")
+        add_column("users", "real_name", "real_name VARCHAR(100)")
+        add_column("users", "plan_expires_at", "plan_expires_at DATE")
+        add_column("users", "token_version", "token_version INTEGER DEFAULT 0")
+        add_column("users", "capture_kind", "capture_kind VARCHAR(20) DEFAULT 'moment'")
+
+    # Older installations may contain duplicate phone values. This legacy index
+    # is best effort and intentionally separate from the project migration.
     if "users" in existing_tables:
         try:
             with engine.begin() as conn:
