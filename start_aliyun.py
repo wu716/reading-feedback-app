@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 def check_environment() -> bool:
     required = {
-        "DEEPSEEK_API_KEY": "DeepSeek API 密钥",
         "SECRET_KEY": "JWT 签名密钥",
         "DATABASE_URL": "数据库连接串（PostgreSQL 或 SQLite）",
     }
@@ -33,12 +32,12 @@ def check_environment() -> bool:
 
 def main():
     logger.info("=" * 60)
-    logger.info("启动读书反馈应用（阿里云生产环境）")
+    logger.info("启动书然应用（生产环境）")
     logger.info("=" * 60)
 
     os.environ.setdefault("ENVIRONMENT", "production")
 
-    os.makedirs("uploads/self_talks", exist_ok=True)
+    os.makedirs("uploads", exist_ok=True)
 
     if not check_environment():
         sys.exit(1)
