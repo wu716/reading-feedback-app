@@ -4,13 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>项目与时间 · 书然</title>
-  <link rel="stylesheet" href="/static/css/projects.css?v=20261015project1">
-  <script defer src="/static/js/projects.js?v=20261015project1"></script>
+  <link rel="stylesheet" href="/static/css/projects.css?v=20261017paper1">
+  <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20261017paper1">
+  <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261017paper1">
+  <script defer src="/static/js/projects.js?v=20261017paper1"></script>
+  <script defer src="/static/js/app-tabbar.js?v=20261017paper1"></script>
 </head>
 <body>
   <header class="app-head">
-    <a class="brand" href="/static/index.html#schedule">书然</a>
+    <a class="brand" href="/static/index.html#schedule"><span class="brand-mark" aria-hidden="true">书</span>书然</a>
     <nav aria-label="主要页面">
+      <a href="/static/index.html#overview">今日</a>
       <a href="/static/index.html#schedule">日程</a>
       <a class="active" href="/static/projects.html">项目</a>
       <a href="/static/index.html#capture">记</a>
@@ -18,33 +22,45 @@
     </nav>
   </header>
 
-  <main>
+  <main class="project-page">
     <div class="page-intro">
-      <p class="eyebrow">把计划接到真实投入</p>
-      <h1>个人项目</h1>
-      <p>先写清一个结果，把眼下能推进的事放进当前阶段。想到后续步骤时，先放到下一阶段。</p>
+      <div class="intro-copy">
+        <p class="eyebrow">02 / 项目</p>
+        <h1>项目有方向，<span class="intro-next"><em>下一步</em>看得见。</span></h1>
+        <p>把结果、阶段和现在能做的事放在同一个视野里。</p>
+      </div>
+      <details class="create-project" id="newProject">
+        <summary>＋ 新建项目</summary>
+        <form id="projectForm" class="project-form">
+          <label>项目名称 <input name="title" maxlength="200" required placeholder="例如：论文第一版"></label>
+          <label>要交付的结果 <input name="outcome" maxlength="4000" placeholder="例如：一份可打开、含目录和三节正文的 PDF"></label>
+          <label>关联目标 <select name="goal_id" id="projectGoal"><option value="">暂不关联</option></select></label>
+          <button type="submit">保存项目</button>
+        </form>
+      </details>
     </div>
 
+    <section class="surface project-overview" aria-labelledby="projectTitle">
+      <div class="section-head"><div><span class="section-number">01</span><h2 id="projectTitle">当前项目</h2></div><p>每个项目围绕一个可交付结果</p></div>
+      <div class="project-columns">
+        <div class="project-work">
+          <div class="project-select-row"><label>正在推进 <select id="projectSelect" aria-label="选择项目"></select></label><span id="projectOutcome"></span></div>
+          <div id="stageBoard" class="stage-board" aria-live="polite"></div>
+        </div>
+        <aside class="project-context" aria-label="目标与项目说明">
+          <div class="context-note"><h3>你的目标</h3><div id="goalList" class="chip-list" aria-live="polite"></div></div>
+          <div class="context-note"><h3>项目视图</h3><p>当前阶段先做已经决定的事；后续想法可以放进下一阶段。</p></div>
+        </aside>
+      </div>
+    </section>
+
     <section class="surface" aria-labelledby="goalTitle">
-      <div class="section-head"><div><span class="section-number">01</span><h2 id="goalTitle">目标</h2></div><p>从一周开始也可以</p></div>
+      <div class="section-head"><div><span class="section-number">02</span><h2 id="goalTitle">目标</h2></div><p>从一周开始也可以</p></div>
       <form id="goalForm" class="inline-form">
         <label>想达成什么结果 <input name="title" maxlength="200" required placeholder="例如：这周完成论文第一版"></label>
         <label>计划到 <input name="horizon_end" type="date"></label>
         <button type="submit">保存目标</button>
       </form>
-      <div id="goalList" class="chip-list" aria-live="polite"></div>
-    </section>
-
-    <section class="surface" aria-labelledby="projectTitle">
-      <div class="section-head"><div><span class="section-number">02</span><h2 id="projectTitle">项目与阶段</h2></div><p>每个项目围绕一个可交付结果</p></div>
-      <form id="projectForm" class="project-form">
-        <label>项目名称 <input name="title" maxlength="200" required placeholder="例如：论文第一版"></label>
-        <label>要交付的结果 <input name="outcome" maxlength="4000" placeholder="例如：一份可打开、含目录和三节正文的 PDF"></label>
-        <label>关联目标 <select name="goal_id" id="projectGoal"><option value="">暂不关联</option></select></label>
-        <button type="submit">新建项目</button>
-      </form>
-      <div class="project-select-row"><label>当前查看 <select id="projectSelect" aria-label="选择项目"></select></label><span id="projectOutcome"></span></div>
-      <div id="stageBoard" class="stage-board" aria-live="polite"></div>
     </section>
 
     <section class="surface" aria-labelledby="taskTitle">

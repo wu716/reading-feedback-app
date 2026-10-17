@@ -1,0 +1,663 @@
+/* 书然 2.0.4：日程、项目与记共用一张连续的纸面。 */
+:root {
+    --shuran-paper: #f7f5ef;
+    --shuran-ink: #21364a;
+    --shuran-muted: #71818b;
+    --shuran-blue: #315a7e;
+    --shuran-rust: #a06450;
+    --shuran-soft: #e9ede7;
+    --shuran-dot: rgba(39, 53, 70, .035);
+    --ink: var(--shuran-ink);
+    --paper: var(--shuran-paper);
+    --line: #e1e3dc;
+    accent-color: var(--shuran-blue);
+}
+
+html, body {
+    background-color: var(--shuran-paper);
+}
+
+body {
+    color: var(--shuran-ink);
+    background-image: radial-gradient(circle at 2px 2px, var(--shuran-dot) 0 .9px, transparent 1.2px);
+    background-size: 6px 6px;
+    background-attachment: fixed;
+}
+
+body::before {
+    display: none;
+}
+
+button, input, textarea, select {
+    font: inherit;
+}
+
+button:focus-visible, a:focus-visible, input:focus-visible,
+textarea:focus-visible, select:focus-visible, [role="button"]:focus-visible {
+    outline: 2px solid #6896b5;
+    outline-offset: 3px;
+}
+
+/* 同一条轻导航用于桌面页面，手机继续使用底部四入口。 */
+.app-header {
+    background: var(--shuran-paper) !important;
+    color: var(--shuran-ink);
+    box-shadow: none;
+    border: 0;
+}
+
+.app-logo {
+    font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+    font-weight: 600;
+    letter-spacing: .035em;
+}
+
+.app-header .header-mark {
+    border: 0;
+    transform: none;
+    color: var(--shuran-blue);
+    font-size: 1.15rem;
+}
+
+.header-icon-btn {
+    color: var(--shuran-ink);
+}
+
+.header-icon-btn[hidden] {
+    display: none !important;
+}
+
+.paper-top-nav {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(14px, 2.5vw, 38px);
+    flex: 1 1 auto;
+}
+
+.paper-top-nav .nav-item {
+    display: inline-flex;
+    width: auto;
+    padding: 8px 2px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #667988;
+    font-size: .89rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color .16s ease;
+}
+
+.paper-top-nav .nav-item:hover,
+.paper-top-nav .nav-item.active {
+    padding: 8px 2px;
+    border: 0;
+    background: transparent;
+    color: var(--shuran-blue);
+}
+
+.paper-top-nav .nav-item.active {
+    font-weight: 700;
+}
+
+.paper-top-nav .nav-icon {
+    display: none;
+}
+
+.app-main {
+    background: transparent;
+}
+
+.section-header h1 {
+    color: var(--shuran-ink);
+    font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+    font-weight: 600;
+    letter-spacing: .025em;
+}
+
+.section-header p, .flow-hint {
+    color: var(--shuran-muted);
+    line-height: 1.7;
+}
+
+.app-tabbar {
+    background: var(--shuran-paper);
+    border: 0;
+    box-shadow: none;
+}
+
+.app-tabbar .tab-item {
+    color: #84919a;
+}
+
+.app-tabbar .tab-item.active,
+.app-tabbar .tab-item.tab-capture {
+    color: var(--shuran-ink);
+}
+
+.app-tabbar .tab-icon,
+.app-tabbar .tab-item.active .tab-icon,
+.app-tabbar .tab-item.tab-capture .tab-icon {
+    background: transparent;
+    color: inherit;
+    border: 0;
+    border-radius: 0;
+    font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+    font-size: 1.12rem;
+}
+
+.app-tabbar .tab-item.active .tab-icon {
+    color: var(--shuran-blue);
+}
+
+/* 今日、日程和时间记录都落在底纸上，内容靠间距而非白框区分。 */
+#overview .today-calendar-row,
+#overview .dashboard-row,
+#overview .widget-card,
+#overview .quick-actions,
+#overview .stat-card,
+#overview .stat-item,
+#schedule .home-schedule,
+#time-log .flow-page,
+#user-center .me-group,
+#user-center .me-profile {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0;
+}
+
+#overview .widget-card,
+#overview .stat-card,
+#user-center .me-group,
+#user-center .me-profile {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+#overview .quick-action-btn,
+#user-center .me-row,
+#time-log .tl-item,
+#schedule .flow-task,
+#schedule .schedule-nudge-item,
+#schedule .schedule-later-item {
+    border: 0 !important;
+    background: transparent;
+}
+
+#overview .quick-action-btn:hover,
+#user-center .me-row:hover {
+    background: rgba(225, 233, 226, .45);
+}
+
+#overview .today-todos {
+    border: 0 !important;
+}
+
+#overview .calendar-header .nav-btn {
+    background: transparent !important;
+    color: var(--shuran-blue) !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+#overview .calendar-day.today,
+#overview .calendar-day.has-events.today,
+#overview .calendar-day.important.today {
+    background: var(--shuran-soft) !important;
+    color: var(--shuran-blue) !important;
+    border-color: transparent !important;
+    border-radius: 50%;
+}
+
+#overview .todo-add-btn,
+#schedule #scheduleAddBtn,
+#schedule #scheduleDoneBtn,
+#time-log #timeLogPunchBtn {
+    background: var(--shuran-blue);
+    color: #fff;
+    border: 0;
+    border-radius: 9px;
+    padding: 10px 16px;
+    box-shadow: none;
+}
+
+#overview .todo-add-input,
+#overview .todo-remind-input,
+#schedule .flow-add-row input,
+#time-log .flow-add-row input {
+    background: transparent;
+    color: var(--shuran-ink);
+    border-color: transparent;
+    border-radius: 0;
+}
+
+#schedule .home-schedule {
+    max-width: 1040px;
+    padding: 0;
+}
+
+#schedule .home-schedule-head {
+    margin: 0 0 30px;
+}
+
+#schedule .flow-toolbar {
+    justify-content: space-between;
+    width: 100%;
+    gap: 16px;
+}
+
+#schedule .flow-date-label {
+    color: var(--shuran-ink);
+    font-size: 1.28rem;
+}
+
+#schedule .flow-date-nav button,
+#schedule .flow-ghost-btn,
+#schedule #scheduleDesignBtn {
+    color: var(--shuran-blue);
+    border: 0;
+    background: transparent;
+}
+
+#schedule .flow-add-row {
+    margin: 16px 0 26px;
+    padding: 0;
+    gap: 14px;
+}
+
+#schedule .flow-add-main,
+#schedule .flow-split-row,
+#schedule .flow-lane,
+#schedule .schedule-nudge,
+#schedule .schedule-later,
+#schedule .flow-note,
+#schedule .flow-minutes,
+#schedule .flow-task-text-input {
+    border: 0 !important;
+}
+
+#schedule .flow-add-main {
+    gap: 16px;
+    align-items: center;
+}
+
+#schedule .flow-add-main input {
+    min-height: 44px;
+    padding: 9px 0;
+}
+
+#schedule .flow-add-main input:focus,
+#schedule .flow-minutes:focus,
+#schedule .flow-task-text-input:focus,
+#schedule .flow-note:focus {
+    outline: none;
+    box-shadow: 0 2px 0 var(--shuran-blue);
+}
+
+#schedule .flow-add-main input:focus-visible,
+#schedule .flow-minutes:focus-visible,
+#schedule .flow-task-text-input:focus-visible,
+#schedule .flow-note:focus-visible {
+    outline: 2px solid #6896b5;
+    outline-offset: 3px;
+}
+
+#schedule .flow-attribute-options {
+    border: 0;
+    padding: 0;
+    gap: 9px;
+}
+
+#schedule .flow-attribute-options .flow-chip {
+    border-radius: 7px;
+    padding: 5px 8px;
+}
+
+#schedule .flow-attribute-options .flow-chip.active {
+    background: var(--shuran-soft);
+    color: var(--shuran-blue);
+}
+
+#schedule .flow-task {
+    padding: 17px 2px;
+    margin: 0 0 4px;
+}
+
+#schedule .flow-task.is-child {
+    padding-left: 28px;
+    margin-left: 16px;
+}
+
+#schedule .flow-task-text {
+    color: var(--shuran-ink);
+    font-size: 1.05rem;
+}
+
+#schedule .flow-task-meta,
+#schedule .flow-parent-path,
+#schedule .flow-feedback-label {
+    color: var(--shuran-muted);
+}
+
+#schedule .flow-done-btn {
+    border-color: #9dacb0;
+    border-radius: 5px;
+    color: var(--shuran-blue);
+}
+
+#schedule .flow-done-btn.is-on {
+    background: var(--shuran-soft);
+    border-color: transparent;
+}
+
+#schedule .flow-task-actions button,
+#schedule .flow-mini-btn,
+#schedule .flow-chip.active,
+#schedule .flow-mark {
+    color: var(--shuran-blue);
+}
+
+#schedule .flow-empty {
+    color: var(--shuran-muted);
+    padding: 42px 0 54px;
+    background: radial-gradient(ellipse at 15% 48%, rgba(220, 230, 214, .48), transparent 55%);
+}
+
+/* “记”保留三种明确入口，图形只是提示，不增加隐藏手势。 */
+#capture .capture-entry-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(26px, 5vw, 70px);
+    max-width: 1160px;
+}
+
+#capture .capture-entry-grid > .card {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 12px 0 24px;
+}
+
+#capture .capture-entry-grid > .card::before {
+    display: block;
+    color: var(--shuran-rust);
+    font-family: Georgia, "Songti SC", serif;
+    font-size: 2.05rem;
+    line-height: 1;
+    margin: 0 0 34px;
+}
+
+#capture .capture-entry-grid > .card:nth-child(1)::before { content: "◷"; }
+#capture .capture-entry-grid > .card:nth-child(2)::before { content: "✳"; }
+#capture .capture-entry-grid > .card:nth-child(3)::before { content: "↗"; }
+
+#capture .capture-entry-grid h2 {
+    color: var(--shuran-ink);
+    font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+    font-size: 1.55rem;
+    font-weight: 600;
+    margin: 0 0 16px;
+}
+
+#capture .capture-entry-grid p {
+    min-height: 3.4em;
+    color: var(--shuran-muted);
+    font-size: .93rem;
+    line-height: 1.7;
+    margin: 0 0 20px;
+}
+
+#capture .capture-entry-grid .btn,
+#capture .capture-entry-grid .btn-secondary {
+    display: block;
+    width: fit-content;
+    min-height: 38px;
+    margin: 5px 0;
+    padding: 7px 3px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    color: var(--shuran-blue);
+    text-align: left;
+    font-size: .93rem;
+    font-weight: 650;
+    transform: none;
+}
+
+#capture .capture-entry-grid .btn-secondary {
+    color: var(--shuran-muted);
+    font-weight: 500;
+}
+
+#capture .capture-entry-grid .btn:hover,
+#capture .capture-entry-grid .btn-secondary:hover {
+    color: var(--shuran-rust);
+    transform: none;
+}
+
+#capture .schedule-later {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+#capture .schedule-later-kicker {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+
+#capture .schedule-later-toggle {
+    width: auto;
+    min-height: 38px;
+    color: var(--shuran-blue);
+    font-size: .93rem;
+    font-weight: 650;
+}
+
+#capture .schedule-later-body {
+    padding-top: 16px;
+}
+
+#capture .schedule-later-hint {
+    color: var(--shuran-muted);
+}
+
+/* 个人页仍保持表单可辨识，但不再浮出一张深色卡片。 */
+#user-center .me-profile {
+    color: var(--shuran-ink);
+}
+
+#user-center .me-avatar,
+#user-center .me-row-icon {
+    border: 0;
+    background: var(--shuran-soft);
+    color: var(--shuran-blue);
+}
+
+#user-center .me-profile-name,
+#user-center .me-row-title {
+    color: var(--shuran-ink);
+}
+
+#user-center .me-edit,
+#user-center .me-link-btn,
+#user-center .me-btn-primary {
+    background: transparent;
+    color: var(--shuran-blue);
+    border: 0;
+}
+
+@media (min-width: 769px) {
+    html, body {
+        height: auto;
+        min-height: 100%;
+        overflow: auto;
+    }
+
+    body.sidebar-rail,
+    body.sidebar-full {
+        --shuran-sidebar: 0px;
+    }
+
+    .app-header {
+        height: 72px;
+        min-height: 72px;
+        padding: 0 clamp(28px, calc((100vw - 1220px) / 2), 100px);
+        gap: 24px;
+    }
+
+    .app-header .app-logo {
+        flex: 0 0 auto;
+    }
+
+    .app-brand-icon,
+    .sidebar-toggle-btn,
+    .app-sidebar,
+    .sidebar-overlay {
+        display: none !important;
+    }
+
+    .paper-top-nav {
+        display: flex;
+    }
+
+    .app-main {
+        display: block;
+        margin: 72px auto 0;
+        padding: 54px 32px 86px;
+        width: min(100%, 1260px);
+        height: auto;
+        min-height: calc(100vh - 72px);
+        max-height: none;
+        overflow: visible;
+    }
+
+    .content-section.active,
+    #overview.content-section.active {
+        display: block;
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+    }
+
+    .content-section.active > .section-header {
+        margin-bottom: 34px;
+    }
+
+    .section-header h1 {
+        font-size: clamp(2.1rem, 3vw, 2.8rem);
+    }
+
+    #schedule.content-section.active > .home-schedule {
+        display: block;
+        overflow: visible;
+    }
+
+    #schedule .home-schedule-list {
+        max-height: none;
+        overflow: visible;
+    }
+
+    #overview .today-calendar-row,
+    #overview .dashboard-row {
+        background: transparent;
+        overflow: visible;
+    }
+
+    #overview .today-calendar-row .widget-card,
+    #overview .widget-card {
+        background: transparent !important;
+        overflow: visible;
+    }
+
+    #user-center.content-section.active > .me-page,
+    #time-log.content-section.active > .flow-page {
+        width: 100%;
+        max-width: 960px;
+        overflow: visible;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-header {
+        min-height: 58px;
+        padding: 8px 18px;
+    }
+
+    .app-header .app-title {
+        color: var(--shuran-ink);
+        font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+        font-size: 1.27rem;
+    }
+
+    .app-main {
+        padding: 28px 22px calc(95px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .section-header {
+        margin-bottom: 24px;
+    }
+
+    .section-header h1 {
+        font-size: 2rem;
+    }
+
+    #schedule .home-schedule-head {
+        margin-bottom: 20px;
+    }
+
+    #schedule .flow-add-attributes {
+        gap: 12px 20px;
+    }
+
+    #capture .capture-entry-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    #capture .capture-entry-grid > .card {
+        position: relative;
+        padding: 16px 0 25px 55px;
+    }
+
+    #capture .capture-entry-grid > .card::before {
+        position: absolute;
+        top: 16px;
+        left: 0;
+        font-size: 1.55rem;
+    }
+
+    #capture .capture-entry-grid h2 {
+        font-size: 1.3rem;
+        margin-bottom: 8px;
+    }
+
+    #capture .capture-entry-grid p {
+        min-height: 0;
+        margin-bottom: 8px;
+        font-size: .87rem;
+    }
+
+    #capture .capture-entry-grid .btn,
+    #capture .capture-entry-grid .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        min-height: 42px;
+        margin-right: 15px;
+        font-size: .87rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .paper-top-nav .nav-item {
+        transition: none;
+    }
+}

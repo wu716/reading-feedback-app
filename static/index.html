@@ -19,9 +19,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260924mobile1">
+    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20261017paper1">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd4">
-    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260926task-mobile2">
+    <link rel="stylesheet" href="/static/css/schedule-log.css?v=20261017paper1">
     <style>
         :root {
             --ink: #1c1b19;
@@ -3433,16 +3433,17 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261017hotfix1">
+    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261017paper1">
+    <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261017paper1">
 </head>
 <body>
     <script>
         (function () {
             if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-                location.replace('http://43.161.238.165:8000/?v=20261017hotfix1');
+                location.replace('http://43.161.238.165:8000/?v=20261017paper1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.3';
+            window.SHURAN_VERSION = '2.0.4';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -3577,6 +3578,13 @@
             <span class="header-mark" aria-hidden="true">书</span>
             <span class="app-title" data-i18n="app.title">书然</span>
         </div>
+        <nav class="paper-top-nav" aria-label="主导航">
+            <button type="button" class="nav-item active" data-section="overview" onclick="navigateTo('overview')" data-i18n="nav.today">今日</button>
+            <button type="button" class="nav-item" data-section="schedule" onclick="navigateTo('schedule')" data-i18n="nav.schedule">日程</button>
+            <button type="button" class="nav-item" data-section="projects" onclick="location.href='/static/projects.html'" data-i18n="nav.projects">项目</button>
+            <button type="button" class="nav-item" data-section="capture" onclick="navigateTo('capture')" data-i18n="nav.capture">记</button>
+            <button type="button" class="nav-item" data-section="user-center" onclick="navigateTo('user-center')" data-i18n="nav.me">我的</button>
+        </nav>
         <div class="header-actions">
             <div class="reminder-bell-wrap" id="reminderBellWrap" hidden>
                 <button type="button" class="header-icon-btn reminder-bell-btn" id="reminderBellBtn" aria-label="提醒" title="提醒" data-i18n-aria-label="reminder.title" data-i18n-title="reminder.title" aria-expanded="false">
@@ -4358,7 +4366,7 @@
     </div>
 
 
-    <script src="/static/js/i18n.js?v=20261017hotfix1"></script>
+    <script src="/static/js/i18n.js?v=20261017paper1"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -6403,13 +6411,13 @@
     
     <!-- 待办提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
-    <script src="/static/reminder_notification.js?v=20261017hotfix1"></script>
-    <script src="/static/js/app-tabbar.js?v=20261017hotfix1"></script>
-    <script src="/static/js/today-dashboard.js?v=20261017hotfix1"></script>
-    <script src="/static/js/daily-schedule.js?v=20261017hotfix1"></script>
-    <script src="/static/js/time-log.js?v=20261017hotfix1"></script>
-    <script src="/static/js/activity-review.js?v=20261017hotfix1"></script>
-    <script src="/static/js/ideas.js?v=20261017hotfix1"></script>
-    <script src="/static/js/desktop-shell.js?v=20261017hotfix1"></script>
+    <script src="/static/reminder_notification.js?v=20261017paper1"></script>
+    <script src="/static/js/app-tabbar.js?v=20261017paper1"></script>
+    <script src="/static/js/today-dashboard.js?v=20261017paper1"></script>
+    <script src="/static/js/daily-schedule.js?v=20261017paper1"></script>
+    <script src="/static/js/time-log.js?v=20261017paper1"></script>
+    <script src="/static/js/activity-review.js?v=20261017paper1"></script>
+    <script src="/static/js/ideas.js?v=20261017paper1"></script>
+    <script src="/static/js/desktop-shell.js?v=20261017paper1"></script>
 </body>
 </html>
