@@ -60,6 +60,21 @@ if grep -Eq "$old_route_pattern" main.py; then
   exit 3
 fi
 
+# Singapore backfill staging includes copies of both retired and retained data.
+# It must be verified and retired separately before active-data deletion.
+cd "$deploy"
+staging_count="$(docker compose exec -T db sh -c 'exec psql -X -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -v ON_ERROR_STOP=1' <<'SQL'
+SELECT count(*) FROM pg_tables
+WHERE schemaname = 'public'
+  AND (tablename LIKE 'sg_stg_%' OR tablename = 'sg_id_map');
+SQL
+)"
+if [[ "${staging_count//[[:space:]]/}" != 0 ]]; then
+  echo "已停止：仍有新加坡补迁暂存表（${staging_count//[[:space:]]/} 张），其中含需要保留的账户和日程数据。先核验补迁，再单独清理暂存表。" >&2
+  exit 4
+fi
+cd "$repo"
+
 api_file="$(mktemp)"
 trap 'rm -f "$api_file"' EXIT
 curl -fsS http://127.0.0.1:8000/openapi.json > "$api_file"
