@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
-"""
-Self-talk 提醒功能 API 路由
-"""
+"""待办提醒 API；复用旧设置表以保留用户通知偏好。"""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Optional
-import json
 import logging
 
 from app.database import get_db
@@ -13,7 +9,7 @@ from app.auth import get_current_user
 from app.models import User, SelfTalkReminderSetting, SelfTalkReminderLog
 from app.self_talk.reminder_schemas import (
     ReminderSettingCreate, ReminderSettingUpdate, ReminderSettingResponse,
-    ReminderLogResponse, ReminderLogListResponse, TriggerReminderRequest
+    ReminderLogResponse, ReminderLogListResponse
 )
 from app.self_talk.reminder_service import (
     ReminderService,
@@ -22,25 +18,15 @@ from app.self_talk.reminder_service import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/self_talk_reminders", tags=["self-talk-reminders"])
+router = APIRouter(prefix="/api/reminders", tags=["todo-reminders"])
+SETTING_FIELDS = {"is_enabled", "browser_notification", "email_notification"}
 
 
-def _setting_response(setting: SelfTalkReminderSetting, reminder_days=None) -> ReminderSettingResponse:
-    if reminder_days is None:
-        try:
-            reminder_days = json.loads(setting.reminder_days)
-        except Exception:
-            reminder_days = [0, 1, 2, 3, 4, 5, 6]
+def _setting_response(setting: SelfTalkReminderSetting) -> ReminderSettingResponse:
     return ReminderSettingResponse(
         id=setting.id,
         user_id=setting.user_id,
         is_enabled=setting.is_enabled,
-        daily_reminder_enabled=setting.daily_reminder_enabled,
-        daily_reminder_time=setting.daily_reminder_time,
-        reminder_days=reminder_days,
-        after_action_reminder=setting.after_action_reminder,
-        after_new_action_reminder=setting.after_new_action_reminder,
-        inactive_days_threshold=setting.inactive_days_threshold,
         browser_notification=setting.browser_notification,
         email_notification=setting.email_notification,
         created_at=setting.created_at,
@@ -84,9 +70,7 @@ async def create_reminder_settings(
         if existing_setting:
             payload = settings.model_dump(exclude_unset=True) if hasattr(settings, "model_dump") else settings.dict(exclude_unset=True)
             for key, value in payload.items():
-                if key == "reminder_days":
-                    setattr(existing_setting, key, json.dumps(value))
-                else:
+                if key in SETTING_FIELDS:
                     setattr(existing_setting, key, value)
             
             db.commit()
@@ -94,16 +78,13 @@ async def create_reminder_settings(
             setting = existing_setting
         else:
             # 创建新设置
-            reminder_days_json = json.dumps(settings.reminder_days)
             setting = SelfTalkReminderSetting(
                 user_id=current_user.id,
                 is_enabled=settings.is_enabled,
-                daily_reminder_enabled=settings.daily_reminder_enabled,
-                daily_reminder_time=settings.daily_reminder_time,
-                reminder_days=reminder_days_json,
-                after_action_reminder=settings.after_action_reminder,
-                after_new_action_reminder=settings.after_new_action_reminder,
-                inactive_days_threshold=settings.inactive_days_threshold,
+                daily_reminder_enabled=False,
+                after_action_reminder=False,
+                after_new_action_reminder=False,
+                inactive_days_threshold=0,
                 browser_notification=settings.browser_notification,
                 email_notification=settings.email_notification,
             )
@@ -113,7 +94,7 @@ async def create_reminder_settings(
         
         logger.info(f"用户 {current_user.id} 的提醒设置已保存")
         
-        return _setting_response(setting, reminder_days=settings.reminder_days)
+        return _setting_response(setting)
         
     except Exception as e:
         logger.error(f"保存提醒设置失败: {e}")
@@ -137,9 +118,7 @@ async def update_reminder_settings(
         # 更新非空字段
         update_data = settings_update.dict(exclude_unset=True)
         for key, value in update_data.items():
-            if key == "reminder_days" and value is not None:
-                setattr(setting, key, json.dumps(value))
-            elif value is not None:
+            if key in SETTING_FIELDS and value is not None:
                 setattr(setting, key, value)
         
         db.commit()
@@ -166,7 +145,8 @@ async def get_reminder_logs(
     """
     try:
         query = db.query(SelfTalkReminderLog).filter(
-            SelfTalkReminderLog.user_id == current_user.id
+            SelfTalkReminderLog.user_id == current_user.id,
+            SelfTalkReminderLog.reminder_type == "todo",
         ).order_by(SelfTalkReminderLog.triggered_at.desc())
         
         total = query.count()
@@ -189,57 +169,6 @@ async def get_reminder_logs(
         
     except Exception as e:
         logger.error(f"获取提醒日志失败: {e}")
-        raise HTTPException(status_code=500, detail="服务器内部错误")
-
-
-@router.post("/trigger")
-async def trigger_reminder(
-    request: TriggerReminderRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    手动触发提醒（用于测试）
-    """
-    try:
-        setting = ReminderService.get_or_create_setting(db, current_user.id)
-        
-        if not setting.is_enabled:
-            raise HTTPException(status_code=400, detail="提醒功能未启用")
-        
-        # 获取提醒消息
-        title, message = ReminderService.get_reminder_message(
-            request.reminder_type, 
-            current_user.name
-        )
-        
-        # 记录日志
-        log = ReminderService.log_reminder(
-            db, 
-            current_user.id, 
-            request.reminder_type,
-            request.notification_method
-        )
-        
-        # 返回通知数据
-        notification_data = {
-            "title": title,
-            "message": message,
-            "notification_method": request.notification_method,
-            "log_id": log.id
-        }
-        
-        logger.info(f"已为用户 {current_user.id} 触发 {request.reminder_type} 提醒")
-        
-        return {
-            "success": True,
-            "notification": notification_data
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"触发提醒失败: {e}")
         raise HTTPException(status_code=500, detail="服务器内部错误")
 
 
@@ -266,7 +195,7 @@ async def get_pending_reminders(
                 SelfTalkReminderLog.triggered_at >= recent_time,
                 SelfTalkReminderLog.dismissed_at.is_(None),
                 SelfTalkReminderLog.action_taken == False,
-                SelfTalkReminderLog.reminder_type != "reading"
+                SelfTalkReminderLog.reminder_type == "todo"
             )
             .order_by(SelfTalkReminderLog.triggered_at.desc())
             .limit(50)
@@ -280,23 +209,14 @@ async def get_pending_reminders(
                 current_user.name,
                 log.detail,
             )
-            if log.reminder_type == "todo":
-                action_url = "/static/index.html#overview"
-                action_label = "查看今日"
-            elif log.reminder_type == "action_practice":
-                action_url = "/static/index.html#actions"
-                action_label = "去践行"
-            else:
-                action_url = "/static/self_talk/index.html"
-                action_label = "立即记录"
             notifications.append({
                 "log_id": log.id,
                 "title": title,
                 "message": message,
                 "reminder_type": log.reminder_type,
                 "triggered_at": log.triggered_at.isoformat(),
-                "action_url": action_url,
-                "action_label": action_label,
+                "action_url": "/static/index.html#overview",
+                "action_label": "查看今日",
             })
         
         return {
@@ -322,7 +242,8 @@ async def dismiss_reminder(
     try:
         log = db.query(SelfTalkReminderLog).filter(
             SelfTalkReminderLog.id == log_id,
-            SelfTalkReminderLog.user_id == current_user.id
+            SelfTalkReminderLog.user_id == current_user.id,
+            SelfTalkReminderLog.reminder_type == "todo",
         ).first()
         
         if not log:

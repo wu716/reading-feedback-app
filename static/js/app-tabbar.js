@@ -1,6 +1,5 @@
 (function () {
     const TABS = [
-        { id: 'methods', labelKey: 'nav.methods', label: '方法', icon: '法' },
         { id: 'schedule', labelKey: 'nav.schedule', label: '日程', icon: '程' },
         { id: 'projects', labelKey: 'nav.projects', label: '项目', icon: '项', action: 'projects' },
         { id: 'capture', labelKey: 'nav.capture', label: '记', icon: '记' },
@@ -12,25 +11,15 @@
     }
 
     function tabHref(id) {
-        if (id === 'self-talk' && location.pathname.includes('self_talk')) {
-            return location.pathname + location.search;
-        }
-        if (id === 'user-center' && location.pathname.includes('user_center')) {
-            return location.pathname + location.search;
-        }
         return '/static/index.html#' + id;
     }
 
     function currentTab() {
         const path = location.pathname || '';
-        if (path.includes('self_talk')) return 'user-center';
         if (path.includes('projects')) return 'projects';
-        if (path.includes('user_center')) return 'user-center';
         const hash = (location.hash || '').replace('#', '');
-        if (hash === 'methods' || hash === '') return 'methods';
-        if (hash === 'actions') return 'user-center';
+        if (hash === '' || hash === 'overview') return 'schedule';
         if (hash === 'capture' || hash === 'time-log' || hash === 'ideas') return 'capture';
-        if (hash === 'self-talk') return 'user-center';
         if (hash === 'schedule') return 'schedule';
         return 'user-center';
     }

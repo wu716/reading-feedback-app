@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""每日日程：写下行动，可选进入流程设计。"""
+"""每日日程：安排任务和流程。"""
 from collections import defaultdict
 from datetime import date, datetime
 from typing import List, Optional
@@ -11,9 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user
 from app.database import get_db
-from app.habit_service import sync_schedule_event
-from app.habit_due import quarter_bounds, suggest_for_day, week_bounds
-from app.models import Action, DailySchedule, DailyTask, FutureAction, User
+from app.models import DailySchedule, DailyTask, FutureAction, User
 
 router = APIRouter(prefix="/schedule", tags=["日程安排"])
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
@@ -36,7 +34,6 @@ class TaskCreate(BaseModel):
     text: str = Field(..., min_length=1, max_length=500)
     task_date: Optional[date] = None
     parent_id: Optional[int] = None
-    action_id: Optional[int] = None
     priority: int = Field(0, ge=0, le=2)
     familiarity: Optional[str] = None
     estimated_minutes: Optional[int] = Field(None, ge=0, le=24 * 60)
@@ -136,18 +133,6 @@ class TaskOut(BaseModel):
     children: List["TaskOut"] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class SuggestionOut(BaseModel):
-    action_id: int
-    text: str
-    frequency: str
-    reason: str
-
-
-class SuggestionsOut(BaseModel):
-    date: date
-    items: List[SuggestionOut]
 
 
 class DayScheduleOut(BaseModel):
@@ -278,7 +263,6 @@ def refresh_parent_completion(db: Session, user_id: int, task: DailyTask) -> Non
             parent = parent.parent
             continue
         parent.completed = next_value
-        sync_schedule_event(db, user_id, parent, next_value)
         parent = parent.parent
 
 
@@ -360,51 +344,6 @@ async def get_day_schedule(
     return day_payload(db, current_user, parse_day(task_date))
 
 
-@router.get("/suggestions", response_model=SuggestionsOut)
-async def get_schedule_suggestions(
-    task_date: Optional[date] = Query(None),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    day = parse_day(task_date)
-    actions = (
-        db.query(Action)
-        .filter(
-            Action.user_id == current_user.id,
-            Action.deleted_at.is_(None),
-            Action.status != "done",
-        )
-        .order_by(Action.id.asc())
-        .all()
-    )
-    lookback_start, _ = quarter_bounds(day)
-    week_start, _ = week_bounds(day)
-    range_start = min(lookback_start, week_start, date(day.year, day.month, 1))
-    scheduled = (
-        db.query(DailyTask)
-        .filter(
-            DailyTask.user_id == current_user.id,
-            DailyTask.deleted_at.is_(None),
-            DailyTask.task_date >= range_start,
-            DailyTask.task_date <= day,
-        )
-        .all()
-    )
-    items = suggest_for_day(actions, scheduled, day)
-    return SuggestionsOut(
-        date=day,
-        items=[
-            SuggestionOut(
-                action_id=item.action_id,
-                text=item.text,
-                frequency=item.frequency,
-                reason=item.reason,
-            )
-            for item in items
-        ],
-    )
-
-
 @router.post("/tasks", response_model=DayScheduleOut)
 async def create_task(
     body: TaskCreate,
@@ -418,25 +357,12 @@ async def create_task(
         if parent.task_date != day:
             raise HTTPException(status_code=400, detail="子行动必须和父行动在同一天")
     get_or_create_schedule(db, current_user.id, day)
-    action_id = body.action_id
-    if action_id is not None:
-        action = (
-            db.query(Action)
-            .filter(
-                Action.id == action_id,
-                Action.user_id == current_user.id,
-                Action.deleted_at.is_(None),
-            )
-            .first()
-        )
-        if not action:
-            raise HTTPException(status_code=404, detail="行动项不存在")
     task = DailyTask(
         user_id=current_user.id,
         parent_id=parent_id,
         task_date=day,
         text=body.text,
-        action_id=action_id,
+        action_id=None,
         sort_order=next_sort_order(db, current_user.id, day, parent_id),
         priority=body.priority,
         familiarity=body.familiarity,
@@ -460,7 +386,6 @@ async def update_task(
         task.text = body.text
     if body.completed is not None:
         task.completed = body.completed
-        sync_schedule_event(db, current_user.id, task, body.completed)
         refresh_parent_completion(db, current_user.id, task)
     if body.clear_note:
         task.note = None

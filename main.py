@@ -14,10 +14,8 @@ from app.config import settings
 from app.database import ensure_schema, get_db
 from app.legacy_origin import canonical_url, is_legacy_singapore, keep_on_legacy_origin
 from app.scheduler import start_scheduler
-from app.routers import auth, actions, practice, ai_advice, today, app_download, owner, schedule, time_log, capture, habit_programs, methods, projects
-from app.self_talk.router import router as self_talk_router
-from app.routers.self_talk_reminders import router as self_talk_reminders_router
-from app.ai_service import test_ai_connection
+from app.routers import auth, today, app_download, owner, schedule, time_log, capture, projects
+from app.routers.self_talk_reminders import router as reminders_router
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -27,7 +25,6 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """应用生命周期：启动 / 关闭"""
     logger.info("正在启动应用...")
-    os.makedirs("uploads/self_talks", exist_ok=True)
     os.makedirs("backups", exist_ok=True)
     ensure_schema()
     logger.info("数据库表创建完成")
@@ -57,8 +54,8 @@ _openapi_enabled = None if settings.is_production else "/openapi.json"
 # 创建 FastAPI 应用
 app = FastAPI(
     title=settings.app_name,
-    description="书然 - 把学过的方法变成情境卡片，通过实际使用找到适合自己的办法",
-    version="2.0.1",
+    description="书然 - 个人项目、日程与时间记录",
+    version="2.0.2",
     docs_url=_docs_enabled,
     redoc_url=_redoc_enabled,
     openapi_url=_openapi_enabled,
@@ -75,7 +72,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20261015product1"
+STATIC_UI_VERSION = "20261017retire1"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
@@ -119,7 +116,7 @@ async def disable_page_cache(request: Request, call_next):
     """WebView 常把旧 HTML/JS 存下来，页面资源一律禁止缓存。"""
     response = await call_next(request)
     path = request.url.path
-    if path == "/" or path.startswith("/api/methods") or path.endswith((".html", ".js", ".css")):
+    if path == "/" or path.endswith((".html", ".js", ".css")):
         response.headers["Cache-Control"] = NO_STORE_HEADERS["Cache-Control"]
         response.headers["Pragma"] = NO_STORE_HEADERS["Pragma"]
         response.headers["Expires"] = NO_STORE_HEADERS["Expires"]
@@ -132,17 +129,11 @@ async def disable_page_cache(request: Request, call_next):
 # 注册路由
 app.include_router(auth.router)
 app.include_router(owner.router)
-app.include_router(actions.router, prefix="/api")
-app.include_router(practice.router, prefix="/api")
-app.include_router(ai_advice.router)  # AI建议路由（已有前缀 /api/ai-advice）
-app.include_router(self_talk_router)
-app.include_router(self_talk_reminders_router)  # Self-talk 提醒路由
+app.include_router(reminders_router)
 app.include_router(today.router, prefix="/api")
 app.include_router(schedule.router, prefix="/api")
 app.include_router(time_log.router, prefix="/api")
 app.include_router(capture.router, prefix="/api")
-app.include_router(habit_programs.router, prefix="/api")
-app.include_router(methods.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
 app.include_router(app_download.router)
 
@@ -259,7 +250,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def global_exception_handler(request, exc):
     path = str(getattr(getattr(request, "url", None), "path", "") or "")
     logger.error("全局异常 path=%s: %s", path, exc, exc_info=True)
-    detail = "上传失败，请稍后重试" if "self_talks" in path else "服务器内部错误"
+    detail = "服务器内部错误"
     return JSONResponse(
         status_code=500,
         content={"detail": detail}

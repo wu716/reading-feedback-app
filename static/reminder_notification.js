@@ -295,16 +295,14 @@ class ReminderNotificationService {
             return;
         }
         try {
-            const response = await fetch(`${this.apiBase}/self_talk_reminders/settings`, {
+            const response = await fetch(`${this.apiBase}/reminders/settings`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (!response.ok) return;
             const settings = await response.json();
             window.ShuranNative.scheduleReminders(JSON.stringify({
                 enabled: !!settings.is_enabled,
-                dailyEnabled: !!settings.daily_reminder_enabled || !!settings.is_enabled,
-                dailyTime: settings.daily_reminder_time || '20:00',
-                reminderDays: settings.reminder_days || [0, 1, 2, 3, 4, 5, 6],
+                dailyEnabled: false,
                 systemNotification: settings.browser_notification !== false,
             }));
             window.ShuranNative.requestPermission();
@@ -623,7 +621,7 @@ class ReminderNotificationService {
                 actions.insertBefore(wrap, actions.firstChild);
             }
         } else {
-            // Self-talk / 个人中心已有顶栏「提醒设置」，不再挂悬浮铃铛（会挡住历史记录）
+            // 个人中心已有顶栏「提醒设置」。
             return;
         }
     }
@@ -730,7 +728,7 @@ class ReminderNotificationService {
             window.location.hash = 'user-center';
             return;
         }
-        window.location.href = '/static/user_center.html';
+        window.location.href = '/static/index.html#user-center';
     }
 
     async checkPendingReminders() {
@@ -739,7 +737,7 @@ class ReminderNotificationService {
         this.ensureUi();
 
         try {
-            const response = await fetch(`${this.apiBase}/self_talk_reminders/pending`, {
+            const response = await fetch(`${this.apiBase}/reminders/pending`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (response.ok) {
@@ -779,7 +777,7 @@ class ReminderNotificationService {
                 title: reminderData.title,
                 message: this.stripHtml(reminderData.message),
                 reminder_type: reminderData.reminder_type,
-                action_url: reminderData.action_url || '/static/self_talk/index.html',
+                action_url: reminderData.action_url || '/static/index.html#overview',
                 triggered_at: reminderData.triggered_at || '',
             }));
         } catch (error) {
@@ -944,16 +942,7 @@ class ReminderNotificationService {
             window.location.href = reminderData.action_url || '/static/index.html#overview';
             return;
         }
-        if (type === 'action_practice') {
-            if (typeof navigateTo === 'function') {
-                navigateTo('actions');
-                return;
-            }
-            window.location.href = reminderData.action_url || '/static/index.html';
-            return;
-        }
-        if (window.location.pathname.includes('self_talk')) return;
-        window.location.href = reminderData.action_url || '/static/self_talk/index.html';
+        window.location.href = reminderData.action_url || '/static/index.html#overview';
     }
 
     async dismissReminder(logId, actionTaken = false) {
@@ -962,7 +951,7 @@ class ReminderNotificationService {
         this.pending = this.pending.filter((n) => n.log_id !== logId);
         this.renderAll();
         try {
-            await fetch(`${this.apiBase}/self_talk_reminders/dismiss/${logId}?action_taken=${actionTaken}`, {
+            await fetch(`${this.apiBase}/reminders/dismiss/${logId}?action_taken=${actionTaken}`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
             });

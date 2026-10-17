@@ -2,18 +2,16 @@
 <resources>
     <string name="app_name">Shuran</string>
     <string name="app_url">http://43.161.238.165:8000/</string>
-    <string name="static_ui_version">20261015product1</string>
+    <string name="static_ui_version">20261017retire1</string>
     <string name="loading">Opening Shuran…</string>
     <string name="network_error">Cannot connect to the server. Check your network and try again.</string>
     <string name="retry">Retry</string>
     <string name="notification_channel_name">Reminders</string>
-    <string name="notification_channel_desc">Daily reminders and todos appear in notifications and the top banner.</string>
+    <string name="notification_channel_desc">Due todos appear in notifications and the top banner.</string>
     <string name="notification_delivery_channel_name">Reminder delivery</string>
     <string name="notification_delivery_channel_desc">Used only for background delivery. It is not shown as a reminder.</string>
     <string name="notification_delivery_body">Delivering reminder…</string>
     <string name="notification_default_title">Shuran reminder</string>
-    <string name="notification_daily_title">Daily reminder</string>
-    <string name="notification_daily_body">Time for today\'s Self-talk.</string>
     <string name="notification_test_title">Shuran test notification</string>
     <string name="notification_test_body">System notifications are enabled.</string>
     <string name="notification_test_toast">Test notification sent. Pull down the notification shade to view it.</string>

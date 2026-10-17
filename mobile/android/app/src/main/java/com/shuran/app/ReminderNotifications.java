@@ -39,6 +39,11 @@ public final class ReminderNotifications {
         if (manager != null) manager.cancel(9003);
     }
 
+    public static void cancelLegacyDaily(Context context) {
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        if (manager != null) manager.cancel(DAILY_NOTIFICATION_ID);
+    }
+
     public static void ensureChannel(Context context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             return;
@@ -181,7 +186,7 @@ public final class ReminderNotifications {
                 : title.trim();
         String safeBody = body == null ? "" : body.trim();
         String path = actionPath == null || actionPath.isEmpty()
-                ? "/static/self_talk/index.html"
+                ? "/static/index.html#overview"
                 : actionPath;
 
         Intent open = new Intent(context, MainActivity.class);

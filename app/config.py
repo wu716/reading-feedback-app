@@ -11,7 +11,7 @@ def _is_production() -> bool:
 
 class Settings(BaseSettings):
     # 应用配置
-    app_name: str = "读书反馈系统"
+    app_name: str = "书然"
 
     # 环境
     ENV: str = "development"
@@ -27,13 +27,6 @@ class Settings(BaseSettings):
     secret_key: str = "K7mN2pQ9rS8tU3vW5xY1zA4bC6dE0fG"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 20160  # 14天
-
-    # AI
-    deepseek_api_key: str = ""
-    deepseek_base_url: str = "https://api.deepseek.com"
-    deepseek_model: str = "deepseek-chat"
-    ai_daily_limit: int = 3
-    ai_extract_daily_limit: int = 2
 
     # 注册控制（生产默认关闭公开注册，见 ProductionSettings）
     registration_open: bool = True
@@ -102,8 +95,6 @@ class ProductionSettings(Settings):
     REQUIRE_AUTH: bool = True
     environment: str = "production"
     registration_open: bool = True
-    ai_daily_limit: int = 3
-    ai_extract_daily_limit: int = 2
 
 
 settings = get_settings()

@@ -109,19 +109,6 @@
         overflow: hidden;
     }
 
-    #actions.content-section.active {
-        overflow: auto;
-        padding-bottom: 72px;
-    }
-
-    #actions.content-section.active > .card {
-        flex: 0 0 auto;
-        min-height: auto;
-        overflow: visible;
-        display: block;
-    }
-
-    #upload.content-section.active > .card,
     #owner.content-section.active > .owner-page {
         flex: 1 1 auto;
         min-height: 0;
@@ -130,9 +117,7 @@
 
     #schedule .home-schedule-head,
     #schedule .schedule-nudge,
-    #schedule .flow-add-row,
-    #actions.content-section.active > .notes-entry-card,
-    #actions.content-section.active > .card > :not(.actions-list) {
+    #schedule .flow-add-row {
         flex-shrink: 0;
     }
 
@@ -152,13 +137,6 @@
     #schedule .schedule-later.is-collapsed {
         max-height: none;
         overflow: visible;
-    }
-
-    #actions .actions-list {
-        flex: none;
-        min-height: 0;
-        overflow: visible;
-        max-height: none;
     }
 
     #overview.content-section.active {
@@ -243,37 +221,12 @@
         max-width: none;
     }
 
-    .self-talk-frame {
-        flex: 1 1 auto;
-        height: auto;
-        min-height: 0;
-        width: 100%;
-    }
-
-    #self-talk.content-section {
-        flex: 0 0 0;
-    }
-
-    #self-talk.content-section.active {
-        display: flex;
-        flex: 1 1 auto;
-        height: auto;
-        min-height: 0;
-        overflow: hidden;
-        margin: calc(-1 * var(--shuran-main-pad-y)) calc(-1 * var(--shuran-main-pad-x));
-        visibility: visible;
-    }
-
     .section-header {
         margin-bottom: 16px;
     }
 
     .section-header h1 {
         font-size: 1.55rem;
-    }
-
-    .actions-list {
-        max-height: none;
     }
 
     .nav-item {
@@ -347,15 +300,6 @@
         margin-bottom: 0;
     }
 
-    #upload.content-section.active > .card,
-    #actions.content-section.active > .card {
-        max-width: 960px;
-    }
-
-    #upload textarea,
-    #upload .notes-textarea {
-        min-height: 280px;
-    }
 }
 
 @media (min-width: 769px) and (max-width: 980px) {

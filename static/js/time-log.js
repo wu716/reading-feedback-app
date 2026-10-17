@@ -458,13 +458,8 @@
         const payload = { kind: captureKind, text: label };
         if (captureKind === 'todo') payload.todo_when = captureTodoWhen;
         if (captureKind === 'moment' && ctx.loggedAt) payload.logged_at = ctx.loggedAt;
-        const activeHabit = typeof window.getActiveHabitProgram === 'function'
-            ? window.getActiveHabitProgram()
-            : null;
-        const habitLink = sheet.querySelector('#captureHabitLink');
-        if (activeHabit && habitLink?.checked) payload.habit_program_id = activeHabit.id;
         try {
-            const result = await apiRequest('/api/capture/save', {
+            await apiRequest('/api/capture/save', {
                 method: 'POST',
                 body: JSON.stringify(payload),
             });
@@ -481,17 +476,13 @@
             if (captureKind === 'todo' && captureTodoWhen === 'later' && typeof window.loadDailySchedule === 'function') {
                 window.loadDailySchedule();
             }
-            if (result.habit_linked && typeof window.loadHabitFocus === 'function') {
-                window.loadHabitFocus();
-            }
             if (typeof showMessage === 'function') {
                 const done = captureKind === 'idea'
                     ? t('capture.saved.idea', '已记入灵感')
                     : (captureKind === 'todo'
                         ? (captureTodoWhen === 'later' ? t('capture.saved.later', '已记入以后想做') : t('capture.saved.todo', '已记入今日待办'))
                         : t('capture.saved.moment', '已记入时刻'));
-                const linked = t('capture.saved.linked', '{done}，已放入习惯复盘').replace('{done}', done);
-                showMessage(result.habit_linked ? linked : done, 'success');
+                showMessage(done, 'success');
             }
         } catch (e) {
             if (typeof showMessage === 'function') showMessage(e.message, 'error');
@@ -509,15 +500,6 @@
         const sheet = document.createElement('div');
         sheet.id = 'timeLogSheet';
         sheet.className = 'tl-sheet';
-        const activeHabit = typeof window.getActiveHabitProgram === 'function'
-            ? window.getActiveHabitProgram()
-            : null;
-        const habitLinkMarkup = activeHabit ? `
-            <label class="tl-habit-link" for="captureHabitLink">
-                <input type="checkbox" id="captureHabitLink">
-                <span>${escapeHtml(fmtHabitLink(activeHabit.title))}</span>
-            </label>
-        ` : '';
         sheet.innerHTML = `
             <h3 id="timeLogSheetTitle"></h3>
             <p id="timeLogSheetHint"></p>
@@ -531,7 +513,6 @@
                 <button type="button" data-when="later">${escapeHtml(t('capture.todo.later', '以后'))}</button>
             </div>
             <textarea id="timeLogSheetInput" maxlength="500" enterkeyhint="done"></textarea>
-            ${habitLinkMarkup}
             <div class="tl-sheet-actions">
                 <span></span>
                 <div class="tl-sheet-actions-end">
@@ -565,10 +546,6 @@
         if (input) {
             input.focus();
         }
-    }
-
-    function fmtHabitLink(title) {
-        return t('capture.habitLink', '放入「{title}」的本周复盘').replace('{title}', title || '');
     }
 
     function syncCaptureKindRow() {
@@ -762,7 +739,6 @@
         }
         try {
             await loadCapturePreference();
-            if (typeof window.loadHabitFocus === 'function') await window.loadHabitFocus();
             if (CAPTURE_KINDS.includes(kindOverride)) captureKind = kindOverride;
             const duration = durationSinceLast(clickedAt);
             openCaptureSheet({

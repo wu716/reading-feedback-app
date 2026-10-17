@@ -185,53 +185,8 @@ public class ReminderJsBridge {
     }
 
     @JavascriptInterface
-    public boolean canNativeRecord() {
-        return true;
-    }
-
-    @JavascriptInterface
-    public boolean hasAudioPermission() {
-        return activity.getNativeRecorder().hasPermission();
-    }
-
-    @JavascriptInterface
-    public void requestAudioPermission() {
-        activity.runOnUiThread(activity::requestNativeAudioPermission);
-    }
-
-    @JavascriptInterface
-    public boolean canAskAudioPermissionAgain() {
-        return activity.canAskAudioPermissionAgain();
-    }
-
-    @JavascriptInterface
     public void openAppSettings() {
         activity.runOnUiThread(activity::openAppSettings);
-    }
-
-    @JavascriptInterface
-    public String startRecording() {
-        return activity.getNativeRecorder().start();
-    }
-
-    @JavascriptInterface
-    public String stopRecording() {
-        return activity.getNativeRecorder().stop();
-    }
-
-    @JavascriptInterface
-    public String cancelRecording() {
-        return activity.getNativeRecorder().cancel();
-    }
-
-    @JavascriptInterface
-    public boolean isNativeRecording() {
-        return activity.getNativeRecorder().isRecording();
-    }
-
-    @JavascriptInterface
-    public String readRecordingBase64() {
-        return activity.getNativeRecorder().readBase64();
     }
 
     @JavascriptInterface

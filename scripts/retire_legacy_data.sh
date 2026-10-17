@@ -13,7 +13,7 @@ repo=/opt/shuran-app
 deploy="$repo/deploy/aliyun"
 cd "$repo"
 
-old_route_pattern='app\.include_router\((actions|practice|ai_advice|self_talk_router|self_talk_reminders_router|habit_programs|methods)(\.router)?'
+old_route_pattern='app\.include_router\((ebooks|dashboard|actions|practice|ai_advice|self_talk_router|self_talk_reminders_router|habit_programs|methods)(\.router)?'
 
 echo "=== 书然代码版本 ==="
 git -c safe.directory="$repo" log -1 --format='%h %s'
@@ -73,30 +73,21 @@ if [[ "${staging_count//[[:space:]]/}" != 0 ]]; then
   echo "已停止：仍有新加坡补迁暂存表（${staging_count//[[:space:]]/} 张），其中含需要保留的账户和日程数据。先核验补迁，再单独清理暂存表。" >&2
   exit 4
 fi
-cd "$repo"
+docker compose exec -T app python - <<'PY'
+from main import app
 
-api_file="$(mktemp)"
-trap 'rm -f "$api_file"' EXIT
-curl -fsS http://127.0.0.1:8000/openapi.json > "$api_file"
-python3 - "$api_file" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding='utf-8') as stream:
-    paths = json.load(stream)['paths']
+paths = [route.path for route in app.routes]
 old_prefixes = (
     '/api/actions', '/api/practice', '/api/ai-advice',
     '/api/self_talks', '/api/self_talk_reminders',
-    '/api/habit', '/methods', '/api/ebooks',
+    '/api/habit', '/api/methods', '/api/ebooks',
+    '/api/dashboard', '/api/stats',
 )
 found = [path for path in paths if path.startswith(old_prefixes)]
 if found:
     raise SystemExit('已停止：运行中的容器仍开放旧接口，例如 ' + ', '.join(found[:5]))
 PY
-rm -f "$api_file"
-trap - EXIT
 
-cd "$deploy"
 test -n "$(docker compose ps --status running -q app)" || {
   echo "已停止：书然 app 容器未运行。" >&2
   exit 3
@@ -132,15 +123,23 @@ DO $check$
 DECLARE item text; total bigint;
 BEGIN
   FOREACH item IN ARRAY ARRAY[
-    'users','subscriptions','daily_todos','daily_tasks','daily_schedules',
+    'users','subscriptions','invite_codes','auth_codes',
+    'daily_todos','daily_tasks','daily_schedules',
     'future_actions','ideas','time_log_nodes','goals','projects',
-    'project_stages','project_tasks','work_sessions',
-    'time_activity_assessments','process_templates','audit_logs'
+    'project_stages','project_tasks','task_dependencies',
+    'task_checklist_items','work_sessions',
+    'time_activity_assessments','process_templates','audit_logs',
+    'self_talk_reminder_settings'
   ] LOOP
     EXECUTE format('SELECT count(*) FROM %I', item) INTO total;
     INSERT INTO protected_before VALUES (item, total);
   END LOOP;
 END $check$;
+
+CREATE TEMP TABLE protected_todo_reminders AS
+SELECT count(*)::bigint AS n FROM self_talk_reminder_logs WHERE reminder_type = 'todo';
+CREATE TEMP TABLE protected_profiles AS
+SELECT count(*)::bigint AS n FROM anonymized_data WHERE data_type = 'user_profile';
 
 DELETE FROM method_uses;
 DELETE FROM method_cards;
@@ -149,16 +148,11 @@ DELETE FROM product_feedback;
 
 DELETE FROM ai_advice_messages;
 DELETE FROM ai_advice_sessions;
-DELETE FROM ai_call_logs
-WHERE kind IN ('ai-advice', 'ai-advice-stream', 'upload-notes');
+DELETE FROM ai_call_logs;
 
 DELETE FROM self_talk_playback_logs;
 DELETE FROM self_talks;
-DELETE FROM self_talk_reminder_logs
-WHERE reminder_type IN (
-  'reading', 'daily', 'inactive', 'action_practice',
-  'after_action', 'after_new_action'
-);
+DELETE FROM self_talk_reminder_logs WHERE reminder_type IS DISTINCT FROM 'todo';
 -- These settings also control todo reminders. Keep the shared row and clear
 -- only retired behavior settings.
 UPDATE self_talk_reminder_settings
@@ -173,6 +167,7 @@ SET daily_reminder_enabled = false,
 DELETE FROM habit_events;
 DELETE FROM habit_programs;
 DELETE FROM practice_logs;
+DELETE FROM anonymized_data WHERE data_type IN ('actions', 'practice_logs');
 -- Keep daily tasks; disconnect their old action reference only.
 UPDATE daily_tasks SET action_id = NULL WHERE action_id IS NOT NULL;
 DELETE FROM actions;
@@ -193,6 +188,18 @@ BEGIN
         row_before.name, row_before.n, total;
     END IF;
   END LOOP;
+END $check$;
+
+DO $check$
+BEGIN
+  IF (SELECT count(*) FROM self_talk_reminder_logs WHERE reminder_type = 'todo')
+     <> (SELECT n FROM protected_todo_reminders) THEN
+    RAISE EXCEPTION '待办提醒日志数量变化，停止清理';
+  END IF;
+  IF (SELECT count(*) FROM anonymized_data WHERE data_type = 'user_profile')
+     <> (SELECT n FROM protected_profiles) THEN
+    RAISE EXCEPTION '匿名账户记录数量变化，停止清理';
+  END IF;
 END $check$;
 
 COMMIT;
@@ -216,5 +223,16 @@ for target in targets:
 
 docker compose start app
 trap - EXIT
-curl -fsS http://127.0.0.1:8000/health
+healthy=0
+for attempt in {1..30}; do
+  if curl -fsS http://127.0.0.1:8000/health; then
+    healthy=1
+    break
+  fi
+  sleep 2
+done
+if [[ "$healthy" != 1 ]]; then
+  echo "数据库与文件清理已执行，但应用健康检查失败；请检查 docker compose logs app。" >&2
+  exit 5
+fi
 echo "清理完成；恢复备份保留在 $backup_dir。"

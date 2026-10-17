@@ -6,8 +6,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>书然 · 让学过的方法用得上</title>
-    <meta name="description" content="把学过的方法写成一张情境卡片：遇到什么，先做什么。实际试过后，用几秒钟留下反馈，找到适合自己的办法。">
+    <title>书然 · 个人项目与时间记录</title>
+    <meta name="description" content="安排个人项目与日程，记录时间投入，回看实际进展。">
     <link rel="icon" href="/static/icons/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/app-icon-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/app-icon-192.png">
@@ -22,8 +22,6 @@
     <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20260924mobile1">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd4">
     <link rel="stylesheet" href="/static/css/schedule-log.css?v=20260926task-mobile2">
-    <link rel="stylesheet" href="/static/css/habit-program.css?v=20261015product1">
-    <link rel="stylesheet" href="/static/css/methods.css?v=20261015product1">
     <style>
         :root {
             --ink: #1c1b19;
@@ -207,31 +205,6 @@
 
         .dashboard-row.today-calendar-row {
             grid-template-columns: 1fr;
-        }
-
-        .notes-entry-card {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 16px;
-            padding: 16px 18px;
-            background: #fffcf6;
-            border: 1px solid var(--line, #e6e1d6);
-            border-radius: 14px;
-            cursor: pointer;
-        }
-
-        .notes-entry-card h3 {
-            margin: 0 0 4px;
-            color: #1c1b19;
-            font-size: 1rem;
-        }
-
-        .notes-entry-card p {
-            margin: 0;
-            color: #8a8478;
-            font-size: 0.85rem;
         }
 
         #user-center > .section-header {
@@ -777,33 +750,6 @@
             gap: 4px;
             min-width: 0;
             flex: 1;
-        }
-
-        #self-talk.content-section {
-            display: block;
-            animation: none;
-            transform: none;
-            visibility: hidden;
-            height: 0;
-            overflow: hidden;
-            margin: 0;
-            opacity: 1;
-            pointer-events: none;
-        }
-
-        #self-talk.content-section.active {
-            visibility: visible;
-            height: auto;
-            overflow: visible;
-            margin: -30px;
-            pointer-events: auto;
-        }
-
-        .self-talk-frame {
-            width: 100%;
-            height: calc(100vh - 70px);
-            border: 0;
-            background: #f5f7fa;
         }
 
         .header-nav-controls {
@@ -1563,257 +1509,7 @@
             color: #999;
         }
         
-        /* 行动项样式 */
-        .action-item {
-            display: flex;
-            flex-direction: column;
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            box-shadow: none;
-            border: 1px solid #e6e1d6;
-            border-left: 3px solid #1c1b19;
-            overflow-wrap: anywhere;
-        }
-
-        .action-item.is-done {
-            border-left-color: #b8b2a6;
-            background: #faf8f3;
-        }
-
-        .action-item.is-done h3 {
-            color: #6b6560;
-        }
-
-        .action-item-body {
-            order: 0;
-            display: block;
-        }
-
-        .action-item > .action-buttons {
-            order: 1;
-            margin-top: 16px;
-            flex-shrink: 0;
-        }
-        
-        .action-item h3 {
-            margin-bottom: 10px;
-            color: #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        
-        .status-badge {
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.72rem;
-            font-weight: 500;
-            background: #f4efe4;
-            color: #6b6560;
-            border: 1px solid var(--line, #e6e1d6);
-        }
-        
-        .status-todo {
-            background: #f4efe4;
-            color: #6b6560;
-        }
-        
-        .status-in_progress,
-        .status-in-progress {
-            background: #ece8dc;
-            color: #3d3a34;
-        }
-        
-        .status-done {
-            background: #1c1b19;
-            color: #f4efe4;
-            border-color: #1c1b19;
-        }
-        
-        .action-tags {
-            margin-top: 10px;
-        }
-        
-        .tag {
-            display: inline-block;
-            background: #f4efe4;
-            color: #6b6560;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            margin-right: 8px;
-            margin-bottom: 4px;
-            border: 1px solid var(--line, #e6e1d6);
-        }
-        
-        .action-buttons {
-            margin-top: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-            border: 1px solid var(--line, #e6e1d6);
-            border-radius: 14px;
-            background: #fff;
-            overflow: hidden;
-        }
-
-        .action-filter-row {
-            display: flex;
-            overflow: hidden;
-            margin-bottom: 15px;
-            border: 1px solid var(--line, #e6e1d6);
-            border-radius: 10px;
-            background: #fffcf6;
-        }
-        
-        .btn-small {
-            padding: 8px 14px;
-            font-size: 0.88rem;
-            border-radius: 8px;
-            border: 1px solid var(--line, #e6e1d6);
-            background: #faf8f3;
-            color: #3d3a34;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-
-        .action-buttons .action-tool,
-        .action-buttons .btn-small {
-            width: 100%;
-            max-width: none;
-            box-sizing: border-box;
-            min-width: 0;
-            min-height: 52px;
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 12px;
-            padding: 12px 16px;
-            font-size: 0.95rem;
-            font-weight: 500;
-            font-family: inherit;
-            line-height: 1.35;
-            color: #1c1b19;
-            background: #fff;
-            border: none;
-            border-bottom: 1px solid #f1eee6;
-            border-radius: 0;
-            white-space: nowrap;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .action-buttons .action-tool:last-child,
-        .action-buttons .btn-small:last-child {
-            border-bottom: none;
-        }
-
-        .action-tool-ico {
-            flex: 0 0 32px;
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            background: #f4efe4;
-            color: #6b6560;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            line-height: 1;
-        }
-
-        .action-tool-ico svg {
-            display: block;
-        }
-
-        .action-tool-label {
-            flex: 1;
-            min-width: 0;
-            text-align: left;
-            color: inherit;
-        }
-
-        .action-tool-chevron {
-            flex: 0 0 auto;
-            color: #c5c0b6;
-            font-size: 1.15rem;
-            font-weight: 300;
-            line-height: 1;
-        }
-
-        .action-buttons .action-tool:active,
-        .action-buttons .btn-small:active {
-            background: #f4efe4;
-        }
-
-        .action-buttons .action-tool.is-danger,
-        .action-buttons .btn-small.btn-danger {
-            color: #c4564c;
-            background: #fff;
-        }
-
-        .action-buttons .action-tool.is-danger .action-tool-ico {
-            color: #8a8478;
-        }
-
-        .action-buttons .action-tool.is-danger .action-tool-label {
-            color: #c4564c;
-        }
-        
-        .btn-complete,
-        .btn-log {
-            background: #faf8f3;
-            color: #3d3a34;
-        }
-        
-        .btn-complete:hover,
-        .btn-log:hover {
-            background: #f1eee6;
-        }
-        
-        .btn-complete:disabled {
-            background: #eee;
-            color: #aaa;
-            cursor: not-allowed;
-        }
-        
-        /* 行动类型筛选：与工具栏同一套浅底分割 */
-        .action-type-filter {
-            flex: 1;
-            min-width: 0;
-            padding: 9px 8px;
-            border: none;
-            border-right: 1px solid var(--line, #e6e1d6);
-            background: transparent;
-            color: #6b6560;
-            border-radius: 0;
-            cursor: pointer;
-            font-size: 0.82rem;
-            font-weight: 500;
-            font-family: inherit;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .action-type-filter:last-child {
-            border-right: none;
-        }
-        
-        .action-type-filter:hover,
-        .action-type-filter:active {
-            color: #1c1b19;
-            background: #f4efe4;
-        }
-        
-        .action-type-filter.active {
-            background: #1c1b19;
-            color: #f4efe4;
-        }
-        
-        /* 实践记录模态框 */
+        /* 账户弹窗 */
         .practice-modal {
             position: fixed;
             top: 0;
@@ -2035,74 +1731,9 @@
             font-weight: 600;
         }
         
-        .actions-list {
-            max-height: none;
-            overflow: visible;
-        }
-
-        .actions-toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-            padding-right: 56px;
-        }
-
-        .actions-empty {
-            padding: 28px 4px 8px;
-            color: #8a8478;
-            font-size: 0.95rem;
-        }
-
         .me-hint:empty,
         #todayOverviewHint:empty {
             display: none;
-        }
-        
-        .action-item {
-            display: flex;
-            flex-direction: column;
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-left: 4px solid #667eea;
-        }
-        
-        .action-item h3 {
-            color: #333;
-            margin-bottom: 8px;
-        }
-        
-        .action-item p {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-        
-        .action-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-        }
-        
-        .tag {
-            background: #f4efe4;
-            color: #6b6560;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-        
-        .status-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.72rem;
-            font-weight: 500;
-            margin-left: 10px;
         }
         
         .dashboard {
@@ -2654,12 +2285,6 @@
             border-color: #667eea;
         }
 
-        .upload-panel.hidden {
-            display: none;
-        }
-
-        #upload > .card {max-width: 760px; padding: 28px; background: #fffdf8; border: 1px solid #e6e1d6;}
-        #upload textarea {min-height: 110px;}
         .capture-entry-grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px;}
         .capture-entry-grid > .card {background: #fffdf8; border: 1px solid #e6e1d6;}
         .capture-entry-grid .btn {margin: 8px 8px 0 0;}
@@ -2691,7 +2316,6 @@
         }
         .nav-icon { background: #f7eee8; color: #a85e4e; }
         .nav-item.active .nav-icon { background: #a85e4e; color: #fffdf8; }
-        #upload-nav-item { display: none; }
         /* 个人页：沿用纸张感与低饱和层次。 */
         #user-center.content-section { color: #302d28; }
         #user-center .me-page {
@@ -2799,46 +2423,6 @@
             color: #7d493d;
         }
         #user-center .me-plan-table td { border-color: #eee9df; color: #655d54; }
-
-        /* 行动页：去除遗留的蓝色模板色，保留清楚的状态层次。 */
-        #actions.content-section { color: #302d28; }
-        #actions > .section-header h1,
-        #actions > .card h2 { color: #302d28; font-family: Georgia, 'Songti SC', 'STSong', serif; }
-        #actions > .card {
-            border: 1px solid #e6e1d6;
-            border-radius: 12px;
-            background: #fffdf8;
-            box-shadow: 0 6px 18px rgba(68, 58, 45, .035);
-        }
-        #actions .actions-toolbar { padding-right: 0; }
-        #actions .actions-toolbar h2 { font-size: 1.45rem; font-weight: 600; }
-        #actions .btn-small {
-            border-color: #c9a899;
-            border-radius: 7px;
-            background: #f8eee9;
-            color: #7d493d;
-        }
-        #actions .btn-small:hover { background: #f1e2db; }
-        #actions .action-filter-row {
-            border-color: #ded5c9;
-            border-radius: 8px;
-            background: #fbfaf6;
-        }
-        #actions .action-type-filter { color: #766e63; background: transparent; }
-        #actions .action-type-filter:hover,
-        #actions .action-type-filter:active { color: #7d493d; background: #f8eee9; }
-        #actions .action-type-filter.active { background: #3d3934; color: #fffdf8; }
-        #actions .action-item {
-            border: 1px solid #e6e1d6;
-            border-left: 4px solid #a85e4e;
-            border-radius: 10px;
-            background: #fbfaf6;
-            box-shadow: none;
-        }
-        #actions .action-item h3 { color: #302d28; }
-        #actions .action-item p { color: #766e63; }
-        #actions .action-item.is-done { border-left-color: #8f887e; }
-        #actions .action-tool-ico { background: #f4efe4; color: #8c5b4c; }
 
         /* 今日页：日历与概览也使用同一套暖色层次。 */
         #overview .widget-card {
@@ -3683,35 +3267,6 @@
                 height: 5px;
             }
 
-            .action-item {
-                display: flex !important;
-                flex-direction: column !important;
-            }
-
-            .action-item-body {
-                order: 0;
-            }
-
-            .action-item > .action-buttons {
-                order: 1;
-                margin-top: 16px;
-            }
-
-            .actions-list {
-                max-height: none !important;
-                overflow: visible !important;
-            }
-
-            .action-buttons {
-                display: flex;
-                flex-direction: column;
-            }
-
-            .action-buttons .btn-small {
-                min-width: 0;
-                text-align: center;
-            }
-            
             .header-nav-controls {
                 display: flex;
             }
@@ -3723,14 +3278,6 @@
             .app-sidebar,
             .sidebar-overlay {
                 display: none !important;
-            }
-
-            #self-talk.content-section.active {
-                margin: -16px -12px;
-            }
-
-            .self-talk-frame {
-                height: calc(100dvh - 56px - 64px - env(safe-area-inset-bottom, 0px));
             }
 
             .app-main {
@@ -3886,16 +3433,16 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261015product1">
+    <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261017retire1">
 </head>
 <body>
     <script>
         (function () {
             if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-                location.replace('http://43.161.238.165:8000/?v=20261015product1');
+                location.replace('http://43.161.238.165:8000/?v=20261017retire1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.1';
+            window.SHURAN_VERSION = '2.0.2';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -4061,11 +3608,7 @@
     <!-- 侧边导航栏 -->
     <aside class="app-sidebar">
         <nav class="sidebar-nav">
-            <div class="nav-item active" data-section="methods" onclick="navigateTo('methods')" title="方法卡">
-                <span class="nav-icon">法</span>
-                <span class="nav-text" data-i18n="nav.methods">方法</span>
-            </div>
-            <div class="nav-item" data-section="overview" onclick="navigateTo('overview')" title="今日" data-i18n-title="nav.today">
+            <div class="nav-item active" data-section="overview" onclick="navigateTo('overview')" title="今日" data-i18n-title="nav.today">
                 <span class="nav-icon">今</span>
                 <span class="nav-text" data-i18n="nav.today">今日</span>
             </div>
@@ -4076,18 +3619,6 @@
             <div class="nav-item" data-section="projects" onclick="location.href='/static/projects.html'" title="项目">
                 <span class="nav-icon">项</span>
                 <span class="nav-text">项目</span>
-            </div>
-            <div class="nav-item" data-section="actions" onclick="navigateTo('actions')" title="行动" data-i18n-title="nav.actions">
-                <span class="nav-icon">行</span>
-                <span class="nav-text" data-i18n="nav.actions">行动</span>
-            </div>
-            <div class="nav-item" id="upload-nav-item" data-section="upload" onclick="navigateTo('upload')" title="添加行动项">
-                <span class="nav-icon">＋</span>
-                <span class="nav-text">添加行动项</span>
-            </div>
-            <div class="nav-item" data-section="self-talk" onclick="navigateTo('self-talk')" title="Self-talk" data-i18n-title="nav.selfTalk">
-                <span class="nav-icon">谈</span>
-                <span class="nav-text" data-i18n="nav.selfTalk">Self-talk</span>
             </div>
             <div class="nav-item" data-section="user-center" onclick="navigateTo('user-center')" title="我的" data-i18n-title="nav.me">
                 <span class="nav-icon">我</span>
@@ -4101,46 +3632,9 @@
         <!-- 全局消息提示 -->
         <div id="message"></div>
         
-        <section id="methods" class="content-section active">
-            <div class="methods-page">
-                <div class="method-intro">
-                    <div class="method-kicker">书然 / 方法卡</div>
-                    <h1>遇到老问题，<br>先用一个办法。</h1>
-                    <p>把学过的方法写成「什么时候用，先做什么」。<br>实际试过，再留下几秒钟的反馈。</p>
-                    <div class="method-intro-actions">
-                        <button type="button" class="method-button primary" id="methodNewBtn">＋ 写一张方法卡</button>
-                        <button type="button" class="method-button" id="methodFeedbackBtn">告诉我们哪里不好用</button>
-                    </div>
-                </div>
-                <div class="method-demo-banner" id="methodDemoBanner" hidden>
-                    <div><strong id="methodDemoTitle"></strong><p id="methodDemoHint"></p></div>
-                    <button type="button" class="method-button" id="methodDemoAction"></button>
-                </div>
-                <div class="method-stats" id="methodStats" aria-live="polite"></div>
-                <div class="method-toolbar">
-                    <div class="method-filters" aria-label="方法卡筛选">
-                        <button type="button" data-method-filter="active" aria-pressed="true">在用</button>
-                        <button type="button" data-method-filter="helpful" aria-pressed="false">有帮助</button>
-                        <button type="button" data-method-filter="paused" aria-pressed="false">暂放</button>
-                    </div>
-                    <label class="method-search"><input type="search" id="methodSearch" placeholder="用情境或关键词找方法" aria-label="搜索方法卡" maxlength="100"></label>
-                </div>
-                <div class="method-grid" id="methodGrid" aria-live="polite"></div>
-                <p class="method-limit" id="methodLimit" hidden></p>
-                <div class="method-examples">
-                    <h2>想不到怎么写？选一个示例，再改成自己的情况。</h2>
-                    <div class="method-example-list">
-                        <button type="button" data-method-example="start">坐下后迟迟没开始</button>
-                        <button type="button" data-method-example="overload">事情太多，开始逃避</button>
-                        <button type="button" data-method-example="interruption">临时事情打乱安排</button>
-                    </div>
-                </div>
-                <p class="method-footnote">例子只是写法参考。你遇到相应情境时再试，用不上也可以调整。<br>匿名统计体验次数，卡片与摘录不会加入这些统计。<button type="button" id="methodPrivacyFeedbackBtn">主动提交的产品意见</button>会提供给开发者。网页版 2.0.1。</p>
-            </div>
-        </section>
 
         <!-- 首页概览区 -->
-        <section id="overview" class="content-section">
+        <section id="overview" class="content-section active">
             <div class="section-header"><h1 data-i18n="nav.today">今日</h1></div>
             <div class="in-app-reminder-bar" id="inAppReminderBar" hidden></div>
             <div class="homepage-dashboard">
@@ -4164,7 +3658,6 @@
                 </div></div>
                 <div class="dashboard-row"><div class="widget-card"><h3 class="block-title">继续推进</h3><div class="quick-actions">
                     <button type="button" class="quick-action-btn" onclick="location.href='/static/projects.html'"><div class="action-text">打开项目与时间片</div></button>
-                    <button type="button" class="quick-action-btn" onclick="recordTodayPractice()"><div class="action-text">记录行动实践</div></button>
                     <button type="button" class="quick-action-btn" onclick="navigateTo('capture')"><div class="action-text">打开“记”</div></button>
                 </div></div></div>
             </div>
@@ -4175,7 +3668,6 @@
                 <h1 data-i18n="schedule.title">日程安排</h1>
                 <p class="flow-hint" id="scheduleHint">添加一件事，即可安排熟悉程度和预计用时</p>
             </div>
-            <div id="habitFocusMount" class="habit-focus-shell"></div>
             <div class="home-schedule" id="homeSchedule">
                 <div class="home-schedule-head">
                     <div class="flow-toolbar">
@@ -4192,7 +3684,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="schedule-nudge" id="scheduleNudge" hidden></div>
+
                 <div class="flow-add-row" id="scheduleAddRow">
                     <div class="flow-add-main">
                         <input type="text" id="scheduleAddInput" maxlength="500" placeholder="写下要做的事" data-i18n-placeholder="schedule.add.placeholder">
@@ -4221,57 +3713,6 @@
                     </div>
                 </div>
                 <div id="scheduleList" class="home-schedule-list"></div>
-            </div>
-        </section>
-        
-        <!-- 上传笔记区 -->
-        <section id="upload" class="content-section">
-            <div class="section-header"><button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button><h1>添加行动项</h1><p>行动项与习惯继续保留，来源可自由说明。</p></div>
-            <div class="card"><div class="form-group"><label for="manualActionText">行动内容</label><textarea id="manualActionText" placeholder="你要执行的具体行动…"></textarea></div>
-                <div class="form-group"><label for="manualSourceExcerpt">说明（可选）</label><textarea id="manualSourceExcerpt" placeholder="相关背景或下一步…"></textarea></div>
-                <button type="button" class="btn" onclick="createManualAction()">保存行动项</button></div>
-        </section>
-        
-        <!-- 行动项管理区 -->
-        <section id="actions" class="content-section">
-            <div class="section-header">
-                <h1 data-i18n="nav.actions">行动</h1>
-            </div>
-            
-            <div class="card">
-                <div class="actions-toolbar">
-                    <h2>我的行动项</h2>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button class="btn-small" onclick="addAction()">
-                            添加行动项
-                        </button>
-                        <button class="btn-small" id="batchTimeBtn" onclick="showBatchTimeManagementModal()" style="display: none;">
-                            批量设置时间
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- 行动类型筛选 -->
-                <div style="margin-bottom: 20px;">
-                    <div class="action-filter-row">
-                        <button class="action-type-filter active" data-type="all" onclick="filterActionsByType('all')">
-                            全部
-                        </button>
-                        <button class="action-type-filter" data-type="trigger" onclick="filterActionsByType('trigger')">
-                            情境触发型
-                        </button>
-                        <button class="action-type-filter" data-type="habit" onclick="filterActionsByType('habit')">
-                            习惯养成型
-                        </button>
-                        <button class="action-type-filter" data-type="done" onclick="filterActionsByType('done')">
-                            已完成
-                        </button>
-                    </div>
-                </div>
-                
-                <div id="actionsList" class="actions-list">
-                    <div class="actions-empty">还没有行动项</div>
-                </div>
             </div>
         </section>
         
@@ -4309,21 +3750,14 @@
 
                 <div class="me-group" id="meAccountGroup">
                     <div class="me-group-title" data-i18n="me.account.group">账户与套餐</div>
-                    <div class="me-row me-row-static">
-                        <div class="me-row-main">
-                            <div class="me-row-title" data-i18n="me.quota.today">今日额度</div>
-                            <div class="me-row-desc" id="meQuotaHint"></div>
-                        </div>
-                    </div>
-                    <p class="me-hint" data-i18n="me.plan.hint">付费和续期在微信产品群找站长开通，开通后当天额度按新套餐生效。</p>
+                    <p class="me-hint" data-i18n="me.plan.hint">付费和续期在微信产品群找站长开通。</p>
                     <div class="owner-table-wrap">
                         <table class="me-plan-table" id="mePlanTable">
                             <thead>
                                 <tr>
                                     <th data-i18n="me.plans.plan">套餐</th>
                                     <th data-i18n="me.plans.price">价格</th>
-                                    <th data-i18n="me.plans.advice">建议 / 天</th>
-                                    <th data-i18n="me.plans.duration">时长</th>
+                                                    <th data-i18n="me.plans.duration">时长</th>
                                 </tr>
                             </thead>
                             <tbody id="mePlanTableBody"></tbody>
@@ -4355,31 +3789,6 @@
                         <span class="me-row-main">
                             <span class="me-row-title" data-i18n="me.quick.today.title">今日</span>
                             <span class="me-row-desc" data-i18n="me.quick.today.desc">日历与待办</span>
-                        </span>
-                        <span class="me-chevron">›</span>
-                    </button>
-                    <button type="button" class="me-row" onclick="navigateTo('actions')">
-                        <span class="me-row-icon" aria-hidden="true">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>
-                        </span>
-                        <span class="me-row-main">
-                            <span class="me-row-title" data-i18n="me.quick.actions.title">行动</span>
-                            <span class="me-row-desc" data-i18n="me.quick.actions.desc">坐下时在电脑上更好做</span>
-                        </span>
-                        <span class="me-chevron">›</span>
-                    </button>
-                    <button type="button" class="me-row" onclick="navigateTo('self-talk')">
-                        <span class="me-row-icon" aria-hidden="true">谈</span>
-                        <span class="me-row-main"><span class="me-row-title" data-i18n="nav.selfTalk">Self-talk</span></span>
-                        <span class="me-chevron">›</span>
-                    </button>
-                    <button type="button" class="me-row" onclick="navigateTo('upload')">
-                        <span class="me-row-icon" aria-hidden="true">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
-                        </span>
-                        <span class="me-row-main">
-                            <span class="me-row-title" data-i18n="me.quick.upload.title">添加行动项</span>
-                            <span class="me-row-desc" data-i18n="me.quick.upload.desc">直接记录下一步行动</span>
                         </span>
                         <span class="me-chevron">›</span>
                     </button>
@@ -4493,81 +3902,6 @@
                     </div>
                 </div>
 
-                <div class="me-group" id="dailyReminderGroup">
-                    <button type="button" class="me-group-title me-group-toggle" id="dailyReminderToggle" aria-expanded="true">
-                        <span data-i18n="me.reminders.dailyGroup">每日提醒</span>
-                        <span class="me-group-toggle-hint" id="dailyReminderToggleHint" data-i18n="reminder.collapse">收起</span>
-                    </button>
-                    <div id="dailyReminderPanel">
-                    <div class="me-row me-row-static">
-                        <div class="me-row-main">
-                            <div class="me-row-title" data-i18n="me.reminders.daily">每天提醒</div>
-                        </div>
-                        <label class="me-switch">
-                            <input type="checkbox" id="reminderDailySwitch">
-                            <span class="me-switch-ui"></span>
-                        </label>
-                    </div>
-                    <div class="me-row me-row-static">
-                        <div class="me-row-main">
-                            <div class="me-row-title" data-i18n="me.reminders.time">提醒时间</div>
-                        </div>
-                        <input type="time" class="me-control" id="dailyReminderTime" value="20:00" data-time-title="每日提醒时间">
-                    </div>
-                    <div class="me-row me-row-static me-row-last">
-                        <div class="me-row-main">
-                            <div class="me-row-title" data-i18n="me.reminders.repeat">重复</div>
-                        </div>
-                    </div>
-                    <div class="me-weekdays" aria-label="重复日期" data-i18n-aria-label="me.reminders.repeatDays">
-                        <label class="me-chip"><input type="checkbox" id="reminderDay0" checked><span data-i18n="weekday.sun.short">日</span></label>
-                        <label class="me-chip"><input type="checkbox" id="reminderDay1" checked><span data-i18n="weekday.mon.short">一</span></label>
-                        <label class="me-chip"><input type="checkbox" id="reminderDay2" checked><span data-i18n="weekday.tue.short">二</span></label>
-                        <label class="me-chip"><input type="checkbox" id="reminderDay3" checked><span data-i18n="weekday.wed.short">三</span></label>
-                        <label class="me-chip"><input type="checkbox" id="reminderDay4" checked><span data-i18n="weekday.thu.short">四</span></label>
-                        <label class="me-chip"><input type="checkbox" id="reminderDay5" checked><span data-i18n="weekday.fri.short">五</span></label>
-                        <label class="me-chip"><input type="checkbox" id="reminderDay6" checked><span data-i18n="weekday.sat.short">六</span></label>
-                    </div>
-                    </div>
-                </div>
-
-                <div class="me-group">
-                    <div class="me-group-title" data-i18n="me.actionReminders.group">行动提醒</div>
-                    <div class="me-row me-row-static">
-                        <div class="me-row-main">
-                            <div class="me-row-title" data-i18n="me.actionReminders.afterDone">完成行动后</div>
-                        </div>
-                        <label class="me-switch">
-                            <input type="checkbox" id="reminderActionSwitch">
-                            <span class="me-switch-ui"></span>
-                        </label>
-                    </div>
-                    <div class="me-row me-row-static">
-                        <div class="me-row-main">
-                            <div class="me-row-title" data-i18n="me.actionReminders.afterNew">新增行动后</div>
-                        </div>
-                        <label class="me-switch">
-                            <input type="checkbox" id="reminderNewActionSwitch">
-                            <span class="me-switch-ui"></span>
-                        </label>
-                    </div>
-                    <div class="me-row me-row-static">
-                        <div class="me-row-main">
-                            <div class="me-row-title" data-i18n="me.actionReminders.inactive">非活跃提醒</div>
-                            <div class="me-row-desc" data-i18n="me.actionReminders.inactiveDesc">超过设定天数未使用时提醒</div>
-                        </div>
-                        <select id="inactiveDaysThreshold" class="me-control">
-                            <option value="1">1 天</option>
-                            <option value="2">2 天</option>
-                            <option value="3" selected>3 天</option>
-                            <option value="5">5 天</option>
-                            <option value="7">7 天</option>
-                            <option value="10">10 天</option>
-                            <option value="15">15 天</option>
-                            <option value="30">30 天</option>
-                        </select>
-                    </div>
-                </div>
 
                 <div class="me-group">
                     <div class="me-group-title" data-i18n="me.notifications.group">通知</div>
@@ -4647,12 +3981,6 @@
                 <p>生成邀请码，给用户开通套餐</p>
             </div>
             <div class="owner-page">
-                <div class="method-market" id="methodMarket">
-                    <h2>方法卡 · 近 7 天使用反馈</h2>
-                    <p>查看实际使用记录和用户意见。访问按浏览器会话统计，访客体验与账号内尝试分别展示。</p>
-                    <button type="button" class="method-button" id="methodMarketRefresh">刷新反馈</button>
-                    <div id="methodMarketBody" aria-live="polite">进入后加载真实数据。</div>
-                </div>
                 <div class="me-group">
                     <div class="me-group-title">生成邀请码</div>
                     <p class="me-hint">四位数字，一次性，7 天有效。一次最多 5 个，不要囤积。</p>
@@ -4683,7 +4011,7 @@
                 </div>
                 <div class="me-group">
                     <div class="me-group-title">导出与备份</div>
-                    <p class="me-hint">ZIP 里是给 Excel 打开的 CSV（带姓名、手机号、笔记和 Self-talk 转写）。只存在你自己的电脑，不要转发。</p>
+                    <p class="me-hint">ZIP 里是给 Excel 打开的 CSV，含账户和业务记录。只存在你自己的电脑，不要转发。</p>
                     <p class="me-hint" id="ownerSaveHint">点「选择保存文件夹」可指定 D 盘等位置。若按钮不可用，到 Chrome「设置 → 下载内容」勾选「下载前询问每个文件的保存位置」，再点导出。</p>
                     <div class="me-actions">
                         <button type="button" class="me-btn me-btn-ghost" id="ownerPickFolderBtn" onclick="chooseOwnerSaveFolder()">选择保存文件夹</button>
@@ -4732,9 +4060,6 @@
             </div>
         </section>
         
-        <section id="self-talk" class="content-section">
-            <iframe id="selfTalkFrame" class="self-talk-frame" title="Self-talk" allow="microphone"></iframe>
-        </section>
             
         <section id="capture" class="content-section">
             <div class="section-header"><h1>记</h1><p>时刻、idea、以后想做各有自己的去处。</p></div>
@@ -4843,7 +4168,7 @@
             </div>
             <div class="guide-card">
                 <h3>电脑和手机</h3>
-                <p>坐下工作时用电脑：看项目、排日程、记录时间片。出门用手机：看日程、点「记」，有时用 Self-talk。账号是同一个。</p>
+                <p>坐下工作时用电脑：看项目、排日程、记录时间片。出门用手机：看日程、点「记」。账号是同一个。</p>
             </div>
             <div class="guide-card">
                 <h3>1. 今日</h3>
@@ -4855,25 +4180,17 @@
             <div class="guide-card">
                 <h3>2. 日程</h3>
                 <ol>
-                    <li>和「今日」「行动」一样，在下面的导航里。用来写下今天要处理的具体行动，再排成流程。</li>
-                    <li>直接写下即可。写错了点「修改」。太大就拆开。行动项里还没排进今天的，会出现在输入框上方，点「加入」。</li>
+                    <li>在日程中写下今天要处理的具体任务，再排成流程。</li>
+                    <li>直接写下即可。写错了点「修改」；较大的事项可以在项目中拆分。</li>
                     <li>还没规划、但自己想做的，写在「记 → 以后想做」。不进今天、不提醒；准备好了再安排。</li>
                 </ol>
             </div>
             <div class="guide-card">
-                <h3>3. 行动</h3>
-                <ol>
-                    <li>这里管理行动项和习惯，按情境或习惯筛选。</li>
-                    <li>点「添加行动项」直接记录你要执行的行动。</li>
-                    <li>做完一项就记录实践，方便之后复盘。</li>
-                </ol>
+                <h3>3. 项目</h3>
+                <p>在项目里按阶段拆解任务，设置前置关系，并记录实际投入。</p>
             </div>
             <div class="guide-card">
-                <h3>4. Self-talk</h3>
-                <p>用录音记下内心对话。完成行动或到了提醒时间，可以来这里复盘。</p>
-            </div>
-            <div class="guide-card">
-                <h3>5. moment 与 idea</h3>
+                <h3>4. moment 与 idea</h3>
                 <ol>
                     <li>手机点底栏「记」，或三击音量减，先写下。电脑 Windows 应用按 Ctrl+Shift+K（全局），或窗口内 Ctrl+K / 点右下角「记」。去处可选 moment、idea 或 todo；全体默认 moment，可在「我的 → 快捷记下」改。</li>
                     <li>todo 再选 today 或 later。idea 在「我的 → idea」。</li>
@@ -4881,7 +4198,7 @@
                 </ol>
             </div>
             <div class="guide-card">
-                <h3>6. 我的</h3>
+                <h3>5. 我的</h3>
                 <p>改昵称、开关提醒、打开「快捷记下」。这份说明随时可以再打开。</p>
             </div>
         </section>
@@ -4935,13 +4252,13 @@
             <div class="ink-grain"></div>
             <div class="ink-mist"></div>
         </div>
-        <p class="ink-colophon" data-i18n="auth.colophon">开卷有益 · 知行合一</p>
+        <p class="ink-colophon" data-i18n="auth.colophon">知行合一 · 日有所进</p>
         <div class="auth-layout">
             <div class="auth-brand">
                 <span class="ink-seal">然</span>
                 <h1 data-i18n="app.title">书然</h1>
                 <div class="brand-brush"></div>
-                <p class="brand-tagline" data-i18n="app.tagline">把读书笔记，变成真正在做的行动</p>
+                <p class="brand-tagline" data-i18n="app.tagline">把目标落实在今天</p>
             </div>
             <div class="auth-container">
                 <button class="close-modal" onclick="closeAuthModal()" aria-label="关闭" data-i18n-aria-label="common.close">&times;</button>
@@ -4989,262 +4306,6 @@
                     <button type="submit" class="auth-btn" data-i18n="auth.register.submit">注册</button>
                 </form>
             </div>
-        </div>
-    </div>
-    
-    <!-- 批量时间管理设置模态框 -->
-    <div class="practice-modal hidden" id="batchTimeManagementModal">
-        <div class="practice-container">
-            <button class="close-modal" onclick="closeBatchTimeManagementModal()">&times;</button>
-            <div class="practice-header">
-                <h3>批量设置时间</h3>
-                <p style="color: #666; font-size: 14px; margin-top: 5px;">应用到未完成的行动项</p>
-            </div>
-            
-            <form id="batchTimeManagementForm">
-                <div class="form-group">
-                    <label for="btmDurationType">类型</label>
-                    <select id="btmDurationType" onchange="toggleBTMDurationSettings()">
-                        <option value="short_term">短期目标</option>
-                        <option value="long_term">长期目标</option>
-                        <option value="lifetime">终身习惯</option>
-                    </select>
-                </div>
-                
-                <div class="form-group" id="btmDurationDaysGroup">
-                    <label for="btmTargetDurationDays">坚持天数</label>
-                    <input type="number" id="btmTargetDurationDays" min="1" max="3650" placeholder="天数" oninput="fillEndDateFromStartAndDays('btmStartDate','btmTargetDurationDays','btmEndDate')" onchange="fillEndDateFromStartAndDays('btmStartDate','btmTargetDurationDays','btmEndDate')">
-                </div>
-                
-                <div class="form-group">
-                    <label for="btmTargetFrequency">频率</label>
-                    <select id="btmTargetFrequency" onchange="toggleBTMCustomFrequency()">
-                        <option value="daily">每日</option>
-                        <option value="weekly">每周</option>
-                        <option value="monthly">每月</option>
-                        <option value="quarterly">每季度</option>
-                        <option value="custom">自定义</option>
-                    </select>
-                </div>
-                
-                <div class="form-group" id="btmCustomFrequencyGroup" style="display: none;">
-                    <label for="btmCustomFrequencyDays">每几天一次</label>
-                    <input type="number" id="btmCustomFrequencyDays" min="1" max="365" placeholder="天数">
-                </div>
-                
-                <div class="form-group">
-                    <label for="btmStartDate">开始日期</label>
-                    <input type="date" id="btmStartDate" oninput="fillEndDateFromStartAndDays('btmStartDate','btmTargetDurationDays','btmEndDate')" onchange="fillEndDateFromStartAndDays('btmStartDate','btmTargetDurationDays','btmEndDate')">
-                </div>
-                
-                <div class="form-group" id="btmEndDateGroup">
-                    <label for="btmEndDate">结束日期</label>
-                    <input type="date" id="btmEndDate">
-                </div>
-                
-                <button type="submit" class="btn">批量应用</button>
-            </form>
-        </div>
-    </div>
-    
-    <!-- 时间管理设置模态框（习惯型） -->
-    <div class="practice-modal hidden" id="timeManagementModal">
-        <div class="practice-container">
-            <button class="close-modal" onclick="closeTimeManagementModal()">&times;</button>
-            <div class="practice-header">
-                <h3>设置时间</h3>
-            </div>
-            
-            <form id="timeManagementForm">
-                <div class="form-group">
-                    <label for="tmDurationType">类型</label>
-                    <select id="tmDurationType" onchange="toggleTMDurationSettings()">
-                        <option value="short_term">短期目标</option>
-                        <option value="long_term">长期目标</option>
-                        <option value="lifetime">终身习惯</option>
-                    </select>
-                </div>
-                
-                <div class="form-group" id="tmDurationDaysGroup">
-                    <label for="tmTargetDurationDays">坚持天数</label>
-                    <input type="number" id="tmTargetDurationDays" min="1" max="3650" placeholder="天数" oninput="fillEndDateFromStartAndDays('tmStartDate','tmTargetDurationDays','tmEndDate')" onchange="fillEndDateFromStartAndDays('tmStartDate','tmTargetDurationDays','tmEndDate')">
-                </div>
-                
-                <div class="form-group">
-                    <label for="tmTargetFrequency">频率</label>
-                    <select id="tmTargetFrequency" onchange="toggleTMCustomFrequency()">
-                        <option value="daily">每日</option>
-                        <option value="weekly">每周</option>
-                        <option value="monthly">每月</option>
-                        <option value="quarterly">每季度</option>
-                        <option value="custom">自定义</option>
-                    </select>
-                </div>
-                
-                <div class="form-group" id="tmCustomFrequencyGroup" style="display: none;">
-                    <label for="tmCustomFrequencyDays">每几天一次</label>
-                    <input type="number" id="tmCustomFrequencyDays" min="1" max="365" placeholder="天数">
-                </div>
-                
-                <div class="form-group">
-                    <label for="tmStartDate">开始日期</label>
-                    <input type="date" id="tmStartDate" oninput="fillEndDateFromStartAndDays('tmStartDate','tmTargetDurationDays','tmEndDate')" onchange="fillEndDateFromStartAndDays('tmStartDate','tmTargetDurationDays','tmEndDate')">
-                </div>
-                
-                <div class="form-group" id="tmEndDateGroup">
-                    <label for="tmEndDate">结束日期</label>
-                    <input type="date" id="tmEndDate">
-                </div>
-                
-                <button type="submit" class="btn">保存</button>
-            </form>
-        </div>
-    </div>
-    
-    <!-- 次数和天数设置模态框（情境型） -->
-    <div class="practice-modal hidden" id="countAndDaysModal">
-        <div class="practice-container">
-            <button class="close-modal" onclick="closeCountAndDaysModal()">&times;</button>
-            <div class="practice-header">
-                <h3>设置次数和天数</h3>
-            </div>
-            
-            <form id="countAndDaysForm">
-                <div class="form-group">
-                    <label for="cdTargetCount">目标次数</label>
-                    <input type="number" id="cdTargetCount" min="1" max="1000" placeholder="期望完成的次数">
-                </div>
-                
-                <div class="form-group">
-                    <label for="cdTargetDays">完成天数</label>
-                    <input type="number" id="cdTargetDays" min="1" max="365" placeholder="期望在多少天内完成" oninput="fillEndDateFromStartAndDays('cdStartDate','cdTargetDays','cdEndDate')" onchange="fillEndDateFromStartAndDays('cdStartDate','cdTargetDays','cdEndDate')">
-                </div>
-                
-                <div class="form-group">
-                    <label for="cdStartDate">开始日期</label>
-                    <input type="date" id="cdStartDate" oninput="fillEndDateFromStartAndDays('cdStartDate','cdTargetDays','cdEndDate')" onchange="fillEndDateFromStartAndDays('cdStartDate','cdTargetDays','cdEndDate')">
-                </div>
-                
-                <div class="form-group" id="cdEndDateGroup">
-                    <label for="cdEndDate">结束日期</label>
-                    <input type="date" id="cdEndDate">
-                </div>
-                
-                <button type="submit" class="btn">保存</button>
-            </form>
-        </div>
-    </div>
-    
-    <!-- 首页选择要记录的行动项 -->
-    <div class="practice-modal hidden" id="homePracticePicker">
-        <div class="practice-container">
-            <button class="close-modal" onclick="closePracticePicker()">&times;</button>
-            <div class="practice-header">
-                <h3>记录今日实践</h3>
-            </div>
-            <p style="color:#666;margin-bottom:12px;">选择一条行动项</p>
-            <div id="homePracticePickerList"></div>
-        </div>
-    </div>
-
-    <!-- 实践记录模态框 -->
-    <div class="practice-modal hidden" id="practiceModal">
-        <div class="practice-container">
-            <button class="close-modal" onclick="closePracticeModal()">&times;</button>
-            <div class="practice-header">
-                <h3>记录实践</h3>
-            </div>
-            
-            <form id="practiceForm">
-                <div class="form-group">
-                    <label for="practiceDate">实践日期</label>
-                    <input type="date" id="practiceDate" required>
-                </div>
-                
-                <!-- 情境型行动显示次数输入 -->
-                <div class="form-group" id="practiceCountGroup" style="display: none;">
-                    <label for="practiceCount">第几次行动</label>
-                    <input type="number" id="practiceCount" min="1" placeholder="次数">
-                </div>
-                
-                <div class="form-group">
-                    <label for="practiceResult">实践结果</label>
-                    <select id="practiceResult" required>
-                        <option value="">请选择结果</option>
-                        <option value="success">成功</option>
-                        <option value="partial">部分完成</option>
-                        <option value="fail">未完成</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="practiceNotes">实践反馈（可选）</label>
-                    <textarea id="practiceNotes" placeholder="过程和感受"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label>满意度评分</label>
-                    <div class="rating-group">
-                        <div class="rating-stars" id="ratingStars">
-                            <span class="star" data-rating="1">★</span>
-                            <span class="star" data-rating="2">★</span>
-                            <span class="star" data-rating="3">★</span>
-                            <span class="star" data-rating="4">★</span>
-                            <span class="star" data-rating="5">★</span>
-                        </div>
-                        <span id="ratingText">未评分</span>
-                    </div>
-                </div>
-                
-                <button type="submit" class="auth-btn">保存实践记录</button>
-            </form>
-        </div>
-    </div>
-    
-    <!-- 实践记录查看模态框 -->
-    <div class="practice-modal hidden" id="practiceLogsModal">
-        <div class="practice-container" style="width: 800px; max-height: 80vh; overflow-y: auto;">
-            <button class="close-modal" onclick="closePracticeLogsModal()">&times;</button>
-            <div class="practice-header">
-                <h3>📋 实践记录</h3>
-                <p style="color: #666; font-size: 14px; margin-top: 5px;" id="practiceLogsSubtitle">查看所有实践反馈记录</p>
-            </div>
-            
-            <div id="practiceLogsList">
-                <div class="loading">正在加载记录...</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- 编辑行动项模态框 -->
-    <div class="practice-modal hidden" id="editActionModal">
-        <div class="practice-container">
-            <button class="close-modal" onclick="closeEditActionModal()">&times;</button>
-            <div class="practice-header">
-                <h3>编辑行动项</h3>
-            </div>
-            
-            <form id="editActionForm">
-                <div class="form-group">
-                    <label for="editActionText">行动内容</label>
-                    <textarea id="editActionText" required minlength="5" rows="3"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="editActionType">行动类型</label>
-                    <select id="editActionType">
-                        <option value="trigger">情境触发型</option>
-                        <option value="habit">习惯养成型</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="editActionTags">标签（逗号分隔）</label>
-                    <input type="text" id="editActionTags" placeholder="阅读, 成长">
-                </div>
-                
-                <button type="submit" class="auth-btn">保存</button>
-            </form>
         </div>
     </div>
     
@@ -5296,54 +4357,8 @@
         </div>
     </div>
 
-    <dialog class="method-dialog" id="methodEditor" aria-labelledby="methodEditorTitle">
-        <div class="method-dialog-head">
-            <div><h2 id="methodEditorTitle">写一张方法卡</h2><p>先写清两个地方，其他信息可以以后补。</p></div>
-            <button type="button" class="method-dialog-close" data-method-close aria-label="关闭">×</button>
-        </div>
-        <form id="methodEditorForm">
-            <div class="method-field"><label for="methodSituation">遇到什么情境？</label><textarea id="methodSituation" required maxlength="500" placeholder="例如：坐到图书馆，打开书却开始刷手机。"></textarea><small>写能观察到的情境，例如时间、地点或正在做的事。</small></div>
-            <div class="method-field"><label for="methodFirstStep">先做哪一步？</label><textarea id="methodFirstStep" required maxlength="500" placeholder="例如：把手机放进包里，打开题目，只写第一行。"></textarea><small>写一个具体动作，让现在的自己容易开始。</small></div>
-            <details class="method-optional">
-                <summary>名称与来源（选填）</summary>
-                <div class="method-field" id="methodExistingSourceField" hidden><label for="methodExistingSource">从已有行动带入</label><select id="methodExistingSource"><option value="">选择已有行动</option></select></div>
-                <div class="method-field"><label for="methodTitleInput">卡片名称</label><input id="methodTitleInput" maxlength="120" placeholder="留空时使用第一步作为名称"></div>
-                <div class="method-field"><label for="methodSourceTitle">方法来源</label><input id="methodSourceTitle" maxlength="255" placeholder="书名、文章，或自己的经验"></div>
-                <div class="method-field"><label for="methodSourceExcerpt">原文或笔记</label><textarea id="methodSourceExcerpt" maxlength="2000" placeholder="保存你认可的那段方法（可选）。"></textarea></div>
-            </details>
-            <p class="method-dialog-error" id="methodEditorError" role="alert"></p>
-            <div class="method-dialog-actions"><button type="button" class="method-button" data-method-close>取消</button><button type="submit" class="method-button primary" id="methodSaveBtn">保存方法卡</button></div>
-        </form>
-    </dialog>
-    <dialog class="method-dialog" id="methodUseDialog" aria-labelledby="methodUseTitle">
-        <div class="method-dialog-head"><div><h2 id="methodUseTitle">先做这一步</h2><p>先去试，之后回来点一下反馈即可。</p></div><button type="button" class="method-dialog-close" data-method-close aria-label="关闭">×</button></div>
-        <p class="method-situation" id="methodUseSituation"></p>
-        <p class="method-step" id="methodUseStep"></p>
-        <div class="method-outcomes" aria-label="这次尝试的结果">
-            <button type="button" data-outcome="helpful" aria-pressed="false">试了，有帮助</button>
-            <button type="button" data-outcome="not_helpful" aria-pressed="false">试了，没帮助</button>
-            <button type="button" data-outcome="not_used" aria-pressed="false">这次没用上</button>
-        </div>
-        <p class="method-dialog-error" id="methodUseError" role="alert"></p>
-        <form id="methodUseDetailsForm" hidden>
-            <details class="method-optional"><summary>补充原因（选填，结果已经保存）</summary>
-                <div class="method-field"><label for="methodBarrier">卡在哪里？</label><select id="methodBarrier"><option value="">暂不填写</option><option value="forgot">当时没想起来</option><option value="too_hard">这一步还是太麻烦</option><option value="interrupted">被其他事情打断</option><option value="not_suitable">方法不适合这个情境</option><option value="other">其他</option></select></div>
-                <div class="method-field"><label for="methodUseNote">补充一句</label><textarea id="methodUseNote" maxlength="500" placeholder="下次想改哪里？（可选）"></textarea></div>
-                <button type="submit" class="method-button">保存补充</button>
-            </details>
-        </form>
-    </dialog>
-    <dialog class="method-dialog" id="methodFeedbackDialog" aria-labelledby="methodProductFeedbackTitle">
-        <div class="method-dialog-head"><div><h2 id="methodProductFeedbackTitle">告诉我们实际感受</h2><p>意见会发送给开发者，帮助决定下一步改什么。</p></div><button type="button" class="method-dialog-close" data-method-close aria-label="关闭">×</button></div>
-        <form id="methodProductFeedbackForm">
-            <div class="method-field"><label for="methodFeedbackCategory">这次想说什么？</label><select id="methodFeedbackCategory"><option value="problem">哪里不好用</option><option value="suggestion">我想改进的地方</option><option value="useful">对我有帮助的地方</option></select></div>
-            <div class="method-field"><label for="methodFeedbackMessage">具体发生了什么？</label><textarea id="methodFeedbackMessage" required minlength="3" maxlength="1500" placeholder="例如：我保存了方法，但第二天找不到入口。"></textarea></div>
-            <p class="method-dialog-error" id="methodFeedbackError" role="alert"></p>
-            <div class="method-dialog-actions"><button type="submit" class="method-button primary" id="methodFeedbackSubmit">提交意见</button></div>
-        </form>
-    </dialog>
 
-    <script src="/static/js/i18n.js?v=20261015product1"></script>
+    <script src="/static/js/i18n.js?v=20261017retire1"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -5352,8 +4367,6 @@
         let authCheckSettled = false;
         window.authCheckSettled = false;
         let showAuthModalTimer = null;
-        let allActions = []; // 存储所有行动项
-        let currentFilterType = 'all'; // 当前筛选类型
 
         function shuranText(key, fallback) {
             return window.shuranI18n ? window.shuranI18n.t(key, fallback) : (fallback || key);
@@ -5385,8 +4398,8 @@
             if (overlay) overlay.classList.toggle('visible', open);
         }
 
-        const PRIMARY_TABS_DESKTOP = new Set(['methods', 'overview', 'schedule', 'capture', 'actions', 'upload', 'self-talk', 'user-center']);
-        const PRIMARY_TABS_PHONE = new Set(['methods', 'schedule', 'capture', 'user-center']);
+        const PRIMARY_TABS_DESKTOP = new Set(['overview', 'schedule', 'capture', 'user-center']);
+        const PRIMARY_TABS_PHONE = new Set(['schedule', 'capture', 'user-center']);
         const SECTION_PARENT_SHARED = { guide: 'user-center', owner: 'user-center', 'time-log': 'capture', ideas: 'capture' };
 
         function primaryTabs() {
@@ -5395,10 +4408,9 @@
 
         function sectionParentOf(sectionId) {
             if (SECTION_PARENT_SHARED[sectionId]) return SECTION_PARENT_SHARED[sectionId];
-            if (isMobileNav() && (sectionId === 'overview' || sectionId === 'upload')) {
+            if (isMobileNav() && sectionId === 'overview') {
                 return 'user-center';
             }
-            if (isMobileNav() && (sectionId === 'actions' || sectionId === 'self-talk')) return 'user-center';
             return null;
         }
 
@@ -5407,7 +4419,7 @@
         }
 
         function defaultSection() {
-            return 'methods';
+            return isMobileNav() ? 'schedule' : 'overview';
         }
 
         function updateHeaderBackButton() {
@@ -5433,7 +4445,6 @@
         }
 
         window.handleAppBack = function () {
-            if (window.ShuranMethods?.closeDialog()) return 'consumed';
             const sidebar = document.querySelector('.app-sidebar');
             if (sidebar && sidebar.classList.contains('mobile-open')) {
                 closeMobileSidebar();
@@ -5450,46 +4461,8 @@
             return 'exit';
         };
 
-        const SELF_TALK_EMBED_SRC = '/static/self_talk/index.html?embed=1';
-
-        function selfTalkFrameLooksBroken(frame) {
-            try {
-                const doc = frame.contentDocument;
-                if (!doc || !doc.body) return false;
-                const text = doc.body.innerText || '';
-                return /ERR_CONNECTION_ABORTED|ERR_CONNECTION_RESET|ERR_FAILED|ERR_EMPTY_RESPONSE|网页无法加载|net::ERR_/i.test(text);
-            } catch (e) {
-                return false;
-            }
-        }
-
-        function ensureSelfTalkFrame() {
-            const frame = document.getElementById('selfTalkFrame');
-            if (!frame) return;
-            if (!frame.dataset.bound) {
-                frame.dataset.bound = '1';
-                frame.addEventListener('load', () => {
-                    if (!selfTalkFrameLooksBroken(frame)) {
-                        frame.dataset.retryCount = '0';
-                        return;
-                    }
-                    const n = Number(frame.dataset.retryCount || '0');
-                    if (n >= 2) return;
-                    frame.dataset.retryCount = String(n + 1);
-                    setTimeout(() => {
-                        frame.src = SELF_TALK_EMBED_SRC;
-                    }, 400);
-                });
-            }
-            const startLoad = () => {
-                if (!frame.getAttribute('src') || selfTalkFrameLooksBroken(frame)) {
-                    frame.src = SELF_TALK_EMBED_SRC;
-                }
-            };
-            requestAnimationFrame(() => setTimeout(startLoad, 50));
-        }
-
         function navigateTo(sectionId) {
+            if (!document.getElementById(sectionId)) sectionId = defaultSection();
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
             });
@@ -5507,17 +4480,9 @@
                 }
                 if (sectionId === 'owner') {
                     loadOwnerConsole();
-                    window.ShuranMethods?.loadMarket();
-                }
-                if (sectionId === 'methods') window.ShuranMethods?.load();
-                if (sectionId === 'self-talk') {
-                    ensureSelfTalkFrame();
                 }
                 if (sectionId === 'schedule' && typeof loadDailySchedule === 'function') {
                     loadDailySchedule();
-                }
-                if (sectionId === 'schedule' && typeof loadHabitFocus === 'function') {
-                    loadHabitFocus();
                 }
                 if (sectionId === 'time-log' && typeof loadTimeLog === 'function') {
                     loadTimeLog();
@@ -5828,19 +4793,7 @@
         let currentDate = getSyncedNow();
         const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
         
-        // 模拟事件数据（实际项目中应该从后端获取）
-        const eventsData = {
-            '2024-01-15': [
-                { time: '09:00', title: '阅读《深度工作》', type: 'important' },
-                { time: '14:00', title: 'Self-talk 反思', type: 'normal' }
-            ],
-            '2024-01-16': [
-                { time: '10:00', title: '行动项回顾', type: 'normal' }
-            ],
-            '2024-01-20': [
-                { time: '16:00', title: '重要会议', type: 'important' }
-            ]
-        };
+        const eventsData = {};
 
         function initializeCalendar() {
             renderCalendar();
@@ -6155,81 +5108,6 @@
             }, 2000);
         }
 
-        // 快速操作功能
-        function recordSelfTalk() {
-            navigateTo('self-talk');
-        }
-
-        function addAction() {
-            if (!localStorage.getItem('authToken')) {
-                showAuthModal(true);
-                return;
-            }
-            navigateTo('upload');
-        }
-
-        function escapePickerHtml(s) {
-            return String(s ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
-        }
-
-        async function recordTodayPractice() {
-            if (!localStorage.getItem('authToken')) {
-                showAuthModal(true);
-                return;
-            }
-            try {
-                const data = await apiRequest('/api/today/overview');
-                const items = (data.action_items || []).filter((a) => a.status !== 'done');
-                if (!items.length) {
-                    showMessage('还没有行动项', 'error');
-                    addAction();
-                    return;
-                }
-                const pending = items.filter((a) => !a.practiced_today);
-                const choices = pending.length ? pending : items;
-                if (choices.length === 1) {
-                    showPracticeModal(choices[0].id);
-                    return;
-                }
-                openPracticePicker(choices);
-            } catch (error) {
-                showMessage('加载行动项失败', 'error');
-            }
-        }
-
-        function openPracticePicker(items) {
-            const modal = document.getElementById('homePracticePicker');
-            const list = document.getElementById('homePracticePickerList');
-            if (!modal || !list) return;
-            list.innerHTML = items.map((a) => `
-                <div class="practice-picker-item">
-                    <div>
-                        <p><strong>${escapePickerHtml(a.action_text)}</strong></p>
-                        <p style="font-size:0.8rem;color:#888;">${escapePickerHtml(a.book_title)}${a.practiced_today ? ' · 今日已记录' : ''}</p>
-                    </div>
-                    <button type="button" class="btn-small btn-log" onclick="pickPracticeAction(${a.id})">记录</button>
-                </div>
-            `).join('');
-            modal.classList.remove('hidden');
-        }
-
-        function closePracticePicker() {
-            document.getElementById('homePracticePicker')?.classList.add('hidden');
-        }
-
-        function pickPracticeAction(actionId) {
-            closePracticePicker();
-            showPracticeModal(actionId);
-        }
-
-        window.recordTodayPractice = recordTodayPractice;
-        window.closePracticePicker = closePracticePicker;
-        window.pickPracticeAction = pickPracticeAction;
-
         // 待办事项功能
         function initializeTodos() {
             const todoChecks = document.querySelectorAll('.todo-check');
@@ -6367,10 +5245,8 @@
             if (!token || isAuthSessionExpired()) return;
             authToken = token;
             const tasks = [];
-            if (typeof loadActions === 'function') tasks.push(loadActions());
             if (typeof loadTodayDashboard === 'function') tasks.push(loadTodayDashboard());
             if (typeof loadDailySchedule === 'function') tasks.push(loadDailySchedule());
-            if (typeof loadHabitFocus === 'function') tasks.push(loadHabitFocus());
             if (typeof syncTimeLogChrome === 'function') syncTimeLogChrome();
             await Promise.allSettled(tasks);
             if (window.reminderNotificationService) {
@@ -6515,14 +5391,12 @@
         function showAuthModal(immediate) {
             if (document.readyState === 'loading') return;
             if (authCheckInProgress && !immediate) return;
-            if (!immediate && currentSectionId() === 'methods') return;
 
             clearTimeout(showAuthModalTimer);
             const delay = immediate ? 0 : 450;
             showAuthModalTimer = setTimeout(() => {
                 if (localStorage.getItem('authToken') && !isAuthSessionExpired()) return;
-                if (!immediate && currentSectionId() === 'methods') return;
-                revealAuthModal();
+                    revealAuthModal();
             }, delay);
         }
 
@@ -6723,7 +5597,6 @@
             localStorage.removeItem('token'); // 清理可能存在的旧token
             updateUserInfo(null);
             if (typeof loadTodayDashboard === 'function') loadTodayDashboard();
-            if (typeof loadHabitFocus === 'function') loadHabitFocus();
             showMessage('已退出登录', 'info');
             
             // 确保显示登录模态框
@@ -6825,689 +5698,16 @@
             return await checkAuthAndLoadData();
         }
         
-        async function createManualAction() {
-            const actionText = document.getElementById('manualActionText').value.trim();
-            const excerpt = document.getElementById('manualSourceExcerpt').value.trim();
-            if (!actionText) { showMessage('请填写行动内容', 'error'); return; }
-            try {
-                await apiRequest('/api/actions/', {method: 'POST', body: JSON.stringify({
-                    action_text: actionText, source_excerpt: excerpt, book_title: '手动创建'
-                })});
-                document.getElementById('manualActionText').value = '';
-                document.getElementById('manualSourceExcerpt').value = '';
-                showMessage('已保存行动项', 'success');
-                navigateTo('actions');
-                loadActions();
-            } catch (error) { showMessage('保存失败: ' + humanizeApiError(error), 'error'); }
-        }
-        
-        function asList(response) {
-            if (Array.isArray(response)) return response.filter(Boolean);
-            if (!response || typeof response !== 'object') return [];
-            if (Array.isArray(response.items)) return response.items.filter(Boolean);
-            if (Array.isArray(response.data)) return response.data.filter(Boolean);
-            return [];
-        }
-
-        // 加载行动项列表
-        async function loadActions() {
-            try {
-                const response = await apiRequest('/api/actions/?size=100');
-                allActions = asList(response);
-                renderActions();
-            } catch (error) {
-                document.getElementById('actionsList').innerHTML =
-                    '<div class="error">加载失败: ' + error.message + '</div>';
-            }
-        }
-        
-        const ACTION_TOOL_ICON = {
-            count: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/><path d="M8 16h3M13 16h3"/></svg>',
-            time: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
-            practice: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>',
-            logs: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
-            ai: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3"/></svg>',
-            habit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19c4-1 7-4 8-8 3 0 6-2 8-6 1 8-3 14-10 14H4Z"/><path d="M8 16c2-3 5-5 9-7"/></svg>',
-            edit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
-            done: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
-            reopen: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>',
-            trash: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 14h10l1-14"/><path d="M9 7V4h6v3"/></svg>'
-        };
-
-        function actionToolBtn(onclick, icon, label, extraClass) {
-            const cls = extraClass ? `action-tool ${extraClass}` : 'action-tool';
-            return `<button type="button" class="${cls}" onclick="${onclick}"><span class="action-tool-ico" aria-hidden="true">${icon}</span><span class="action-tool-label">${label}</span><span class="action-tool-chevron" aria-hidden="true">›</span></button>`;
-        }
-
-        // 渲染行动项列表
-        function renderActions() {
-            const actionsList = document.getElementById('actionsList');
-            
-            if (!allActions.length) {
-                actionsList.innerHTML = '<div class="actions-empty">还没有行动项</div>';
-                return;
-            }
-
-            let filteredActions = allActions;
-            if (currentFilterType === 'done') {
-                filteredActions = allActions.filter(action => action.status === 'done');
-            } else {
-                filteredActions = allActions.filter(action => action.status !== 'done');
-                if (currentFilterType !== 'all') {
-                    filteredActions = filteredActions.filter(action => action.action_type === currentFilterType);
-                }
-            }
-
-            if (filteredActions.length === 0) {
-                actionsList.innerHTML = `<div class="actions-empty">没有${getActionTypeText(currentFilterType)}行动项</div>`;
-                return;
-            }
-
-            actionsList.innerHTML = filteredActions.map(action => {
-                const actionType = action.action_type || 'trigger';
-                const isHabit = actionType === 'habit';
-                const isDone = action.status === 'done';
-                const statusBtn = isDone
-                    ? actionToolBtn(`reopenAction(${action.id})`, ACTION_TOOL_ICON.reopen, '恢复')
-                    : actionToolBtn(`completeAction(${action.id})`, ACTION_TOOL_ICON.done, '完成');
-
-                return `
-                <div class="action-item${isDone ? ' is-done' : ''}">
-                    <div class="action-item-body">
-                    <h3>${action.action_text}
-                        <span class="status-badge status-${action.status}">${getStatusText(action.status)}</span>
-                    </h3>
-                    <p><strong>来源：</strong> ${action.book_title}</p>
-                    <p><strong>原文：</strong> ${action.source_excerpt}</p>
-                    <p><strong>类型：</strong> ${getActionTypeText(actionType)}</p>
-                    <p><strong>时间管理：</strong> ${getDurationInfo(action)}</p>
-                    <div class="action-tags">
-                        ${(Array.isArray(action.tags) ? action.tags : []).map(tag => `<span class="tag">${tag}</span>`).join('')}
-                    </div>
-                    </div>
-                    <div class="action-buttons">
-                        ${isDone ? '' : (isHabit
-                            ? actionToolBtn(`showTimeManagementModal(${action.id})`, ACTION_TOOL_ICON.time, '设置时间')
-                            : actionToolBtn(`showCountAndDaysModal(${action.id})`, ACTION_TOOL_ICON.count, '设置次数和天数'))}
-                        ${isDone ? '' : actionToolBtn(`showPracticeModal(${action.id})`, ACTION_TOOL_ICON.practice, '记录实践反馈')}
-                        ${isDone ? '' : actionToolBtn(`openHabitProgram(${action.id})`, ACTION_TOOL_ICON.habit, window.shuranI18n ? window.shuranI18n.t('habit.action.start', '设为主要习惯') : '设为主要习惯')}
-                        ${actionToolBtn(`showPracticeLogsModal(${action.id})`, ACTION_TOOL_ICON.logs, '查看记录')}
-                        ${isDone ? '' : actionToolBtn(`openAIAdvice(${action.id})`, ACTION_TOOL_ICON.ai, 'AI建议')}
-                        ${isDone ? '' : actionToolBtn(`showEditActionModal(${action.id})`, ACTION_TOOL_ICON.edit, '编辑')}
-                        ${statusBtn}
-                        ${actionToolBtn(`deleteAction(${action.id})`, ACTION_TOOL_ICON.trash, '删除', 'is-danger')}
-                    </div>
-                </div>
-                `;
-            }).join('');
-        }
-        
-        // 按类型筛选行动项
-        function filterActionsByType(type) {
-            currentFilterType = type;
-            
-            // 更新按钮状态
-            document.querySelectorAll('.action-type-filter').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`[data-type="${type}"]`).classList.add('active');
-            
-            // 控制批量设置按钮显示
-            const batchTimeBtn = document.getElementById('batchTimeBtn');
-            if (type === 'all' || type === 'habit') {
-                const hasHabitActions = allActions.some(action => action.action_type === 'habit' && action.status !== 'done');
-                batchTimeBtn.style.display = hasHabitActions ? 'block' : 'none';
-            } else {
-                batchTimeBtn.style.display = 'none';
-            }
-            
-            // 重新渲染
-            renderActions();
-        }
-        
-        // 获取行动类型文本
-        function getActionTypeText(type) {
-            const typeMap = {
-                'trigger': '情境触发型',
-                'habit': '习惯养成型',
-                'done': '已完成',
-                'all': '全部'
-            };
-            return typeMap[type] || '情境触发型';
-        }
-        
-        // 获取状态文本
-        function getStatusText(status) {
-            const statusMap = {
-                'todo': '待办',
-                'in_progress': '进行中',
-                'done': '已完成'
-            };
-            return statusMap[status] || status;
-        }
-        
-        // 获取时间管理信息
-        function getDurationInfo(action) {
-            const actionType = action.action_type || 'trigger';
-            
-            if (actionType === 'habit') {
-                // 习惯型：显示传统的时间管理信息
-                const durationTypeMap = {
-                    'short_term': '短期',
-                    'long_term': '长期',
-                    'lifetime': '终身'
-                };
-                
-                const frequencyMap = {
-                    'daily': '每天',
-                    'weekly': '每周',
-                    'monthly': '每月',
-                    'quarterly': '每季度',
-                    'custom': '自定义'
-                };
-                
-                let info = durationTypeMap[action.duration_type] || '短期';
-                
-                if (action.target_duration_days) {
-                    info += ` (${action.target_duration_days}天)`;
-                }
-                
-                if (action.target_frequency) {
-                    const freq = frequencyMap[action.target_frequency] || action.target_frequency;
-                    if (action.target_frequency === 'custom' && action.custom_frequency_days) {
-                        info += ` | 每${action.custom_frequency_days}天`;
-                    } else {
-                        info += ` | ${freq}`;
-                    }
-                }
-                
-                if (action.start_date) {
-                    info += ` | 开始: ${new Date(action.start_date).toLocaleDateString()}`;
-                }
-                if (action.end_date) {
-                    info += ` | 结束: ${new Date(action.end_date).toLocaleDateString()}`;
-                }
-
-                return info;
-            } else {
-                // 情境型：显示次数和天数信息
-                let info = '目标完成';
-                
-                if (action.target_duration_days) {
-                    info += ` ${action.target_duration_days}次`;
-                }
-                
-                if (action.custom_frequency_days) {
-                    info += ` | ${action.custom_frequency_days}天内`;
-                }
-                
-                if (action.start_date) {
-                    info += ` | 开始: ${new Date(action.start_date).toLocaleDateString()}`;
-                }
-                
-                if (action.end_date) {
-                    info += ` | 结束: ${new Date(action.end_date).toLocaleDateString()}`;
-                }
-                
-                return info;
-            }
-        }
-        
-        // 编辑行动项（占位函数）
-        
-        // 显示实践记录模态框
-        let currentActionId = null;
-        
-        async function showPracticeModal(actionId) {
-            currentActionId = actionId;
-            document.getElementById('practiceModal').classList.remove('hidden');
-            
-            // 设置默认日期为今天
-            const today = getBeijingDateString();
-            document.getElementById('practiceDate').value = today;
-            
-            // 重置表单
-            document.getElementById('practiceForm').reset();
-            document.getElementById('practiceDate').value = today;
-            resetRating();
-            
-            // 获取行动项信息，判断是否为情境型
-            try {
-                const response = await apiRequest('/api/actions/');
-                const action = response.items.find(a => a.id === actionId);
-                
-                if (action && action.action_type === 'trigger') {
-                    // 情境型：显示次数输入
-                    document.getElementById('practiceCountGroup').style.display = 'block';
-                    
-                    // 自动填充建议的次数（基于已有记录的最大attempt_number+1）
-                    const existingLogs = await getExistingPracticeLogs(actionId);
-                    const maxAttempt = Math.max(0, ...existingLogs.map(log => log.attempt_number || 0));
-                    const suggestedCount = maxAttempt + 1;
-                    document.getElementById('practiceCount').value = suggestedCount;
-                } else {
-                    // 习惯型：隐藏次数输入
-                    document.getElementById('practiceCountGroup').style.display = 'none';
-                }
-            } catch (error) {
-                console.error('获取行动项信息失败:', error);
-                // 默认隐藏次数输入
-                document.getElementById('practiceCountGroup').style.display = 'none';
-            }
-        }
-        
-        // 获取现有实践记录（用于情境型建议次数）
-        async function getExistingPracticeLogs(actionId) {
-            try {
-                const response = await apiRequest(`/api/actions/${actionId}/practice-logs?size=1000`);
-                return asList(response);
-            } catch (error) {
-                console.error('获取实践记录失败:', error);
-                return [];
-            }
-        }
-        
-        // 显示实践记录查看模态框
-        let currentActionForLogs = null;
-        
-        async function showPracticeLogsModal(actionId) {
-            currentActionForLogs = actionId;
-            document.getElementById('practiceLogsModal').classList.remove('hidden');
-            
-            try {
-                const action = await apiRequest(`/api/actions/${actionId}`);
-                if (action && action.action_text) {
-                    document.getElementById('practiceLogsSubtitle').textContent =
-                        `查看"${action.action_text}"的所有实践反馈记录`;
-                }
-            } catch (error) {
-                console.error('获取行动项信息失败:', error);
-            }
-            
-            await loadPracticeLogs(actionId);
-        }
-        
-        function closePracticeLogsModal() {
-            document.getElementById('practiceLogsModal').classList.add('hidden');
-            currentActionForLogs = null;
-        }
-        
-        async function loadPracticeLogs(actionId) {
-            const logsList = document.getElementById('practiceLogsList');
-            if (!logsList) return;
-            logsList.innerHTML = '<div class="loading">加载中...</div>';
-            try {
-                const response = await apiRequest(`/api/actions/${actionId}/practice-logs?size=1000`);
-                const logs = asList(response);
-
-                if (!logs.length) {
-                    logsList.innerHTML = '<div class="loading">暂无实践记录</div>';
-                    return;
-                }
-
-                let isTrigger = false;
-                try {
-                    const action = await apiRequest(`/api/actions/${actionId}`);
-                    isTrigger = !!(action && action.action_type === 'trigger');
-                } catch (error) {
-                    console.error('获取行动项类型失败:', error);
-                }
-
-                logsList.innerHTML = logs.map(log => {
-                    const resultIcon = {
-                        'success': '✅',
-                        'partial': '⚠️',
-                        'fail': '❌'
-                    }[log.result] || '❓';
-                    const rating = Number(log.rating) || 0;
-                    const ratingStars = rating > 0
-                        ? '★'.repeat(rating) + '☆'.repeat(Math.max(0, 5 - rating))
-                        : '未评分';
-                    const logDate = log.date ? new Date(log.date).toLocaleDateString() : '';
-                    const logTime = log.created_at ? new Date(log.created_at).toLocaleTimeString() : '';
-                    const score = Number(log.success_score);
-                    const scoreHtml = Number.isFinite(score) && score > 0
-                        ? `<div style="font-size: 12px; color: #666;">成功分数: ${score.toFixed(2)}</div>`
-                        : '';
-                    
-                    return `
-                        <div class="practice-log-item" style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 15px; border-left: 4px solid #667eea;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                                <div>
-                                    <h4 style="margin: 0; color: #333;">
-                                        ${resultIcon} ${log.result === 'success' ? '成功完成' : log.result === 'partial' ? '部分完成' : '未完成'}
-                                        ${isTrigger && log.attempt_number ? ` - 第${log.attempt_number}次` : ''}
-                                    </h4>
-                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">
-                                        ${logDate} ${logTime}
-                                    </p>
-                                </div>
-                                <div style="text-align: right;">
-                                    <div style="color: #ffd700; font-size: 16px;">${ratingStars}</div>
-                                    ${scoreHtml}
-                                </div>
-                            </div>
-                            ${log.notes ? `<p style="margin: 10px 0 0 0; color: #555; font-style: italic;">"${log.notes}"</p>` : ''}
-                        </div>
-                    `;
-                }).join('');
-                
-            } catch (error) {
-                console.error('加载实践记录失败:', error);
-                logsList.innerHTML = '<div class="error">加载记录失败，请稍后重试</div>';
-            }
-        }
-        
-        // 关闭实践记录模态框
-        function closePracticeModal() {
-            document.getElementById('practiceModal').classList.add('hidden');
-            currentActionId = null;
-        }
-        
-        // 评分功能
-        function resetRating() {
-            document.querySelectorAll('.star').forEach(star => {
-                star.classList.remove('active');
-            });
-            document.getElementById('ratingText').textContent = '未评分';
-        }
-        
-        // 初始化评分功能
-        function initRating() {
-            document.querySelectorAll('.star').forEach(star => {
-                star.addEventListener('click', function() {
-                    const rating = parseInt(this.dataset.rating);
-                    document.querySelectorAll('.star').forEach((s, index) => {
-                        if (index < rating) {
-                            s.classList.add('active');
-                        } else {
-                            s.classList.remove('active');
-                        }
-                    });
-                    document.getElementById('ratingText').textContent = `${rating}星`;
-                });
-            });
-        }
-        
-        // 提交实践记录
-        async function submitPracticeLog(event) {
-            event.preventDefault();
-            
-            const formData = {
-                date: document.getElementById('practiceDate').value,
-                result: document.getElementById('practiceResult').value,
-                notes: document.getElementById('practiceNotes').value || null,
-                rating: document.querySelectorAll('.star.active').length || null
-            };
-            
-            // 对于情境型，添加attempt_number字段
-            const practiceCount = document.getElementById('practiceCount').value;
-            if (practiceCount && document.getElementById('practiceCountGroup').style.display !== 'none') {
-                formData.attempt_number = parseInt(practiceCount);
-            }
-            
-            try {
-                await apiRequest(`/api/actions/${currentActionId}/practice`, {
-                    method: 'POST',
-                    body: JSON.stringify(formData)
-                });
-                
-                showMessage('实践记录已保存！', 'success');
-                closePracticeModal();
-                loadActions();
-                if (typeof loadTodayDashboard === 'function') {
-                    loadTodayDashboard();
-                }
-            } catch (error) {
-                showMessage('保存失败: ' + error.message, 'error');
-            }
-        }
-        
-        // 编辑行动项相关函数
-        let currentEditActionId = null;
-        
-        async function showEditActionModal(actionId) {
-            currentEditActionId = actionId;
-            
-            // 获取行动项详情
-            try {
-                const response = await apiRequest('/api/actions/');
-                const action = response.items.find(a => a.id === actionId);
-                
-                if (!action) {
-                    showMessage('行动项不存在', 'error');
-                    return;
-                }
-                
-                // 填充表单
-                document.getElementById('editActionText').value = action.action_text;
-                document.getElementById('editActionType').value = action.action_type || 'trigger';
-                document.getElementById('editActionTags').value = action.tags.join(', ');
-                
-                // 显示模态框
-                document.getElementById('editActionModal').classList.remove('hidden');
-            } catch (error) {
-                showMessage('获取行动项详情失败: ' + error.message, 'error');
-            }
-        }
-        
-        function closeEditActionModal() {
-            document.getElementById('editActionModal').classList.add('hidden');
-            currentEditActionId = null;
-        }
-        
-        async function submitEditAction(event) {
-            event.preventDefault();
-            
-            const actionText = document.getElementById('editActionText').value.trim();
-            const actionType = document.getElementById('editActionType').value;
-            const tagsText = document.getElementById('editActionTags').value.trim();
-            const tags = tagsText ? tagsText.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
-            
-            try {
-                await apiRequest(`/api/actions/${currentEditActionId}`, {
-                    method: 'PUT',
-                    body: JSON.stringify({
-                        action_text: actionText,
-                        action_type: actionType,
-                        tags: tags
-                    })
-                });
-                
-                showMessage('行动项已更新！', 'success');
-                closeEditActionModal();
-                
-                // 刷新数据
-                await loadActions();
-            } catch (error) {
-                showMessage('更新失败: ' + error.message, 'error');
-            }
-        }
-        
-        async function completeAction(actionId) {
-            try {
-                await apiRequest(`/api/actions/${actionId}/status?new_status=done`, {
-                    method: 'PUT'
-                });
-                showMessage('已完成，记录还在', 'success');
-                loadActions();
-                if (typeof loadDailySchedule === 'function') {
-                    loadDailySchedule();
-                }
-            } catch (error) {
-                showMessage('完成失败: ' + humanizeApiError(error), 'error');
-            }
-        }
-
-        async function reopenAction(actionId) {
-            try {
-                await apiRequest(`/api/actions/${actionId}/status?new_status=todo`, {
-                    method: 'PUT'
-                });
-                showMessage('已恢复到进行中', 'success');
-                loadActions();
-                if (typeof loadDailySchedule === 'function') {
-                    loadDailySchedule();
-                }
-            } catch (error) {
-                showMessage('恢复失败: ' + humanizeApiError(error), 'error');
-            }
-        }
-
-        async function deleteAction(actionId) {
-            if (!confirm('确定删除？')) {
-                return;
-            }
-            
-            try {
-                await apiRequest(`/api/actions/${actionId}`, {
-                    method: 'DELETE'
-                });
-                
-                showMessage('行动项已删除', 'success');
-                loadActions();
-            } catch (error) {
-                showMessage('删除失败: ' + humanizeApiError(error), 'error');
-            }
-        }
-
-        function openAIAdvice(actionId) {
-            // 打开新标签页，跳转到AI建议页面
-            const url = `/static/ai_advice.html?action_id=${actionId}`;
-            window.open(url, '_blank');
-        }
-        
-        // 事件监听
-        document.getElementById('editActionForm').addEventListener('submit', submitEditAction);
-        
-        // 登录表单事件（将在DOMContentLoaded中绑定）
-        
-        // 注册表单事件
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const phone = (document.getElementById('registerPhone').value || '').trim();
-            const password = document.getElementById('registerPassword').value;
-            const name = (document.getElementById('registerName').value || '').trim();
-            const inviteCode = (document.getElementById('registerInvite').value || '').trim();
-            
-            if (!phone || !password || !name || !inviteCode) {
-                showMessage('请填写手机号、真实姓名、密码和邀请码', 'error');
-                return;
-            }
-            if (!/^1[3-9]\d{9}$/.test(phone)) {
-                showMessage('请填写有效的大陆手机号', 'error');
-                return;
-            }
-            if (!/^\d{4}$/.test(inviteCode)) {
-                showMessage('邀请码为 4 位数字', 'error');
-                return;
-            }
-            
-            if (password.length < 6) {
-                showMessage('密码至少需要6位', 'error');
-                return;
-            }
-            
-            const btn = e.target.querySelector('.auth-btn');
-            btn.disabled = true;
-            btn.textContent = shuranText('auth.register.loading', '注册中...');
-            
-            await register(phone, password, name, inviteCode);
-            
-            btn.disabled = false;
-            btn.textContent = shuranText('auth.register.submit', '注册');
-        });
-        
-        // 跳转到 Self-talk 页面
-        function goToSelfTalk() {
-            if (!authToken) {
-                showMessage('请先登录', 'error');
-                showAuthModal();
-                return;
-            }
-            navigateTo('self-talk');
-        }
-        
-        function goToUserCenter() {
-            if (!authToken) {
-                showMessage('请先登录', 'error');
-                showAuthModal();
-                return;
-            }
-            navigateTo('user-center');
-        }
-        
         // ============= 个人中心相关函数 =============
         let currentUser = null;
-        
+
         // 初始化个人中心事件监听器
         function initializeUserCenter() {
-            const master = document.getElementById('reminderMasterSwitch');
-            const daily = document.getElementById('reminderDailySwitch');
-            const timeEl = document.getElementById('dailyReminderTime');
-            const systemEl = document.getElementById('reminderBrowserSwitch');
-            master.addEventListener('change', function () {
-                if (master.checked && daily && !daily.checked) {
-                    daily.checked = true;
-                }
-                updateReminderSwitchStates();
-                persistLocalReminderSchedule();
-            });
-            const dailyToggle = document.getElementById('dailyReminderToggle');
-            if (dailyToggle) {
-                dailyToggle.addEventListener('click', function () {
-                    const panel = document.getElementById('dailyReminderPanel');
-                    const hint = document.getElementById('dailyReminderToggleHint');
-                    if (!panel) return;
-                    const open = panel.hidden;
-                    panel.hidden = !open;
-                    dailyToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-                    if (hint) hint.textContent = open ? '收起' : '放下';
-                });
-            }
-            if (daily) daily.addEventListener('change', persistLocalReminderSchedule);
-            if (timeEl) {
-                timeEl.addEventListener('change', persistLocalReminderSchedule);
-                timeEl.addEventListener('input', persistLocalReminderSchedule);
-            }
-            if (systemEl) systemEl.addEventListener('change', persistLocalReminderSchedule);
-            for (let i = 0; i < 7; i++) {
-                const dayEl = document.getElementById('reminderDay' + i);
-                if (dayEl) dayEl.addEventListener('change', persistLocalReminderSchedule);
-            }
-            
+            document.getElementById('reminderMasterSwitch').addEventListener('change', updateReminderSwitchStates);
             document.getElementById('editNameForm').addEventListener('submit', handleEditNameSubmit);
             document.getElementById('newName').addEventListener('input', validateNickname);
         }
 
-        function collectReminderDays() {
-            const reminderDays = [];
-            for (let i = 0; i < 7; i++) {
-                const el = document.getElementById('reminderDay' + i);
-                if (el && el.checked) reminderDays.push(i);
-            }
-            return reminderDays.length ? reminderDays : [0, 1, 2, 3, 4, 5, 6];
-        }
-
-        function persistLocalReminderSchedule() {
-            if (!window.reminderNotificationService || !window.reminderNotificationService.applyLocalSchedule) {
-                return;
-            }
-            const master = document.getElementById('reminderMasterSwitch');
-            const daily = document.getElementById('reminderDailySwitch');
-            const timeEl = document.getElementById('dailyReminderTime');
-            const systemEl = document.getElementById('reminderBrowserSwitch');
-            if (!master || !timeEl) return;
-            const enabled = !!master.checked;
-            window.reminderNotificationService.applyLocalSchedule({
-                enabled: enabled,
-                dailyEnabled: enabled && !!(daily ? daily.checked || enabled : true),
-                dailyTime: (timeEl.value || '20:00').slice(0, 5),
-                reminderDays: collectReminderDays(),
-                systemNotification: !systemEl || systemEl.checked !== false,
-            });
-        }
-        
         // 显示个人中心弹窗（已废弃，现在使用navigateTo）
         async function showUserCenterModal() {
             // 重定向到新的section方式
@@ -7570,19 +5770,6 @@
         }
 
         async function refreshMeQuotaAndPlans(user) {
-            const hint = document.getElementById('meQuotaHint');
-            try {
-                const quota = await apiRequest('/api/actions/ai-quota');
-                if (hint) {
-                    if (quota.advice_remaining == null) {
-                        hint.textContent = '今日 AI 建议次数不限';
-                    } else {
-                        hint.textContent = `今日 AI 建议还可使用 ${quota.advice_remaining ?? '不限'}${quota.advice_limit == null ? '' : ' / ' + quota.advice_limit} 次`;
-                    }
-                }
-            } catch (e) {
-                if (hint) hint.textContent = '额度加载失败';
-            }
             try {
                 const data = await apiRequest('/auth/plans');
                 const body = document.getElementById('mePlanTableBody');
@@ -7592,7 +5779,6 @@
                     <tr class="${plan.key === current ? 'is-current' : ''}">
                         <td>${plan.label}${plan.key === current ? '（当前）' : ''}</td>
                         <td>${plan.price_text}</td>
-                        <td>${plan.advice_limit}</td>
                         <td>${plan.duration_text}</td>
                     </tr>
                 `).join('');
@@ -8026,79 +6212,23 @@
         async function loadReminderSettings() {
             const token = localStorage.getItem('authToken');
             try {
-                const response = await fetch(`${API_BASE}/api/self_talk_reminders/settings`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                const response = await fetch(`${API_BASE}/api/reminders/settings`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
-
-                if (response.ok) {
-                    const settings = await response.json();
-                    populateReminderSettings(settings);
-                } else {
-                    // 如果获取失败，使用默认设置
-                    console.warn('获取提醒设置失败，使用默认设置');
-                    populateReminderSettings({
-                        is_enabled: true,
-                        daily_reminder_enabled: false,
-                        daily_reminder_time: "20:00",
-                        reminder_days: [0,1,2,3,4,5,6],
-                        after_action_reminder: true,
-                        after_new_action_reminder: true,
-                        inactive_days_threshold: 3,
-                        browser_notification: true,
-                        email_notification: true
-                    });
-                }
+                if (!response.ok) throw new Error('获取提醒设置失败');
+                populateReminderSettings(await response.json());
             } catch (error) {
                 console.error('加载提醒设置失败:', error);
-                // 使用默认设置
-                populateReminderSettings({
-                    is_enabled: true,
-                    daily_reminder_enabled: false,
-                    daily_reminder_time: "20:00",
-                    reminder_days: [0,1,2,3,4,5,6],
-                    after_action_reminder: true,
-                    after_new_action_reminder: true,
-                    inactive_days_threshold: 3,
-                    browser_notification: true,
-                    email_notification: true
-                });
+                populateReminderSettings({ is_enabled: true, browser_notification: true, email_notification: true });
             }
         }
-        
-        // 填充提醒设置到界面
+
         function populateReminderSettings(settings) {
-            document.getElementById('reminderMasterSwitch').checked = settings.is_enabled;
-            document.getElementById('reminderDailySwitch').checked = settings.daily_reminder_enabled;
-            document.getElementById('reminderActionSwitch').checked = settings.after_action_reminder;
-            document.getElementById('reminderNewActionSwitch').checked = settings.after_new_action_reminder;
-            document.getElementById('reminderBrowserSwitch').checked = settings.browser_notification;
-            document.getElementById('reminderEmailSwitch').checked = settings.email_notification;
-
-            // 设置时间
-            if (settings.daily_reminder_time) {
-                document.getElementById('dailyReminderTime').value = settings.daily_reminder_time;
-            }
-
-            // 设置日期
-            if (settings.reminder_days) {
-                for (let i = 0; i < 7; i++) {
-                    document.getElementById(`reminderDay${i}`).checked = settings.reminder_days.includes(i);
-                }
-            }
-
-            // 设置非活跃天数
-            if (settings.inactive_days_threshold) {
-                document.getElementById('inactiveDaysThreshold').value = settings.inactive_days_threshold;
-            }
-
-            // 设置联动逻辑
+            document.getElementById('reminderMasterSwitch').checked = !!settings.is_enabled;
+            document.getElementById('reminderBrowserSwitch').checked = settings.browser_notification !== false;
+            document.getElementById('reminderEmailSwitch').checked = settings.email_notification !== false;
             updateReminderSwitchStates();
-            persistLocalReminderSchedule();
-            if (window.reminderNotificationService) {
-                window.reminderNotificationService.refreshReliabilityHints();
-            }
+            window.reminderNotificationService?.refreshReliabilityHints();
         }
 
         function openExactAlarmSettings() {
@@ -8130,66 +6260,33 @@
         
         // 更新提醒开关状态（联动逻辑）
         function updateReminderSwitchStates() {
-            const masterSwitch = document.getElementById('reminderMasterSwitch');
-            const otherSwitches = [
-                document.getElementById('reminderDailySwitch'),
-                document.getElementById('reminderActionSwitch'),
-                document.getElementById('reminderNewActionSwitch'),
-                document.getElementById('reminderBrowserSwitch'),
-                document.getElementById('reminderEmailSwitch')
-            ];
-
-            otherSwitches.forEach(switchEl => {
-                switchEl.disabled = !masterSwitch.checked;
-            });
+            const enabled = document.getElementById('reminderMasterSwitch').checked;
+            document.getElementById('reminderBrowserSwitch').disabled = !enabled;
+            document.getElementById('reminderEmailSwitch').disabled = !enabled;
         }
-        
-        // 保存提醒设置
+
         async function saveReminderSettings() {
             const token = localStorage.getItem('authToken');
-
-            // 收集日期设置
-            const reminderDays = collectReminderDays();
-
             const settings = {
                 is_enabled: document.getElementById('reminderMasterSwitch').checked,
-                daily_reminder_enabled: document.getElementById('reminderDailySwitch').checked
-                    || document.getElementById('reminderMasterSwitch').checked,
-                daily_reminder_time: document.getElementById('dailyReminderTime').value,
-                reminder_days: reminderDays,
-                after_action_reminder: document.getElementById('reminderActionSwitch').checked,
-                after_new_action_reminder: document.getElementById('reminderNewActionSwitch').checked,
-                inactive_days_threshold: parseInt(document.getElementById('inactiveDaysThreshold').value),
                 browser_notification: document.getElementById('reminderBrowserSwitch').checked,
                 email_notification: document.getElementById('reminderEmailSwitch').checked
             };
-
             try {
-                persistLocalReminderSchedule();
-                const response = await fetch(`${API_BASE}/api/self_talk_reminders/settings`, {
+                const response = await fetch(`${API_BASE}/api/reminders/settings`, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(settings)
                 });
-
-                if (response.ok) {
-                    showMessage('提醒设置保存成功！', 'success');
-                    if (window.reminderNotificationService) {
-                        window.reminderNotificationService.syncNativeSchedule();
-                        window.reminderNotificationService.promptReliabilityIfNeeded();
-                    }
-                } else {
-                    throw new Error('保存失败');
-                }
+                if (!response.ok) throw new Error('保存失败');
+                showMessage('待办提醒设置已保存', 'success');
+                window.reminderNotificationService?.syncNativeSchedule();
             } catch (error) {
                 console.error('保存提醒设置失败:', error);
                 showMessage('保存提醒设置失败', 'error');
             }
         }
-        
+
         // 显示编辑昵称模态框
         function showEditNameModal() {
             if (currentUser) {
@@ -8302,462 +6399,17 @@
             }
         }
         
-        function actionFromListResponse(response, actionId) {
-            return asList(response).find(a => a.id === actionId)
-                || (allActions || []).find(a => a.id === actionId)
-                || null;
-        }
-
-        // 时间管理设置相关函数
-        let currentActionForTM = null;
-        
-        // 显示时间管理模态框
-        async function showTimeManagementModal(actionId) {
-            console.log('打开时间管理模态框，行动项ID:', actionId);
-            currentActionForTM = actionId;
-            bindAllEndDateAutofill();
-            document.getElementById('timeManagementModal').classList.remove('hidden');
-            
-            try {
-                const response = await apiRequest('/api/actions/?size=100');
-                const action = actionFromListResponse(response, actionId);
-                
-                if (action) {
-                    document.getElementById('tmDurationType').value = action.duration_type || 'short_term';
-                    document.getElementById('tmTargetDurationDays').value = action.target_duration_days || '';
-                    document.getElementById('tmTargetFrequency').value = action.target_frequency || 'daily';
-                    document.getElementById('tmCustomFrequencyDays').value = action.custom_frequency_days || '';
-                    document.getElementById('tmStartDate').value = action.start_date || getBeijingDateString();
-                    document.getElementById('tmEndDate').value = action.end_date || '';
-                } else {
-                    const today = getBeijingDateString();
-                    document.getElementById('tmStartDate').value = today;
-                    document.getElementById('tmDurationType').value = 'short_term';
-                    document.getElementById('tmTargetDurationDays').value = 30;
-                    document.getElementById('tmTargetFrequency').value = 'daily';
-                    document.getElementById('tmEndDate').value = '';
-                }
-                
-                toggleTMDurationSettings();
-                toggleTMCustomFrequency();
-                if (document.getElementById('tmStartDate').value && document.getElementById('tmTargetDurationDays').value) {
-                    fillEndDateFromStartAndDays('tmStartDate', 'tmTargetDurationDays', 'tmEndDate');
-                }
-            } catch (error) {
-                console.error('加载行动项数据失败:', error);
-                const today = getBeijingDateString();
-                document.getElementById('tmStartDate').value = today;
-                document.getElementById('tmDurationType').value = 'short_term';
-                document.getElementById('tmTargetDurationDays').value = 30;
-                document.getElementById('tmTargetFrequency').value = 'daily';
-                toggleTMDurationSettings();
-                toggleTMCustomFrequency();
-                fillEndDateFromStartAndDays('tmStartDate', 'tmTargetDurationDays', 'tmEndDate');
-            }
-        }
-        
-        // 关闭时间管理模态框
-        function closeTimeManagementModal() {
-            document.getElementById('timeManagementModal').classList.add('hidden');
-            currentActionForTM = null;
-        }
-        
-        function padIsoPart(n) {
-            return String(n).padStart(2, '0');
-        }
-
-        function addDaysToIso(iso, days) {
-            const parts = String(iso || '').split('-').map(Number);
-            if (parts.length < 3 || parts.some((n) => !Number.isFinite(n))) return '';
-            const count = parseInt(days, 10);
-            if (!Number.isFinite(count) || count < 1) return '';
-            const d = new Date(parts[0], parts[1] - 1, parts[2]);
-            d.setDate(d.getDate() + count);
-            return `${d.getFullYear()}-${padIsoPart(d.getMonth() + 1)}-${padIsoPart(d.getDate())}`;
-        }
-
-        function fillEndDateFromStartAndDays(startId, daysId, endId) {
-            const startEl = document.getElementById(startId);
-            const daysEl = document.getElementById(daysId);
-            const endEl = document.getElementById(endId);
-            if (!startEl || !daysEl || !endEl) return '';
-            const next = addDaysToIso(startEl.value, daysEl.value);
-            if (next) endEl.value = next;
-            return next;
-        }
-        window.fillEndDateFromStartAndDays = fillEndDateFromStartAndDays;
-
-        function bindEndDateAutofill(startId, daysId, endId) {
-            const startEl = document.getElementById(startId);
-            const daysEl = document.getElementById(daysId);
-            const endEl = document.getElementById(endId);
-            if (!startEl || !daysEl || !endEl) return;
-            if (startEl.dataset.endAutofillBound === '1') return;
-            startEl.dataset.endAutofillBound = '1';
-            const sync = () => fillEndDateFromStartAndDays(startId, daysId, endId);
-            ['change', 'input', 'blur'].forEach((ev) => {
-                startEl.addEventListener(ev, sync);
-                daysEl.addEventListener(ev, sync);
-            });
-        }
-
-        function bindAllEndDateAutofill() {
-            bindEndDateAutofill('cdStartDate', 'cdTargetDays', 'cdEndDate');
-            bindEndDateAutofill('tmStartDate', 'tmTargetDurationDays', 'tmEndDate');
-            bindEndDateAutofill('btmStartDate', 'btmTargetDurationDays', 'btmEndDate');
-        }
-        window.fillEndDateFromStartAndDays = fillEndDateFromStartAndDays;
-        window.bindAllEndDateAutofill = bindAllEndDateAutofill;
-        if (!window.__shuranEndDateDelegation) {
-            window.__shuranEndDateDelegation = true;
-            const links = {
-                cdStartDate: ['cdStartDate', 'cdTargetDays', 'cdEndDate'],
-                cdTargetDays: ['cdStartDate', 'cdTargetDays', 'cdEndDate'],
-                tmStartDate: ['tmStartDate', 'tmTargetDurationDays', 'tmEndDate'],
-                tmTargetDurationDays: ['tmStartDate', 'tmTargetDurationDays', 'tmEndDate'],
-                btmStartDate: ['btmStartDate', 'btmTargetDurationDays', 'btmEndDate'],
-                btmTargetDurationDays: ['btmStartDate', 'btmTargetDurationDays', 'btmEndDate']
-            };
-            const syncFromEvent = (e) => {
-                const link = e.target && links[e.target.id];
-                if (link) fillEndDateFromStartAndDays(link[0], link[1], link[2]);
-            };
-            document.addEventListener('input', syncFromEvent, true);
-            document.addEventListener('change', syncFromEvent, true);
-        }
-
-        function toggleTMDurationSettings() {
-            const durationType = document.getElementById('tmDurationType').value;
-            const durationDaysGroup = document.getElementById('tmDurationDaysGroup');
-            const endDateGroup = document.getElementById('tmEndDateGroup');
-            const endDate = document.getElementById('tmEndDate');
-            
-            if (durationType === 'lifetime') {
-                durationDaysGroup.style.display = 'none';
-                endDateGroup.style.display = 'none';
-                endDate.value = '';
-            } else {
-                durationDaysGroup.style.display = 'block';
-                endDateGroup.style.display = 'block';
-                const daysEl = document.getElementById('tmTargetDurationDays');
-                if (durationType === 'short_term' && !daysEl.value) {
-                    daysEl.value = 30;
-                } else if (durationType === 'long_term' && !daysEl.value) {
-                    daysEl.value = 365;
-                }
-                fillEndDateFromStartAndDays('tmStartDate', 'tmTargetDurationDays', 'tmEndDate');
-            }
-        }
-        
-        function toggleTMCustomFrequency() {
-            const frequency = document.getElementById('tmTargetFrequency').value;
-            const customFrequencyGroup = document.getElementById('tmCustomFrequencyGroup');
-            
-            if (frequency === 'custom') {
-                customFrequencyGroup.style.display = 'block';
-            } else {
-                customFrequencyGroup.style.display = 'none';
-            }
-        }
-        
-        // 情境型次数和天数设置相关函数
-        let currentActionForCD = null;
-        
-        function showCountAndDaysModal(actionId) {
-            currentActionForCD = actionId;
-            bindAllEndDateAutofill();
-            document.getElementById('countAndDaysModal').classList.remove('hidden');
-            
-            const today = getBeijingDateString();
-            document.getElementById('cdStartDate').value = today;
-            document.getElementById('cdEndDate').value = '';
-            fillEndDateFromStartAndDays('cdStartDate', 'cdTargetDays', 'cdEndDate');
-            
-            loadCountAndDaysData(actionId);
-        }
-        
-        function closeCountAndDaysModal() {
-            document.getElementById('countAndDaysModal').classList.add('hidden');
-            currentActionForCD = null;
-        }
-        
-        async function loadCountAndDaysData(actionId) {
-            try {
-                const response = await apiRequest('/api/actions/?size=100');
-                const action = actionFromListResponse(response, actionId);
-                
-                if (action) {
-                    document.getElementById('cdTargetCount').value = action.target_duration_days || '';
-                    document.getElementById('cdTargetDays').value = action.custom_frequency_days || '';
-                    document.getElementById('cdStartDate').value = action.start_date || getBeijingDateString();
-                    document.getElementById('cdEndDate').value = action.end_date || '';
-                    if (document.getElementById('cdStartDate').value && document.getElementById('cdTargetDays').value) {
-                        fillEndDateFromStartAndDays('cdStartDate', 'cdTargetDays', 'cdEndDate');
-                    }
-                }
-            } catch (error) {
-                console.error('加载次数和天数数据失败:', error);
-                const today = getBeijingDateString();
-                document.getElementById('cdStartDate').value = today;
-                fillEndDateFromStartAndDays('cdStartDate', 'cdTargetDays', 'cdEndDate');
-            }
-        }
-        
-        async function submitCountAndDays(event) {
-            event.preventDefault();
-            
-            if (!currentActionForCD) {
-                showMessage('未选择行动项', 'error');
-                return;
-            }
-            
-            const targetCount = document.getElementById('cdTargetCount').value ? parseInt(document.getElementById('cdTargetCount').value) : null;
-            const targetDays = document.getElementById('cdTargetDays').value ? parseInt(document.getElementById('cdTargetDays').value) : null;
-            const startDate = document.getElementById('cdStartDate').value || null;
-            if (!document.getElementById('cdEndDate').value) {
-                fillEndDateFromStartAndDays('cdStartDate', 'cdTargetDays', 'cdEndDate');
-            }
-            const endDate = document.getElementById('cdEndDate').value || null;
-            
-            // 验证设置
-            if (!targetCount || !targetDays) {
-                showMessage('请填写目标次数和完成天数', 'error');
-                return;
-            }
-            
-            const requestData = {
-                duration_type: "short_term",  // 情境型固定为短期
-                target_duration_days: targetCount,  // 存储目标次数
-                target_frequency: "custom",
-                custom_frequency_days: targetDays,  // 存储完成天数
-                start_date: startDate,
-                end_date: endDate
-            };
-            
-            try {
-                const response = await apiRequest(`/api/actions/${currentActionForCD}`, {
-                    method: 'PUT',
-                    body: JSON.stringify(requestData)
-                });
-                
-                showMessage('次数和天数设置已保存', 'success');
-                closeCountAndDaysModal();
-                
-                // 刷新行动项列表
-                loadActions();
-            } catch (error) {
-                showMessage('保存失败: ' + error.message, 'error');
-            }
-        }
-        
-        // 批量时间管理设置相关函数
-        function showBatchTimeManagementModal() {
-            bindAllEndDateAutofill();
-            document.getElementById('batchTimeManagementModal').classList.remove('hidden');
-            
-            const today = getBeijingDateString();
-            document.getElementById('btmStartDate').value = today;
-            
-            toggleBTMDurationSettings();
-            fillEndDateFromStartAndDays('btmStartDate', 'btmTargetDurationDays', 'btmEndDate');
-        }
-        
-        function closeBatchTimeManagementModal() {
-            document.getElementById('batchTimeManagementModal').classList.add('hidden');
-        }
-        
-        function toggleBTMDurationSettings() {
-            const durationType = document.getElementById('btmDurationType').value;
-            const durationDaysGroup = document.getElementById('btmDurationDaysGroup');
-            const endDateGroup = document.getElementById('btmEndDateGroup');
-            const endDate = document.getElementById('btmEndDate');
-            
-            if (durationType === 'lifetime') {
-                // 终身习惯：隐藏天数设置和结束日期
-                durationDaysGroup.style.display = 'none';
-                endDateGroup.style.display = 'none';
-                endDate.value = '';
-            } else {
-                // 短期/长期目标：显示天数设置和结束日期
-                durationDaysGroup.style.display = 'block';
-                endDateGroup.style.display = 'block';
-                
-                const daysEl = document.getElementById('btmTargetDurationDays');
-                if (durationType === 'short_term' && !daysEl.value) {
-                    daysEl.value = 30;
-                } else if (durationType === 'long_term' && !daysEl.value) {
-                    daysEl.value = 365;
-                }
-                fillEndDateFromStartAndDays('btmStartDate', 'btmTargetDurationDays', 'btmEndDate');
-            }
-        }
-        
-        function toggleBTMCustomFrequency() {
-            const frequency = document.getElementById('btmTargetFrequency').value;
-            const customFrequencyGroup = document.getElementById('btmCustomFrequencyGroup');
-            
-            if (frequency === 'custom') {
-                customFrequencyGroup.style.display = 'block';
-            } else {
-                customFrequencyGroup.style.display = 'none';
-            }
-        }
-        
-        // 提交时间管理设置
-        async function submitTimeManagement(event) {
-            event.preventDefault();
-            console.log('开始提交时间管理设置，行动项ID:', currentActionForTM);
-            
-            if (!currentActionForTM) {
-                showMessage('未选择行动项', 'error');
-                return;
-            }
-            
-            const durationType = document.getElementById('tmDurationType').value;
-            const targetDurationDays = document.getElementById('tmTargetDurationDays').value ? parseInt(document.getElementById('tmTargetDurationDays').value) : null;
-            const targetFrequency = document.getElementById('tmTargetFrequency').value;
-            const customFrequencyDays = document.getElementById('tmCustomFrequencyDays').value ? parseInt(document.getElementById('tmCustomFrequencyDays').value) : null;
-            const startDate = document.getElementById('tmStartDate').value || null;
-            if (!document.getElementById('tmEndDate').value) {
-                fillEndDateFromStartAndDays('tmStartDate', 'tmTargetDurationDays', 'tmEndDate');
-            }
-            const endDate = document.getElementById('tmEndDate').value || null;
-            
-            // 验证设置
-            if (durationType === 'lifetime' && endDate) {
-                showMessage('终身习惯不需要设置结束日期', 'error');
-                return;
-            }
-            
-            if (targetFrequency === 'custom' && !customFrequencyDays) {
-                showMessage('自定义频率需要指定天数', 'error');
-                return;
-            }
-            
-            const requestData = {
-                duration_type: durationType,
-                target_duration_days: targetDurationDays,
-                target_frequency: targetFrequency,
-                custom_frequency_days: customFrequencyDays,
-                start_date: startDate,
-                end_date: endDate
-            };
-            
-            console.log('提交的数据:', requestData);
-            console.log('请求URL:', `/api/actions/${currentActionForTM}`);
-            
-            try {
-                const response = await apiRequest(`/api/actions/${currentActionForTM}`, {
-                    method: 'PUT',
-                    body: JSON.stringify(requestData)
-                });
-                
-                console.log('保存成功，响应:', response);
-                
-                showMessage('时间管理设置已保存', 'success');
-                closeTimeManagementModal();
-                
-                // 刷新行动项列表
-                loadActions();
-            } catch (error) {
-                showMessage('保存失败: ' + error.message, 'error');
-            }
-        }
-        
-        // 提交批量时间管理设置（仅对习惯型）
-        async function submitBatchTimeManagement(event) {
-            event.preventDefault();
-            
-            const durationType = document.getElementById('btmDurationType').value;
-            const targetDurationDays = document.getElementById('btmTargetDurationDays').value ? parseInt(document.getElementById('btmTargetDurationDays').value) : null;
-            const targetFrequency = document.getElementById('btmTargetFrequency').value;
-            const customFrequencyDays = document.getElementById('btmCustomFrequencyDays').value ? parseInt(document.getElementById('btmCustomFrequencyDays').value) : null;
-            const startDate = document.getElementById('btmStartDate').value || null;
-            if (!document.getElementById('btmEndDate').value) {
-                fillEndDateFromStartAndDays('btmStartDate', 'btmTargetDurationDays', 'btmEndDate');
-            }
-            const endDate = document.getElementById('btmEndDate').value || null;
-            
-            // 验证设置
-            if (durationType === 'lifetime' && endDate) {
-                showMessage('终身习惯不需要设置结束日期', 'error');
-                return;
-            }
-            
-            if (targetFrequency === 'custom' && !customFrequencyDays) {
-                showMessage('自定义频率需要指定天数', 'error');
-                return;
-            }
-            
-            try {
-                // 获取所有未完成的习惯型行动项
-                const response = await apiRequest('/api/actions/?size=100');
-                const incompleteHabitActions = asList(response).filter(action =>
-                    action.status !== 'done' && action.action_type === 'habit'
-                );
-                
-                if (incompleteHabitActions.length === 0) {
-                    showMessage('没有未完成的习惯型行动项需要设置', 'info');
-                    closeBatchTimeManagementModal();
-                    return;
-                }
-                
-                // 批量更新所有未完成的习惯型行动项
-                const updatePromises = incompleteHabitActions.map(action =>
-                    apiRequest(`/api/actions/${action.id}`, {
-                        method: 'PUT',
-                        body: JSON.stringify({
-                            duration_type: durationType,
-                            target_duration_days: targetDurationDays,
-                            target_frequency: targetFrequency,
-                            custom_frequency_days: customFrequencyDays,
-                            start_date: startDate,
-                            end_date: endDate
-                        })
-                    })
-                );
-                
-                await Promise.all(updatePromises);
-                
-                showMessage(`已为 ${incompleteHabitActions.length} 个习惯型行动项应用时间管理设置`, 'success');
-                closeBatchTimeManagementModal();
-                
-                // 刷新行动项列表
-                loadActions();
-            } catch (error) {
-                showMessage('批量设置失败: ' + error.message, 'error');
-            }
-        }
-        
-        // 页面加载时初始化（认证检查由 DOMContentLoaded 统一处理，避免重复弹窗）
-        window.addEventListener('load', async () => {
-            if (!authCheckSettled) {
-                await checkAuth();
-            }
-            if (localStorage.getItem('authToken')) {
-                initRating();
-            }
-            
-            // 表单事件
-            document.getElementById('practiceForm').addEventListener('submit', submitPracticeLog);
-            document.getElementById('timeManagementForm').addEventListener('submit', submitTimeManagement);
-            document.getElementById('countAndDaysForm').addEventListener('submit', submitCountAndDays);
-            document.getElementById('batchTimeManagementForm').addEventListener('submit', submitBatchTimeManagement);
-        });
-        bindAllEndDateAutofill();
     </script>
     
-    <!-- Self-talk 提醒通知服务 -->
+    <!-- 待办提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
-    <script src="/static/reminder_notification.js?v=20261015product1"></script>
-    <script src="/static/js/app-tabbar.js?v=20261015product1"></script>
-    <script src="/static/js/today-dashboard.js?v=20261015product1"></script>
-    <script src="/static/js/daily-schedule.js?v=20261015product1"></script>
-    <script src="/static/js/habit-program.js?v=20261015product1"></script>
-    <script src="/static/js/time-log.js?v=20261015product1"></script>
-    <script src="/static/js/activity-review.js?v=20261015product1"></script>
-    <script src="/static/js/ideas.js?v=20261015product1"></script>
-    <script src="/static/js/desktop-shell.js?v=20261015product1"></script>
-    <script src="/static/js/methods.js?v=20261015product1"></script>
+    <script src="/static/reminder_notification.js?v=20261017retire1"></script>
+    <script src="/static/js/app-tabbar.js?v=20261017retire1"></script>
+    <script src="/static/js/today-dashboard.js?v=20261017retire1"></script>
+    <script src="/static/js/daily-schedule.js?v=20261017retire1"></script>
+    <script src="/static/js/time-log.js?v=20261017retire1"></script>
+    <script src="/static/js/activity-review.js?v=20261017retire1"></script>
+    <script src="/static/js/ideas.js?v=20261017retire1"></script>
+    <script src="/static/js/desktop-shell.js?v=20261017retire1"></script>
 </body>
 </html>

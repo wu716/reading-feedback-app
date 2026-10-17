@@ -19,33 +19,27 @@ PLANS = {
         "label": "体验",
         "price": 0,
         "price_text": "免费",
-        "extract_limit": 1,
-        "advice_limit": 2,
         "days": None,
         "duration_text": "长期有效",
-        "summary": "邀请注册后的基础额度，适合试用。",
+        "summary": "邀请注册后即可使用。",
     },
     PLAN_MONTHLY: {
         "key": PLAN_MONTHLY,
         "label": "月卡",
         "price": 9.9,
         "price_text": "¥9.9 / 30 天",
-        "extract_limit": 3,
-        "advice_limit": 5,
         "days": 30,
         "duration_text": "30 天",
-        "summary": "日常读写够用。",
+        "summary": "按月开通。",
     },
     PLAN_SEMESTER: {
         "key": PLAN_SEMESTER,
         "label": "学期卡",
         "price": 39,
         "price_text": "¥39 / 120 天",
-        "extract_limit": 5,
-        "advice_limit": 8,
         "days": 120,
         "duration_text": "120 天",
-        "summary": "学期内主力推荐。",
+        "summary": "按学期开通。",
     },
 }
 
@@ -133,13 +127,6 @@ def sync_subscription(db: Session, user: User, plan_key: str) -> Subscription:
     sub.end_date = user.plan_expires_at
     sub.is_active = True
     return sub
-
-
-def quota_limits_for_user(user: User) -> tuple[int, int]:
-    if is_owner_user(user):
-        return 0, 0
-    spec = get_plan_spec(effective_plan_key(user))
-    return spec["extract_limit"], spec["advice_limit"]
 
 
 def plan_label(plan_key: str) -> str:

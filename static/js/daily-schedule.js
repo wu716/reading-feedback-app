@@ -11,8 +11,6 @@
     let newTaskDuration = '';
     let splitFor = null;
     let editingId = null;
-    let suggestions = [];
-    let nudgeOpen = false;
     let laterItems = [];
     let editingLaterId = null;
     let dragTaskId = null;
@@ -466,42 +464,6 @@
         if (mode === 'list' || mode === 'design') list.querySelector('[data-split-input]')?.focus();
     }
 
-    function renderNudge() {
-        const box = document.getElementById('scheduleNudge');
-        if (!box) return;
-        const show = mode === 'list' && suggestions.length > 0;
-        box.hidden = !show;
-        if (!show) {
-            box.innerHTML = '';
-            box.classList.remove('is-collapsed');
-            return;
-        }
-        const rest = Math.max(0, suggestions.length - 1);
-        const collapsed = !nudgeOpen && rest > 0;
-        const visible = nudgeOpen ? suggestions : suggestions.slice(0, 1);
-        box.classList.toggle('is-collapsed', collapsed);
-        box.innerHTML = `
-            <div class="schedule-nudge-kicker">${escapeHtml(t('schedule.nudge.kicker', '行动项 · 还没排进今天'))}</div>
-            ${visible.map((item, idx) => `
-                <div class="schedule-nudge-item" data-action-id="${item.action_id}">
-                    <div class="schedule-nudge-copy">
-                        <div class="schedule-nudge-text">${escapeHtml(item.text)}</div>
-                        ${collapsed ? '' : `<div class="schedule-nudge-why">${escapeHtml(item.reason || '')}</div>`}
-                    </div>
-                    <div class="schedule-nudge-actions">
-                        <button type="button" data-nudge-add="${item.action_id}">${escapeHtml(t('schedule.nudge.add', '加入'))}</button>
-                        ${collapsed && idx === 0
-                            ? `<button type="button" class="schedule-nudge-more" data-nudge-more>${escapeHtml(withCount(t('schedule.nudge.more', '还有 {count} 个'), rest))}</button>`
-                            : ''}
-                    </div>
-                </div>
-            `).join('')}
-            ${nudgeOpen && rest > 0
-                ? `<button type="button" class="schedule-nudge-more is-footer" data-nudge-more>${escapeHtml(t('schedule.collapse', '收起'))}</button>`
-                : ''}
-        `;
-    }
-
     function laterIntoLabel() {
         return currentDay() === todayISO()
             ? t('schedule.later.intoToday', '写进今天')
@@ -568,7 +530,6 @@
         if (!list) return;
         renderToolbar();
         setHint();
-        renderNudge();
         renderLater();
         if (!(data.tasks || []).length) {
             list.innerHTML = `<p class="flow-empty">${escapeHtml(t('schedule.emptyTasks', '还没有行动'))}</p>`;
@@ -584,22 +545,6 @@
             list.innerHTML = data.tasks.map((task) => renderTask(task, false)).join('');
         }
         focusEditor();
-    }
-
-    async function loadSuggestions() {
-        const token = localStorage.getItem('authToken');
-        const box = document.getElementById('scheduleNudge');
-        if (!token) {
-            suggestions = [];
-            return;
-        }
-        try {
-            const result = await api(`/suggestions?task_date=${encodeURIComponent(currentDay())}`);
-            suggestions = result.items || [];
-        } catch (err) {
-            suggestions = [];
-            if (box) box.hidden = true;
-        }
     }
 
     async function loadLater() {
@@ -620,7 +565,6 @@
         const token = localStorage.getItem('authToken');
         if (!token) {
             data = { date: currentDay(), designed_at: null, tasks: [] };
-            suggestions = [];
             laterItems = [];
             render();
             return;
@@ -630,11 +574,11 @@
         editingLaterId = null;
         data = await api(`?task_date=${encodeURIComponent(day)}`);
         if (mode === 'flow' && !data.designed_at) mode = 'list';
-        await Promise.all([loadSuggestions(), loadLater()]);
+        await loadLater();
         render();
     }
 
-    async function addTask(text, parentId, actionId, openDesign, attributes) {
+    async function addTask(text, parentId, openDesign, attributes) {
         const value = (text || '').trim();
         if (!value) return;
         data = await api('/tasks', {
@@ -643,7 +587,6 @@
                 text: value,
                 task_date: currentDay(),
                 parent_id: parentId || null,
-                action_id: actionId || null,
                 familiarity: attributes?.familiarity || null,
                 priority: Number.isInteger(attributes?.priority) ? attributes.priority : 0,
                 estimated_minutes: Number.isInteger(attributes?.estimatedMinutes) ? attributes.estimatedMinutes : null,
@@ -656,7 +599,6 @@
             mode = 'design';
             editingId = newest ? newest.id : null;
         }
-        await loadSuggestions();
         render();
     }
 
@@ -713,7 +655,7 @@
         });
         laterItems = laterItems.filter((row) => row.id !== id);
         if (editingLaterId === id) editingLaterId = null;
-        await Promise.all([loadSuggestions(), loadLater()]);
+        await loadLater();
         render();
     }
 
@@ -1022,15 +964,12 @@
         root.dataset.bound = '1';
         day = todayISO();
         const list = document.getElementById('scheduleList');
-        const nudge = document.getElementById('scheduleNudge');
         bindDragSorting(list);
 
         document.getElementById('schedulePrevDay')?.addEventListener('click', () => {
-            nudgeOpen = false;
             load(shiftDay(currentDay(), -1));
         });
         document.getElementById('scheduleNextDay')?.addEventListener('click', () => {
-            nudgeOpen = false;
             load(shiftDay(currentDay(), 1));
         });
         document.getElementById('scheduleAddBtn')?.addEventListener('click', () => {
@@ -1041,7 +980,7 @@
                 if (typeof showMessage === 'function') showMessage(t('schedule.durationInvalid', '请输入例如 30分钟、1小时或1小时30分'), 'error');
                 return;
             }
-            addTask(input?.value, null, null, false, {
+            addTask(input?.value, null, false, {
                 familiarity: newTaskFamiliarity,
                 priority: newTaskPriority,
                 estimatedMinutes,
@@ -1202,25 +1141,6 @@
             }, 120);
         });
 
-        nudge?.addEventListener('click', async (e) => {
-            const more = e.target.closest('[data-nudge-more]');
-            if (more) {
-                nudgeOpen = !nudgeOpen;
-                renderNudge();
-                return;
-            }
-            const addBtn = e.target.closest('[data-nudge-add]');
-            if (!addBtn) return;
-            const actionId = parseInt(addBtn.getAttribute('data-nudge-add'), 10);
-            const item = suggestions.find((row) => row.action_id === actionId);
-            if (!item) return;
-            try {
-                await addTask(item.text, null, actionId);
-            } catch (err) {
-                if (typeof showMessage === 'function') showMessage(err.message, 'error');
-            }
-        });
-
         list?.addEventListener('mousedown', (e) => {
             const hit = actionFromEvent(e);
             if (!hit || !editingId) return;
@@ -1248,8 +1168,7 @@
                 } else if (act === 'delete') {
                     editingId = null;
                     data = await api(`/tasks/${id}`, { method: 'DELETE' });
-                    await loadSuggestions();
-                    render();
+                                render();
                 } else if (act === 'split') {
                     splitFor = splitFor === id ? null : id;
                     editingId = null;

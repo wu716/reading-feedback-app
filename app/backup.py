@@ -13,22 +13,10 @@ from sqlalchemy.orm import Session
 from app.accounts import public_email
 from app.database import SessionLocal
 from app.models import (
-    Action,
-    AiCallLog,
     AuditLog,
     DailyTodo,
-    Ebook,
-    EbookChapter,
-    EbookNote,
-    EbookProgress,
     Idea,
     InviteCode,
-    MethodCard,
-    MethodUse,
-    ProductFeedback,
-    PracticeLog,
-    ReadingEntry,
-    SelfTalk,
     Subscription,
     TimeLogNode,
     User,
@@ -69,32 +57,14 @@ def _model_csv(db: Session, model) -> bytes:
 
 def build_backup_zip(db: Session) -> bytes:
     users = db.query(User).all()
-    actions = db.query(Action).filter(Action.deleted_at.is_(None)).all()
-    practices = db.query(PracticeLog).filter(PracticeLog.deleted_at.is_(None)).all()
-    talks = db.query(SelfTalk).filter(SelfTalk.deleted_at.is_(None)).all()
     todos = db.query(DailyTodo).filter(DailyTodo.deleted_at.is_(None)).all()
     ideas = db.query(Idea).filter(Idea.deleted_at.is_(None)).all()
     time_logs = db.query(TimeLogNode).all()
-    ai_logs = db.query(AiCallLog).all()
     subs = db.query(Subscription).all()
     invites = db.query(InviteCode).all()
     audits = db.query(AuditLog).order_by(AuditLog.id.desc()).limit(2000).all()
 
     files = {
-        "method_cards.csv": _csv_bytes(
-            ["id", "user_id", "title", "situation", "first_step", "source_title", "source_excerpt", "state", "created_at"],
-            [[m.id, m.user_id, m.title, m.situation, m.first_step, m.source_title or "", m.source_excerpt or "", m.state, _cell(m.created_at)]
-             for m in db.query(MethodCard).filter(MethodCard.deleted_at.is_(None)).all()],
-        ),
-        "method_uses.csv": _csv_bytes(
-            ["id", "user_id", "card_id", "situation", "first_step", "outcome", "barrier", "note", "started_at", "finished_at"],
-            [[m.id, m.user_id, m.card_id, m.situation_snapshot, m.step_snapshot, m.outcome or "", m.barrier or "", m.note or "", _cell(m.started_at), _cell(m.finished_at)]
-             for m in db.query(MethodUse).join(MethodCard).filter(MethodCard.deleted_at.is_(None)).all()],
-        ),
-        "product_feedback.csv": _csv_bytes(
-            ["id", "user_id", "category", "message", "created_at"],
-            [[m.id, _cell(m.user_id), m.category, m.message, _cell(m.created_at)] for m in db.query(ProductFeedback).all()],
-        ),
         "users.csv": _csv_bytes(
             ["id", "name", "real_name", "phone", "email", "plan", "plan_expires_at", "is_active", "created_at", "deleted_at"],
             [
@@ -112,19 +82,6 @@ def build_backup_zip(db: Session) -> bytes:
                 ]
                 for u in users
             ],
-        ),
-        "actions.csv": _csv_bytes(
-            ["id", "user_id", "book_title", "action_text", "status", "created_at"],
-            [[a.id, a.user_id, a.book_title, a.action_text, a.status, _cell(a.created_at)] for a in actions],
-        ),
-        "practice_logs.csv": _csv_bytes(
-            ["id", "user_id", "action_id", "date", "result", "notes"],
-            [[p.id, p.user_id, p.action_id, _cell(p.date), p.result, p.notes or ""] for p in practices],
-        ),
-        "readings.csv": _model_csv(db, ReadingEntry),
-        "self_talks.csv": _csv_bytes(
-            ["id", "user_id", "created_at", "transcript"],
-            [[t.id, t.user_id, _cell(t.created_at), t.transcript or ""] for t in talks],
         ),
         "todos.csv": _csv_bytes(
             ["id", "user_id", "todo_date", "text", "completed"],
@@ -150,10 +107,6 @@ def build_backup_zip(db: Session) -> bytes:
                 for n in time_logs
             ],
         ),
-        "ai_calls.csv": _csv_bytes(
-            ["id", "user_id", "kind", "call_date"],
-            [[c.id, c.user_id, c.kind, _cell(c.call_date)] for c in ai_logs],
-        ),
         "subscriptions.csv": _csv_bytes(
             ["id", "user_id", "plan", "start_date", "end_date", "is_active"],
             [[s.id, s.user_id, s.plan, _cell(s.start_date), _cell(s.end_date), s.is_active] for s in subs],
@@ -172,10 +125,6 @@ def build_backup_zip(db: Session) -> bytes:
     }
 
     for name, model in {
-        "ebooks.csv": Ebook,
-        "ebook_chapters.csv": EbookChapter,
-        "ebook_notes.csv": EbookNote,
-        "ebook_progress.csv": EbookProgress,
         "goals.csv": Goal,
         "projects.csv": Project,
         "project_stages.csv": ProjectStage,

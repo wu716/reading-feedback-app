@@ -1,6 +1,0 @@
-{
-  "name": "shuran-ui-checks",
-  "private": true,
-  "scripts": { "test": "node --test methods.test.cjs" },
-  "devDependencies": { "jsdom": "26.1.0" }
-}
