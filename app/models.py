@@ -469,6 +469,32 @@ class TimeLogNode(Base):
     user = relationship("User", back_populates="time_log_nodes")
 
 
+class LongTermDailyRecord(Base):
+    """One completed daily ledger per user and calendar day."""
+    __tablename__ = "long_term_daily_records"
+    __table_args__ = (UniqueConstraint("user_id", "record_date", name="uq_long_term_user_day"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    record_date = Column(Date, nullable=False, index=True)
+    manual_minutes_json = Column(Text, nullable=False)
+    attention_items_json = Column(Text, nullable=False)
+    money_cents = Column(Integer, nullable=False)
+    investment_cents = Column(Integer, nullable=False, default=0)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
+
+class LongTermNodeCategory(Base):
+    """A deliberate classification of a time-log interval."""
+    __tablename__ = "long_term_node_categories"
+    __table_args__ = (UniqueConstraint("node_id", name="uq_long_term_node_category"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    node_id = Column(Integer, ForeignKey("time_log_nodes.id", ondelete="CASCADE"), nullable=False)
+    category = Column(String(32), nullable=False)
+
+
 class ReadingEntry(Base):
     """阅读记录（内容、笔记、时长）"""
     __tablename__ = "reading_entries"
