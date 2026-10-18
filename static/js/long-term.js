@@ -3,10 +3,12 @@
     const labels = {reading:'读书',fitness:'健身',friends:'帮朋友',family:'陪家人',investment:'定投',writing:'写作',work:'工作',relaxation:'放松'};
     const categories = Object.keys(labels);
     let current = null;
+    let period = 'day';
     const el = id => document.getElementById(id);
     const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
     const yuan = cents => (cents / 100).toFixed(2);
     const time = seconds => `${Math.floor(seconds / 3600)}小时${Math.round(seconds % 3600 / 60)}分`;
+    const shortTime = seconds => seconds < 3600 ? `${Math.round(seconds / 60)} 分钟` : time(seconds);
     const today = () => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`; };
     const api = (path, options) => apiRequest(`/api/long-term${path}`, options || {});
     function notice(message, error) { if (typeof showMessage === 'function') showMessage(message, error ? 'error' : 'success'); else el('ltStatus').textContent = message; }
@@ -19,7 +21,7 @@
     function renderDay(day) {
         current = day;
         el('ltStatus').textContent = day.recorded ? '这一天已保存，可继续修改。' : '这一天尚未完成记录；空白不会算作 0。';
-        el('ltManual').innerHTML = categories.map(key => `<label>${labels[key]} · 分钟<input data-category="${key}" type="number" min="0" max="1440" step="1" inputmode="numeric" value="${day.manual_minutes[key] ?? 0}"></label>`).join('');
+        el('ltManual').innerHTML = categories.map((key, index) => `<article class="lt-activity-card"><div class="lt-activity-head"><span class="lt-activity-number">${String(index + 1).padStart(2, '0')}</span><h3>${labels[key]}</h3></div><strong class="lt-activity-total" data-total="${key}">${shortTime(day.total_seconds[key])}</strong><p class="lt-hint" data-auto="${key}">日志归类 ${shortTime(day.automatic_seconds[key])}</p><label>手动补录 · 分钟<input data-category="${key}" type="number" min="0" max="1440" step="1" inputmode="numeric" value="${day.manual_minutes[key] ?? 0}"></label></article>`).join('');
         el('ltAttention').innerHTML = '';
         (day.attention_items.length ? day.attention_items : [{name:'', minutes:''}]).forEach(item => attentionRow(item.name, item.minutes));
         el('ltMoney').value = day.money_cents == null ? '' : yuan(day.money_cents);
@@ -27,7 +29,7 @@
         el('ltNodes').innerHTML = day.nodes.length ? day.nodes.map(node => `<div class="lt-node"><div>${esc(node.label)}<small>上一节点至此：${time(node.seconds)}${node.seconds === 0 ? ' · 无可计入时长' : ''}</small></div><select data-node="${node.id}" aria-label="为日志归类"><option value="">不计入</option>${categories.map(key => `<option value="${key}" ${node.category === key ? 'selected' : ''}>${labels[key]}</option>`).join('')}</select></div>`).join('') : '<p class="lt-hint">当天还没有时间日志。你仍可手动补录用时。</p>';
         el('ltNodes').querySelectorAll('select[data-node]').forEach(select => select.onchange = async () => {
             select.disabled = true;
-            try { current = await api(`/nodes/${select.dataset.node}/category`, {method:'PUT', body:JSON.stringify({category:select.value || null})}); select.disabled = false; await loadReport(); }
+            try { current = await api(`/nodes/${select.dataset.node}/category`, {method:'PUT', body:JSON.stringify({category:select.value || null})}); select.disabled = false; categories.forEach(key => { const manual = Number(el('ltManual').querySelector(`input[data-category="${key}"]`).value) || 0; el('ltManual').querySelector(`[data-total="${key}"]`).textContent = shortTime(current.automatic_seconds[key] + manual * 60); el('ltManual').querySelector(`[data-auto="${key}"]`).textContent = `日志归类 ${shortTime(current.automatic_seconds[key])}`; }); await loadReport(); }
             catch (error) { notice(error.message || '归类失败', true); await loadDay(); }
         });
     }
@@ -55,7 +57,7 @@
     async function loadReport() {
         const target = el('ltReport'); target.textContent = '正在生成报告…';
         try {
-            const report = await api(`/report?period=${el('ltPeriod').value}&anchor=${encodeURIComponent(el('ltDate').value)}`);
+            const report = await api(`/report?period=${period}&anchor=${encodeURIComponent(el('ltDate').value)}`);
             const max = Math.max(1, ...categories.map(key => report.total_seconds[key]));
             const total = categories.reduce((sum, key) => sum + report.total_seconds[key], 0);
             const days = []; const start = new Date(`${report.start}T12:00:00`); const end = new Date(`${report.end}T12:00:00`);
@@ -72,7 +74,21 @@
         if (!el('ltDate')) return;
         el('ltDate').value = today();
         el('ltDate').onchange = window.loadLongTerm;
-        el('ltPeriod').onchange = loadReport;
+        document.querySelectorAll('.lt-report-tabs [data-period]').forEach(button => button.onclick = () => {
+            period = button.dataset.period;
+            document.querySelectorAll('.lt-report-tabs [data-period]').forEach(tab => {
+                const active = tab === button;
+                tab.classList.toggle('active', active);
+                tab.setAttribute('aria-pressed', String(active));
+            });
+            loadReport();
+        });
+        el('ltManual').addEventListener('input', event => {
+            if (!event.target.matches('input[data-category]') || !current) return;
+            const key = event.target.dataset.category;
+            const minutes = Number(event.target.value) || 0;
+            el('ltManual').querySelector(`[data-total="${key}"]`).textContent = shortTime(current.automatic_seconds[key] + minutes * 60);
+        });
         el('ltAddAttention').onclick = () => attentionRow();
         el('ltSave').onclick = saveDay;
     });

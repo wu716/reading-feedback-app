@@ -54,10 +54,12 @@ class ScheduleUiSeparationTests(unittest.TestCase):
         self.assertIn("{ id: 'projects'", self.tabbar)
         self.assertIn("{ id: 'capture'", self.tabbar)
         self.assertIn("{ id: 'schedule'", self.tabbar)
+        self.assertIn("{ id: 'long-term'", self.tabbar)
         self.assertNotIn("{ id: 'methods'", self.tabbar)
         self.assertNotIn("navigateTo('actions')", self.index)
         self.assertNotIn("navigateTo('self-talk')", self.index)
-        self.assertIn("const PRIMARY_TABS_PHONE = new Set(['schedule', 'capture', 'user-center'])", self.index)
+        self.assertIn("const PRIMARY_TABS_PHONE = new Set(['schedule', 'capture', 'long-term', 'user-center'])", self.index)
+        self.assertIn('data-section="long-term"', self.index)
 
 
 if __name__ == "__main__":

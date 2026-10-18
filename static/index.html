@@ -19,10 +19,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20261017paper1">
+    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20261018longterm2">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd4">
     <link rel="stylesheet" href="/static/css/schedule-log.css?v=20261017paper1">
-    <link rel="stylesheet" href="/static/css/long-term.css?v=20261018longterm1">
+    <link rel="stylesheet" href="/static/css/long-term.css?v=20261018longterm2">
     <style>
         :root {
             --ink: #1c1b19;
@@ -3583,6 +3583,7 @@
             <button type="button" class="nav-item active" data-section="overview" onclick="navigateTo('overview')" data-i18n="nav.today">今日</button>
             <button type="button" class="nav-item" data-section="schedule" onclick="navigateTo('schedule')" data-i18n="nav.schedule">日程</button>
             <button type="button" class="nav-item" data-section="projects" onclick="location.href='/static/projects.html'" data-i18n="nav.projects">项目</button>
+            <button type="button" class="nav-item" data-section="long-term" onclick="navigateTo('long-term')" data-i18n="nav.longTerm">长期目标</button>
             <button type="button" class="nav-item" data-section="capture" onclick="navigateTo('capture')" data-i18n="nav.capture">记</button>
             <button type="button" class="nav-item" data-section="user-center" onclick="navigateTo('user-center')" data-i18n="nav.me">我的</button>
         </nav>
@@ -3628,6 +3629,10 @@
             <div class="nav-item" data-section="projects" onclick="location.href='/static/projects.html'" title="项目">
                 <span class="nav-icon">项</span>
                 <span class="nav-text">项目</span>
+            </div>
+            <div class="nav-item" data-section="long-term" onclick="navigateTo('long-term')" title="长期目标">
+                <span class="nav-icon">目</span>
+                <span class="nav-text" data-i18n="nav.longTerm">长期目标</span>
             </div>
             <div class="nav-item" data-section="user-center" onclick="navigateTo('user-center')" title="我的" data-i18n-title="nav.me">
                 <span class="nav-icon">我</span>
@@ -3816,11 +3821,6 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
                         </span>
                         <span class="me-row-main"><span class="me-row-title" data-i18n="me.menu.timeLog">时间日志</span></span>
-                        <span class="me-chevron">›</span>
-                    </button>
-                    <button type="button" class="me-row" onclick="navigateTo('long-term')">
-                        <span class="me-row-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h17M8 15l4-5 4 2 4-7"/></svg></span>
-                        <span class="me-row-main"><span class="me-row-title">长期目标追踪</span><span class="me-row-desc">每日用时与开销 · 日周月季度报告</span></span>
                         <span class="me-chevron">›</span>
                     </button>
                     <button type="button" class="me-row" onclick="navigateTo('ideas')">
@@ -4098,15 +4098,14 @@
         </section>
 
         <section id="long-term" class="content-section">
-            <div class="section-header"><button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button><h1>长期目标追踪</h1><p>记录每天的投入，也看见注意力与金钱开销</p></div>
+            <div class="section-header"><h1>长期目标</h1><p>八个方向，每天看见时间与开销</p></div>
             <div class="lt-page">
-                <div class="lt-card"><div class="lt-row"><h2>每日记录</h2><input type="date" id="ltDate" aria-label="选择记录日期"></div><p class="lt-hint" id="ltStatus"></p>
-                    <h3>八类活动 · 手动补录</h3><p class="lt-hint">填入没有归入时间日志的分钟数。未填写的类别填 0。</p><div id="ltManual" class="lt-grid"></div>
-                    <h3>注意力开销</h3><p class="lt-hint">按项目记录消耗的分钟；没有开销时填写“无，0 分钟”。</p><div id="ltAttention"></div><button type="button" class="lt-ghost" id="ltAddAttention">＋ 添加项目</button>
-                    <h3>金钱</h3><div class="lt-grid"><label>金钱开销（元）<input id="ltMoney" type="number" min="0" step="0.01" inputmode="decimal" placeholder="必填，可填 0"></label><label>定投金额（元）<input id="ltInvestment" type="number" min="0" step="0.01" inputmode="decimal" value="0"></label></div><p class="lt-hint">定投单列，不计入金钱开销。</p><button type="button" class="lt-primary" id="ltSave">保存日报</button>
+                <div class="lt-card"><div class="lt-row"><h2>这一天</h2><input type="date" id="ltDate" aria-label="选择记录日期"></div><p class="lt-hint" id="ltStatus"></p></div>
+                <section class="lt-card" aria-labelledby="ltActivityHeading"><h2 id="ltActivityHeading">八个方向</h2><p class="lt-hint">每个板块单独记录。补录没有归入时间日志的分钟数；没做的填 0。</p><div id="ltManual" class="lt-activity-grid"></div></section>
+                <section class="lt-card" aria-labelledby="ltExpenseHeading"><h2 id="ltExpenseHeading">每日开销</h2><div class="lt-expense-grid"><div><h3>注意力开销</h3><p class="lt-hint">按项目记录分钟；没有开销时填写“无，0 分钟”。</p><div id="ltAttention"></div><button type="button" class="lt-ghost" id="ltAddAttention">＋ 添加项目</button></div><div><h3>金钱开销</h3><div class="lt-grid"><label>支出（元）<input id="ltMoney" type="number" min="0" step="0.01" inputmode="decimal" placeholder="必填，可填 0"></label><label>定投（元）<input id="ltInvestment" type="number" min="0" step="0.01" inputmode="decimal" value="0"></label></div><p class="lt-hint">定投单列，不计入支出。</p></div></div><button type="button" class="lt-primary" id="ltSave">保存这一天</button></section>
                 </div>
                 <div class="lt-card"><h2>时间日志归类</h2><p class="lt-hint">只统计你明确归类的区间；每段只能选一类。请核对区间时长，旧日志不会自动归类。</p><div id="ltNodes"></div></div>
-                <div class="lt-card"><div class="lt-row"><h2>报告</h2><select id="ltPeriod" aria-label="报告周期"><option value="day">日报</option><option value="week">周报</option><option value="month">月报</option><option value="quarter">季度报</option></select></div><div id="ltReport"></div></div>
+                <section class="lt-card" aria-labelledby="ltReportHeading"><h2 id="ltReportHeading">回看报告</h2><div class="lt-report-tabs" role="group" aria-label="报告周期"><button type="button" data-period="day" class="active">日报</button><button type="button" data-period="week">周报</button><button type="button" data-period="month">月报</button><button type="button" data-period="quarter">季度报</button></div><div id="ltReport"></div></section>
             </div>
         </section>
 
@@ -4385,7 +4384,7 @@
     </div>
 
 
-    <script src="/static/js/i18n.js?v=20261017paper1"></script>
+    <script src="/static/js/i18n.js?v=20261018longterm2"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -4425,9 +4424,9 @@
             if (overlay) overlay.classList.toggle('visible', open);
         }
 
-        const PRIMARY_TABS_DESKTOP = new Set(['overview', 'schedule', 'capture', 'user-center']);
-        const PRIMARY_TABS_PHONE = new Set(['schedule', 'capture', 'user-center']);
-        const SECTION_PARENT_SHARED = { guide: 'user-center', owner: 'user-center', 'time-log': 'capture', ideas: 'capture', 'long-term': 'user-center' };
+        const PRIMARY_TABS_DESKTOP = new Set(['overview', 'schedule', 'capture', 'long-term', 'user-center']);
+        const PRIMARY_TABS_PHONE = new Set(['schedule', 'capture', 'long-term', 'user-center']);
+        const SECTION_PARENT_SHARED = { guide: 'user-center', owner: 'user-center', 'time-log': 'capture', ideas: 'capture' };
 
         function primaryTabs() {
             return isMobileNav() ? PRIMARY_TABS_PHONE : PRIMARY_TABS_DESKTOP;
@@ -6432,11 +6431,11 @@
     <!-- 待办提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
     <script src="/static/reminder_notification.js?v=20261017paper1"></script>
-    <script src="/static/js/app-tabbar.js?v=20261017paper1"></script>
+    <script src="/static/js/app-tabbar.js?v=20261018longterm2"></script>
     <script src="/static/js/today-dashboard.js?v=20261017paper1"></script>
     <script src="/static/js/daily-schedule.js?v=20261017paper1"></script>
     <script src="/static/js/time-log.js?v=20261017paper1"></script>
-    <script src="/static/js/long-term.js?v=20261018longterm1"></script>
+    <script src="/static/js/long-term.js?v=20261018longterm2"></script>
     <script src="/static/js/activity-review.js?v=20261017paper1"></script>
     <script src="/static/js/ideas.js?v=20261017paper1"></script>
     <script src="/static/js/desktop-shell.js?v=20261017paper1"></script>
