@@ -27,16 +27,17 @@
     }
 
     function openCapture() {
-        if (typeof window.punchTimeLog === 'function') {
-            window.punchTimeLog(false);
-            return;
-        }
-        location.href = '/static/index.html?capture=1#schedule';
+        if (typeof navigateTo === 'function') navigateTo('capture');
+        else location.href = tabHref('capture');
     }
 
     function go(tab) {
         if (tab.action === 'projects') {
             location.href = '/static/projects.html';
+            return;
+        }
+        if (tab.id === 'capture') {
+            openCapture();
             return;
         }
         if (typeof navigateTo === 'function') {

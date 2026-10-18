@@ -438,9 +438,6 @@
         if (title) title.textContent = copy.title;
         if (hint) hint.textContent = copy.hint;
         if (input) input.placeholder = copy.placeholder;
-        sheet.querySelectorAll('[data-kind]').forEach((btn) => {
-            btn.classList.toggle('is-on', btn.dataset.kind === captureKind);
-        });
         sheet.querySelectorAll('[data-when]').forEach((btn) => {
             btn.classList.toggle('is-on', btn.dataset.when === captureTodoWhen);
         });
@@ -503,11 +500,6 @@
         sheet.innerHTML = `
             <h3 id="timeLogSheetTitle"></h3>
             <p id="timeLogSheetHint"></p>
-            <div class="tl-kind-picks" role="tablist" aria-label="${escapeHtml(t('capture.destination', '记下到哪里'))}">
-                <button type="button" data-kind="moment">${escapeHtml(t('capture.kind.moment', '时刻'))}</button>
-                <button type="button" data-kind="idea">${escapeHtml(t('capture.kind.idea', '灵感'))}</button>
-                <button type="button" data-kind="todo">${escapeHtml(t('capture.kind.todo', '待办'))}</button>
-            </div>
             <div class="tl-when-picks" id="timeLogWhenPicks" hidden>
                 <button type="button" data-when="today">${escapeHtml(t('capture.todo.today', '今天'))}</button>
                 <button type="button" data-when="later">${escapeHtml(t('capture.todo.later', '以后'))}</button>
@@ -528,13 +520,6 @@
         bindComposerViewport(sheet);
         backdrop.addEventListener('click', () => discardSheet());
         sheet.querySelector('#timeLogSheetCancel').addEventListener('click', () => discardSheet());
-        sheet.querySelectorAll('[data-kind]').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                captureKind = btn.dataset.kind;
-                paintCaptureSheet(sheet);
-                placeDesktopSheet(sheet);
-            });
-        });
         sheet.querySelectorAll('[data-when]').forEach((btn) => {
             btn.addEventListener('click', () => {
                 captureTodoWhen = btn.dataset.when;
@@ -556,7 +541,7 @@
         const label = document.getElementById('captureKindDefaultDesc');
         if (label) {
             const names = { moment: '时刻', idea: '灵感', todo: '待办' };
-            label.textContent = `三击或点「记」时先落到${names[captureKind] || '时刻'}，仍可当场改。`;
+            label.textContent = `三击快捷记录默认写入${names[captureKind] || '时刻'}；底栏「记」打开各自的入口。`;
         }
     }
 
@@ -761,14 +746,15 @@
             btn.className = 'tl-fab';
             btn.type = 'button';
             btn.textContent = '记';
-            btn.title = '记下。默认为时刻，可当场改成灵感或待办。';
+            btn.title = '打开「记」的独立入口';
             btn.addEventListener('click', (e) => {
                 if (btn.dataset.dragged === '1') {
                     e.preventDefault();
                     btn.dataset.dragged = '0';
                     return;
                 }
-                punch(false);
+                if (typeof navigateTo === 'function') navigateTo('capture');
+                else location.href = '/static/index.html#capture';
             });
             document.body.appendChild(btn);
         }

@@ -121,6 +121,7 @@ class TaskOut(BaseModel):
     id: int
     parent_id: Optional[int] = None
     action_id: Optional[int] = None
+    project_task_id: Optional[int] = None
     text: str
     completed: bool
     note: Optional[str] = None
@@ -276,6 +277,7 @@ def build_tree(tasks: List[DailyTask]) -> List[TaskOut]:
             id=task.id,
             parent_id=task.parent_id,
             action_id=task.action_id,
+            project_task_id=task.project_task_id,
             text=task.text,
             completed=bool(task.completed),
             note=task.note,

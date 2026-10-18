@@ -2,7 +2,7 @@
   'use strict';
   const $ = (selector, root = document) => root.querySelector(selector);
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  const state = { overview: {goals:[], projects:[]}, templates:[], sessions:[], projectId:null, taskId:null, active:null, detailMode:'attributes' };
+  const state = { overview: {goals:[], projects:[]}, todayTasks:[], templates:[], sessions:[], projectId:null, taskId:null, active:null, detailMode:'attributes' };
   let noticeTimer;
 
   function notice(message, error = false) {
@@ -25,9 +25,48 @@
   function currentProject() { return state.overview.projects.find(p => p.id === state.projectId); }
   function currentTask() { return currentProject()?.tasks.find(t => t.id === state.taskId); }
   function allTasks() { return state.overview.projects.flatMap(p => p.tasks.map(t => ({...t, project_title:p.title}))); }
-  function taskOptions(selectedId, includeEmpty = true) {
-    return (includeEmpty ? '<option value="">选择任务</option>' : '') + allTasks().filter(t => t.state !== 'completed').map(t =>
-      `<option value="${t.id}" ${t.id === selectedId ? 'selected' : ''} ${t.blocked_by.length ? 'disabled' : ''}>${esc(t.project_title)} · ${esc(t.title)}${t.blocked_by.length ? '（等待前置）' : ''}</option>`).join('');
+  function todayISO() {
+    return new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Shanghai', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
+  }
+  function dailyLeaves(nodes, parents = []) {
+    return (nodes || []).flatMap(task => task.children?.length
+      ? dailyLeaves(task.children, [...parents, task.text])
+      : [{...task, path:parents.filter(Boolean).join(' / ')}]);
+  }
+  async function loadTodayTasks() {
+    const response = await fetch(`/api/schedule?task_date=${todayISO()}`, {
+      headers:{Authorization:'Bearer ' + localStorage.getItem('authToken')}
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : '加载今日任务失败');
+    return dailyLeaves(data.tasks).filter(task => !task.completed);
+  }
+  function executionChoices() {
+    const projects = allTasks();
+    const byId = new Map(projects.map(task => [task.id, task]));
+    const today = state.todayTasks.map(task => {
+      const linked = byId.get(task.project_task_id);
+      return {key:`daily:${task.id}`, title:`${task.path ? task.path + ' / ' : ''}${task.text}`,
+        project_task_id:linked?.id || null, daily_task_id:task.id,
+        disabled:!!linked && !linked.can_start, group:'今日任务'};
+    });
+    const scheduled = new Set(today.map(task => task.project_task_id).filter(Boolean));
+    const remaining = projects.filter(task => task.state !== 'completed' && !scheduled.has(task.id)).map(task => ({
+      key:`project:${task.id}`, title:`${task.project_title} · ${task.title}`,
+      project_task_id:task.id, daily_task_id:null, disabled:!task.can_start, group:'项目任务'
+    }));
+    return [...today, ...remaining];
+  }
+  function taskOptions(selectedKey) {
+    const choices = executionChoices();
+    const option = task => `<option value="${task.key}" ${task.key === selectedKey ? 'selected' : ''} ${task.disabled ? 'disabled' : ''}>${esc(task.title)}${task.disabled ? '（等待前置）' : ''}</option>`;
+    return '<option value="">选择任务</option>' + ['今日任务', '项目任务'].map(group => {
+      const items = choices.filter(task => task.group === group);
+      return items.length ? `<optgroup label="${group}">${items.map(option).join('')}</optgroup>` : '';
+    }).join('');
+  }
+  function selectedTask(key = $('#focusTask').value) {
+    return executionChoices().find(task => task.key === key && !task.disabled);
   }
   function localInput(iso) {
     if (!iso) return '';
@@ -40,8 +79,8 @@
   function stageOptions(project, selected) { return (project?.stages || []).filter(s => s.state !== 'closed').map(s => `<option value="${s.id}" ${s.id === selected ? 'selected' : ''}>${esc(s.title)} · ${stageName(s)}</option>`).join(''); }
 
   async function refresh() {
-    const [overview, templates, sessions] = await Promise.all([request('/overview'), request('/templates'), request('/sessions')]);
-    state.overview = overview; state.templates = templates.items; state.sessions = sessions.items;
+    const [overview, templates, sessions, todayTasks] = await Promise.all([request('/overview'), request('/templates'), request('/sessions'), loadTodayTasks()]);
+    state.overview = overview; state.templates = templates.items; state.sessions = sessions.items; state.todayTasks = todayTasks;
     if (!overview.projects.some(p => p.id === state.projectId)) state.projectId = overview.projects[0]?.id ?? null;
     if (!currentProject()?.tasks.some(t => t.id === state.taskId)) state.taskId = null;
     state.active = state.sessions.find(s => !s.ended_at) || null;
@@ -95,9 +134,9 @@
   }
 
   function renderExecution() {
-    const selected = Number($('#focusTask').value) || state.taskId;
+    const selected = $('#focusTask').value || (state.active?.daily_task_id ? `daily:${state.active.daily_task_id}` : state.active?.project_task_id ? `project:${state.active.project_task_id}` : state.taskId ? `project:${state.taskId}` : '');
     $('#focusTask').innerHTML = taskOptions(selected);
-    $('#manualTask').innerHTML = taskOptions(null);
+    $('#manualTask').innerHTML = taskOptions($('#manualTask').value);
     const active = state.active;
     $('.focus-panel').classList.toggle('break', active?.kind === 'break');
     $('#startWork').disabled = !!active;
@@ -118,9 +157,10 @@
   }
   function renderSessions() {
     const names = new Map(allTasks().map(t => [t.id, t.title]));
+    const dailyNames = new Map(state.todayTasks.map(t => [t.id, t.text]));
     $('#sessionList').innerHTML = state.sessions.length ? state.sessions.slice(0,40).map(s => {
       const assessment = s.assessment || {};
-      return `<article class="session-card ${s.kind}"><div><strong>${s.kind === 'break' ? '休息' : esc(names.get(s.project_task_id) || s.label || '工作片')}</strong><div class="session-meta">${dtLabel(s.started_at)} → ${dtLabel(s.ended_at)} · ${s.duration_minutes ?? '进行中'} 分 · ${s.source === 'timer' ? '计时' : s.source === 'moment' ? '确认时刻' : '补记'}</div></div>
+      return `<article class="session-card ${s.kind}"><div><strong>${s.kind === 'break' ? '休息' : esc(names.get(s.project_task_id) || dailyNames.get(s.daily_task_id) || s.label || '工作片')}</strong><div class="session-meta">${dtLabel(s.started_at)} → ${dtLabel(s.ended_at)} · ${s.duration_minutes ?? '进行中'} 分 · ${s.source === 'timer' ? '计时' : s.source === 'moment' ? '确认时刻' : '补记'}</div></div>
         ${s.ended_at ? `<details><summary>更正时间</summary><form class="correct-form" data-id="${s.id}"><label>开始 <input name="started_at" type="datetime-local" required value="${localInput(s.started_at)}"></label><label>结束 <input name="ended_at" type="datetime-local" required value="${localInput(s.ended_at)}"></label><label>更正原因 <input name="correction_note" maxlength="2000" required></label><button type="submit">保存更正</button></form></details>
         <p><a href="/static/index.html#time-log">在「记」中回看目标相关的重要性</a></p>` : ''}</article>`;
     }).join('') : '<p class="empty">还没有实际时间片。开始计时，或事后补记。</p>';
@@ -169,7 +209,9 @@
         await post(`/tasks/${state.taskId}/schedule`, {task_date:body.task_date}); await afterChange('已写入当天日程');
       } else if (form.id === 'manualForm') {
         const source = body.source;
-        await post('/sessions/manual', {project_task_id:nullableNumber(body.project_task_id), source, kind:'work',
+        const task = selectedTask(body.task_ref);
+        if (!task) throw new Error('请先选择可开始的任务');
+        await post('/sessions/manual', {project_task_id:task.project_task_id, daily_task_id:task.daily_task_id, label:task.title, source, kind:'work',
           time_log_node_id:source === 'moment' ? nullableNumber(body.time_log_node_id) : null,
           started_at:new Date(body.started_at).toISOString(), ended_at:new Date(body.ended_at).toISOString()});
         form.reset(); $('#momentNodeLabel').hidden = true; await afterChange('实际投入已保存');
@@ -245,11 +287,12 @@
     endInput.value = '';
     await afterChange(message);
   }
-  async function startWork(taskId = Number($('#focusTask').value)) {
-    if (!taskId) throw new Error('请先选择可开始的任务');
+  async function startWork(task = selectedTask()) {
+    if (!task) throw new Error('请先选择可开始的任务');
     const minutes = Number($('#workMinutes').value) || 20;
-    if (state.active) await post('/sessions/switch', {from_session_id:state.active.id, project_task_id:taskId, kind:'work', planned_minutes:minutes});
-    else await post('/sessions/start', {project_task_id:taskId, kind:'work', planned_minutes:minutes});
+    const links = {project_task_id:task.project_task_id, daily_task_id:task.daily_task_id, label:task.title};
+    if (state.active) await post('/sessions/switch', {from_session_id:state.active.id, ...links, kind:'work', planned_minutes:minutes});
+    else await post('/sessions/start', {...links, kind:'work', planned_minutes:minutes});
     await afterChange('工作片已开始');
   }
   async function chooseNext(choice) {
@@ -258,12 +301,15 @@
       await post('/sessions/switch', {from_session_id:state.active.id, kind:'break', planned_minutes:Number($('#breakMinutes').value) || 5});
       await afterChange('休息开始；这段时间不计任务实耗');
     } else if (choice === 'continue') {
-      const taskId = state.active?.project_task_id || Number($('#focusTask').value);
-      await startWork(taskId);
+      const task = state.active ? {
+        project_task_id:state.active.project_task_id, daily_task_id:state.active.daily_task_id,
+        title:state.active.label || '工作片'
+      } : selectedTask();
+      await startWork(task);
     } else if (choice === 'switch') {
-      const taskId = Number($('#focusTask').value);
-      if (!taskId || taskId === state.active?.project_task_id) throw new Error('请先在“当前任务”选择另一项');
-      await startWork(taskId);
+      const task = selectedTask();
+      if (!task || (task.project_task_id === state.active?.project_task_id && task.daily_task_id === state.active?.daily_task_id)) throw new Error('请先在“当前任务”选择另一项');
+      await startWork(task);
     }
   }
   $('#startWork').addEventListener('click', () => run(() => startWork()));

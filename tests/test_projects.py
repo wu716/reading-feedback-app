@@ -14,6 +14,7 @@ from app.database import Base, get_db
 from app.models import DailyTask, User  # register legacy tables and DailyTask
 from app.project_models import ProcessTemplate, ProjectTask  # register new tables
 from app.routers.projects import router
+from app.routers.schedule import router as schedule_router
 
 
 class ProjectFlowTests(unittest.TestCase):
@@ -29,6 +30,7 @@ class ProjectFlowTests(unittest.TestCase):
             db.commit()
         app = FastAPI()
         app.include_router(router, prefix="/api")
+        app.include_router(schedule_router, prefix="/api")
 
         def session_override():
             with self.Session() as db:
@@ -142,6 +144,12 @@ class ProjectFlowTests(unittest.TestCase):
             self.assertEqual((rows[0].text, rows[0].project_task_id), ("原本的简单日程", None))
             self.assertEqual((rows[1].text, rows[1].project_task_id, rows[1].estimated_minutes),
                              ("项目下一步", task["id"], 35))
+        schedule = self.client.get("/api/schedule?task_date=2026-10-15", headers={"X-Test-User": "1"})
+        self.assertEqual(schedule.status_code, 200, schedule.text)
+        self.assertEqual([item["project_task_id"] for item in schedule.json()["tasks"]], [None, task["id"]])
+        started = self.req("POST", "/sessions/start", {"daily_task_id": rows[0].id})
+        self.assertEqual(started.status_code, 200, started.text)
+        self.assertEqual((started.json()["project_task_id"], started.json()["daily_task_id"]), (None, rows[0].id))
 
 
 if __name__ == "__main__":

@@ -41,7 +41,7 @@
         const box = document.getElementById('ideasList');
         if (!box) return;
         if (!items.length) {
-            box.innerHTML = '<p class="flow-empty">三击或点「记」，去处选「灵感」，写下就会出现在这里。</p>';
+            box.innerHTML = '<p class="flow-empty">点「记 → idea」或此页「记下灵感」，写下后会出现在这里。</p>';
             return;
         }
         box.innerHTML = items.map((item) => {

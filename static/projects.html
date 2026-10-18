@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="/static/css/projects.css?v=20261017paper1">
   <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20261017paper1">
   <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261017paper1">
-  <script defer src="/static/js/projects.js?v=20261017paper1"></script>
-  <script defer src="/static/js/app-tabbar.js?v=20261018longterm3"></script>
+  <script defer src="/static/js/projects.js?v=20261018momenttask1"></script>
+  <script defer src="/static/js/app-tabbar.js?v=20261018momenttask1"></script>
 </head>
 <body>
   <header class="app-head">
@@ -102,7 +102,7 @@
         <div class="reflection-panel">
           <h3>事后补记</h3><p>只记录实际工作或休息的区间。重叠时会提示更正。</p>
           <form id="manualForm">
-            <label>任务 <select name="project_task_id" id="manualTask"></select></label>
+            <label>任务 <select name="task_ref" id="manualTask"></select></label>
             <label>开始 <input type="datetime-local" name="started_at" required></label>
             <label>结束 <input type="datetime-local" name="ended_at" required></label>
             <label>来源 <select name="source" id="manualSource"><option value="manual">手动补记</option><option value="moment">确认“记·时刻”的区间</option></select></label>
