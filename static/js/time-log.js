@@ -789,13 +789,19 @@
     }
 
     function shellNeedsVolumeUpdate() {
-        return !hasVolumeApi(native());
+        const n = native();
+        try {
+            return !hasVolumeApi(n) || typeof n.getVolumeTripleKey !== 'function'
+                || n.getVolumeTripleKey() !== 'up';
+        } catch (e) {
+            return true;
+        }
     }
 
     function readVolumeOn() {
         const n = native();
         try {
-            return !!(hasVolumeApi(n) && n.isVolumeTripleEnabled());
+            return !!(!shellNeedsVolumeUpdate() && n.isVolumeTripleEnabled());
         } catch (e) {
             return false;
         }
@@ -812,7 +818,7 @@
         if (!hasVolumeApi(n) || shellNeedsVolumeUpdate()) {
             if (switchEl) switchEl.checked = false;
             if (typeof showMessage === 'function') {
-                showMessage('当前手机安装包没有这项。请换安装包，覆盖即可，不用卸载。', 'info');
+                showMessage('当前手机安装包不支持三击音量加。请安装新版覆盖，不用卸载。', 'info');
             }
             if (typeof shuranStartAppUpdate === 'function') shuranStartAppUpdate();
             setTimeout(syncAssistRow, 300);
@@ -924,13 +930,13 @@
             sw.disabled = outdated;
         });
 
-        let desc = '书然开着时，约 1.5 秒内连按三下音量减就会打开「记」，不必开本开关。锁屏或其他应用再用，请打开右侧开关。';
+        let desc = '书然开着时，约 1.5 秒内连按三下音量加就会打开「记」。锁屏或其他应用再用，请打开右侧开关。双击音量减仍可开手电。';
         let extra = '';
         if (outdated) {
-            desc = '当前安装包没有音量键功能。点「换安装包」覆盖即可，不用卸载。';
-            extra = '安装包需更新。更新后打开书然，约 1.5 秒内连按三下音量减就会出现「记」。锁屏或其他 App 再用，再打开右侧开关。';
+            desc = '当前安装包不支持三击音量加。请安装新版覆盖，不用卸载。';
+            extra = '旧安装包可能仍使用三击音量减；安装新版后再按三下音量加。';
         } else if (volumeOn) {
-            desc = '锁屏或其他应用上，约 1.5 秒内连按三下音量减会弹出「记」。书然在前台时不必开本开关。单击仍调音量。';
+            desc = '锁屏或其他应用上，约 1.5 秒内连按三下音量加会弹出「记」。双击音量减仍可开手电。荣耀手机请允许书然后台活动，并在最近任务中下拉书然卡片加锁，清理其他应用时保留它。';
         }
 
         const meDesc = document.getElementById('timeLogVolumeMeDesc');

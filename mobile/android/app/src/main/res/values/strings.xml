@@ -3,7 +3,7 @@
     <string name="app_name">书然</string>
     <string name="app_url">http://43.161.238.165:8000/</string>
     <!-- Keep in sync with STATIC_UI_VERSION in main.py -->
-    <string name="static_ui_version">20261018longterm3</string>
+    <string name="static_ui_version">20261018volumeup1</string>
     <string name="loading">正在打开书然…</string>
     <string name="network_error">无法连接服务器，请检查网络后重试</string>
     <string name="retry">重试</string>
@@ -63,13 +63,13 @@
     <string name="timelog_shortcut_long">书然 · 记</string>
     <string name="timelog_shortcut_unsupported">当前系统不支持添加桌面快捷方式，请用快捷设置磁贴</string>
     <string name="timelog_tile_label">记</string>
-    <string name="timelog_a11y_label">三击音量减 → 记</string>
-    <string name="timelog_a11y_description">只为连续三击音量减键唤起书然「记」。不读取屏幕内容，不改变单击调音量、不占用电源键，也不拦截电源+音量截屏。书然在前台时不必开本服务。</string>
+    <string name="timelog_a11y_label">三击音量加 → 记</string>
+    <string name="timelog_a11y_description">只为连续三击音量加键唤起书然「记」。不读取屏幕内容，不改变单击调音量、不占用电源键，也不拦截电源+音量截屏。书然在前台时不必开本服务。</string>
     <string name="timelog_go_settings">去系统设置</string>
-    <string name="timelog_volume_dialog_title">三击音量减 → 记</string>
-    <string name="timelog_volume_dialog_body">书然已经打开时，约 1.5 秒内连按三下音量减就会出现「记」，不必开本开关。单击仍调音量。\n\n打开本开关后，锁屏或其他应用上也可以同样三击唤起。需要系统无障碍授权。书然只监听这个按键手势，不读屏幕。</string>
-    <string name="timelog_volume_settings_toast">在「已下载的应用 / 已安装的服务」里打开「三击音量减 → 记」</string>
-    <string name="timelog_volume_disable_toast">请在无障碍列表里关掉「三击音量减 → 记」</string>
+    <string name="timelog_volume_dialog_title">三击音量加 → 记</string>
+    <string name="timelog_volume_dialog_body">书然已经打开时，约 1.5 秒内连按三下音量加就会出现「记」，不必开本开关。单击仍调音量。\n\n打开本开关后，锁屏或其他应用上也可以同样三击唤起。需要系统无障碍授权。书然只监听这个按键手势，不读屏幕。\n\n荣耀手机若在清理最近任务后自动关闭授权：在「应用启动管理」允许书然后台活动，并在最近任务里下拉书然卡片加锁。清理其他应用时保留书然卡片。</string>
+    <string name="timelog_volume_settings_toast">在「已下载的应用 / 已安装的服务」里打开「三击音量加 → 记」</string>
+    <string name="timelog_volume_disable_toast">请在无障碍列表里关掉「三击音量加 → 记」</string>
     <string name="timelog_honor_dialog_title">电源键长按 → 记</string>
     <string name="timelog_honor_dialog_body">第三方应用抢不了电源键单击。荣耀/华为可以把「长按电源键」指定为数字助理，从而打开书然「记」。\n\n荣耀：设置 → 辅助功能 → 快捷启动与手势 / 智慧助手 → 电源键长按 → 选书然。\n华为：设置 → 智慧助手 / 按键与手势 → 电源键 → 选默认数字助理为书然。\n\n先把书然设为默认数字助理，再到系统里把电源键长按指过去。</string>
 </resources>

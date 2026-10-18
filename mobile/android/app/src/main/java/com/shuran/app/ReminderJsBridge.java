@@ -230,6 +230,11 @@ public class ReminderJsBridge {
     }
 
     @JavascriptInterface
+    public String getVolumeTripleKey() {
+        return "up";
+    }
+
+    @JavascriptInterface
     public void setVolumeTripleEnabled(boolean enabled) {
         activity.runOnUiThread(() -> {
             if (enabled) {

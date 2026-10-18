@@ -137,7 +137,7 @@ sealed class MainForm : Form
     void RegisterCaptureHotkey()
     {
         if (_hotkeyRegistered || !IsHandleCreated) return;
-        // Ctrl+Shift+K：全局唤起「记」，对应手机三击音量减。
+        // Ctrl+Shift+K：全局唤起「记」，对应手机三击音量加。
         _hotkeyRegistered = NativeMethods.RegisterHotKey(
             Handle,
             HotkeyIdCapture,

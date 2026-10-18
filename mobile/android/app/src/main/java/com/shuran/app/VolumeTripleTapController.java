@@ -7,7 +7,7 @@ import android.view.KeyEvent;
 
 /**
  * 把 {@link VolumeTripleTap} 接到按键事件：触发时打开「记」，
- * 未凑满三击时把暂扣的音量减补回去。
+ * 未凑满三击时把暂扣的音量加补回去。
  */
 final class VolumeTripleTapController {
     private final VolumeTripleTap detector = new VolumeTripleTap();
@@ -69,7 +69,7 @@ final class VolumeTripleTapController {
             return;
         }
         for (int i = 0; i < steps; i++) {
-            audio.adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
+            audio.adjustVolume(AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
         }
     }
 }

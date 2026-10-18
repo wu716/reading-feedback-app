@@ -8,7 +8,7 @@ import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 
 /**
- * 锁屏或其它应用上监听音量减三连击，唤起「记」。
+ * 锁屏或其它应用上监听音量加三连击，唤起「记」。
  * App 在前台时由 {@link MainActivity} 直接处理，不依赖本服务。
  */
 public class TimeLogVolumeKeyService extends AccessibilityService {

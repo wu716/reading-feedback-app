@@ -7,12 +7,12 @@ import static com.shuran.app.VolumeTripleTap.ACTION_DOWN;
 import static com.shuran.app.VolumeTripleTap.ACTION_UP;
 import static com.shuran.app.VolumeTripleTap.COOLDOWN_MS;
 import static com.shuran.app.VolumeTripleTap.GAP_MS;
-import static com.shuran.app.VolumeTripleTap.KEYCODE_VOLUME_DOWN;
+import static com.shuran.app.VolumeTripleTap.KEYCODE_VOLUME_UP;
 import static com.shuran.app.VolumeTripleTap.Result;
 import static org.junit.Assert.assertEquals;
 
 public class VolumeTripleTapTest {
-    private static final int KEYCODE_VOLUME_UP = 24;
+    private static final int KEYCODE_VOLUME_DOWN = 25;
     private VolumeTripleTap tap;
 
     @Before
@@ -22,15 +22,16 @@ public class VolumeTripleTapTest {
 
     @Test
     public void singleTapPassesThrough() {
-        assertEquals(Result.PASS, tap.onKey(KEYCODE_VOLUME_DOWN, ACTION_DOWN, 0L, 0));
-        assertEquals(Result.PASS, tap.onKey(KEYCODE_VOLUME_DOWN, ACTION_UP, 40L, 0));
+        assertEquals(Result.PASS, tap.onKey(KEYCODE_VOLUME_UP, ACTION_DOWN, 0L, 0));
+        assertEquals(Result.PASS, tap.onKey(KEYCODE_VOLUME_UP, ACTION_UP, 40L, 0));
     }
 
     @Test
-    public void volumeUpIsIgnored() {
-        assertEquals(Result.PASS, tap.onKey(KEYCODE_VOLUME_UP, ACTION_DOWN, 0L, 0));
+    public void volumeDownIsIgnored() {
+        assertEquals(Result.PASS, tap.onKey(KEYCODE_VOLUME_DOWN, ACTION_DOWN, 0L, 0));
         assertEquals(Result.PASS, tap.onKey(KEYCODE_VOLUME_DOWN, ACTION_DOWN, 100L, 0));
-        assertEquals(Result.PASS, tap.onKey(KEYCODE_VOLUME_UP, ACTION_DOWN, 200L, 0));
+        assertEquals(Result.PASS, tap.onKey(KEYCODE_VOLUME_DOWN, ACTION_DOWN, 200L, 0));
+        assertEquals(Result.PASS, tap.onKey(KEYCODE_VOLUME_UP, ACTION_DOWN, 300L, 0));
     }
 
     @Test
@@ -64,7 +65,7 @@ public class VolumeTripleTapTest {
     @Test
     public void longPressResetsAndPasses() {
         assertEquals(Result.PASS, down(0L));
-        assertEquals(Result.PASS, tap.onKey(KEYCODE_VOLUME_DOWN, ACTION_DOWN, 80L, 1));
+        assertEquals(Result.PASS, tap.onKey(KEYCODE_VOLUME_UP, ACTION_DOWN, 80L, 1));
         assertEquals(Result.PASS, down(200L));
     }
 
@@ -101,10 +102,10 @@ public class VolumeTripleTapTest {
     }
 
     private Result down(long at) {
-        return tap.onKey(KEYCODE_VOLUME_DOWN, ACTION_DOWN, at, 0);
+        return tap.onKey(KEYCODE_VOLUME_UP, ACTION_DOWN, at, 0);
     }
 
     private Result up(long at) {
-        return tap.onKey(KEYCODE_VOLUME_DOWN, ACTION_UP, at, 0);
+        return tap.onKey(KEYCODE_VOLUME_UP, ACTION_UP, at, 0);
     }
 }

@@ -62,13 +62,13 @@
     <string name="timelog_shortcut_long">Shuran · Capture</string>
     <string name="timelog_shortcut_unsupported">This system does not support home-screen shortcuts. Use the Quick Settings tile.</string>
     <string name="timelog_tile_label">Capture</string>
-    <string name="timelog_a11y_label">Triple volume-down → Capture</string>
-    <string name="timelog_a11y_description">Only listens for triple volume-down to open Shuran Capture. It does not read the screen, change normal volume behavior, take over the power key, or intercept screenshots. You do not need this service while Shuran is in the foreground.</string>
+    <string name="timelog_a11y_label">Triple volume-up → Capture</string>
+    <string name="timelog_a11y_description">Only listens for triple volume-up to open Shuran Capture. It does not read the screen, change normal volume behavior, take over the power key, or intercept screenshots. You do not need this service while Shuran is in the foreground.</string>
     <string name="timelog_go_settings">Open settings</string>
-    <string name="timelog_volume_dialog_title">Triple volume-down → Capture</string>
-    <string name="timelog_volume_dialog_body">When Shuran is open, press volume-down three times within about 1.5 seconds to open Capture. This switch is not needed in the foreground. Single presses still adjust volume.\n\nAfter turning this on, the same triple press works on the lock screen or in other apps. Accessibility permission is required. Shuran only listens for this key gesture and does not read the screen.</string>
-    <string name="timelog_volume_settings_toast">Open “Triple volume-down → Capture” in Downloaded apps or Installed services.</string>
-    <string name="timelog_volume_disable_toast">Turn off “Triple volume-down → Capture” in the accessibility list.</string>
+    <string name="timelog_volume_dialog_title">Triple volume-up → Capture</string>
+    <string name="timelog_volume_dialog_body">When Shuran is open, press volume-up three times within about 1.5 seconds to open Capture. This switch is not needed in the foreground. Single presses still adjust volume.\n\nAfter turning this on, the same triple press works on the lock screen or in other apps. Accessibility permission is required. Shuran only listens for this key gesture and does not read the screen.\n\nOn Honor phones, if clearing Recent apps disables access, allow Shuran background activity in App launch management and lock its card in Recents. Keep that card when clearing other apps.</string>
+    <string name="timelog_volume_settings_toast">Open “Triple volume-up → Capture” in Downloaded apps or Installed services.</string>
+    <string name="timelog_volume_disable_toast">Turn off “Triple volume-up → Capture” in the accessibility list.</string>
     <string name="timelog_honor_dialog_title">Long-press power → Capture</string>
     <string name="timelog_honor_dialog_body">Third-party apps cannot take over a single power-key press. Honor and Huawei can assign long-press power to the digital assistant, which can open Shuran Capture.\n\nHonor: Settings → Accessibility → Shortcuts and gestures / Smart assistant → Power key long press → choose Shuran.\nHuawei: Settings → Smart assistant / Buttons and gestures → Power key → set the default digital assistant to Shuran.\n\nSet Shuran as the default digital assistant first, then assign the power-key long press in system settings.</string>
 </resources>

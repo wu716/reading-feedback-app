@@ -1,13 +1,13 @@
 package com.shuran.app;
 
 /**
- * 音量减三连击检测。纯状态机，不依赖 Android 运行时，便于单元测试。
+ * 音量加三连击检测。纯状态机，不依赖 Android 运行时，便于单元测试。
  *
  * <p>第 1 击放行（正常调音量）；第 2 击先按住，等第 3 击；第 3 击触发「记」。
  * 相邻两次按下超过 {@link #GAP_MS} 则重新计数。
  */
 public final class VolumeTripleTap {
-    public static final int KEYCODE_VOLUME_DOWN = 25;
+    public static final int KEYCODE_VOLUME_UP = 24;
     public static final int ACTION_DOWN = 0;
     public static final int ACTION_UP = 1;
 
@@ -28,7 +28,7 @@ public final class VolumeTripleTap {
     private long lastPunchAt = Long.MIN_VALUE / 2;
 
     public Result onKey(int keyCode, int action, long eventTime, int repeatCount) {
-        if (keyCode != KEYCODE_VOLUME_DOWN) {
+        if (keyCode != KEYCODE_VOLUME_UP) {
             return Result.PASS;
         }
         if (action == ACTION_UP && eatMatchingUp) {
