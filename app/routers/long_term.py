@@ -68,6 +68,12 @@ def record_for(db: Session, user_id: int, day: date):
     return db.query(LongTermDailyRecord).filter_by(user_id=user_id, record_date=day).first()
 
 
+def check_total_increase(previous_seconds: int, next_seconds: int):
+    # Existing over-limit records must remain editable while their time is reduced.
+    if next_seconds > 86400 and next_seconds > previous_seconds:
+        raise HTTPException(400, "日志归类与手动补录合计超过一天，请检查是否重复记录")
+
+
 def classified_nodes(db: Session, user_id: int, start: date, end: date):
     nodes = db.query(TimeLogNode).filter(
         TimeLogNode.user_id == user_id,
@@ -122,9 +128,12 @@ def get_day(day: date = Query(default=None), user: User = Depends(get_current_ac
 def save_day(body: DailyInput, day: date = Query(...), user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     nodes, assignments = classified_nodes(db, user.id, day, day)
     automatic_seconds = sum(max(0, node.duration_seconds or 0) for node in nodes if assignments.get(node.id) in CATEGORIES)
-    if automatic_seconds + sum(body.manual_minutes.values()) * 60 > 86400:
-        raise HTTPException(400, "日志归类与手动补录合计超过一天，请检查是否重复记录")
     record = record_for(db, user.id, day)
+    previous_manual = json.loads(record.manual_minutes_json) if record else {}
+    check_total_increase(
+        automatic_seconds + sum(previous_manual.values()) * 60,
+        automatic_seconds + sum(body.manual_minutes.values()) * 60,
+    )
     if record is None:
         record = LongTermDailyRecord(user_id=user.id, record_date=day)
         db.add(record)
@@ -142,6 +151,16 @@ def set_node_category(node_id: int, body: ClassificationInput, user: User = Depe
     if node is None or not (node.label or "").strip() and node.task_id is None:
         raise HTTPException(404, "时间日志节点不存在")
     assignment = db.query(LongTermNodeCategory).filter_by(node_id=node_id, user_id=user.id).first()
+    nodes, assignments = classified_nodes(db, user.id, node.log_date, node.log_date)
+    record = record_for(db, user.id, node.log_date)
+    manual = json.loads(record.manual_minutes_json) if record else {}
+    previous_seconds = sum(manual.values()) * 60 + sum(
+        max(0, item.duration_seconds or 0) for item in nodes if assignments.get(item.id) in CATEGORIES
+    )
+    next_seconds = previous_seconds + max(0, node.duration_seconds or 0) * (
+        int(body.category in CATEGORIES) - int(assignments.get(node.id) in CATEGORIES)
+    )
+    check_total_increase(previous_seconds, next_seconds)
     if body.category is None:
         if assignment:
             db.delete(assignment)

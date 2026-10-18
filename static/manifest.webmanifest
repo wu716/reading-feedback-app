@@ -1,7 +1,7 @@
 {
   "name": "书然",
   "short_name": "书然",
-  "version": "1.5.0",
+  "version": "2.0.7",
   "description": "把目标拆成可推进的项目与时间片",
   "start_url": "/static/index.html",
   "scope": "/",

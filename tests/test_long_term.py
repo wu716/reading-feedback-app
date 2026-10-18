@@ -3,6 +3,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 import pytest
+from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -76,3 +77,33 @@ def test_calendar_period_boundaries():
     assert period_bounds("week", date(2026, 10, 18)) == (date(2026, 10, 12), date(2026, 10, 18))
     assert period_bounds("month", date(2026, 12, 18)) == (date(2026, 12, 1), date(2026, 12, 31))
     assert period_bounds("quarter", date(2026, 12, 18)) == (date(2026, 10, 1), date(2026, 12, 31))
+
+
+def test_classification_limits_daily_time_and_allows_repairing_existing_overflow(db):
+    user = person(db, "time-limit@example.com")
+    day = date(2026, 10, 18)
+    node = TimeLogNode(user_id=user.id, log_date=day, logged_at=datetime(2026, 10, 18, 10, tzinfo=BEIJING_TZ), label="读书", duration_seconds=1800)
+    db.add(node)
+    db.commit()
+    save_day(body(reading=1430), day=day, user=user, db=db)
+
+    with pytest.raises(HTTPException) as error:
+        set_node_category(node.id, ClassificationInput(category="reading"), user=user, db=db)
+    assert error.value.status_code == 400
+    assert db.query(LongTermNodeCategory).filter_by(node_id=node.id).first() is None
+
+    save_day(body(reading=1410), day=day, user=user, db=db)
+    result = set_node_category(node.id, ClassificationInput(category="reading"), user=user, db=db)
+    assert result["total_seconds"]["reading"] == 86400
+
+    # A legacy record or subsequently extended log can already exceed the limit.
+    node.duration_seconds = 3600
+    db.commit()
+    result = save_day(body(reading=1400), day=day, user=user, db=db)
+    assert result["total_seconds"]["reading"] == 1460 * 60
+    with pytest.raises(HTTPException):
+        save_day(body(reading=1405), day=day, user=user, db=db)
+    assert daily_payload(db, user.id, day)["manual_minutes"]["reading"] == 1400
+
+    result = set_node_category(node.id, ClassificationInput(category=None), user=user, db=db)
+    assert result["total_seconds"]["reading"] == 1400 * 60
