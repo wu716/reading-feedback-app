@@ -9,14 +9,19 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 
-from app.apk_version import apk_meets_min, read_apk_version_code, write_version_sidecar
+from app.apk_version import (
+    apk_meets_min,
+    read_apk_version,
+    read_apk_version_code,
+    write_version_sidecar,
+)
 from app.legacy_origin import canonical_url, is_legacy_singapore
 
 logger = logging.getLogger(__name__)
 
 GITHUB_APK_URL = (
     "https://github.com/wu716/reading-feedback-app/releases/download/"
-    "android-2.0.1/shuran.apk"
+    "android-2.0.8/shuran.apk"
 )
 # 线上 latest.json 若过旧，1.3.4 会误以为已是最新。接口永不低于此门槛。
 MIN_SHELL_VERSION_CODE = 20
@@ -120,52 +125,37 @@ def _apk_file_ok(path: Path) -> bool:
     return path.is_file() and path.stat().st_size > 1024
 
 
-def _remove_if_stale(path: Path) -> None:
-    if not path.is_file():
-        return
-    if apk_meets_min(path, MIN_SHELL_VERSION_CODE):
-        return
-    try:
-        path.unlink()
-        side = path.with_name(path.name + ".versioncode")
-        if side.is_file():
-            side.unlink()
-        logger.warning("Removed stale APK %s", path)
-    except OSError:
-        logger.exception("Failed to remove stale APK %s", path)
-
-
 def _cache_apk_from(url: str, dest: Path, expect_code: int | None = None) -> Path | None:
+    temporary = dest.with_name(dest.name + ".download")
     try:
         RELEASE_DIR.mkdir(parents=True, exist_ok=True)
         logger.info("Downloading Android package from %s", url)
         req = urllib.request.Request(url, headers={"User-Agent": "shuran-app"})
-        with urllib.request.urlopen(req, timeout=120) as resp, dest.open("wb") as out:
+        with urllib.request.urlopen(req, timeout=120) as resp, temporary.open("wb") as out:
             while True:
                 chunk = resp.read(64 * 1024)
                 if not chunk:
                     break
                 out.write(chunk)
+        version = read_apk_version(temporary)
+        if (
+            not _apk_file_ok(temporary)
+            or version is None
+            or version[0] < max(expect_code or 0, MIN_SHELL_VERSION_CODE)
+        ):
+            logger.warning("Downloaded APK from %s has an invalid or old manifest", url)
+            return None
+        temporary.replace(dest)
+        write_version_sidecar(dest, version[0])
+        return dest
     except Exception:
         logger.exception("Failed to cache APK from %s", url)
-        if dest.exists():
-            try:
-                dest.unlink()
-            except OSError:
-                pass
         return None
-    if not _apk_file_ok(dest):
-        return None
-    if not apk_meets_min(dest, MIN_SHELL_VERSION_CODE):
-        logger.warning("Cached APK from %s still below min shell; discarding", url)
+    finally:
         try:
-            dest.unlink()
+            temporary.unlink(missing_ok=True)
         except OSError:
-            pass
-        return None
-    code = expect_code or read_apk_version_code(dest) or MIN_SHELL_VERSION_CODE
-    write_version_sidecar(dest, code)
-    return dest
+            logger.exception("Failed to clean up temporary APK %s", temporary)
 
 
 def ensure_apk() -> Path | None:
@@ -173,13 +163,14 @@ def ensure_apk() -> Path | None:
     if local:
         return local
     dest = RELEASE_DIR / "shuran.apk"
-    _remove_if_stale(dest)
+    if dest.is_file():
+        # Preserve an unusable package for diagnosis; never overwrite it implicitly.
+        return None
     return _cache_apk_from(GITHUB_APK_URL, dest, expect_code=MIN_SHELL_VERSION_CODE)
 
 
 def fetch_apk_from_canonical() -> Path | None:
     dest = RELEASE_DIR / "shuran.apk"
-    _remove_if_stale(dest)
     return _cache_apk_from(
         canonical_url("/download/apk"),
         dest,
@@ -256,21 +247,23 @@ def build_info(request: Request | None = None) -> dict:
         download_url = origin + "/download/apk"
         windows_download_url = origin + "/download/windows"
     # latest = 可下载的新包；min = 兼容门槛。二者不能混用，否则每发一版都会把全员锁进强制更新页。
-    apk_code = read_apk_version_code(apk) if apk is not None else None
+    apk_version = read_apk_version(apk) if apk is not None else None
     min_code = max(
         int(meta.get("minVersionCode") or 0),
         MIN_SHELL_VERSION_CODE,
     )
     metadata_code = int(meta.get("versionCode") or 0)
-    package_code = int(apk_code or 0)
-    package_ready = apk is not None and package_code >= max(metadata_code, min_code)
-    # Never advertise metadata for a different (usually older) APK file.
-    reported_code = package_code if apk is not None else 0
-    reported_name = (
-        str(meta.get("versionName") or "") or MIN_SHELL_VERSION_NAME
-    ) if package_ready else ""
-    if _version_less(reported_name, MIN_SHELL_VERSION_NAME):
-        reported_name = MIN_SHELL_VERSION_NAME
+    package_code = apk_version[0] if apk_version else 0
+    package_name = apk_version[1] if apk_version else ""
+    package_ready = bool(
+        apk_version
+        and package_code >= min_code
+        and package_code == metadata_code
+        and package_name == str(meta.get("versionName") or "")
+    )
+    # Never advertise an update unless the APK bytes and release metadata agree.
+    reported_code = package_code if package_ready else 0
+    reported_name = package_name if package_ready else ""
     min_name = str(meta.get("minVersionName") or "") or MIN_SHELL_VERSION_NAME
     if _version_less(min_name, MIN_SHELL_VERSION_NAME):
         min_name = MIN_SHELL_VERSION_NAME
@@ -293,12 +286,11 @@ def build_info(request: Request | None = None) -> dict:
         "windows_version": windows_version_name(),
         "windows_update_in_place": True,
     }
-    if apk is not None:
+    if apk is not None and package_ready:
         size = apk.stat().st_size
         info["size_bytes"] = size
         info["size_mb"] = round(size / (1024 * 1024), 1)
-        if apk_code is not None:
-            info["apk_version_code"] = apk_code
+        info["apk_version_code"] = package_code
     else:
         info["size_bytes"] = 0
         info["size_mb"] = 0
@@ -335,12 +327,14 @@ async def download_apk(request: Request):
     required_code = max(
         MIN_SHELL_VERSION_CODE,
         int(meta.get("minVersionCode") or 0),
-        int(meta.get("versionCode") or 0),
     )
+    actual = read_apk_version(apk) if apk else None
     if (
-        apk
-        and apk_meets_min(apk, required_code)
-        and (read_apk_version_code(apk) or 0) >= required_code
+        apk is not None
+        and actual is not None
+        and actual[0] >= required_code
+        and actual[0] == int(meta.get("versionCode") or 0)
+        and actual[1] == str(meta.get("versionName") or "")
     ):
         return FileResponse(
             path=str(apk),
