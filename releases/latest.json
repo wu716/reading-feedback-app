@@ -1,8 +1,8 @@
 {
-  "versionCode": 50,
-  "versionName": "2.0.8",
+  "versionCode": 54,
+  "versionName": "2.0.12",
   "filename": "shuran.apk",
-  "notes": "书然 2.0.8：三击音量加打开「记」，保留锁屏双击音量减手电。荣耀手机请允许书然后台活动并锁定任务卡片。",
+  "notes": "书然 2.0.12：长期目标支持活动明细、阅读主题地图与分类消费报告；20 分钟工作片到点提醒。后台通知需开启系统通知权限。",
   "require_shell": true,
   "force": true,
   "minVersionCode": 20,
