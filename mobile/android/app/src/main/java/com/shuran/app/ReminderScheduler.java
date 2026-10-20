@@ -44,12 +44,17 @@ public final class ReminderScheduler {
     private static final String KEY_LAST_DAILY_FIRE = "last_daily_fire_ms";
     private static final String KEY_LAST_READING_FIRE = "last_reading_fire_ms";
     private static final String KEY_LAST_TODO_FIRE_PREFIX = "last_todo_fire_";
+    private static final String KEY_FOCUS_ID = "focus_id";
+    private static final String KEY_FOCUS_DEADLINE = "focus_deadline";
+    private static final String KEY_FOCUS_KIND = "focus_kind";
+    private static final String KEY_FOCUS_FIRED = "focus_fired_id";
 
     static final String ACTION_DAILY = "com.shuran.app.REMINDER_DAILY";
     static final String ACTION_POLL = "com.shuran.app.REMINDER_POLL";
     static final String ACTION_READING = "com.shuran.app.REMINDER_READING";
     static final String ACTION_TODO = "com.shuran.app.REMINDER_TODO";
     static final String ACTION_TEST = "com.shuran.app.REMINDER_TEST";
+    static final String ACTION_FOCUS = "com.shuran.app.REMINDER_FOCUS";
     static final String EXTRA_TODO_ID = "todo_id";
     static final String EXTRA_TODO_TEXT = "todo_text";
 
@@ -57,6 +62,9 @@ public final class ReminderScheduler {
     private static final int REQ_POLL = 42;
     private static final int REQ_READING = 43;
     private static final int REQ_TEST = 44;
+    private static final int REQ_FOCUS = 45;
+    private static final int REQ_FOCUS_BACKUP = 545;
+    private static final int REQ_FOCUS_SHOW = 145;
     private static final int REQ_DAILY_BACKUP = 541;
     private static final int REQ_READING_BACKUP = 543;
     private static final int REQ_DAILY_SHOW = 141;
@@ -105,6 +113,7 @@ public final class ReminderScheduler {
         if (!p.getBoolean(KEY_SYSTEM, true)) {
             return;
         }
+        restoreFocusTimer(context);
         boolean enabled = p.getBoolean(KEY_ENABLED, false);
         boolean hasLocal = hasStoredTodos(p);
         // 旧版 401/登出曾把 enabled 清掉但留下时间；升级后自动恢复，不要求当天再登录。
@@ -234,6 +243,8 @@ public final class ReminderScheduler {
                 fillTodo(context, intent, delivery);
             } else if (ACTION_TEST.equals(action)) {
                 fillTest(context, delivery);
+            } else if (ACTION_FOCUS.equals(action)) {
+                fillFocus(context, intent, delivery);
             } else if (ACTION_POLL.equals(action)) {
                 delivery.poll = true;
                 schedulePoll(context);
@@ -284,6 +295,83 @@ public final class ReminderScheduler {
                 "/static/index.html#user-center"
         );
         ReminderNotifications.showPrepared(context, delivery.notificationId, delivery.notification);
+    }
+
+    private static void fillFocus(Context context, Intent intent, Delivery delivery) {
+        int id = intent == null ? 0 : intent.getIntExtra(KEY_FOCUS_ID, 0);
+        SharedPreferences p = prefs(context);
+        if (id <= 0 || id != p.getInt(KEY_FOCUS_ID, 0)
+                || id == p.getInt(KEY_FOCUS_FIRED, 0)
+                || !p.getBoolean(KEY_SYSTEM, true)) return;
+        String kind = p.getString(KEY_FOCUS_KIND, "work");
+        String title = "break".equals(kind) ? "书然 · 休息到时" : "书然 · 工作片到时";
+        String message = "break".equals(kind) ? "休息结束了，准备好后开始下一项。" : "工作片结束了。休息，或选择下一项。";
+        delivery.userVisible = true;
+        delivery.notificationId = 9004;
+        delivery.notification = ReminderNotifications.build(context, title, message, "/static/projects.html#execution");
+        ReminderNotifications.showPrepared(context, delivery.notificationId, delivery.notification);
+        p.edit().putInt(KEY_FOCUS_FIRED, id).commit();
+    }
+
+    /** The server session id and deadline are authoritative; only one local slice can run. */
+    public static void setFocusTimer(Context context, JSONObject data) {
+        int id = data.optInt("id", 0);
+        long at = data.optLong("deadline_ms", 0L);
+        String kind = data.optString("kind", "");
+        SharedPreferences p = prefs(context);
+        if (data.optBoolean("completed", false) && id > 0
+                && id == p.getInt(KEY_FOCUS_ID, 0)) {
+            // Keep the natural-expiry alarm until it has been delivered.
+            return;
+        }
+        if (id > 0 && id == p.getInt(KEY_FOCUS_ID, 0)
+                && at == p.getLong(KEY_FOCUS_DEADLINE, 0L)
+                && id != p.getInt(KEY_FOCUS_FIRED, 0)) return;
+        cancelFocusAlarms(context);
+        if (id <= 0 || at <= System.currentTimeMillis()
+                || at > System.currentTimeMillis() + 181L * 60 * 1000
+                || !("work".equals(kind) || "break".equals(kind))) {
+            prefs(context).edit().remove(KEY_FOCUS_ID).remove(KEY_FOCUS_DEADLINE)
+                    .remove(KEY_FOCUS_KIND).commit();
+            return;
+        }
+        prefs(context).edit().putInt(KEY_FOCUS_ID, id).putLong(KEY_FOCUS_DEADLINE, at)
+                .putString(KEY_FOCUS_KIND, kind).commit();
+        scheduleFocusAlarms(context, id, at);
+    }
+
+    private static void restoreFocusTimer(Context context) {
+        SharedPreferences p = prefs(context);
+        int id = p.getInt(KEY_FOCUS_ID, 0);
+        long at = p.getLong(KEY_FOCUS_DEADLINE, 0L);
+        if (id > 0 && at > System.currentTimeMillis() && id != p.getInt(KEY_FOCUS_FIRED, 0)) {
+            scheduleFocusAlarms(context, id, at);
+        }
+    }
+
+    private static void scheduleFocusAlarms(Context context, int id, long at) {
+        if (!prefs(context).getBoolean(KEY_SYSTEM, true)) return;
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        setWakeup(context, am, at, pendingFocus(context, id, REQ_FOCUS), REQ_FOCUS_SHOW, true);
+        setBackupWakeup(am, at, pendingFocus(context, id, REQ_FOCUS_BACKUP));
+    }
+
+    private static PendingIntent pendingFocus(Context context, int id, int code) {
+        Intent intent = new Intent(context, ReminderAlarmReceiver.class);
+        intent.setAction(ACTION_FOCUS);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        intent.putExtra(KEY_FOCUS_ID, id);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
+        return PendingIntent.getBroadcast(context, code, intent, flags);
+    }
+
+    private static void cancelFocusAlarms(Context context) {
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        am.cancel(pendingFocus(context, 0, REQ_FOCUS));
+        am.cancel(pendingFocus(context, 0, REQ_FOCUS_BACKUP));
     }
 
     public static boolean scheduleTest(Context context, int seconds) {
@@ -520,6 +608,9 @@ public final class ReminderScheduler {
 
     private static void cancelAll(Context context) {
         clearLegacyReading(context);
+        cancelFocusAlarms(context);
+        prefs(context).edit().remove(KEY_FOCUS_ID).remove(KEY_FOCUS_DEADLINE)
+                .remove(KEY_FOCUS_KIND).commit();
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am == null) {
             return;

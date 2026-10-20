@@ -2,11 +2,11 @@
 # Run as root on the production host after pulling origin/main.
 set -euo pipefail
 cd /opt/shuran-app
-version_name=2.0.11
-version_code=53
+version_name=2.0.12
+version_code=54
 backup_dir=/opt/shuran-release-backups
 mkdir -p "$backup_dir"
-work_dir=$(mktemp -d "$backup_dir/upgrade-2.0.11.XXXXXX")
+work_dir=$(mktemp -d "$backup_dir/upgrade-2.0.12.XXXXXX")
 apk_new="$work_dir/shuran.apk"
 release_json="$work_dir/release.json"
 curl -fsSL -o "$release_json" \
@@ -61,6 +61,6 @@ import json, sys
 info = json.load(sys.stdin)
 print(json.dumps(info, ensure_ascii=False, indent=2))
 assert info.get("available") is True, "APK is unavailable"
-assert info.get("versionCode") == 53 and info.get("versionName") == "2.0.11", "Download version mismatch"
+assert info.get("versionCode") == 54 and info.get("versionName") == "2.0.12", "Download version mismatch"
 '
 printf '\nDeployment verified. Backup directory: %s\n' "$work_dir"

@@ -322,6 +322,12 @@ button.secondary:hover { background: #d3e1e7; }
 }
 .focus-panel.break .timer-display { color: var(--green); }
 .timer-caption, .reflection-panel p { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.focus-finished { margin: 15px 0; padding: 14px 16px; border-left: 3px solid #a56b4c; background: #f4ece0; border-radius: 4px; }
+.focus-finished strong { color: var(--ink); font-size: 15px; }
+.focus-finished p { margin: 5px 0 10px; color: var(--ink); font-size: 13px; line-height: 1.6; }
+.focus-finished button { min-height: 36px; }
+.focus-reminder-settings { margin: 10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.focus-reminder-settings button { margin-left: 6px; }
 .duration-row { display: flex; flex-wrap: wrap; gap: 18px; margin: 23px 0; }
 .duration-row label { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; }
 .duration-row input { width: 67px; text-align: center; }

@@ -98,6 +98,15 @@ public class ReminderJsBridge {
     }
 
     @JavascriptInterface
+    public void setFocusTimer(String json) {
+        try {
+            ReminderScheduler.setFocusTimer(activity.getApplicationContext(), new JSONObject(json));
+        } catch (Exception e) {
+            Log.e(TAG, "setFocusTimer failed", e);
+        }
+    }
+
+    @JavascriptInterface
     public boolean canScheduleExactAlarms() {
         return ReminderScheduler.canScheduleExact(activity.getApplicationContext());
     }

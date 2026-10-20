@@ -12,7 +12,12 @@ function element(selector) {
   }
   return elements.get(selector);
 }
+element('#focusFinished').hidden = true;
+element('#focusReminderSettings').hidden = true;
 const posted = [], sessions = [];
+const alarms = [], saved = new Map();
+let ticker;
+let simulatedNow;
 let plan = {queue:[],daily_tasks:[],work_minutes:20,break_minutes:5,paused:null,remaining_seconds:null};
 const overview = {goals:[],projects:[{id:1,title:'项目',outcome:'',stages:[],tasks:[
   {id:3,project_id:1,title:'已排入今天',state:'pending',can_start:true,blocked_by:[]},
@@ -30,10 +35,13 @@ function start(body) {
   sessions.unshift(row);plan.paused=null;plan.remaining_seconds=null;return row;
 }
 const context = {
+  Date:class extends Date { static now() { return simulatedNow ?? Date.now(); } },
   URLSearchParams,
-  document:{querySelector:element,addEventListener() {}},
-  localStorage:{getItem:()=> 'test-token'},location:{href:'',search:''},
-  setTimeout:()=>1,clearTimeout() {},setInterval() {},
+  document:{querySelector:element,addEventListener() {},hidden:false},
+  localStorage:{getItem:key=>key==='authToken' ? 'test-token' : saved.get(key) || null,
+    setItem:(key,value)=>saved.set(key,value)},location:{href:'',search:''},
+  ShuranNative:{hasPermission:()=>true,setFocusTimer:json=>alarms.push(JSON.parse(json))},
+  setTimeout:()=>1,clearTimeout() {},setInterval:fn=>{ticker=fn;},
   fetch:async(url,options={})=>{
     const body=options.body ? JSON.parse(options.body) : null;
     if(options.method==='POST')posted.push({url,body});
@@ -48,7 +56,10 @@ const context = {
     }
     else if(url.includes('/overview'))data=overview;
     else if(url.includes('/templates'))data={items:[]};
-    else if(url.includes('/sessions'))data={items:sessions};
+    else if(url.includes('/sessions')){
+      sessions.forEach(s=>{if(!s.ended_at && (simulatedNow ?? Date.now())>=Date.parse(s.deadline_at))s.ended_at=s.deadline_at;});
+      data={items:sessions};
+    }
     else if(url.includes('/api/schedule?'))data=schedule;
     else data={};
     return {ok:true,json:async()=>JSON.parse(JSON.stringify(data))};
@@ -83,5 +94,20 @@ async function click(selector){element(selector).listeners.get('click')();await 
  assert.equal(sessions[0].planned_seconds,733);
  await click('#switchWork');
  assert.equal(posted.at(-1).body.daily_task_id,7,'A returns after B');
+ assert.equal(alarms.at(-1).id,sessions[0].id,'an active slice schedules the native alarm');
+ await click('#pauseWork');
+ assert.equal(alarms.at(-1).id,undefined,'pausing cancels the native alarm');
+ assert.equal(element('#focusFinished').hidden,true,'pausing does not show a completion reminder');
+ await click('#startWork');
+ simulatedNow=Date.parse(sessions[0].deadline_at)+1000;
+ ticker(); await flush();
+ assert.equal(element('#focusFinished').hidden,false,'expiry keeps a visible reminder');
+ assert.equal(element('#focusFinishedTitle').textContent,'工作片到时');
+ assert.equal(sessions[0].ended_at,sessions[0].deadline_at,'server settles the slice at the deadline');
+ assert.equal(alarms.at(-1).completed,true,'natural expiry preserves the pending native reminder');
+ await click('#focusAcknowledge');
+ assert.equal(element('#focusFinished').hidden,true);
+ ticker(); await flush();
+ assert.equal(element('#focusFinished').hidden,true,'acknowledged slice does not remind twice');
  console.log('PASS queue selection, A → B → A rotation, and pause/resume remaining time');
 })().catch(error=>{console.error(error);process.exitCode=1;});

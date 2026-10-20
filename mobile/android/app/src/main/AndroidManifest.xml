@@ -94,6 +94,7 @@
                 <action android:name="com.shuran.app.REMINDER_TODO" />
                 <action android:name="com.shuran.app.REMINDER_POLL" />
                 <action android:name="com.shuran.app.REMINDER_TEST" />
+                <action android:name="com.shuran.app.REMINDER_FOCUS" />
             </intent-filter>
         </receiver>
 

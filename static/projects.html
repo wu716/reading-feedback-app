@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>项目与时间 · 书然</title>
-  <link rel="stylesheet" href="/static/css/projects.css?v=20261020slice1">
+  <link rel="stylesheet" href="/static/css/projects.css?v=20261020focus1">
   <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20261020slice1">
   <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261020slice1">
-  <script defer src="/static/js/projects.js?v=20261018momenttask1"></script>
+  <script defer src="/static/js/projects.js?v=20261020focus1"></script>
   <script defer src="/static/js/app-tabbar.js?v=20261018momenttask1"></script>
 </head>
 <body>
@@ -51,6 +51,7 @@
           <a id="activeProjectLink" hidden>查看所属项目</a>
           <div id="timerDisplay" class="timer-display">20:00</div>
           <div id="timerCaption" class="timer-caption">准备开始工作片</div>
+          <div id="focusFinished" class="focus-finished" role="alert" hidden><strong id="focusFinishedTitle"></strong><p id="focusFinishedText"></p><button type="button" id="focusAcknowledge" class="secondary">知道了</button></div>
           <progress id="sliceProgress" value="0" max="1200" aria-label="当前时间片进度"></progress>
           <div class="duration-row"><label>工作 <input id="workMinutes" type="number" min="1" max="180" value="20"> 分</label><label>休息 <input id="breakMinutes" type="number" min="1" max="180" value="5"> 分</label></div>
           <div class="control-row" id="timerControls">
@@ -59,6 +60,7 @@
             <button type="button" id="endWork" class="secondary" disabled>结束片段</button>
             <button type="button" id="switchWork" class="secondary" disabled>挂起并做下一项</button>
           </div>
+          <p class="focus-reminder-settings" id="focusReminderSettings" hidden>后台提醒需要系统通知权限。<button type="button" id="focusEnableNotifications" class="plain-action">开启到点通知</button></p>
           <details id="actualStopWrap" hidden><summary>更正实际结束时间</summary><label>如果提前离开，填实际停止工作的时间 <input id="actualStopAt" type="datetime-local"></label></details>
           <div id="timeDecision" class="time-decision" hidden><p id="decisionCaption">这一片已结束，未完成的任务保留在轮转中。</p><button type="button" data-next="break">休息 5 分钟</button><button type="button" data-next="switch">做下一项</button><button type="button" data-next="continue" class="secondary">再做当前任务一片</button></div>
           <div class="rotation-panel"><h3>本轮任务</h3><p>按顺序轮转；完成或等待前置的任务会跳过。</p><ol id="rotationQueue"></ol><div class="queue-add"><label>加入任务 <select id="focusTask"></select></label><button type="button" id="addQueueTask" class="secondary">加入轮转</button><button type="button" id="addTodayQueue" class="secondary">加入当天可做任务</button></div></div>

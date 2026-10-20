@@ -6,6 +6,84 @@
   const params = new URLSearchParams(location.search);
   state.plan = {queue:[], daily_tasks:[], work_minutes:20, break_minutes:5};
   let noticeTimer, actionBusy = false, expiring = false, hydrated = false;
+  let finishedId = null, soundContext = null;
+
+  function nativeBridge() { return globalThis.ShuranNative || null; }
+  function syncFocusAlarm() {
+    const native = nativeBridge();
+    if (!native || !native.setFocusTimer) return;
+    const active = state.active;
+    const latest = state.sessions.find(s => s.source === 'timer');
+    const completed = !active && latest?.ended_at && latest?.deadline_at
+      && Math.abs(Date.parse(latest.ended_at) - Date.parse(latest.deadline_at)) <= 1000
+      && Date.now() + (state.clockOffset || 0) - Date.parse(latest.deadline_at) < 60 * 1000;
+    try {
+      native.setFocusTimer(JSON.stringify(active && active.source === 'timer' ? {
+        id:active.id, kind:active.kind,
+        deadline_ms:Date.parse(active.deadline_at) - (state.clockOffset || 0)
+      } : completed ? {id:latest.id, completed:true} : {}));
+    } catch (_) { /* The persistent in-page alert remains available. */ }
+  }
+  function notificationSettings() {
+    const native = nativeBridge(), supported = native?.hasPermission || globalThis.Notification;
+    let granted = false;
+    try { granted = native ? !!native.hasPermission() : globalThis.Notification?.permission === 'granted'; }
+    catch (_) { /* Permission can change while the app is open. */ }
+    $('#focusReminderSettings').hidden = !supported || granted;
+  }
+  function acknowledgeFinished() {
+    if (finishedId != null) localStorage.setItem('focusFinishedSession', String(finishedId));
+    finishedId = null;
+    $('#focusFinished').hidden = true;
+  }
+  function prepareSound() {
+    if (soundContext) return;
+    const Audio = globalThis.AudioContext || globalThis.webkitAudioContext;
+    try { if (Audio) { soundContext = new Audio(); soundContext.resume(); } } catch (_) { soundContext = null; }
+  }
+  function soundFinished() {
+    if (!soundContext) return;
+    try {
+      soundContext.resume();
+      const oscillator = soundContext.createOscillator(), gain = soundContext.createGain();
+      oscillator.type = 'sine'; oscillator.frequency.value = 660;
+      gain.gain.setValueAtTime(0.001, soundContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.11, soundContext.currentTime + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.001, soundContext.currentTime + 0.32);
+      oscillator.connect(gain).connect(soundContext.destination);
+      oscillator.start(); oscillator.stop(soundContext.currentTime + 0.33);
+    } catch (_) { /* The visible reminder still works without audio. */ }
+  }
+  function showFinished(session, live = false) {
+    if (!session || localStorage.getItem('focusFinishedSession') === String(session.id)) return;
+    const isNew = finishedId !== session.id;
+    finishedId = session.id;
+    $('#focusFinishedTitle').textContent = session.kind === 'break' ? '休息到时' : '工作片到时';
+    $('#focusFinishedText').textContent = session.kind === 'break'
+      ? '这段休息结束了。准备好后开始下一项。'
+      : '这段工作已到点并挂起。可以休息，或选择下一项。';
+    $('#focusFinished').hidden = false;
+    if (!isNew || !live) return;
+    soundFinished();
+    if (!nativeBridge() && document.hidden && globalThis.Notification?.permission === 'granted') {
+      try { new globalThis.Notification('书然 · ' + $('#focusFinishedTitle').textContent, {
+        body:$('#focusFinishedText').textContent, tag:'shuran-focus-' + session.id
+      }); } catch (_) { /* The in-page reminder remains visible. */ }
+    }
+  }
+  function restoreFinished() {
+    const active = state.active;
+    if (active && Date.parse(active.deadline_at) > Date.now() + (state.clockOffset || 0)) {
+      if (finishedId && finishedId !== active.id) acknowledgeFinished();
+      return;
+    }
+    const last = state.sessions.find(s => s.source === 'timer');
+    if (!active && last?.ended_at && last?.deadline_at
+        && Date.parse(last.ended_at) >= Date.parse(last.deadline_at) - 1000
+        && Date.now() + (state.clockOffset || 0) - Date.parse(last.deadline_at) < 6 * 3600 * 1000) {
+      showFinished(last);
+    }
+  }
 
   function notice(message, error = false) {
     const box = $('#notice'); box.textContent = message; box.classList.toggle('error', error); box.hidden = false;
@@ -89,6 +167,7 @@
     if (!overview.projects.some(p => p.id === state.projectId)) state.projectId = overview.projects[0]?.id ?? null;
     if (!currentProject()?.tasks.some(t => t.id === state.taskId)) state.taskId = null;
     state.active = state.sessions.find(s => !s.ended_at) || null;
+    syncFocusAlarm(); notificationSettings();
     if (!hydrated) {
       $('#workMinutes').value = state.plan.work_minutes; $('#breakMinutes').value = state.plan.break_minutes;
       const task = allTasks().find(t => t.id === Number(params.get('task')));
@@ -103,6 +182,7 @@
     const [sessions, overview, tasks] = await Promise.all([request('/sessions'), request('/overview'), loadTodayTasks()]);
     state.sessions = sessions.items; state.overview = overview; state.todayTasks = tasks;
     state.active = state.sessions.find(s => !s.ended_at) || null;
+    syncFocusAlarm(); notificationSettings();
     renderExecution(); renderSessions();
   }
   async function run(task) {
@@ -202,6 +282,7 @@
     }).join('') || '<li class="empty">先加入 A、B、C；每片结束后，选择下一项即可轮转。</li>';
     $('#dailyProjectLink').hidden = !params.get('daily');
     $('#confirmDailyProject').disabled = !state.projectId;
+    restoreFinished();
     tick();
   }
   function tick() {
@@ -212,6 +293,7 @@
     $('#timerCaption').textContent = active ? `${active.kind === 'break' ? '休息中' : '工作中'} · 到点自动挂起` : state.plan.paused ? '已暂停 · 恢复后接着剩余时间' : lastWork() ? '等待下一步 · 当前不计时' : '准备开始工作片';
     $('#sliceProgress').max = budget; $('#sliceProgress').value = active ? budget - remaining : 0;
     if (active && remaining === 0 && !expiring && !actionBusy) {
+      showFinished(active, true);
       expiring = true;
       refreshExecution().then(() => notice(active.kind === 'break' ? '休息到时，准备好后开始下一项' : '工作片到时，已挂起。选择休息或轮转到下一项')).catch(error => notice(error.message, true)).finally(() => { expiring = false; });
     }
@@ -377,11 +459,18 @@
       await startWork(task);
     }
   }
-  $('#startWork').addEventListener('click', () => run(async () => {
+  $('#startWork').addEventListener('click', () => { prepareSound(); run(async () => {
     if (state.plan.paused) { await post('/execution/resume', {}); await afterChange('已恢复剩余时间'); }
     else if (lastWork()) await chooseNext('switch');
     else await startWork();
-  }));
+  }); });
+  $('#focusAcknowledge').addEventListener('click', acknowledgeFinished);
+  $('#focusEnableNotifications').addEventListener('click', async () => {
+    const native = nativeBridge();
+    if (native?.requestPermission) native.requestPermission();
+    else if (globalThis.Notification?.requestPermission) await globalThis.Notification.requestPermission();
+    notificationSettings();
+  });
   $('#pauseWork').addEventListener('click', () => run(() => stopCurrent('已暂停；暂停期间不计任务实耗', true)));
   $('#endWork').addEventListener('click', () => run(() => stopCurrent('片段已结束')));
   $('#switchWork').addEventListener('click', () => run(() => chooseNext('switch')));
