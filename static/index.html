@@ -19,7 +19,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20261018longterm3">
+    <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20261020ledger1">
     <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd4">
     <link rel="stylesheet" href="/static/css/schedule-log.css?v=20261020slice1">
     <style>
@@ -3435,7 +3435,7 @@
     </style>
     <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261017paper1">
     <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261017paper1">
-    <link rel="stylesheet" href="/static/css/long-term.css?v=20261018longterm3">
+    <link rel="stylesheet" href="/static/css/long-term.css?v=20261020ledger1">
 </head>
 <body>
     <script>
@@ -3444,7 +3444,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261017paper1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.10';
+            window.SHURAN_VERSION = '2.0.11';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -4100,33 +4100,58 @@
         <section id="long-term" class="content-section">
             <div class="lt-page">
                 <header class="lt-heading">
-                    <div><p class="lt-eyebrow">时间 · 注意力 · 金钱</p><h1>长期目标</h1></div>
+                    <div><p class="lt-eyebrow">时间 · 阅读 · 生活</p><h1>长期目标</h1></div>
                     <div class="lt-date-nav"><button type="button" id="ltPrevDay" aria-label="前一天">←</button><input type="date" id="ltDate" aria-label="记录日期"><button type="button" id="ltNextDay" aria-label="后一天">→</button></div>
                 </header>
                 <div class="lt-overview" aria-label="当天概览">
-                    <div class="lt-main-metric"><span>当天投入</span><strong id="ltTotalTime">—</strong></div>
-                    <div class="lt-overview-detail"><div class="lt-distribution" id="ltDistribution" aria-hidden="true"></div><p id="ltOverviewHint">从一个方向开始，记录今天的投入。</p></div>
+                    <div class="lt-main-metric"><span>当天时间投入</span><strong id="ltTotalTime">—</strong></div>
+                    <div class="lt-overview-detail"><div class="lt-distribution" id="ltDistribution" aria-hidden="true"></div><p id="ltOverviewHint">记录具体的事，慢慢看见自己的方向。</p></div>
                     <span class="lt-status" id="ltStatus" role="status">正在读取</span>
                 </div>
-                <div class="lt-view-tabs" role="group" aria-label="长期目标视图"><button type="button" class="active" data-lt-view="daily" aria-pressed="true">每日记录</button><button type="button" data-lt-view="report" aria-pressed="false">统计报告 <span>↗</span></button></div>
+                <div class="lt-view-tabs" role="group" aria-label="长期目标视图">
+                    <button type="button" class="active" data-lt-view="daily" aria-pressed="true">每日记录</button>
+                    <button type="button" data-lt-view="report" aria-pressed="false">统计报告</button>
+                    <button type="button" data-lt-view="settings" aria-pressed="false">目标与分类</button>
+                </div>
                 <div id="ltDailyPanel">
                     <fieldset id="ltDayFields" class="lt-workspace" disabled>
                         <div class="lt-time-column">
-                            <div class="lt-panel-heading"><h2>时间花在哪里</h2><span>选择一个方向，展开记录</span></div>
+                            <div class="lt-panel-heading"><h2>今天做了什么</h2><span>每个方向可以记录多次</span></div>
                             <div id="ltManual" class="lt-activity-list"></div>
-                            <details class="lt-log-review"><summary><span>从时间日志归类</span><span id="ltNodeCount">查看</span></summary><p class="lt-note">核对上一段实际用时后选一个方向；这些时间无需重复补录。</p><div id="ltNodes"></div></details>
+                            <details class="lt-log-review"><summary><span>从时间日志归类</span><span id="ltNodeCount">查看</span></summary><p class="lt-note">选择一个主要方向，补充细节。日志时长自动关联，只计入一次；非计划占用在活动详情中标记。</p><div id="ltNodes"></div></details>
+                            <div id="ltLegacy"></div>
+                            <label class="lt-check"><input id="ltDayConfirmed" type="checkbox">我已核对当天的活动记录（没有活动也可以确认）</label>
                         </div>
                         <aside class="lt-expenses" aria-labelledby="ltExpenseHeading">
-                            <div class="lt-panel-heading"><h2 id="ltExpenseHeading">每日开销</h2><span>每天确认</span></div>
-                            <section class="lt-expense-section"><h3>注意力</h3><p class="lt-note">哪些事占用了你的注意力？</p><div id="ltAttention"></div><div class="lt-attention-actions"><button type="button" class="lt-text-button" id="ltAddAttention">＋ 添加一项</button><button type="button" class="lt-text-button" id="ltNoAttention">今天无开销</button></div></section>
-                            <section class="lt-expense-section"><h3>金钱</h3><label for="ltMoney">今天的支出</label><div class="lt-money-input"><span>¥</span><input id="ltMoney" type="number" min="0" step="0.01" inputmode="decimal" placeholder="填写金额，无支出填 0"></div><label class="lt-investment-label" for="ltInvestment">定投金额 <span>单独记录，不计入支出</span></label><div class="lt-money-input"><span>¥</span><input id="ltInvestment" type="number" min="0" step="0.01" inputmode="decimal" value="0"></div></section>
-                            <div class="lt-save-area"><p class="lt-note" id="ltSaveHint">确认两类开销后，保存这一天。</p><button type="button" class="lt-primary" id="ltSave">保存这一天 <span>↗</span></button></div>
+                            <div class="lt-panel-heading"><h2 id="ltExpenseHeading">每日消费</h2><span>人民币 · 定投单列</span></div>
+                            <div id="ltExpenseList"></div>
+                            <button type="button" class="lt-text-button" id="ltAddExpense">＋ 记一笔消费或退款</button>
+                            <div id="ltExpenseTotals" class="lt-expense-totals"></div>
+                            <label class="lt-check"><input type="checkbox" id="ltExpenseConfirmed">我已核对当天消费（没有消费也可以确认）</label>
+                            <p class="lt-note">退款记在实际到账日。未确认日期会在报告中提示，不推断为零消费。</p>
                         </aside>
                     </fieldset>
+                    <div class="lt-save-area lt-save-toolbar">
+                        <p class="lt-note" id="ltSaveHint">记录后保存，跨设备查看。</p>
+                        <button type="button" class="lt-text-button" id="ltReload">重新读取</button>
+                        <button type="button" class="lt-text-button" id="ltDraftExport">导出当前草稿</button>
+                        <button type="button" class="lt-primary" id="ltSave">保存这一天 ↗</button>
+                    </div>
                 </div>
-                <section id="ltReportPanel" hidden aria-label="统计报告"><div class="lt-report-header"><h2>回看你的投入</h2><div class="lt-report-tabs" role="group" aria-label="报告周期"><button type="button" data-period="day" class="active" aria-pressed="true">日报</button><button type="button" data-period="week" aria-pressed="false">周报</button><button type="button" data-period="month" aria-pressed="false">月报</button><button type="button" data-period="quarter" aria-pressed="false">季度报</button></div></div><div id="ltReport"></div></section>
+                <section id="ltReportPanel" hidden aria-label="统计报告">
+                    <div class="lt-report-header"><h2>回看你的投入</h2><div class="lt-report-tabs" role="group" aria-label="报告周期">
+                        <button type="button" data-period="day" class="active" aria-pressed="true">日报</button><button type="button" data-period="week" aria-pressed="false">周报</button><button type="button" data-period="month" aria-pressed="false">月报</button><button type="button" data-period="quarter" aria-pressed="false">季报</button><button type="button" data-period="year" aria-pressed="false">年报</button>
+                    </div></div><div id="ltReport"></div>
+                </section>
+                <section id="ltSettingsPanel" hidden aria-label="目标与分类">
+                    <p class="lt-note">只为自己在意的方向设目标。开始日期限定统计范围，周期目标值不按剩余天数自动折算。</p>
+                    <fieldset id="ltSettingsFields" disabled><h2>目标与预算</h2><div id="ltGoals"></div><button type="button" class="lt-text-button" id="ltAddGoal">＋ 添加目标或预算</button>
+                    <h2 class="lt-section-title">消费分类</h2><p class="lt-note">可以改名、新增或停用。停用后历史账目仍保留原分类。</p><div id="ltCategories"></div><button type="button" class="lt-text-button" id="ltAddCategory">＋ 新增分类</button></fieldset>
+                    <div class="lt-save-toolbar"><p id="ltSettingsStatus" class="lt-note" role="status"></p><button type="button" class="lt-text-button" id="ltReloadSettings">重新读取设置</button><button type="button" class="lt-text-button" id="ltExportSettings">导出设置草稿</button><button type="button" class="lt-primary" id="ltSaveSettings">保存目标与分类</button></div>
+                </section>
             </div>
         </section>
+
 
         <section id="time-log" class="content-section">
             <div class="section-header">
@@ -6454,7 +6479,7 @@
     <script src="/static/js/today-dashboard.js?v=20261017paper1"></script>
     <script src="/static/js/daily-schedule.js?v=20261020slice1"></script>
     <script src="/static/js/time-log.js?v=20261018momenttask1"></script>
-    <script src="/static/js/long-term.js?v=20261018longterm3"></script>
+    <script src="/static/js/long-term.js?v=20261020ledger1"></script>
     <script src="/static/js/activity-review.js?v=20261017paper1"></script>
     <script src="/static/js/ideas.js?v=20261018momenttask1"></script>
     <script src="/static/js/desktop-shell.js?v=20261017paper1"></script>

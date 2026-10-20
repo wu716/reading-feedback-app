@@ -495,6 +495,29 @@ class LongTermNodeCategory(Base):
     category = Column(String(32), nullable=False)
 
 
+class LongTermLedgerDay(Base):
+    """Versioned detailed ledger; legacy daily rows remain intact for audit."""
+    __tablename__ = "long_term_ledger_days"
+    __table_args__ = (UniqueConstraint("user_id", "record_date", name="uq_lt_ledger_user_day"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    record_date = Column(Date, nullable=False, index=True)
+    revision = Column(Integer, nullable=False, default=1)
+    payload_json = Column(Text, nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
+
+class LongTermPreferences(Base):
+    __tablename__ = "long_term_preferences"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    revision = Column(Integer, nullable=False, default=1)
+    payload_json = Column(Text, nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
+
 class ReadingEntry(Base):
     """阅读记录（内容、笔记、时长）"""
     __tablename__ = "reading_entries"

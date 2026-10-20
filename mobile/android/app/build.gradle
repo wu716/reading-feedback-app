@@ -16,8 +16,8 @@ android {
         applicationId "com.shuran.app"
         minSdk 24
         targetSdk 33
-        versionCode 52
-        versionName "2.0.10"
+        versionCode 53
+        versionName "2.0.11"
     }
 
     signingConfigs {

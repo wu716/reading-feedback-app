@@ -91,6 +91,27 @@ def classified_nodes(db: Session, user_id: int, start: date, end: date):
 
 
 def daily_payload(db: Session, user_id: int, day: date):
+    from app.models import LongTermLedgerDay
+    from app.routers.long_term_details import read_range, aggregate
+    if db.query(LongTermLedgerDay).filter_by(user_id=user_id, record_date=day).first():
+        detail = read_range(db, user_id, day, day)[0]
+        summary = aggregate([detail])
+        automatic = {key: 0 for key in CATEGORIES}
+        manual = {key: 0 for key in CATEGORIES}
+        by_node = {}
+        for activity in detail["activities"]:
+            if activity.get("source_node_id"):
+                automatic[activity["category"]] += activity["seconds"]
+                by_node[activity["source_node_id"]] = activity["category"]
+            else:
+                manual[activity["category"]] += activity["seconds"] / 60
+        return {
+            "date": day.isoformat(), "recorded": True, "manual_minutes": manual,
+            "automatic_seconds": automatic, "total_seconds": summary["total_seconds"],
+            "attention_items": detail["legacy_attention"], "attention_minutes": summary["attention_minutes"],
+            "money_cents": summary["money_cents"], "investment_cents": summary["investment_cents"],
+            "nodes": [{"id": n["id"], "label": n["title"], "seconds": n["seconds"], "category": by_node.get(n["id"])} for n in detail["nodes"]],
+        }
     record = record_for(db, user_id, day)
     nodes, assignments = classified_nodes(db, user_id, day, day)
     # Present only written nodes, in the same order as the time log.
@@ -126,6 +147,7 @@ def get_day(day: date = Query(default=None), user: User = Depends(get_current_ac
 
 @router.put("/day")
 def save_day(body: DailyInput, day: date = Query(...), user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    reject_legacy_write(db, user.id, day)
     nodes, assignments = classified_nodes(db, user.id, day, day)
     automatic_seconds = sum(max(0, node.duration_seconds or 0) for node in nodes if assignments.get(node.id) in CATEGORIES)
     record = record_for(db, user.id, day)
@@ -150,6 +172,7 @@ def set_node_category(node_id: int, body: ClassificationInput, user: User = Depe
     node = db.query(TimeLogNode).filter_by(id=node_id, user_id=user.id, deleted_at=None).first()
     if node is None or not (node.label or "").strip() and node.task_id is None:
         raise HTTPException(404, "时间日志节点不存在")
+    reject_legacy_write(db, user.id, node.log_date)
     assignment = db.query(LongTermNodeCategory).filter_by(node_id=node_id, user_id=user.id).first()
     nodes, assignments = classified_nodes(db, user.id, node.log_date, node.log_date)
     record = record_for(db, user.id, node.log_date)
@@ -172,56 +195,18 @@ def set_node_category(node_id: int, body: ClassificationInput, user: User = Depe
     return daily_payload(db, user.id, node.log_date)
 
 
+def reject_legacy_write(db, user_id, day):
+    from app.models import LongTermLedgerDay
+    if db.query(LongTermLedgerDay).filter_by(user_id=user_id, record_date=day).first():
+        raise HTTPException(409, "当天已使用明细记录，请刷新到新版页面后修改")
+
+
 def period_bounds(period: str, anchor: date) -> tuple[date, date]:
-    if period == "week":
-        start = anchor - timedelta(days=anchor.weekday())
-        return start, start + timedelta(days=6)
-    if period == "month":
-        start = anchor.replace(day=1)
-        next_month = start.replace(year=start.year + 1, month=1) if start.month == 12 else start.replace(month=start.month + 1)
-        return start, next_month - timedelta(days=1)
-    if period == "quarter":
-        first_month = ((anchor.month - 1) // 3) * 3 + 1
-        start = anchor.replace(month=first_month, day=1)
-        next_start = start.replace(year=start.year + 1, month=1) if first_month == 10 else start.replace(month=first_month + 3)
-        return start, next_start - timedelta(days=1)
-    return anchor, anchor
+    from app.routers.long_term_details import calendar_bounds
+    return calendar_bounds(period, anchor)
 
 
 @router.get("/report")
-def get_report(period: Literal["day", "week", "month", "quarter"], anchor: date = Query(default=None), user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
-    start, end = period_bounds(period, anchor or beijing_today())
-    rows = db.query(LongTermDailyRecord).filter(
-        LongTermDailyRecord.user_id == user.id,
-        LongTermDailyRecord.record_date >= start,
-        LongTermDailyRecord.record_date <= end,
-    ).order_by(LongTermDailyRecord.record_date).all()
-    nodes, assignments = classified_nodes(db, user.id, start, end)
-    totals = {key: 0 for key in CATEGORIES}
-    attention_by_name = {}
-    days = {}
-    for row in rows:
-        manual = json.loads(row.manual_minutes_json)
-        for key in CATEGORIES:
-            totals[key] += manual.get(key, 0) * 60
-        attention = json.loads(row.attention_items_json)
-        for item in attention:
-            attention_by_name[item["name"]] = attention_by_name.get(item["name"], 0) + item["minutes"]
-        days[row.record_date.isoformat()] = {
-            "date": row.record_date.isoformat(), "attention_minutes": sum(item["minutes"] for item in attention),
-            "money_cents": row.money_cents, "investment_cents": row.investment_cents,
-        }
-    for node in nodes:
-        category = assignments.get(node.id)
-        if category in totals and ((node.label or "").strip() or node.task_id is not None):
-            totals[category] += max(0, node.duration_seconds or 0)
-    return {
-        "period": period, "start": start.isoformat(), "end": end.isoformat(),
-        "recorded_days": len(rows), "total_days": (end - start).days + 1,
-        "total_seconds": totals,
-        "attention_minutes": sum(day["attention_minutes"] for day in days.values()),
-        "attention_by_name": attention_by_name,
-        "money_cents": sum(day["money_cents"] for day in days.values()),
-        "investment_cents": sum(day["investment_cents"] for day in days.values()),
-        "days": list(days.values()),
-    }
+def get_report(period: Literal["day", "week", "month", "quarter", "year"], anchor: date = Query(default=None), user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    from app.routers.long_term_details import report_payload
+    return report_payload(db, user.id, period, anchor or beijing_today())

@@ -21,6 +21,8 @@ from app.models import (
     TimeLogNode,
     LongTermDailyRecord,
     LongTermNodeCategory,
+    LongTermLedgerDay,
+    LongTermPreferences,
     User,
 )
 from app.project_models import (
@@ -139,6 +141,8 @@ def build_backup_zip(db: Session) -> bytes:
         "process_templates.csv": ProcessTemplate,
         "long_term_daily_records.csv": LongTermDailyRecord,
         "long_term_node_categories.csv": LongTermNodeCategory,
+        "long_term_ledger_days.csv": LongTermLedgerDay,
+        "long_term_preferences.csv": LongTermPreferences,
     }.items():
         files[name] = _model_csv(db, model)
 
