@@ -106,12 +106,23 @@ class WorkSession(Base):
     started_at = Column(DateTime(timezone=False), nullable=False)
     ended_at = Column(DateTime(timezone=False), nullable=True)
     planned_minutes = Column(Integer, nullable=True)
+    planned_seconds = Column(Integer, nullable=True)
     correction_note = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     __table_args__ = (
         CheckConstraint("ended_at IS NULL OR ended_at > started_at", name="ck_work_session_interval"),
         Index("ix_work_session_user_start", "user_id", "started_at"),
     )
+
+
+class ExecutionPlan(Base):
+    __tablename__ = "execution_plans"
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    queue_json = Column(Text, nullable=False, default="[]")
+    work_minutes = Column(Integer, nullable=False, default=20)
+    break_minutes = Column(Integer, nullable=False, default=5)
+    paused_session_id = Column(Integer, ForeignKey("work_sessions.id"), nullable=True)
+    remaining_seconds = Column(Integer, nullable=True)
 
 
 class TimeActivityAssessment(Base):

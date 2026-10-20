@@ -195,6 +195,9 @@
     }
 
     function renderDoneBtn(task) {
+        if (task.project_task_id && task.project_id) {
+            return `<a class="flow-project-finish" href="/static/projects.html?task=${task.project_task_id}&finish=1#taskDetail">${task.completed ? '已验收' : '验收'}</a>`;
+        }
         const doneLabel = escapeHtml(t('schedule.done', '完成'));
         if (task.completed) {
             const undoLabel = escapeHtml(t('schedule.undoDone', '取消完成'));
@@ -207,6 +210,14 @@
         if (mode !== 'list' && !task.completed && !(task.note || '').trim()) return '';
         const label = escapeHtml(t('schedule.note', '执行反馈'));
         return `<div class="flow-feedback"><span class="flow-feedback-label">${label}</span><input type="text" class="flow-note" maxlength="500" placeholder="${label}" value="${escapeHtml(task.note || '')}" data-act="note" aria-label="${label}"></div>`;
+    }
+
+    function renderTaskLinks(task) {
+        if ((task.children || []).length) return '';
+        const date = encodeURIComponent(currentDay());
+        const project = task.project_id ? `<a href="/static/projects.html?task=${task.project_task_id}#taskDetail">${escapeHtml(task.project_title || '所属项目')}</a>` : `<a href="/static/projects.html?daily=${task.id}">纳入项目</a>`;
+        const execute = task.completed ? '' : `<a href="/static/projects.html?date=${date}&execute=daily:${task.id}#execution">加入时间片</a>`;
+        return `<div class="flow-project-links">${project}<span>已投入 ${task.actual_minutes || 0} 分</span>${execute}</div>`;
     }
 
     function renderToolbar() {
@@ -315,6 +326,7 @@
                     ${renderTitle(task)}
                 </div>
                 ${renderQuickAttributes(task)}
+                ${renderTaskLinks(task)}
                 ${renderNote(task)}
                 ${renderEditActions(true)}
                 ${renderSplitRow(task)}
@@ -425,6 +437,7 @@
                 </div>
                 ${path}
                 ${extra.length ? `<div class="flow-task-meta">${extra.map((x) => `<span class="flow-mark">${escapeHtml(x)}</span>`).join('')}</div>` : ''}
+                ${renderTaskLinks(task)}
                 ${renderNote(task)}
                 ${renderEditActions(false)}
                 ${task.children && task.children.length ? renderFlowGroups(task.children) : ''}
@@ -529,6 +542,13 @@
         const list = document.getElementById('scheduleList');
         if (!list) return;
         renderToolbar();
+        let projectEntry = document.getElementById('scheduleProjectEntry');
+        if (!projectEntry) {
+            projectEntry = document.createElement('a'); projectEntry.id = 'scheduleProjectEntry';
+            projectEntry.className = 'schedule-project-entry'; projectEntry.textContent = '从项目安排任务';
+            list.before(projectEntry);
+        }
+        projectEntry.href = `/static/projects.html?date=${encodeURIComponent(currentDay())}#projectTitle`;
         setHint();
         renderLater();
         if (!(data.tasks || []).length) {
@@ -962,7 +982,8 @@
         const root = document.getElementById('homeSchedule') || document.getElementById('schedule');
         if (!root || root.dataset.bound) return;
         root.dataset.bound = '1';
-        day = todayISO();
+        const requestedDay = new URLSearchParams(location.search).get('schedule_date');
+        day = /^\d{4}-\d{2}-\d{2}$/.test(requestedDay || '') ? requestedDay : todayISO();
         const list = document.getElementById('scheduleList');
         bindDragSorting(list);
 

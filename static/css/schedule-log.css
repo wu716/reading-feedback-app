@@ -3,6 +3,11 @@
     letter-spacing: 0.08em;
 }
 
+.flow-project-links { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 8px 0; color: #71818b; font-size: 12px; }
+.flow-project-links a, .flow-project-finish, .schedule-project-entry { color: #315a7e; text-decoration: underline; text-underline-offset: 3px; }
+.flow-project-finish { flex: none; font-size: 12px; padding: 4px 0; }
+.schedule-project-entry { display: inline-block; margin: 10px 0 18px; font-size: 13px; }
+
 #schedule .section-header .flow-hint {
     max-width: 40em;
 }

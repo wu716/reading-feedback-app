@@ -414,3 +414,22 @@ button.secondary:hover { background: #d3e1e7; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }
+
+/* Execution is a separate workspace; queue ordering uses explicit buttons. */
+.workspace-nav { display:flex; flex-wrap:wrap; gap:24px; margin-bottom:32px; font-size:13px; }
+#execution, #taskDetail, #projectTitle { scroll-margin-top:96px; }
+.execution-workspace { padding:28px; background:rgba(228,236,240,.42); border-radius:16px; }
+#activeTaskTitle { margin:0 0 8px; line-height:1.6; overflow-wrap:anywhere; }
+#sliceProgress { width:100%; height:6px; accent-color:var(--blue); margin:12px 0 24px; }
+.break #sliceProgress { accent-color:var(--green); }
+.rotation-panel { margin-top:28px; border-top:1px solid var(--hairline); padding-top:20px; }
+.rotation-panel > p { color:var(--muted); font-size:12px; }
+#rotationQueue { list-style:none; padding:0; display:grid; gap:10px; }
+.rotation-item { display:grid; gap:10px; padding:14px; border:1px solid var(--hairline); border-radius:8px; }
+.rotation-item.current { border-color:var(--blue); background:rgba(49,90,126,.06); }
+.rotation-item strong { font-size:14px; overflow-wrap:anywhere; }
+.rotation-item small { display:block; margin-top:5px; color:var(--muted); }
+.queue-order { display:flex; gap:8px; flex-wrap:wrap; }
+.queue-order button { font-size:12px; padding:6px 10px; }
+.queue-add { display:grid; gap:10px; }
+@media(max-width:700px) { .execution-workspace { padding:18px 12px; } .control-row button { flex:1 1 40%; } .workspace-nav { gap:18px; } }

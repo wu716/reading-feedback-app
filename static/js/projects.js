@@ -3,7 +3,9 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const state = { overview: {goals:[], projects:[]}, todayTasks:[], templates:[], sessions:[], projectId:null, taskId:null, active:null, detailMode:'attributes' };
-  let noticeTimer;
+  const params = new URLSearchParams(location.search);
+  state.plan = {queue:[], daily_tasks:[], work_minutes:20, break_minutes:5};
+  let noticeTimer, actionBusy = false, expiring = false, hydrated = false;
 
   function notice(message, error = false) {
     const box = $('#notice'); box.textContent = message; box.classList.toggle('error', error); box.hidden = false;
@@ -17,6 +19,7 @@
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : '操作失败，请稍后重试');
+    if (data.server_now) state.clockOffset = Date.parse(data.server_now) - Date.now();
     return data;
   }
   const post = (path, body) => request(path, {method:'POST',body:JSON.stringify(body)});
@@ -34,7 +37,7 @@
       : [{...task, path:parents.filter(Boolean).join(' / ')}]);
   }
   async function loadTodayTasks() {
-    const response = await fetch(`/api/schedule?task_date=${todayISO()}`, {
+    const response = await fetch(`/api/schedule?task_date=${params.get('date') || todayISO()}`, {
       headers:{Authorization:'Bearer ' + localStorage.getItem('authToken')}
     });
     const data = await response.json().catch(() => ({}));
@@ -44,14 +47,15 @@
   function executionChoices() {
     const projects = allTasks();
     const byId = new Map(projects.map(task => [task.id, task]));
-    const today = state.todayTasks.map(task => {
+    const merged = new Map([...(state.plan.daily_tasks || []), ...state.todayTasks].map(t => [t.id, t]));
+    const today = [...merged.values()].map(task => {
       const linked = byId.get(task.project_task_id);
       return {key:`daily:${task.id}`, title:`${task.path ? task.path + ' / ' : ''}${task.text}`,
         project_task_id:linked?.id || null, daily_task_id:task.id,
-        disabled:!!linked && !linked.can_start, group:'今日任务'};
+        disabled:task.completed || (!!linked && !linked.can_start), group:'今日任务'};
     });
     const scheduled = new Set(today.map(task => task.project_task_id).filter(Boolean));
-    const remaining = projects.filter(task => task.state !== 'completed' && !scheduled.has(task.id)).map(task => ({
+    const remaining = projects.filter(task => !scheduled.has(task.id)).map(task => ({
       key:`project:${task.id}`, title:`${task.project_title} · ${task.title}`,
       project_task_id:task.id, daily_task_id:null, disabled:!task.can_start, group:'项目任务'
     }));
@@ -79,15 +83,34 @@
   function stageOptions(project, selected) { return (project?.stages || []).filter(s => s.state !== 'closed').map(s => `<option value="${s.id}" ${s.id === selected ? 'selected' : ''}>${esc(s.title)} · ${stageName(s)}</option>`).join(''); }
 
   async function refresh() {
+    state.plan = await request('/execution');
     const [overview, templates, sessions, todayTasks] = await Promise.all([request('/overview'), request('/templates'), request('/sessions'), loadTodayTasks()]);
     state.overview = overview; state.templates = templates.items; state.sessions = sessions.items; state.todayTasks = todayTasks;
     if (!overview.projects.some(p => p.id === state.projectId)) state.projectId = overview.projects[0]?.id ?? null;
     if (!currentProject()?.tasks.some(t => t.id === state.taskId)) state.taskId = null;
     state.active = state.sessions.find(s => !s.ended_at) || null;
+    if (!hydrated) {
+      $('#workMinutes').value = state.plan.work_minutes; $('#breakMinutes').value = state.plan.break_minutes;
+      const task = allTasks().find(t => t.id === Number(params.get('task')));
+      if (task) { state.projectId = task.project_id; state.taskId = task.id; state.detailMode = params.get('finish') ? 'completion' : 'attributes'; }
+      hydrated = true;
+    }
     render();
   }
   async function afterChange(message) { await refresh(); if (message) notice(message); }
-  async function run(task) { try { await task(); } catch (error) { notice(error.message, true); } }
+  async function refreshExecution() {
+    state.plan = await request('/execution');
+    const [sessions, overview, tasks] = await Promise.all([request('/sessions'), request('/overview'), loadTodayTasks()]);
+    state.sessions = sessions.items; state.overview = overview; state.todayTasks = tasks;
+    state.active = state.sessions.find(s => !s.ended_at) || null;
+    renderExecution(); renderSessions();
+  }
+  async function run(task) {
+    if (actionBusy || expiring) return;
+    actionBusy = true;
+    try { await task(); } catch (error) { notice(error.message, true); }
+    finally { actionBusy = false; }
+  }
 
   function renderGoals() {
     $('#goalList').innerHTML = state.overview.goals.length ? state.overview.goals.map(g =>
@@ -114,7 +137,7 @@
     const prereq = task.prerequisite_ids.map(id => project.tasks.find(t => t.id === id)).filter(Boolean);
     root.innerHTML = `<div class="detail-header"><h3>${esc(task.title)}</h3><button type="button" class="secondary" data-act="close-detail">收起</button></div>
       <p class="task-metrics">原估计 ${task.original_estimate_minutes ?? '未填'} 分 · 当前估计 ${task.estimated_minutes ?? '未填'} 分 · 实际投入 ${task.actual_minutes} 分${task.difference_minutes == null ? '' : ` · 差额 ${task.difference_minutes > 0 ? '+' : ''}${task.difference_minutes} 分`}</p>
-      <div class="detail-actions" role="tablist" aria-label="任务操作分区"><button type="button" class="${state.detailMode === 'attributes' ? '' : 'secondary'}" data-act="detail-mode" data-mode="attributes">内容与估时</button><button type="button" class="${state.detailMode === 'dependencies' ? '' : 'secondary'}" data-act="detail-mode" data-mode="dependencies">前置与检查项</button><button type="button" class="${state.detailMode === 'completion' ? '' : 'secondary'}" data-act="detail-mode" data-mode="completion">安排与验收</button></div>
+      <p class="scheduled-dates">已安排：${(task.scheduled_dates || []).map(day => `<a href="/static/index.html?schedule_date=${day}#schedule">${day}</a>`).join(' · ') || '尚未安排到日程'}</p><div class="detail-actions"><button type="button" data-act="queue-task" ${task.can_start ? '' : 'disabled'}>加入时间片轮转</button><a href="/static/index.html#schedule">查看日程</a></div><form id="scheduleTaskForm"><label>安排到哪天 <input name="task_date" type="date" required></label><button type="submit">写入日程</button></form><div class="detail-actions" role="tablist" aria-label="任务操作分区"><button type="button" class="${state.detailMode === 'attributes' ? '' : 'secondary'}" data-act="detail-mode" data-mode="attributes">内容与估时</button><button type="button" class="${state.detailMode === 'dependencies' ? '' : 'secondary'}" data-act="detail-mode" data-mode="dependencies">前置与检查项</button><button type="button" class="${state.detailMode === 'completion' ? '' : 'secondary'}" data-act="detail-mode" data-mode="completion">安排与验收</button></div>
       <div class="detail-zone" ${state.detailMode === 'attributes' ? '' : 'hidden'}><h4>内容与估时</h4><form id="detailForm" class="detail-grid">
         <label>任务 <input name="title" maxlength="500" required value="${esc(task.title)}"></label><label>阶段 <select name="stage_id">${stageOptions(project, task.stage_id)}</select></label>
         <label>当前估计分钟 <input name="estimated_minutes" type="number" min="0" value="${task.estimated_minutes ?? ''}"></label><label>熟悉程度 <select name="familiarity"><option value="">未标记</option><option value="familiar" ${task.familiarity === 'familiar' ? 'selected' : ''}>熟悉</option><option value="unfamiliar" ${task.familiarity === 'unfamiliar' ? 'selected' : ''}>陌生</option></select></label>
@@ -126,34 +149,72 @@
         <h4>检查项</h4><ul>${task.checklist.map(item => `<li><label class="check"><input type="checkbox" data-act="toggle-check" data-id="${item.id}" ${item.done ? 'checked' : ''}>${esc(item.text)}</label></li>`).join('') || '<li>还没有检查项</li>'}</ul>
         <form id="checklistForm"><label>新增检查项 <input name="text" maxlength="500" required></label><button type="submit">添加</button></form></div>
       <div class="detail-zone" ${state.detailMode === 'completion' ? '' : 'hidden'}><h4>安排与验收</h4>
-        <form id="scheduleTaskForm"><label>安排到哪天 <input name="task_date" type="date" required></label><button type="submit">写入日程</button></form>
+
         <p>完成时核对标准：${esc(task.acceptance_criteria || '尚未填写，可先判断实际结果。')}</p>
         <form id="finishTaskForm"><label>结果 <select name="result"><option value="completed">完成</option><option value="partial">部分完成</option><option value="rework">需要返工</option></select></label><label>结果说明 <input name="outcome_note" value="${esc(task.outcome_note)}"></label><label>估时偏差原因 <input name="variance_reason" value="${esc(task.variance_reason)}"></label><button type="submit">保存验收</button></form>
         <div class="detail-actions"><button type="button" class="secondary" data-act="save-template">保存为流程</button></div></div>`;
-    const date = $('#scheduleTaskForm [name=task_date]', root); if (date) date.value = new Date().toLocaleDateString('en-CA');
+    const date = $('#scheduleTaskForm [name=task_date]', root); if (date) date.value = params.get('date') || todayISO();
   }
 
+  function choiceFor(key) {
+    return executionChoices().find(t => t.key === key || (key.startsWith('project:') && t.project_task_id === Number(key.split(':')[1])));
+  }
+  function sessionChoice(session) {
+    if (!session) return null;
+    return choiceFor(session.daily_task_id ? `daily:${session.daily_task_id}` : `project:${session.project_task_id}`);
+  }
+  function queueChoices() { return state.plan.queue.map(choiceFor).filter(Boolean); }
+  function lastWork() { return state.sessions.find(s => s.kind === 'work' && s.source === 'timer'); }
+  function nextTask() { return queueChoices().find(t => !t.disabled); }
+  async function saveQueue(keys = state.plan.queue) {
+    state.plan = await put('/execution', {queue:keys.filter(key => choiceFor(key)), work_minutes:Number($('#workMinutes').value), break_minutes:Number($('#breakMinutes').value)});
+  }
+  async function addQueue(key) {
+    const task = choiceFor(key);
+    if (!task || task.disabled) throw new Error('该任务当前不可开始');
+    if (!queueChoices().some(t => t.key === task.key)) await saveQueue([...state.plan.queue, task.key]);
+    renderExecution();
+  }
   function renderExecution() {
-    const selected = $('#focusTask').value || (state.active?.daily_task_id ? `daily:${state.active.daily_task_id}` : state.active?.project_task_id ? `project:${state.active.project_task_id}` : state.taskId ? `project:${state.taskId}` : '');
-    $('#focusTask').innerHTML = taskOptions(selected);
+    $('#focusTask').innerHTML = taskOptions($('#focusTask').value);
     $('#manualTask').innerHTML = taskOptions($('#manualTask').value);
-    const active = state.active;
+    const active = state.active, paused = state.plan.paused;
+    const current = active || paused || lastWork();
+    $('#activeTaskTitle').textContent = active?.kind === 'break' || paused?.kind === 'break' ? '休息一下' : current?.label || sessionChoice(current)?.title || nextTask()?.title || '先把要做的事加入轮转';
+    const projectTask = allTasks().find(t => t.id === current?.project_task_id);
+    const link = $('#activeProjectLink'); link.hidden = !projectTask;
+    if (projectTask) { link.href = `/static/projects.html?task=${projectTask.id}#taskDetail`; link.textContent = `${projectTask.project_title} · 查看任务与投入`; }
     $('.focus-panel').classList.toggle('break', active?.kind === 'break');
-    $('#startWork').disabled = !!active;
+    $('#startWork').textContent = paused ? '恢复剩余时间' : lastWork() ? '开始下一项' : '开始队首任务';
+    $('#startWork').disabled = !!active || (!paused && !nextTask());
     $('#pauseWork').disabled = !active;
-    $('#endWork').disabled = !active;
-    $('#switchWork').disabled = !active || active.kind !== 'work';
+    $('#endWork').disabled = !active && !paused;
+    $('#switchWork').disabled = !nextTask();
     $('#actualStopWrap').hidden = !active;
+    const decision = !active && !paused && !!lastWork();
+    $('#timeDecision').hidden = !decision;
+    $('#decisionCaption').textContent = state.sessions[0]?.kind === 'break' ? '休息已结束，准备好后开始下一项。' : '这一片已挂起，未完成的任务保留在轮转中。';
+    $('[data-next=break]').textContent = `休息 ${state.plan.break_minutes} 分钟`;
+    $('[data-next=continue]').disabled = !sessionChoice(lastWork()) || sessionChoice(lastWork()).disabled;
+    $('#rotationQueue').innerHTML = state.plan.queue.map((key, index) => {
+      const task = choiceFor(key), isCurrent = task && active?.kind === 'work' && sessionChoice(active)?.key === task.key;
+      return `<li class="rotation-item ${isCurrent ? 'current' : ''}"><div><strong>${esc(task?.title || '任务已移除')}</strong><small>${isCurrent ? '正在执行' : task?.disabled ? '已完成或等待前置，本轮跳过' : `第 ${index + 1} 项 · 每片 ${state.plan.work_minutes} 分钟`}</small></div><div class="queue-order"><button type="button" class="secondary" data-queue="up" data-index="${index}" ${index === 0 ? 'disabled' : ''} aria-label="上移 ${esc(task?.title || '')}">上移</button><button type="button" class="secondary" data-queue="down" data-index="${index}" ${index === state.plan.queue.length - 1 ? 'disabled' : ''} aria-label="下移 ${esc(task?.title || '')}">下移</button><button type="button" class="secondary" data-queue="remove" data-index="${index}">移出</button></div></li>`;
+    }).join('') || '<li class="empty">先加入 A、B、C；每片结束后，选择下一项即可轮转。</li>';
+    $('#dailyProjectLink').hidden = !params.get('daily');
+    $('#confirmDailyProject').disabled = !state.projectId;
     tick();
   }
   function tick() {
     const active = state.active;
-    const planned = active?.planned_minutes || Number($('#workMinutes').value) || 20;
-    const elapsed = active ? Math.max(0, Math.floor((Date.now() - Date.parse(active.started_at)) / 1000)) : 0;
-    const remaining = Math.max(0, planned*60 - elapsed);
+    const budget = active?.planned_seconds || state.plan.remaining_seconds || state.plan.work_minutes * 60;
+    const remaining = active ? Math.max(0, Math.ceil((Date.parse(active.deadline_at) - Date.now() - (state.clockOffset || 0)) / 1000)) : state.plan.paused ? state.plan.remaining_seconds : budget;
     $('#timerDisplay').textContent = `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
-    $('#timerCaption').textContent = active ? `${active.kind === 'break' ? '休息中' : '工作中'} · ${dtLabel(active.started_at)} 开始` : '准备开始工作片';
-    $('#timeDecision').hidden = !active || remaining > 0;
+    $('#timerCaption').textContent = active ? `${active.kind === 'break' ? '休息中' : '工作中'} · 到点自动挂起` : state.plan.paused ? '已暂停 · 恢复后接着剩余时间' : lastWork() ? '等待下一步 · 当前不计时' : '准备开始工作片';
+    $('#sliceProgress').max = budget; $('#sliceProgress').value = active ? budget - remaining : 0;
+    if (active && remaining === 0 && !expiring && !actionBusy) {
+      expiring = true;
+      refreshExecution().then(() => notice(active.kind === 'break' ? '休息到时，准备好后开始下一项' : '工作片到时，已挂起。选择休息或轮转到下一项')).catch(error => notice(error.message, true)).finally(() => { expiring = false; });
+    }
   }
   function renderSessions() {
     const names = new Map(allTasks().map(t => [t.id, t.title]));
@@ -206,7 +267,7 @@
         const result = await post(`/tasks/${state.taskId}/finish`, {result:body.result, outcome_note:body.outcome_note || null, variance_reason:body.variance_reason || null});
         await afterChange(result.unchecked_count ? `验收已保存；仍有 ${result.unchecked_count} 个检查项未完成` : '验收已保存');
       } else if (form.id === 'scheduleTaskForm') {
-        await post(`/tasks/${state.taskId}/schedule`, {task_date:body.task_date}); await afterChange('已写入当天日程');
+        await post(`/tasks/${state.taskId}/schedule`, {task_date:body.task_date}); await afterChange('已关联到 ' + body.task_date + ' 的日程；可从日程查看项目与投入');
       } else if (form.id === 'manualForm') {
         const source = body.source;
         const task = selectedTask(body.task_ref);
@@ -232,6 +293,7 @@
     run(async () => {
       const id = Number(button.dataset.id), action = button.dataset.act;
       if (action === 'select-task') { state.taskId = id; state.detailMode = 'attributes'; renderTaskDetail(); $('#taskDetail').scrollIntoView({behavior:'smooth',block:'start'}); }
+      else if (action === 'queue-task') { await addQueue(`project:${state.taskId}`); location.hash = 'execution'; notice('已加入轮转，准备好后开始'); }
       else if (action === 'close-detail') { state.taskId = null; renderTaskDetail(); }
       else if (action === 'detail-mode') { state.detailMode = button.dataset.mode; renderTaskDetail(); }
       else if (action === 'remove-dep') { await request(`/tasks/${state.taskId}/dependencies/${id}`, {method:'DELETE'}); await afterChange('前置关系已移除'); }
@@ -279,45 +341,77 @@
     $('#momentNode').innerHTML = '<option value="">选择并确认来源</option>' + (data.nodes || []).map(n => `<option value="${n.id}">${esc(dtLabel(n.logged_at))} · ${esc(n.label || '未填写')}</option>`).join('');
   }
 
-  async function stopCurrent(message) {
-    if (!state.active) return;
+  async function stopCurrent(message, pause = false) {
+    if (!state.active) {
+      if (state.plan.paused) { await post('/execution/discard-pause', {}); await afterChange(message); }
+      return;
+    }
     const endInput = $('#actualStopAt');
     const endedAt = endInput.value ? new Date(endInput.value).toISOString() : null;
-    await post(`/sessions/${state.active.id}/stop`, endedAt ? {ended_at:endedAt} : {});
+    await post(`/sessions/${state.active.id}/stop`, {ended_at:endedAt, pause});
     endInput.value = '';
     await afterChange(message);
   }
-  async function startWork(task = selectedTask()) {
-    if (!task) throw new Error('请先选择可开始的任务');
+  async function startWork(task = nextTask()) {
+    if (!task || task.disabled) throw new Error('请先选择可开始的任务');
     const minutes = Number($('#workMinutes').value) || 20;
     const links = {project_task_id:task.project_task_id, daily_task_id:task.daily_task_id, label:task.title};
-    if (state.active) await post('/sessions/switch', {from_session_id:state.active.id, ...links, kind:'work', planned_minutes:minutes});
-    else await post('/sessions/start', {...links, kind:'work', planned_minutes:minutes});
+    if (state.active) await post(`/sessions/${state.active.id}/stop`, {});
+    await post('/sessions/start', {...links, kind:'work', planned_minutes:minutes});
     await afterChange('工作片已开始');
   }
   async function chooseNext(choice) {
     if (choice === 'break') {
-      if (!state.active) throw new Error('没有进行中的片段');
-      await post('/sessions/switch', {from_session_id:state.active.id, kind:'break', planned_minutes:Number($('#breakMinutes').value) || 5});
+      if (state.active) await post(`/sessions/${state.active.id}/stop`, {});
+      await post('/sessions/start', {kind:'break', planned_minutes:Number($('#breakMinutes').value) || 5});
       await afterChange('休息开始；这段时间不计任务实耗');
     } else if (choice === 'continue') {
-      const task = state.active ? {
-        project_task_id:state.active.project_task_id, daily_task_id:state.active.daily_task_id,
-        title:state.active.label || '工作片'
-      } : selectedTask();
+      const task = sessionChoice(state.active?.kind === 'work' ? state.active : lastWork());
       await startWork(task);
     } else if (choice === 'switch') {
-      const task = selectedTask();
-      if (!task || (task.project_task_id === state.active?.project_task_id && task.daily_task_id === state.active?.daily_task_id)) throw new Error('请先在“当前任务”选择另一项');
+      const current = sessionChoice(state.active?.kind === 'work' ? state.active : state.plan.paused?.kind === 'work' ? state.plan.paused : lastWork());
+      const index = state.plan.queue.findIndex(key => choiceFor(key)?.key === current?.key);
+      if (index >= 0) { const keys = [...state.plan.queue]; keys.push(...keys.splice(index, 1)); await saveQueue(keys); }
+      const task = nextTask();
+      if (!task) throw new Error('轮转中没有可开始的任务，请先加入任务');
       await startWork(task);
     }
   }
-  $('#startWork').addEventListener('click', () => run(() => startWork()));
-  $('#pauseWork').addEventListener('click', () => run(() => stopCurrent('已暂停；暂停期间不计任务实耗')));
+  $('#startWork').addEventListener('click', () => run(async () => {
+    if (state.plan.paused) { await post('/execution/resume', {}); await afterChange('已恢复剩余时间'); }
+    else if (lastWork()) await chooseNext('switch');
+    else await startWork();
+  }));
+  $('#pauseWork').addEventListener('click', () => run(() => stopCurrent('已暂停；暂停期间不计任务实耗', true)));
   $('#endWork').addEventListener('click', () => run(() => stopCurrent('片段已结束')));
   $('#switchWork').addEventListener('click', () => run(() => chooseNext('switch')));
   $('#resetTemplate').addEventListener('click', () => $('#templateForm').reset());
+  $('#addQueueTask').addEventListener('click', () => run(() => addQueue($('#focusTask').value)));
+  $('#addTodayQueue').addEventListener('click', () => run(async () => {
+    const keys = new Set(state.plan.queue);
+    executionChoices().filter(t => t.group === '今日任务' && !t.disabled).forEach(t => keys.add(t.key));
+    await saveQueue([...keys]); renderExecution();
+  }));
+  $('#rotationQueue').addEventListener('click', event => {
+    const button = event.target.closest('[data-queue]'); if (!button) return;
+    run(async () => {
+      const keys = [...state.plan.queue], i = Number(button.dataset.index), act = button.dataset.queue;
+      if (act === 'remove') keys.splice(i, 1);
+      else { const j = i + (act === 'up' ? -1 : 1); [keys[i], keys[j]] = [keys[j], keys[i]]; }
+      await saveQueue(keys); renderExecution();
+    });
+  });
+  for (const id of ['workMinutes', 'breakMinutes']) $("#" + id).addEventListener('change', () => run(async () => { await saveQueue(); renderExecution(); }));
+  $('#confirmDailyProject').addEventListener('click', () => run(async () => {
+    const task = await post(`/daily/${Number(params.get('daily'))}/project`, {project_id:state.projectId});
+    params.delete('daily'); state.taskId = task.id; await afterChange('已纳入项目，原日程和投入记录已关联');
+  }));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !actionBusy) run(refreshExecution); });
 
   setInterval(tick, 1000);
-  refresh().catch(error => notice(error.message, true));
+  refresh().then(async () => {
+    const key = params.get('execute');
+    if (key && choiceFor(key) && !choiceFor(key).disabled) await addQueue(key);
+    if (params.get('finish') || params.get('task')) $('#taskDetail').scrollIntoView({block:'start'});
+  }).catch(error => notice(error.message, true));
 })();

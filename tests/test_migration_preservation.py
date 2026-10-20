@@ -7,6 +7,20 @@ from app import database, models, project_models  # register all models
 
 
 class AdditiveMigrationTests(TestCase):
+    def test_existing_work_intervals_survive_seconds_column_upgrade(self):
+        engine = create_engine("sqlite:///:memory:")
+        database.Base.metadata.create_all(engine)
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE work_sessions DROP COLUMN planned_seconds"))
+            conn.execute(text("INSERT INTO users (id,email,name,password_hash,capture_kind) VALUES (1,'timer@example.test','旧用户','x','moment')"))
+            conn.execute(text("INSERT INTO work_sessions (id,user_id,kind,source,started_at,ended_at,planned_minutes) VALUES (8,1,'work','timer','2026-10-19 09:00:00','2026-10-19 09:20:00',20)"))
+        with patch.object(database, "engine", engine):
+            database.ensure_schema()
+            database.ensure_schema()
+        with engine.connect() as conn:
+            self.assertEqual(conn.execute(text("SELECT planned_minutes,planned_seconds FROM work_sessions WHERE id=8")).one(), (20, None))
+        engine.dispose()
+
     def test_legacy_rows_survive_idempotent_project_schema_upgrade(self):
         engine = create_engine("sqlite:///:memory:")
         new_tables = {"goals", "projects", "project_stages", "project_tasks", "task_dependencies",

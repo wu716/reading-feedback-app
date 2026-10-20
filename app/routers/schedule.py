@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user
@@ -122,6 +123,9 @@ class TaskOut(BaseModel):
     parent_id: Optional[int] = None
     action_id: Optional[int] = None
     project_task_id: Optional[int] = None
+    project_id: Optional[int] = None
+    project_title: Optional[str] = None
+    actual_minutes: float = 0
     text: str
     completed: bool
     note: Optional[str] = None
@@ -267,7 +271,8 @@ def refresh_parent_completion(db: Session, user_id: int, task: DailyTask) -> Non
         parent = parent.parent
 
 
-def build_tree(tasks: List[DailyTask]) -> List[TaskOut]:
+def build_tree(tasks: List[DailyTask], linked=None, actual=None) -> List[TaskOut]:
+    linked, actual = linked or {}, actual or {}
     by_parent = defaultdict(list)
     for task in tasks:
         by_parent[task.parent_id].append(task)
@@ -278,6 +283,9 @@ def build_tree(tasks: List[DailyTask]) -> List[TaskOut]:
             parent_id=task.parent_id,
             action_id=task.action_id,
             project_task_id=task.project_task_id,
+            project_id=linked[task.project_task_id][0] if task.project_task_id in linked else None,
+            project_title=linked[task.project_task_id][1] if task.project_task_id in linked else None,
+            actual_minutes=actual.get(("project", task.project_task_id) if task.project_task_id else ("daily", task.id), 0),
             text=task.text,
             completed=bool(task.completed),
             note=task.note,
@@ -325,6 +333,24 @@ def future_payload(db: Session, user_id: int) -> FutureListOut:
 
 
 def day_payload(db: Session, user: User, day: date) -> DayScheduleOut:
+    from app.execution_service import settle_expired
+    from app.project_models import Project, ProjectTask, WorkSession
+    settle_expired(db, user.id)
+    db.commit()
+    tasks = visible_tasks(db, user.id, day)
+    linked = {task.id: (project.id, project.title) for task, project in db.query(ProjectTask, Project).join(
+        Project, Project.id == ProjectTask.project_id).filter(ProjectTask.user_id == user.id, Project.user_id == user.id,
+        ProjectTask.id.in_([t.project_task_id for t in tasks if t.project_task_id])).all()}
+    actual = defaultdict(float)
+    for session, daily_project_id in db.query(WorkSession, DailyTask.project_task_id).outerjoin(DailyTask,
+        (DailyTask.id == WorkSession.daily_task_id) & (DailyTask.user_id == user.id)).filter(
+        WorkSession.user_id == user.id, WorkSession.kind == "work", WorkSession.ended_at.isnot(None),
+        or_(WorkSession.project_task_id.in_(list(linked)), DailyTask.project_task_id.in_(list(linked)),
+            WorkSession.daily_task_id.in_([t.id for t in tasks]))).all():
+        project_task_id = session.project_task_id or daily_project_id
+        key = ("project", project_task_id) if project_task_id else ("daily", session.daily_task_id)
+        actual[key] += (session.ended_at - session.started_at).total_seconds() / 60
+    actual = {key: round(value, 2) for key, value in actual.items()}
     schedule = (
         db.query(DailySchedule)
         .filter(DailySchedule.user_id == user.id, DailySchedule.schedule_date == day)
@@ -333,7 +359,7 @@ def day_payload(db: Session, user: User, day: date) -> DayScheduleOut:
     return DayScheduleOut(
         date=day,
         designed_at=schedule.designed_at if schedule else None,
-        tasks=build_tree(visible_tasks(db, user.id, day)),
+        tasks=build_tree(tasks, linked, actual),
     )
 
 
@@ -386,7 +412,17 @@ async def update_task(
     task = get_task_or_404(db, current_user.id, task_id)
     if body.text is not None:
         task.text = body.text
+        if task.project_task_id:
+            from app.project_models import ProjectTask
+            project_task = db.query(ProjectTask).filter(ProjectTask.id == task.project_task_id,
+                ProjectTask.user_id == current_user.id, ProjectTask.deleted_at.is_(None)).first()
+            if project_task:
+                project_task.title = body.text
+                db.query(DailyTask).filter(DailyTask.user_id == current_user.id,
+                    DailyTask.project_task_id == project_task.id, DailyTask.deleted_at.is_(None)).update({"text": body.text})
     if body.completed is not None:
+        if task.project_task_id is not None:
+            raise HTTPException(status_code=409, detail="请到关联项目核对完成标准并验收；验收结果会同步到日程")
         task.completed = body.completed
         refresh_parent_completion(db, current_user.id, task)
     if body.clear_note:

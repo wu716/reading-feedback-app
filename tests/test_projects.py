@@ -12,7 +12,7 @@ from sqlalchemy.pool import StaticPool
 from app.auth import get_current_active_user
 from app.database import Base, get_db
 from app.models import DailyTask, User  # register legacy tables and DailyTask
-from app.project_models import ProcessTemplate, ProjectTask  # register new tables
+from app.project_models import ProcessTemplate, ProjectTask, WorkSession  # register new tables
 from app.routers.projects import router
 from app.routers.schedule import router as schedule_router
 
@@ -118,6 +118,110 @@ class ProjectFlowTests(unittest.TestCase):
         self.assertEqual(next(s for s in history if s["id"] == first["id"])["assessment"]["goal_title_snapshot"], "交出初稿")
         self.assertIsNone(next(s for s in history if s["id"] != first["id"])["assessment"])
         self.assertEqual(self.req("PUT", f"/sessions/{first['id']}/assessment", {"goal_id": goal["id"], "importance": "important"}, user=2).status_code, 404)
+
+    def test_timer_deadline_survives_closed_browser_and_infers_project_link(self):
+        _, project, stage = self.project()
+        task = self.task(project, stage, "A", 20)
+        daily = self.req("POST", f"/tasks/{task['id']}/schedule", {"task_date": "2026-10-19"}).json()
+        session = self.req("POST", "/sessions/start", {"daily_task_id": daily["id"], "planned_minutes": 20}).json()
+        self.assertEqual(session["project_task_id"], task["id"])
+        with self.Session() as db:
+            db.get(WorkSession, session["id"]).started_at = datetime.utcnow() - timedelta(hours=3)
+            db.commit()
+        result = self.req("GET", "/sessions").json()["items"][0]
+        self.assertEqual(result["duration_minutes"], 20)
+        self.assertIsNotNone(result["ended_at"])
+        self.assertEqual(self.req("GET", "/overview").json()["projects"][0]["tasks"][0]["actual_minutes"], 20)
+        # The next task starts only after a deliberate action, and idle hours are uncounted.
+        self.assertEqual(len(self.req("GET", "/sessions").json()["items"]), 1)
+        self.assertEqual(self.req("POST", "/sessions/start", {"daily_task_id": daily["id"]}).status_code, 200)
+
+    def test_pause_resume_preserves_remaining_budget_and_excludes_gap(self):
+        _, project, stage = self.project()
+        task = self.task(project, stage, "A")
+        started = self.req("POST", "/sessions/start", {"project_task_id": task["id"], "planned_minutes": 20}).json()
+        with self.Session() as db:
+            db.get(WorkSession, started["id"]).started_at = datetime.utcnow() - timedelta(minutes=5)
+            db.commit()
+        self.assertEqual(self.req("POST", f"/sessions/{started['id']}/stop", {"pause": True}).status_code, 200)
+        plan = self.req("GET", "/execution").json()
+        self.assertTrue(898 <= plan["remaining_seconds"] <= 900)
+        resumed = self.req("POST", "/execution/resume", {}).json()
+        self.assertEqual(resumed["planned_seconds"], plan["remaining_seconds"])
+        self.assertIsNone(self.req("GET", "/execution").json()["paused"])
+        self.assertEqual(self.req("POST", "/execution/resume", {}).status_code, 409)
+        self.assertEqual(self.req("POST", "/sessions/start", {"project_task_id": task["id"]}).status_code, 409)
+
+    def test_queue_is_server_owned_deduplicated_and_user_scoped(self):
+        _, project, stage = self.project()
+        task = self.task(project, stage, "A")
+        daily = self.req("POST", f"/tasks/{task['id']}/schedule", {"task_date": "2026-10-19"}).json()
+        payload = {"queue": [f"daily:{daily['id']}", f"project:{task['id']}"], "work_minutes": 25, "break_minutes": 7}
+        saved = self.req("PUT", "/execution", payload)
+        self.assertEqual(saved.status_code, 200, saved.text)
+        restored = self.req("GET", "/execution").json()
+        self.assertEqual(restored["queue"], [f"daily:{daily['id']}"])
+        self.assertEqual((restored["work_minutes"], restored["break_minutes"]), (25, 7))
+        self.assertEqual(self.req("GET", "/execution", user=2).json()["queue"], [])
+        self.assertEqual(self.req("PUT", "/execution", payload, user=2).status_code, 404)
+
+    def test_schedule_links_are_idempotent_and_completion_returns_to_schedule(self):
+        _, project, stage = self.project()
+        task = self.task(project, stage, "A")
+        scheduled = self.req("POST", f"/tasks/{task['id']}/schedule", {"task_date": "2026-10-19"}).json()
+        again = self.req("POST", f"/tasks/{task['id']}/schedule", {"task_date": "2026-10-19"}).json()
+        self.assertEqual(scheduled["id"], again["id"])
+        self.req("POST", f"/tasks/{task['id']}/finish", {"result": "completed"})
+        day = self.client.get("/api/schedule?task_date=2026-10-19").json()["tasks"]
+        self.assertEqual(len(day), 1)
+        self.assertEqual((day[0]["project_title"], day[0]["completed"]), ("论文", True))
+        self.assertEqual(self.req("POST", "/sessions/start", {"daily_task_id": day[0]["id"]}).status_code, 409)
+        self.req("POST", f"/tasks/{task['id']}/finish", {"result": "rework"})
+        self.assertFalse(self.client.get("/api/schedule?task_date=2026-10-19").json()["tasks"][0]["completed"])
+
+    def test_finishing_a_running_task_stops_timer_and_title_edits_stay_linked(self):
+        _, project, stage = self.project()
+        task = self.task(project, stage, "A")
+        daily = self.req("POST", f"/tasks/{task['id']}/schedule", {"task_date": "2026-10-19"}).json()
+        self.req("PATCH", f"/tasks/{task['id']}", {"title": "项目改名"})
+        day = self.client.get("/api/schedule?task_date=2026-10-19").json()["tasks"][0]
+        self.assertEqual(day["text"], "项目改名")
+        changed = self.client.patch(f"/api/schedule/tasks/{daily['id']}", json={"text": "日程改名"})
+        self.assertEqual(changed.status_code, 200, changed.text)
+        self.assertEqual(self.req("GET", "/overview").json()["projects"][0]["tasks"][0]["title"], "日程改名")
+        self.req("POST", "/sessions/start", {"daily_task_id": daily["id"]})
+        finished = self.req("POST", f"/tasks/{task['id']}/finish", {"result": "completed"})
+        self.assertEqual(finished.status_code, 200, finished.text)
+        self.assertIsNotNone(self.req("GET", "/sessions").json()["items"][0]["ended_at"])
+
+    def test_legacy_daily_only_sessions_contribute_without_rewriting_history(self):
+        _, project, stage = self.project()
+        task = self.task(project, stage, "A")
+        daily = self.req("POST", f"/tasks/{task['id']}/schedule", {"task_date": "2026-10-19"}).json()
+        with self.Session() as db:
+            db.add(WorkSession(user_id=1, daily_task_id=daily["id"], project_task_id=None, kind="work", source="manual",
+                started_at=datetime(2026, 10, 18, 9), ended_at=datetime(2026, 10, 18, 9, 15)))
+            db.commit()
+        overview = self.req("GET", "/overview").json()["projects"][0]["tasks"][0]
+        day = self.client.get("/api/schedule?task_date=2026-10-19").json()["tasks"][0]
+        self.assertEqual((overview["actual_minutes"], day["actual_minutes"]), (15, 15))
+        with self.Session() as db:
+            self.assertIsNone(db.query(WorkSession).one().project_task_id)
+
+    def test_promoting_daily_keeps_time_history_and_checks_ownership(self):
+        with self.Session() as db:
+            daily = DailyTask(user_id=1, task_date=date(2026, 10, 19), text="日程里的写作", estimated_minutes=30)
+            db.add(daily); db.commit(); daily_id = daily.id
+        _, project, stage = self.project()
+        end = datetime.now(timezone.utc) - timedelta(hours=1)
+        manual = self.req("POST", "/sessions/manual", {"daily_task_id": daily_id,
+            "started_at": (end - timedelta(minutes=10)).isoformat(), "ended_at": end.isoformat()})
+        self.assertEqual(manual.status_code, 200, manual.text)
+        task = self.req("POST", f"/daily/{daily_id}/project", {"project_id": project["id"]}).json()
+        self.assertEqual(task["actual_minutes"], 10)
+        self.assertEqual(task["title"], "日程里的写作")
+        self.assertEqual(self.req("POST", f"/daily/{daily_id}/project", {"project_id": project["id"]}).json()["id"], task["id"])
+        self.assertEqual(self.req("POST", f"/daily/{daily_id}/project", {"project_id": project["id"]}, user=2).status_code, 404)
 
     def test_blank_template_is_copied_into_editable_task(self):
         _, project, stage = self.project()

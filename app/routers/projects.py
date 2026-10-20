@@ -2,15 +2,17 @@
 
 from datetime import date, datetime, timedelta, timezone
 import json
+import math
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user
 from app.database import get_db
+from app.execution_service import budget_seconds, execution_plan, settle_expired
 from app.models import DailyTask, TimeLogNode, User
 from app.project_models import (
     Goal, ProcessTemplate, Project, ProjectStage, ProjectTask, TaskChecklistItem,
@@ -124,8 +126,12 @@ def task_payload(db: Session, row: ProjectTask) -> dict:
         and prior.state != "completed"
     ]
     checks = db.query(TaskChecklistItem).filter(TaskChecklistItem.task_id == row.id).order_by(TaskChecklistItem.position, TaskChecklistItem.id).all()
+    linked_daily = db.query(DailyTask.id).filter(DailyTask.user_id == row.user_id, DailyTask.project_task_id == row.id)
     sessions = db.query(WorkSession).filter(
-        WorkSession.project_task_id == row.id, WorkSession.kind == "work", WorkSession.ended_at.isnot(None)
+        WorkSession.user_id == row.user_id,
+        or_(WorkSession.project_task_id == row.id,
+            and_(WorkSession.project_task_id.is_(None), WorkSession.daily_task_id.in_(linked_daily))),
+        WorkSession.kind == "work", WorkSession.ended_at.isnot(None)
     ).all()
     actual = round(sum((s.ended_at - s.started_at).total_seconds() for s in sessions) / 60, 2)
     return {
@@ -133,6 +139,8 @@ def task_payload(db: Session, row: ProjectTask) -> dict:
         "title": row.title, "state": row.state, "familiarity": row.familiarity,
         "original_estimate_minutes": row.original_estimate_minutes,
         "estimated_minutes": row.estimated_minutes, "actual_minutes": actual,
+        "scheduled_dates": [str(d[0]) for d in db.query(DailyTask.task_date).filter(DailyTask.user_id == row.user_id,
+            DailyTask.project_task_id == row.id, DailyTask.deleted_at.is_(None)).distinct().order_by(DailyTask.task_date).all()],
         "difference_minutes": round(actual - row.original_estimate_minutes, 2) if row.original_estimate_minutes is not None else None,
         "goal_reason": row.goal_reason, "acceptance_criteria": row.acceptance_criteria,
         "rehearsal_note": row.rehearsal_note, "blocker_note": row.blocker_note,
@@ -146,6 +154,8 @@ def task_payload(db: Session, row: ProjectTask) -> dict:
 
 @router.get("/overview")
 def overview(user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    settle_expired(db, user.id)
+    db.commit()
     goals = db.query(Goal).filter(Goal.user_id == user.id, Goal.deleted_at.is_(None)).order_by(Goal.id.desc()).all()
     projects = db.query(Project).filter(Project.user_id == user.id, Project.deleted_at.is_(None)).order_by(Project.id.desc()).all()
     result = []
@@ -248,6 +258,9 @@ def update_task(task_id: int, body: TaskUpdate, user: User = Depends(get_current
         changes["title"] = required_text(changes["title"])
     for key, value in changes.items(): setattr(row, key, value)
     if steps is not None: row.steps_json = json.dumps(clean_items(steps), ensure_ascii=False)
+    if "title" in changes:
+        db.query(DailyTask).filter(DailyTask.user_id == user.id, DailyTask.project_task_id == row.id,
+                                   DailyTask.deleted_at.is_(None)).update({"text": row.title})
     db.commit()
     return task_payload(db, row)
 
@@ -302,6 +315,7 @@ def toggle_checklist(item_id: int, done: bool, user: User = Depends(get_current_
 
 @router.post("/tasks/{task_id}/finish")
 def finish_task(task_id: int, body: CompletionInput, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    settle_expired(db, user.id)
     row = owned(db, ProjectTask, task_id, user.id)
     if body.result == "completed":
         blocked = task_payload(db, row)["blocked_by"]
@@ -310,6 +324,20 @@ def finish_task(task_id: int, body: CompletionInput, user: User = Depends(get_cu
     row.completed_at = datetime.utcnow() if body.result == "completed" else None
     row.outcome_note = body.outcome_note
     row.variance_reason = body.variance_reason
+    linked = db.query(DailyTask).filter(DailyTask.user_id == user.id, DailyTask.project_task_id == row.id, DailyTask.deleted_at.is_(None)).all()
+    from app.routers.schedule import refresh_parent_completion
+    for daily in linked:
+        daily.completed = body.result == "completed"
+        refresh_parent_completion(db, user.id, daily)
+    if body.result == "completed":
+        for active in db.query(WorkSession).filter(WorkSession.user_id == user.id,
+                WorkSession.project_task_id == row.id, WorkSession.kind == "work", WorkSession.ended_at.is_(None)).all():
+            active.ended_at = max(datetime.utcnow(), active.started_at + timedelta(microseconds=1))
+        plan = execution_plan(db, user.id)
+        paused = db.get(WorkSession, plan.paused_session_id) if plan.paused_session_id else None
+        if paused and paused.project_task_id == row.id:
+            plan.paused_session_id = None
+            plan.remaining_seconds = None
     unchecked = db.query(TaskChecklistItem).filter(TaskChecklistItem.task_id == row.id, TaskChecklistItem.done.is_(False)).count()
     db.commit()
     return {"task": task_payload(db, row), "unchecked_count": unchecked}
@@ -317,8 +345,17 @@ def finish_task(task_id: int, body: CompletionInput, user: User = Depends(get_cu
 
 @router.post("/tasks/{task_id}/schedule")
 def schedule_task(task_id: int, body: ScheduleInput, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    db.query(User).filter(User.id == user.id).with_for_update().first()
     task = owned(db, ProjectTask, task_id, user.id)
+    existing = db.query(DailyTask).filter(DailyTask.user_id == user.id, DailyTask.project_task_id == task.id,
+                                        DailyTask.task_date == body.task_date, DailyTask.deleted_at.is_(None)).first()
+    if existing:
+        return {"id": existing.id, "project_task_id": task.id, "task_date": existing.task_date}
+    from app.routers.schedule import get_or_create_schedule, next_flow_order, next_sort_order
+    get_or_create_schedule(db, user.id, body.task_date)
     row = DailyTask(user_id=user.id, project_task_id=task.id, task_date=body.task_date, text=task.title,
+                    completed=task.state == "completed", sort_order=next_sort_order(db, user.id, body.task_date, None),
+                    flow_order=next_flow_order(db, user.id, body.task_date),
                     estimated_minutes=task.estimated_minutes, familiarity=task.familiarity)
     db.add(row); db.commit(); db.refresh(row)
     return {"id": row.id, "project_task_id": task.id, "task_date": row.task_date}
@@ -329,6 +366,7 @@ class StartSessionInput(BaseModel):
     daily_task_id: int | None = None
     kind: Literal["work", "break"] = "work"
     planned_minutes: int = Field(default=20, ge=1, le=180)
+    planned_seconds: int | None = Field(default=None, ge=1, le=10800)
     label: str | None = Field(default=None, max_length=500)
 
 
@@ -346,6 +384,7 @@ class ManualSessionInput(BaseModel):
 
 class StopSessionInput(BaseModel):
     ended_at: datetime | None = None
+    pause: bool = False
 
 
 class SessionCorrectionInput(BaseModel):
@@ -363,6 +402,100 @@ class AssessmentInput(BaseModel):
 
 class SwitchSessionInput(StartSessionInput):
     from_session_id: int
+
+
+class ExecutionInput(BaseModel):
+    queue: list[str] = Field(max_length=100)
+    work_minutes: int = Field(default=20, ge=1, le=180)
+    break_minutes: int = Field(default=5, ge=1, le=180)
+
+
+def plan_payload(db, user_id):
+    plan = execution_plan(db, user_id)
+    paused = db.get(WorkSession, plan.paused_session_id) if plan.paused_session_id else None
+    daily_ids = [int(key.split(":")[1]) for key in json.loads(plan.queue_json) if key.startswith("daily:")]
+    daily_tasks = db.query(DailyTask).filter(DailyTask.user_id == user_id, DailyTask.id.in_(daily_ids), DailyTask.deleted_at.is_(None)).all() if daily_ids else []
+    return {"queue": json.loads(plan.queue_json), "server_now": stamp(datetime.utcnow()), "daily_tasks": [{"id": t.id, "text": t.text,
+            "completed": t.completed, "project_task_id": t.project_task_id, "task_date": str(t.task_date)} for t in daily_tasks], "work_minutes": plan.work_minutes,
+            "break_minutes": plan.break_minutes, "remaining_seconds": plan.remaining_seconds,
+            "paused": session_payload(paused) if paused else None}
+
+
+@router.get("/execution")
+def get_execution(user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    settle_expired(db, user.id)
+    result = plan_payload(db, user.id)
+    db.commit()
+    return result
+
+
+@router.put("/execution")
+def save_execution(body: ExecutionInput, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    settle_expired(db, user.id)
+    seen, queue = set(), []
+    for key in body.queue:
+        kind, _, raw_id = key.partition(":")
+        if kind not in ("project", "daily") or not raw_id.isdecimal(): fail("任务队列格式错误")
+        row = owned(db, ProjectTask if kind == "project" else DailyTask, int(raw_id), user.id)
+        identity = ("project", row.project_task_id) if kind == "daily" and row.project_task_id else (kind, row.id)
+        if identity not in seen:
+            seen.add(identity)
+            queue.append(key)
+    plan = execution_plan(db, user.id)
+    plan.queue_json = json.dumps(queue)
+    plan.work_minutes, plan.break_minutes = body.work_minutes, body.break_minutes
+    result = plan_payload(db, user.id)
+    db.commit()
+    return result
+
+
+@router.post("/execution/resume")
+def resume_execution(user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    settle_expired(db, user.id)
+    plan = execution_plan(db, user.id)
+    if not plan.paused_session_id or not plan.remaining_seconds: fail("没有可恢复的时间片", 409)
+    old = owned(db, WorkSession, plan.paused_session_id, user.id)
+    body = StartSessionInput(project_task_id=old.project_task_id, daily_task_id=old.daily_task_id,
+                             kind=old.kind, label=old.label, planned_minutes=old.planned_minutes or 20,
+                             planned_seconds=plan.remaining_seconds)
+    return start_session(body, user, db)
+
+
+@router.post("/execution/discard-pause")
+def discard_pause(user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    settle_expired(db, user.id)
+    plan = execution_plan(db, user.id)
+    plan.paused_session_id = None
+    plan.remaining_seconds = None
+    db.commit()
+    return {"ok": True}
+
+
+class DailyProjectInput(BaseModel):
+    project_id: int
+
+
+@router.post("/daily/{daily_id}/project")
+def promote_daily(daily_id: int, body: DailyProjectInput, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    db.query(User).filter(User.id == user.id).with_for_update().first()
+    daily = owned(db, DailyTask, daily_id, user.id)
+    project = owned(db, Project, body.project_id, user.id)
+    if daily.project_task_id:
+        return task_payload(db, owned(db, ProjectTask, daily.project_task_id, user.id))
+    if db.query(DailyTask).filter(DailyTask.parent_id == daily.id, DailyTask.deleted_at.is_(None)).first():
+        fail("请将可以直接执行的子任务纳入项目")
+    stage = db.query(ProjectStage).filter(ProjectStage.project_id == project.id, ProjectStage.state == "current").first()
+    task = ProjectTask(user_id=user.id, project_id=project.id, stage_id=stage.id if stage else None,
+                       title=daily.text, estimated_minutes=daily.estimated_minutes,
+                       original_estimate_minutes=daily.estimated_minutes, familiarity=daily.familiarity,
+                       state="completed" if daily.completed else "pending")
+    db.add(task); db.flush()
+    daily.project_task_id = task.id
+    # Existing daily intervals belong to the same task; preserve their original dates and durations.
+    db.query(WorkSession).filter(WorkSession.user_id == user.id, WorkSession.daily_task_id == daily.id,
+                                WorkSession.project_task_id.is_(None)).update({"project_task_id": task.id})
+    db.commit()
+    return task_payload(db, task)
 
 
 class TemplateInput(BaseModel):
@@ -383,7 +516,7 @@ def validate_session_links(db: Session, user_id: int, task_id: int | None, daily
     if task_id is not None: owned(db, ProjectTask, task_id, user_id)
     if daily_id is not None:
         daily = owned(db, DailyTask, daily_id, user_id)
-        if task_id is not None and daily.project_task_id not in (None, task_id):
+        if task_id is not None and daily.project_task_id != task_id:
             fail("日程任务与项目任务不匹配")
     if node_id is not None: owned(db, TimeLogNode, node_id, user_id)
 
@@ -405,6 +538,8 @@ def session_payload(row: WorkSession, assessment: TimeActivityAssessment | None 
         "time_log_node_id": row.time_log_node_id, "label": row.label,
         "kind": row.kind, "source": row.source, "started_at": stamp(row.started_at),
         "ended_at": stamp(row.ended_at), "planned_minutes": row.planned_minutes,
+        "planned_seconds": budget_seconds(row),
+        "deadline_at": stamp(row.started_at + timedelta(seconds=budget_seconds(row))) if row.source == "timer" else None,
         "duration_minutes": round((row.ended_at - row.started_at).total_seconds() / 60, 2) if row.ended_at else None,
         "correction_note": row.correction_note,
         "assessment": None if assessment is None else {
@@ -418,6 +553,8 @@ def session_payload(row: WorkSession, assessment: TimeActivityAssessment | None 
 @router.get("/sessions")
 def list_sessions(start_date: date | None = None, end_date: date | None = None,
                   user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    settle_expired(db, user.id)
+    db.commit()
     query = db.query(WorkSession).filter(WorkSession.user_id == user.id)
     if start_date: query = query.filter(WorkSession.started_at >= datetime.combine(start_date, datetime.min.time()))
     if end_date: query = query.filter(WorkSession.started_at < datetime.combine(date.fromordinal(end_date.toordinal() + 1), datetime.min.time()))
@@ -431,6 +568,11 @@ def list_sessions(start_date: date | None = None, end_date: date | None = None,
 @router.post("/sessions/start")
 def start_session(body: StartSessionInput, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     db.query(User).filter(User.id == user.id).with_for_update().first()
+    settle_expired(db, user.id)
+    if body.daily_task_id is not None:
+        daily = owned(db, DailyTask, body.daily_task_id, user.id)
+        if daily.completed and body.kind == "work": fail("日程任务已完成", 409)
+        if body.project_task_id is None: body.project_task_id = daily.project_task_id
     validate_session_links(db, user.id, body.project_task_id, body.daily_task_id)
     if body.kind == "work" and body.project_task_id is None and body.daily_task_id is None:
         fail("工作片需要关联任务")
@@ -442,7 +584,11 @@ def start_session(body: StartSessionInput, user: User = Depends(get_current_acti
     now = datetime.utcnow()
     assert_no_overlap(db, user.id, now, now + timedelta(microseconds=1))
     row = WorkSession(user_id=user.id, project_task_id=body.project_task_id, daily_task_id=body.daily_task_id,
-                      kind=body.kind, source="timer", started_at=now, planned_minutes=body.planned_minutes, label=body.label)
+                      kind=body.kind, source="timer", started_at=now, planned_minutes=body.planned_minutes,
+                      planned_seconds=body.planned_seconds, label=body.label)
+    plan = execution_plan(db, user.id)
+    plan.paused_session_id = None
+    plan.remaining_seconds = None
     db.add(row); db.commit(); db.refresh(row)
     return session_payload(row)
 
@@ -451,6 +597,11 @@ def start_session(body: StartSessionInput, user: User = Depends(get_current_acti
 def switch_session(body: SwitchSessionInput, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     db.query(User).filter(User.id == user.id).with_for_update().first()
     old = owned(db, WorkSession, body.from_session_id, user.id)
+    settle_expired(db, user.id)
+    if body.daily_task_id is not None and body.project_task_id is None:
+        daily = owned(db, DailyTask, body.daily_task_id, user.id)
+        if daily.completed and body.kind == "work": fail("日程任务已完成", 409)
+        body.project_task_id = daily.project_task_id
     if old.ended_at is not None: fail("原片段已经结束", 409)
     validate_session_links(db, user.id, body.project_task_id, body.daily_task_id)
     if body.kind == "work" and body.project_task_id is None and body.daily_task_id is None:
@@ -464,7 +615,7 @@ def switch_session(body: SwitchSessionInput, user: User = Depends(get_current_ac
     old.ended_at = moment
     new = WorkSession(user_id=user.id, project_task_id=body.project_task_id, daily_task_id=body.daily_task_id,
                       kind=body.kind, source="timer", started_at=moment,
-                      planned_minutes=body.planned_minutes, label=body.label)
+                      planned_minutes=body.planned_minutes, planned_seconds=body.planned_seconds, label=body.label)
     db.add(new); db.commit(); db.refresh(new)
     return {"ended": session_payload(old), "started": session_payload(new)}
 
@@ -475,15 +626,26 @@ def stop_session(session_id: int, body: StopSessionInput, user: User = Depends(g
     row = owned(db, WorkSession, session_id, user.id)
     if row.ended_at is not None: return session_payload(row)
     end = utc_naive(body.ended_at) if body.ended_at else datetime.utcnow()
+    now = datetime.utcnow()
+    if end > now: fail("结束时间不能晚于当前时间")
+    if row.source == "timer": end = min(end, row.started_at + timedelta(seconds=budget_seconds(row)))
     if end <= row.started_at: fail("结束时间必须晚于开始时间")
     assert_no_overlap(db, user.id, row.started_at, end, row.id)
-    row.ended_at = end; db.commit()
+    row.ended_at = end
+    plan = execution_plan(db, user.id)
+    remaining = max(0, budget_seconds(row) - math.ceil((end - row.started_at).total_seconds()))
+    plan.paused_session_id = row.id if body.pause and remaining else None
+    plan.remaining_seconds = remaining if body.pause and remaining else None
+    db.commit()
     return session_payload(row)
 
 
 @router.post("/sessions/manual")
 def manual_session(body: ManualSessionInput, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     db.query(User).filter(User.id == user.id).with_for_update().first()
+    settle_expired(db, user.id)
+    if body.daily_task_id is not None and body.project_task_id is None:
+        body.project_task_id = owned(db, DailyTask, body.daily_task_id, user.id).project_task_id
     validate_session_links(db, user.id, body.project_task_id, body.daily_task_id, body.time_log_node_id)
     if body.source == "moment" and body.time_log_node_id is None: fail("确认时刻区间时必须选择时刻记录")
     if body.kind == "work" and body.project_task_id is None and body.daily_task_id is None: fail("工作片需要关联任务")

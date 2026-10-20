@@ -24,7 +24,7 @@ from app.models import (
     User,
 )
 from app.project_models import (
-    Goal, Project, ProjectStage, ProjectTask, TaskDependency,
+    ExecutionPlan, Goal, Project, ProjectStage, ProjectTask, TaskDependency,
     TaskChecklistItem, WorkSession, TimeActivityAssessment, ProcessTemplate,
 )
 
@@ -134,6 +134,7 @@ def build_backup_zip(db: Session) -> bytes:
         "task_dependencies.csv": TaskDependency,
         "task_checklist_items.csv": TaskChecklistItem,
         "work_sessions.csv": WorkSession,
+        "execution_plans.csv": ExecutionPlan,
         "time_activity_assessments.csv": TimeActivityAssessment,
         "process_templates.csv": ProcessTemplate,
         "long_term_daily_records.csv": LongTermDailyRecord,
