@@ -3451,7 +3451,7 @@
     </style>
     <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261017paper1">
     <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261017paper1">
-    <link rel="stylesheet" href="/static/css/long-term.css?v=20261021review1">
+    <link rel="stylesheet" href="/static/css/long-term.css?v=20261021attention1">
 </head>
 <body>
     <script>
@@ -3460,7 +3460,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261017paper1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.13';
+            window.SHURAN_VERSION = '2.0.14';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -4164,7 +4164,7 @@
         <section id="long-term" class="content-section">
             <div class="lt-page">
                 <header class="lt-heading">
-                    <div><p class="lt-eyebrow">时间 · 阅读 · 生活</p><h1>长期目标</h1></div>
+                    <div><p class="lt-eyebrow">时间 · 注意力 · 金钱</p><h1>长期目标</h1></div>
                     <div class="lt-date-nav"><button type="button" id="ltPrevDay" aria-label="前一天">←</button><input type="date" id="ltDate" aria-label="记录日期"><button type="button" id="ltNextDay" aria-label="后一天">→</button></div>
                 </header>
                 <div class="lt-overview" aria-label="当天概览">
@@ -4187,12 +4187,21 @@
                             <label class="lt-check"><input id="ltDayConfirmed" type="checkbox">我已核对当天的活动记录（没有活动也可以确认）</label>
                         </div>
                         <aside class="lt-expenses" aria-labelledby="ltExpenseHeading">
-                            <div class="lt-panel-heading"><h2 id="ltExpenseHeading">每日消费</h2><span>人民币 · 定投单列</span></div>
+                            <div class="lt-panel-heading"><h2 id="ltExpenseHeading">每日开销</h2><span>注意力与金钱分开记录</span></div>
+                            <section class="lt-expense-section lt-attention-section" aria-labelledby="ltAttentionHeading">
+                                <div class="lt-attention-heading"><h3 id="ltAttentionHeading">注意力浪费</h3><output id="ltAttentionTotal">0 分钟</output></div>
+                                <p class="lt-note">记录刷手机等分心事项占用的时间，不并入活动总时长。</p>
+                                <div id="ltAttentionList"></div>
+                                <div class="lt-attention-actions"><button type="button" class="lt-text-button" id="ltAddAttention">＋ 添加一项</button><button type="button" class="lt-text-button" id="ltNoAttention">今天没有注意力浪费</button></div>
+                            </section>
+                            <section class="lt-expense-section lt-money-section" aria-labelledby="ltMoneyHeading">
+                            <h3 id="ltMoneyHeading">金钱消费</h3>
                             <div id="ltExpenseList"></div>
                             <button type="button" class="lt-text-button" id="ltAddExpense">＋ 记一笔消费或退款</button>
                             <div id="ltExpenseTotals" class="lt-expense-totals"></div>
                             <label class="lt-check"><input type="checkbox" id="ltExpenseConfirmed">我已核对当天消费（没有消费也可以确认）</label>
                             <p class="lt-note">退款记在实际到账日。未确认日期会在报告中提示，不推断为零消费。</p>
+                            </section>
                         </aside>
                     </fieldset>
                     <div class="lt-save-area lt-save-toolbar">
@@ -6779,7 +6788,7 @@
     <script src="/static/js/today-dashboard.js?v=20261017paper1"></script>
     <script src="/static/js/daily-schedule.js?v=20261020slice1"></script>
     <script src="/static/js/time-log.js?v=20261018momenttask1"></script>
-    <script src="/static/js/long-term.js?v=20261021review1"></script>
+    <script src="/static/js/long-term.js?v=20261021attention1"></script>
     <script src="/static/js/activity-review.js?v=20261017paper1"></script>
     <script src="/static/js/ideas.js?v=20261018momenttask1"></script>
     <script src="/static/js/desktop-shell.js?v=20261017paper1"></script>

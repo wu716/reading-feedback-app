@@ -23,7 +23,7 @@
         dirty = true;
         if (day) drafts.set(day.date, clone(day));
         status('有未保存的修改', 'is-dirty');
-        el('ltSaveHint').textContent = '活动和消费一起保存。报告只统计已保存的记录。';
+        el('ltSaveHint').textContent = '活动、注意力和消费一起保存。报告只统计已保存的记录。';
         updateTotals();
     }
     function setBusy(value) {
@@ -103,6 +103,23 @@
         el('ltExpenseList').querySelectorAll('[data-entry]').forEach(d => d.addEventListener('toggle', () => { d.open ? openEntries.add(d.dataset.entry) : openEntries.delete(d.dataset.entry); }));
         updateTotals();
     }
+    function renderAttention() {
+        day.attention_items ||= [];
+        const confirmedNoWaste = day.attention_confirmed && !day.attention_items.length;
+        el('ltAttentionList').innerHTML = confirmedNoWaste
+            ? '<p class="lt-zero-confirmation">✓ 今天没有注意力浪费</p>'
+            : day.attention_items.map((item,i) => '<div class="lt-attention-row"><input data-attention-index="' + i + '" data-attention-field="name" aria-label="注意力浪费事项" maxlength="60" placeholder="如：刷手机" required value="' + esc(item.name) + '"><div class="lt-minute-input"><input data-attention-index="' + i + '" data-attention-field="minutes" aria-label="注意力浪费分钟" type="number" min="0" max="1440" step="1" inputmode="numeric" placeholder="0" required value="' + esc(item.minutes) + '"><span>分</span></div><button type="button" aria-label="移除注意力浪费事项" data-remove-attention="' + i + '">×</button></div>').join('');
+        el('ltNoAttention').hidden = confirmedNoWaste;
+        el('ltAttentionTotal').textContent = time(day.attention_items.reduce((n,item) => n + (Number(item.minutes) || 0),0) * 60);
+    }
+    function newAttention() {
+        day.attention_confirmed = false;
+        day.attention_items ||= [];
+        day.attention_items.push({name:'',minutes:''});
+        const index = day.attention_items.length - 1;
+        touch(); renderAttention();
+        el('ltAttentionList').querySelector('[data-attention-index="' + index + '"][data-attention-field="name"]').focus();
+    }
     function renderNodes() {
         const used = new Set(day.activities.map(a => a.source_node_id));
         el('ltNodeCount').textContent = day.nodes.length + ' 条';
@@ -125,13 +142,13 @@
         const spending = day.expenses.filter(e => e.kind === 'expense').reduce((n,e) => n + (Number(e.amount_cents) || 0),0);
         const refunds = day.expenses.filter(e => e.kind === 'refund').reduce((n,e) => n + (Number(e.amount_cents) || 0),0);
         el('ltExpenseTotals').innerHTML = '<span>消费 ¥ ' + yuan(spending) + '</span><span>退款 ¥ ' + yuan(refunds) + '</span><strong>净支出 ¥ ' + yuan(spending-refunds) + '</strong>';
+        if (el('ltAttentionTotal')) el('ltAttentionTotal').textContent = time((day.attention_items || []).reduce((n,item) => n + (Number(item.minutes) || 0),0) * 60);
     }
     function renderDay() {
-        renderActivities(); renderExpenses();
+        renderActivities(); renderAttention(); renderExpenses();
         el('ltDayConfirmed').checked = day.day_confirmed;
         el('ltExpenseConfirmed').checked = day.expense_confirmed;
-        el('ltLegacy').innerHTML = (day.legacy_investment_seconds ? '<p class="lt-note">旧版定投时长 ' + time(day.legacy_investment_seconds) + ' 已保留在历史数据中；新版定投统计金额。</p>' : '') +
-            (day.legacy_attention.length ? '<details class="lt-log-review"><summary>历史注意力记录 · ' + day.legacy_attention.length + ' 项</summary><p class="lt-note">旧记录可能与活动时长重合，单独保留。若已在活动中标记同一段非计划占用，请移除对应旧项。</p>' + day.legacy_attention.map((a,i) => '<div class="lt-node"><span>' + esc(a.name) + ' · ' + a.minutes + ' 分钟</span><button type="button" class="lt-text-button" data-remove-legacy="' + i + '">移除旧项</button></div>').join('') + '</details>' : '');
+        el('ltLegacy').innerHTML = day.legacy_investment_seconds ? '<p class="lt-note">旧版定投时长 ' + time(day.legacy_investment_seconds) + ' 已保留在历史数据中；新版定投统计金额。</p>' : '';
         status(dirty ? '有未保存的修改' : day.recorded ? '已保存' : '待记录',dirty ? 'is-dirty' : day.recorded ? 'is-saved' : '');
     }
     function newActivity(category, source = null) {
@@ -156,6 +173,11 @@
     }
     function serializeDay() {
         validateControls(el('ltDayFields'));
+        const attention = (day.attention_items || []).map(item => ({name:String(item.name || '').trim(),minutes:Number(item.minutes)}));
+        if (!attention.length && !day.attention_confirmed) throw new Error('请记录注意力浪费事项，或确认今天没有注意力浪费。');
+        if (attention.length > 30 || attention.some(item => !item.name || !Number.isInteger(item.minutes) || item.minutes < 0 || item.minutes > 1440)) throw new Error('请检查注意力浪费事项和分钟数。');
+        if (new Set(attention.map(item => item.name)).size !== attention.length) throw new Error('注意力浪费项目名称不能重复，请合并相同项目。');
+        if (attention.reduce((sum,item) => sum + item.minutes,0) > 1440) throw new Error('注意力浪费合计不能超过 1440 分钟。');
         return {
             revision:day.revision,
             activities:day.activities.map(a => {
@@ -165,7 +187,8 @@
                 return data;
             }),
             expenses:day.expenses.map(e => { const {_amount,...data} = e; data.amount_cents = moneyCents(_amount ?? yuan(e.amount_cents)); return data; }),
-            expense_confirmed:day.expense_confirmed,day_confirmed:day.day_confirmed,legacy_attention:day.legacy_attention,
+            expense_confirmed:day.expense_confirmed,day_confirmed:day.day_confirmed,
+            attention_items:attention,attention_confirmed:Boolean(day.attention_confirmed || attention.length),
         };
     }
     async function loadDay(force = false) {
@@ -179,7 +202,7 @@
             day = !force && drafts.has(date) ? clone(drafts.get(date)) : data;
             dirty = !force && drafts.has(date);
             renderDay(); el('ltDayFields').disabled = false;
-            el('ltSaveHint').textContent = dirty ? '已恢复本次会话草稿，保存前请核对。' : '修改后保存；活动与消费可以分别确认是否记全。';
+            el('ltSaveHint').textContent = dirty ? '已恢复本次会话草稿，保存前请核对。' : '修改后保存；活动、注意力和消费可以分别核对。';
         } catch(e) { if (request === dayRequest && sameSession(epoch)) status(e.message || '读取失败，请重试','is-error'); }
         if (view === 'report') loadReport();
     }
@@ -237,6 +260,9 @@
             else e[f] = f === 'activity_id' ? target.value || null : target.value;
             el('ltExpenseList').querySelector('[data-exp-label="' + e.id + '"]').textContent = (expenseNames()[e.category] || '选择类别') + (e.kind === 'refund' ? ' · 退款' : '');
             el('ltExpenseList').querySelector('[data-exp-value="' + e.id + '"]').textContent = '¥ ' + yuan(e.amount_cents);
+        } else if (target.dataset.attentionIndex !== undefined) {
+            const item = day.attention_items[Number(target.dataset.attentionIndex)];
+            item[target.dataset.attentionField] = target.value;
         } else if (target.id === 'ltDayConfirmed') day.day_confirmed = target.checked;
         else if (target.id === 'ltExpenseConfirmed') day.expense_confirmed = target.checked;
         else return;
@@ -271,8 +297,10 @@
                 day.expenses.push(other); openEntries.add(e.id); openEntries.add(other.id);
                 splitId = null; touch(); renderExpenses();
             } catch(error) { status(error.message,'is-error'); }
-        } else if (b.dataset.removeLegacy !== undefined) {
-            day.legacy_attention.splice(Number(b.dataset.removeLegacy),1); touch(); renderDay();
+        } else if (b.dataset.removeAttention !== undefined) {
+            day.attention_items.splice(Number(b.dataset.removeAttention),1);
+            if (!day.attention_items.length) day.attention_confirmed = false;
+            touch(); renderAttention();
         }
     }
     function goalUnit(g) { return g.metric === 'seconds' ? '分钟' : g.metric === 'cents' ? '元' : g.metric === 'words' ? '字' : '条记录'; }
@@ -362,6 +390,15 @@
     function reportTable(items, withIds = false) {
         return '<div class="lt-table-wrap"><table class="lt-table"><thead><tr><th>日期</th><th>内容</th><th>投入／产出</th><th>感受与补充</th></tr></thead><tbody>' + reportRows(items, withIds) + '</tbody></table></div>';
     }
+    function attentionSection(r) {
+        const entries = Object.entries(r.attention_by_name || {}).filter(([,minutes]) => Number(minutes) > 0).sort((a,b) => b[1]-a[1]);
+        const checked = Number(r.attention_confirmed_days || 0), elapsed = Number(r.elapsed_days || 0);
+        const total = Number(r.attention_waste_minutes ?? r.attention_minutes ?? 0);
+        const rows = entries.map(([name,minutes]) => '<div class="lt-attention-summary"><span>' + esc(name) + '</span><strong>' + time(minutes * 60) + '</strong></div>').join('');
+        return '<section class="lt-report-section"><h2>注意力浪费</h2><p class="lt-note">只汇总单独登记的分心事项；活动中的非计划占用仍按活动时长单独展示。</p>' +
+            '<div class="lt-attention-summary"><span>累计注意力浪费 · 已核对 ' + checked + '／' + elapsed + ' 天</span><strong>' + (checked ? time(total * 60) : '未记录') + '</strong></div>' +
+            (rows || '<p class="lt-note">' + (checked ? '已核对的日期没有记录注意力浪费。' : '完成每日核对后，这里会汇总分心事项。') + '</p>') + '</section>';
+    }
     function renderReport(r) {
         displayedReport = r;
         if (r.premium_locked) {
@@ -400,21 +437,22 @@
                 return '<tr><td>'+name+'</td><td>'+(has(c.current)?format(a):'未记录')+'</td><td>'+(has(c.previous)?format(b):'未记录')+'</td><td>'+(has(c.current)&&has(c.previous)?(a-b>0?'+':'')+format(a-b):'—')+'</td></tr>';
             }).join('') + '</tbody></table></div>' : '<p class="lt-note">所选周期尚未开始。</p>';
         const goals = r.goals.map(g => '<div class="lt-goal-progress"><div><strong>' + esc(targetTitle(g,names)) + '</strong><span>' + goalValue(g,g.actual) + ' / ' + goalValue(g,g.target) + '</span></div><progress max="' + g.target + '" value="' + Math.max(0,Math.min(g.actual,g.target)) + '"></progress><p class="lt-note">每' + periods[g.period] + ' · ' + g.start + '～' + g.end + '（周期结束 ' + g.period_end + '） · 已确认 ' + g.confirmed_days + '／' + g.elapsed_days + ' 天' + (g.category === 'expense' ? ' · ' + (g.actual > g.target ? '超出预算 ¥ '+yuan(g.actual-g.target) : '预算剩余 ¥ '+yuan(g.target-g.actual)) : '') + '</p></div>').join('');
-        const trend = r.trend.map(t => '<tr><td>' + t.label + '</td><td>' + (t.activity_record_count || t.day_confirmed_days ? time(Object.values(t.total_seconds).reduce((a,b)=>a+b,0)) : '未记录') + '</td><td>' + (t.counts.writing || t.day_confirmed_days ? t.words : '未记录') + '</td><td>' + (t.expense_record_count || t.expense_confirmed_days ? '¥ ' + yuan(t.money_cents) : '未记录') + '</td><td>' + t.expense_confirmed_days + '</td></tr>').join('');
+        const trend = r.trend.map(t => '<tr><td>' + t.label + '</td><td>' + (t.activity_record_count || t.day_confirmed_days ? time(Object.values(t.total_seconds).reduce((a,b)=>a+b,0)) : '未记录') + '</td><td>' + (t.attention_confirmed_days ? time(t.attention_waste_minutes * 60) : '未记录') + '</td><td>' + (t.counts.writing || t.day_confirmed_days ? t.words : '未记录') + '</td><td>' + (t.expense_record_count || t.expense_confirmed_days ? '¥ ' + yuan(t.money_cents) : '未记录') + '</td><td>' + t.expense_confirmed_days + '</td></tr>').join('');
         el('ltReport').innerHTML =
-            '<p class="lt-report-range">' + r.start + ' — ' + r.end + '<span>活动核对 ' + r.day_confirmed_days + '／' + r.elapsed_days + ' 天 · 消费核对 ' + r.expense_confirmed_days + '／' + r.elapsed_days + ' 天</span></p>' +
+            '<p class="lt-report-range">' + r.start + ' — ' + r.end + '<span>活动核对 ' + r.day_confirmed_days + '／' + r.elapsed_days + ' 天 · 注意力核对 ' + r.attention_confirmed_days + '／' + r.elapsed_days + ' 天 · 消费核对 ' + r.expense_confirmed_days + '／' + r.elapsed_days + ' 天</span></p>' +
             (dirty || drafts.size ? '<p class="lt-note lt-notice">有尚未保存的每日记录，本报告展示服务器已保存数据。</p>' : '') +
-            '<div class="lt-report-metrics"><div><span>时间投入</span><strong>' + (r.activity_record_count || r.day_confirmed_days ? time(total) : '未记录') + '</strong></div><div><span>写作产出</span><strong>' + r.words + ' 字</strong></div><div><span>消费净支出 · 已记录金额</span><strong>' + (r.expense_record_count || r.expense_confirmed_days ? '¥ ' + yuan(r.money_cents) : '未记录') + '</strong></div><div><span>定投累计投入</span><strong>¥ ' + yuan(r.investment_cents) + '</strong></div></div>' +
+            '<div class="lt-report-metrics"><div><span>时间投入</span><strong>' + (r.activity_record_count || r.day_confirmed_days ? time(total) : '未记录') + '</strong></div><div><span>注意力浪费</span><strong>' + (r.attention_confirmed_days ? time(r.attention_waste_minutes * 60) : '未记录') + '</strong></div><div><span>写作产出</span><strong>' + r.words + ' 字</strong></div><div><span>消费净支出 · 已记录金额</span><strong>' + (r.expense_record_count || r.expense_confirmed_days ? '¥ ' + yuan(r.money_cents) : '未记录') + '</strong></div><div><span>定投累计投入</span><strong>¥ ' + yuan(r.investment_cents) + '</strong></div></div>' +
             '<section class="lt-report-section"><h2>阅读地图</h2><p class="lt-note">按主主题分配阅读时长。主题反映这段时间的阅读选择，不据此推断人格。</p><div class="lt-reading-types">' + Object.entries(r.reading).map(([k,v]) => '<span>' + kinds[k] + '<strong>' + time(v.seconds) + '</strong><small>' + v.count + ' 条记录</small></span>').join('') + '</div>' +
             (topicHTML || '<p class="lt-note">记录书籍的类型和主题后，这里会显示阅读分布。</p>') +
             (Object.keys(r.secondary_topics).length ? '<p class="lt-note">补充主题涉及记录数（可重叠）：' + Object.entries(r.secondary_topics).map(([k,n]) => esc(r.topic_names[k])+' '+n+' 条').join(' · ') + '</p>' : '') + '</section>' +
+            attentionSection(r) +
             '<section class="lt-report-section"><h2>消费分类</h2><p class="lt-note">消费 ¥ ' + yuan(r.expense_cents) + ' − 退款 ¥ ' + yuan(r.refund_cents) + ' = 净支出 ¥ ' + yuan(r.money_cents) + '。退款按实际到账日统计，比例以消费总额为分母。</p>' +
             '<div class="lt-table-wrap"><table class="lt-table"><thead><tr><th>类别 · 点击看账目</th><th>消费</th><th>退款</th><th>净支出</th><th>消费占比</th></tr></thead><tbody>' + (expenseTable || '<tr><td colspan="5">本周期没有已记录账目；请结合核对天数判断是否漏记。</td></tr>') + '</tbody></table></div>' +
             '<details id="ltReportExpenses" class="lt-report-detail"><summary><span>消费与退款明细</span><small>' + r.expenses.length + ' 笔</small></summary><button type="button" class="lt-text-button" data-exp-filter="">显示全部类别</button><p id="ltExpenseFilterLabel" class="lt-note"></p><div class="lt-table-wrap"><table class="lt-table"><thead><tr><th>日期</th><th>类别</th><th>金额</th><th>备注与关联活动</th></tr></thead><tbody>' + transactionRows + '</tbody></table></div></details></section>' +
-            '<section class="lt-report-section"><h2>各板块记录</h2>' + groups + '<p class="lt-note">其中非计划占用 ' + time(r.unplanned_seconds) + '，已包含在活动总时长内。' + (r.legacy_attention_seconds ? '旧版注意力记录 '+time(r.legacy_attention_seconds)+' 单独保留，可能与活动重合。' : '') + (r.source_missing_count ? '有 '+r.source_missing_count+' 条源日志已移除或变更日期，描述保留，暂不计时。' : '') + '</p></section>' +
+            '<section class="lt-report-section"><h2>各板块记录</h2>' + groups + '<p class="lt-note">其中非计划占用 ' + time(r.unplanned_seconds) + '，已包含在活动总时长内。' + (r.source_missing_count ? '有 '+r.source_missing_count+' 条源日志已移除或变更日期，描述保留，暂不计时。' : '') + '</p></section>' +
             '<section class="lt-report-section"><h2>目标与预算进展</h2>' + (goals || '<p class="lt-note">当前日期没有适用目标，可在“目标与分类”中设置。</p>') + '</section>' +
             '<section class="lt-report-section"><h2>与上一周期比较</h2>' + comparison + '</section>' +
-            '<details class="lt-report-detail"><summary><span>周期内趋势</span><small>' + (['year','quarter'].includes(r.period) ? '按月' : '按日') + '</small></summary><div class="lt-table-wrap"><table class="lt-table"><thead><tr><th>日期</th><th>时间投入</th><th>写作字数</th><th>消费净支出</th><th>消费核对天数</th></tr></thead><tbody>' + trend + '</tbody></table></div></details>' +
+            '<details class="lt-report-detail"><summary><span>周期内趋势</span><small>' + (['year','quarter'].includes(r.period) ? '按月' : '按日') + '</small></summary><div class="lt-table-wrap"><table class="lt-table"><thead><tr><th>日期</th><th>时间投入</th><th>注意力浪费</th><th>写作字数</th><th>消费净支出</th><th>消费核对天数</th></tr></thead><tbody>' + trend + '</tbody></table></div></details>' +
             '<section class="lt-report-section"><h2>消费记录足迹</h2><div class="lt-report-calendar">' + r.days.map(d => '<button type="button" data-day="' + d.date + '" class="' + (d.expense_confirmed ? 'is-recorded' : d.recorded ? 'is-partial' : '') + '" title="' + d.date + (d.expense_confirmed ? ' 消费已核对' : d.recorded ? '有记录，消费待核对' : '未记录') + '">' + d.date.slice(5).replace('-','/') + '</button>').join('') + '</div><p class="lt-note">深绿：消费已核对；浅褐：有记录待核对；浅灰：未记录。未来日期不计入已过天数。点击日期可补记。</p></section>';
     }
     function renderFreeReport(r) {
@@ -428,10 +466,11 @@
             (key === 'investment' ? '¥ ' + yuan(r.investment_cents) : time((r.total_seconds || {})[key])) +
             ' · ' + ((r.counts || {})[key] || 0) + ' 条</strong></div>').join('');
         el('ltReport').innerHTML =
-            '<p class="lt-report-range">' + esc(r.start) + ' — ' + esc(r.end) + '<span>活动核对 ' + r.day_confirmed_days + '／' + r.elapsed_days + ' 天 · 消费核对 ' + r.expense_confirmed_days + '／' + r.elapsed_days + ' 天</span></p>' +
+            '<p class="lt-report-range">' + esc(r.start) + ' — ' + esc(r.end) + '<span>活动核对 ' + r.day_confirmed_days + '／' + r.elapsed_days + ' 天 · 注意力核对 ' + r.attention_confirmed_days + '／' + r.elapsed_days + ' 天 · 消费核对 ' + r.expense_confirmed_days + '／' + r.elapsed_days + ' 天</span></p>' +
             (dirty || drafts.size ? '<p class="lt-note lt-notice">有尚未保存的每日记录，本报告展示服务器已保存数据。</p>' : '') +
-            '<div class="lt-report-metrics"><div><span>时间投入</span><strong>' + (r.activity_record_count || r.day_confirmed_days ? time(total) : '未记录') + '</strong></div><div><span>写作产出</span><strong>' + r.words + ' 字</strong></div><div><span>消费净支出 · 已记录金额</span><strong>' + (r.expense_record_count || r.expense_confirmed_days ? '¥ ' + yuan(r.money_cents) : '未记录') + '</strong></div><div><span>定投累计投入</span><strong>¥ ' + yuan(r.investment_cents) + '</strong></div></div>' +
+            '<div class="lt-report-metrics"><div><span>时间投入</span><strong>' + (r.activity_record_count || r.day_confirmed_days ? time(total) : '未记录') + '</strong></div><div><span>注意力浪费</span><strong>' + (r.attention_confirmed_days ? time(r.attention_waste_minutes * 60) : '未记录') + '</strong></div><div><span>写作产出</span><strong>' + r.words + ' 字</strong></div><div><span>消费净支出 · 已记录金额</span><strong>' + (r.expense_record_count || r.expense_confirmed_days ? '¥ ' + yuan(r.money_cents) : '未记录') + '</strong></div><div><span>定投累计投入</span><strong>¥ ' + yuan(r.investment_cents) + '</strong></div></div>' +
             '<section class="lt-report-section"><h2>各方向投入</h2>' + boards + '</section>' +
+            attentionSection(r) +
             '<section class="lt-report-section"><h2>阅读类型</h2><div class="lt-reading-types">' + reading + '</div></section>' +
             '<section class="lt-report-section"><h2>消费分类</h2><p class="lt-note">按已记录账目汇总；未核对的日期可能有漏记。</p><div class="lt-table-wrap"><table class="lt-table"><thead><tr><th>类别</th><th>消费</th><th>退款</th><th>净支出</th></tr></thead><tbody>' + (spending || '<tr><td colspan="4">本周期没有已记录消费。</td></tr>') + '</tbody></table></div></section>' +
             '<div class="lt-premium-gate"><strong>把一周的记录连成更长的线索</strong><p>月报、季报、年报、阅读主题地图、账目明细、目标预算与跨期对比属于付费深度复盘。你的记录会保留，开通后可继续分析。</p><button type="button" class="lt-text-button" data-upgrade>查看套餐与开通方式 →</button></div>';
@@ -503,6 +542,8 @@
             // Refresh links after a title edit without disrupting typing.
             if(e.target.dataset.a && e.target.dataset.field==='title') renderExpenses();
         });
+        el('ltAddAttention').onclick=newAttention;
+        el('ltNoAttention').onclick=()=>{if(!day || busy)return;day.attention_items=[];day.attention_confirmed=true;touch();renderAttention();};
         el('ltAddExpense').onclick=newExpense; el('ltSave').onclick=saveDay; el('ltDraftExport').onclick=downloadDraft;
         el('ltReload').onclick=()=>{
             if(dirty && !window.confirm('重新读取将丢弃当前日期的未保存修改。需要保留时，请先导出草稿。'))return;

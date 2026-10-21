@@ -62,6 +62,11 @@
 #long-term .lt-attention-row input{min-width:0;width:100%;border:0;border-bottom:1px solid #cdd1c5;border-radius:0;background:transparent;color:var(--lt-ink);font-size:13px;padding:9px 1px}
 .lt-attention-row button{border:0;background:transparent;color:#818877;cursor:pointer;font-size:18px;min-height:32px}
 .lt-attention-actions{display:flex;justify-content:space-between;gap:8px;margin-top:12px}
+.lt-attention-heading{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.lt-attention-heading output{font-size:12px;color:var(--lt-rust);font-variant-numeric:tabular-nums}
+.lt-attention-section .lt-note{margin-top:4px}
+.lt-attention-section .lt-attention-row{grid-template-columns:minmax(0,1fr) 60px 28px}
+.lt-money-section{padding-bottom:2px;border-bottom:0}
 .lt-text-button{border:0;background:transparent;color:var(--lt-rust);font-size:12px;cursor:pointer;padding:2px 0}
 .lt-zero-confirmation{font-size:13px;color:var(--lt-ink);padding:12px 0 2px}
 .lt-expense-section>label{display:block;font-size:12px;color:var(--lt-muted);margin-top:12px}
@@ -79,7 +84,7 @@
 .lt-report-tabs button.active{color:var(--lt-rust);border-bottom-color:var(--lt-rust)}
 .lt-report-range{font-size:12px;color:var(--lt-muted);margin-bottom:18px}
 .lt-report-range>span{margin-left:20px;color:var(--lt-rust)}
-.lt-report-metrics{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--lt-line);border-bottom:1px solid var(--lt-line);margin-bottom:26px}
+.lt-report-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-top:1px solid var(--lt-line);border-bottom:1px solid var(--lt-line);margin-bottom:26px}
 .lt-report-metrics>div{padding:20px 16px 20px 0}
 .lt-report-metrics span{display:block;font-size:11px;color:var(--lt-muted);margin-bottom:7px}
 .lt-report-metrics strong{font-size:24px;font-weight:500;font-variant-numeric:tabular-nums}

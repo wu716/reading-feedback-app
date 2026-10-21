@@ -90,7 +90,20 @@ class LedgerInput(StrictModel):
     expenses: list[Expense] = Field(default_factory=list, max_length=300)
     expense_confirmed: bool = False
     day_confirmed: bool = False
+    attention_items: list[LegacyAttention] = Field(default_factory=list, max_length=30)
+    attention_confirmed: bool = False
+    # Read compatibility for clients that still send the old field name.
     legacy_attention: list[LegacyAttention] = Field(default_factory=list, max_length=30)
+
+    @model_validator(mode="before")
+    @classmethod
+    def map_legacy_attention(cls, value):
+        if isinstance(value, dict):
+            if "attention_items" not in value and "legacy_attention" in value:
+                value = {**value, "attention_items": value["legacy_attention"]}
+            if "attention_confirmed" not in value:
+                value = {**value, "attention_confirmed": bool(value.get("attention_items"))}
+        return value
 
     @model_validator(mode="after")
     def references(self):
@@ -101,6 +114,11 @@ class LedgerInput(StrictModel):
             raise ValueError("一条活动、账目或时间日志只能计入一次")
         if any(e.activity_id and e.activity_id not in ids for e in self.expenses):
             raise ValueError("关联活动必须属于当天，请先解除关联再移除活动")
+        names = [item.name for item in self.attention_items]
+        if len(set(names)) != len(names):
+            raise ValueError("注意力浪费项目名称不能重复")
+        if sum(item.minutes for item in self.attention_items) > 1440:
+            raise ValueError("注意力浪费合计不能超过 1440 分钟")
         return self
 
 
@@ -212,7 +230,8 @@ def read_range(db, user_id, start, end):
         legacy = old.get(day)
         data = json.loads(row.payload_json) if row else {
             "activities": [], "expenses": [], "expense_confirmed": bool(legacy),
-            "day_confirmed": bool(legacy), "legacy_attention": [],
+            "day_confirmed": bool(legacy), "attention_items": [],
+            "attention_confirmed": bool(legacy), "legacy_attention": [],
         }
         legacy_investment_seconds = 0
         if legacy:
@@ -230,7 +249,9 @@ def read_range(db, user_id, start, end):
                 if legacy.money_cents:
                     data["expenses"].append(Expense(id="legacy-expense", category="unclassified",
                         amount_cents=legacy.money_cents, note="历史消费总额，可拆分补充分类").model_dump())
-                data["legacy_attention"] = [a for a in json.loads(legacy.attention_items_json) if a["minutes"]]
+                data["attention_items"] = [a for a in json.loads(legacy.attention_items_json) if a["minutes"]]
+                data["legacy_attention"] = data["attention_items"]
+                data["attention_confirmed"] = True
             for node in source:
                 category = assignments.get(node.id)
                 if category == "investment":
@@ -238,6 +259,11 @@ def read_range(db, user_id, start, end):
                 elif category in CATEGORIES:
                     data["activities"].append(Activity(id=f"node-{node.id}", category=category,
                         title=node.label or "关联行动", source_node_id=node.id).model_dump())
+        if "attention_items" not in data:
+            data["attention_items"] = data.get("legacy_attention", [])
+        if "attention_confirmed" not in data:
+            data["attention_confirmed"] = bool(data["attention_items"]) or bool(legacy)
+        data.setdefault("legacy_attention", [])
         for activity in data["activities"]:
             activity["source_missing"] = False
             if activity.get("source_node_id"):
@@ -281,7 +307,6 @@ def aggregate(days):
                 words += a.get("words") or 0
             if a.get("unplanned"):
                 unplanned += seconds
-                attention[a["title"] or "未填写活动"] = attention.get(a["title"] or "未填写活动", 0) + seconds / 60
             if key == "reading":
                 reading[a["reading_kind"]]["seconds"] += seconds
                 reading[a["reading_kind"]]["count"] += 1
@@ -298,9 +323,10 @@ def aggregate(days):
             group[f'{e["kind"]}_cents'] += e["amount_cents"]
             group["net_cents"] += e["amount_cents"] * (-1 if e["kind"] == "refund" else 1)
             group["count"] += 1
+        for item in day["attention_items"]:
+            attention[item["name"]] = attention.get(item["name"], 0) + item["minutes"]
         for item in day["legacy_attention"]:
             old_attention += item["minutes"] * 60
-            attention[item["name"]] = attention.get(item["name"], 0) + item["minutes"]
     spend = sum(e["expense_cents"] for e in expenses.values())
     refunds = sum(e["refund_cents"] for e in expenses.values())
     return {
@@ -310,7 +336,9 @@ def aggregate(days):
         "money_cents": spend - refunds, "investment_cents": sum(investments.values()),
         "investments": investments, "activity_groups": projects,
         "unplanned_seconds": unplanned, "legacy_attention_seconds": old_attention,
-        "attention_minutes": (unplanned + old_attention) / 60, "attention_by_name": attention,
+        "attention_minutes": sum(attention.values()), "attention_waste_minutes": sum(attention.values()),
+        "attention_by_name": attention,
+        "attention_confirmed_days": sum(d["attention_confirmed"] for d in days),
         "source_missing_count": missing, "activities": activities, "expenses": transactions,
         "activity_record_count": len(activities), "expense_record_count": len(transactions),
         "recorded_days": sum(d["recorded"] for d in days),
@@ -337,7 +365,7 @@ def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get
         conflict()
     nodes = {n["id"]: n for n in previous["nodes"]}
     existing = {a["id"]: a for a in previous["activities"]}
-    data = body.model_dump(exclude={"revision"})
+    data = body.model_dump(exclude={"revision", "legacy_attention"})
     for activity in data["activities"]:
         source_id = activity["source_node_id"]
         if source_id:
@@ -360,10 +388,10 @@ def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get
             raise HTTPException(400, "消费分类不存在")
         if category["archived"] and old_expenses.get(expense["id"], {}).get("category") != expense["category"]:
             raise HTTPException(400, "停用的分类不能用于新账目，请选择有效分类")
-    # Legacy attention is preserved separately; new attention belongs to an activity.
+    # Old clients may still submit the legacy alias; allow unchanged data and deletion only.
     old_attention = {(a["name"], a["minutes"]) for a in previous["legacy_attention"]}
-    if any((a["name"], a["minutes"]) not in old_attention for a in data["legacy_attention"]):
-        raise HTTPException(400, "新增注意力记录请在活动中标记非计划占用")
+    if any((a["name"], a["minutes"]) not in old_attention for a in body.legacy_attention):
+        raise HTTPException(400, "旧版注意力记录不能新增，请使用新的注意力开销字段")
     try:
         if body.revision:
             changed = db.query(LongTermLedgerDay).filter_by(user_id=user.id, record_date=day, revision=body.revision).update({
@@ -480,7 +508,8 @@ def report_payload(db, user_id, period, anchor, now=None):
     def compact(data):
         return {k: data[k] for k in ("total_seconds", "counts", "words", "money_cents", "expense_cents", "refund_cents",
                                      "investment_cents", "recorded_days", "expense_confirmed_days", "day_confirmed_days", "topics",
-                                     "activity_record_count", "expense_record_count")}
+                                     "activity_record_count", "expense_record_count", "attention_waste_minutes",
+                                     "attention_confirmed_days")}
     buckets = {}
     for d in days:
         key = d["date"][:7] if period in ("quarter", "year") else d["date"]
@@ -492,9 +521,11 @@ def report_payload(db, user_id, period, anchor, now=None):
         "expense_category_names": {c["id"]: c["name"] for c in preferences["expense_categories"]},
         "topic_names": TOPICS, "goals": goal_rows,
         "days": [{"date": d["date"], "recorded": d["recorded"], "expense_confirmed": d["expense_confirmed"],
+                  "attention_confirmed": d["attention_confirmed"],
                   "day_confirmed": d["day_confirmed"], "money_cents": stats["money_cents"],
                   "investment_cents": stats["investment_cents"],
-                  "attention_minutes": stats["attention_minutes"]} for d in days for stats in [aggregate([d])]],
+                  "attention_minutes": stats["attention_waste_minutes"],
+                  "attention_waste_minutes": stats["attention_waste_minutes"]} for d in days for stats in [aggregate([d])]],
         "trend": [{"label": key, **compact(aggregate(value))} for key, value in buckets.items()],
         "comparison": {
             "days": comparison_length, "start": start.isoformat(), "end": compared_end.isoformat() if comparison_length else None,
