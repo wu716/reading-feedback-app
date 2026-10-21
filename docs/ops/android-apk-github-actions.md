@@ -31,7 +31,7 @@
 
 ## 放到生产机
 
-先在 GitHub 核对目标 Release 和签名构建日志。以下以 `2.0.8` / `versionCode 50` 为例；**该 Release 尚未生成时不要执行**。脚本会检查 Release 标题和 APK 的 SHA-256，下载或校验失败时不会替换服务器现有安装包。复制命令时不要复制 Markdown 的代码围栏（```）。
+先在 GitHub 核对目标 Release 和签名构建日志。以下命令对应已核验的 `2.0.13` / `versionCode 55`；APK 的 SHA-256 为 `d222d70b7cabe2be0dd1cbf844617ae6eef9d6e9d285c9eb05560ade1c6dcd59`。下载或校验失败时不会替换服务器现有安装包。复制命令时不要复制 Markdown 的代码围栏（```）。
 
 Windows PowerShell 登录：
 
@@ -50,32 +50,15 @@ sudo -i
 ```bash
 bash <<'SH'
 set -euo pipefail
-version_name=2.0.8
-version_code=50
+version_name=2.0.13
+version_code=55
 cd /opt/shuran-app
 apk=releases/shuran.apk
 apk_new=releases/shuran.apk.new
-release_json=$(mktemp)
-trap 'rm -f "$release_json" "$apk_new"' EXIT
-curl -fsSL -o "$release_json" "https://api.github.com/repos/wu716/reading-feedback-app/releases/tags/android-${version_name}"
-expected_sha=$(python3 - "$release_json" "$version_name" "$version_code" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as fh:
-    release = json.load(fh)
-expected_name = f"Android {sys.argv[2]} (versionCode {sys.argv[3]})"
-if release.get("name") != expected_name:
-    raise SystemExit(f"Release title does not match {expected_name}")
-assets = [item for item in release.get("assets", []) if item.get("name") == "shuran.apk"]
-if len(assets) != 1 or not str(assets[0].get("digest", "")).startswith("sha256:"):
-    raise SystemExit("Release APK or SHA-256 digest is missing")
-print(assets[0]["digest"].removeprefix("sha256:"))
-PY
-)
-curl -fL -o "$apk_new" "https://github.com/wu716/reading-feedback-app/releases/download/android-${version_name}/shuran.apk"
+trap 'rm -f "$apk_new"' EXIT
+curl --retry 3 -fL -o "$apk_new" "https://github.com/wu716/reading-feedback-app/releases/download/android-${version_name}/shuran.apk"
 test -s "$apk_new"
-printf '%s  %s\n' "$expected_sha" "$apk_new" | sha256sum --check -
+printf '%s  %s\n' 'd222d70b7cabe2be0dd1cbf844617ae6eef9d6e9d285c9eb05560ade1c6dcd59' "$apk_new" | sha256sum --check -
 git pull --ff-only origin main
 python3 - "$version_name" "$version_code" <<'PY'
 import json
@@ -89,15 +72,15 @@ PY
 mkdir -p /opt/shuran-release-backups
 stamp=$(date +%Y%m%d-%H%M%S)
 backup="/opt/shuran-release-backups/shuran-${stamp}.apk"
-cp -p "$apk" "$backup"
-cp -p "$apk.versioncode" "$backup.versioncode"
+if [ -f "$apk" ]; then cp -p "$apk" "$backup"; fi
+if [ -f "$apk.versioncode" ]; then cp -p "$apk.versioncode" "$backup.versioncode"; fi
 mv "$apk_new" "$apk"
 printf '%s\n' "$version_code" > "$apk.versioncode"
 cd deploy/aliyun
 docker compose up -d --build
-curl -fsS http://127.0.0.1:8000/health
-curl -fsS http://127.0.0.1:8000/download/info
+curl --retry 12 --retry-delay 2 --retry-connrefused -fsS http://127.0.0.1:8000/health
+curl -fsS http://127.0.0.1:8000/download/info | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("available") is True and d.get("versionCode")==55 and d.get("versionName")=="2.0.13", d; print("APK_READY", d["versionName"], d["versionCode"])'
 SH
 ```
 
-最后确认 `/download/info` 的 `available` 为 `true`、`versionCode` 为 `50`、`versionName` 为 `2.0.8`，并实际下载 APK 核对包内版本。以后发布新版本时，先核对新 Release，再替换脚本中的 `version_name` 和 `version_code`。
+最后确认 `/download/info` 的 `available` 为 `true`、`versionCode` 为 `55`、`versionName` 为 `2.0.13`，并实际下载 APK 核对包内版本。以后发布新版本时，先核对新 Release，再替换脚本中的版本号和固定 SHA-256。
