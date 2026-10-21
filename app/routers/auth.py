@@ -26,7 +26,7 @@ from app.auth import (
 )
 from app.config import settings
 from app.database import get_db
-from app.models import AuthCode, InviteCode, Subscription, User
+from app.models import AuthCode, GrantEvent, InviteCode, Subscription, User
 from app.plans import PLAN_FREE, apply_plan, plan_catalog, resolve_user_plan
 from app.rate_limit import (
     clear_rate_hits,
@@ -199,6 +199,18 @@ async def register(user: UserCreate, request: Request, db: Session = Depends(get
         end_date=db_user.plan_expires_at,
     )
     db.add(subscription)
+    if plan_key != PLAN_FREE:
+        db.add(GrantEvent(
+            user_id=db_user.id,
+            actor_user_id=None,
+            kind="legacy_invite",
+            plan=plan_key,
+            reason="历史付费邀请码兑换；收款未在系统登记",
+            prior_plan=PLAN_FREE,
+            prior_expires_at=None,
+            new_expires_at=db_user.plan_expires_at,
+            invite_code_id=invite.id,
+        ))
     db.commit()
     db.refresh(db_user)
     write_audit(db, "register", actor_user_id=db_user.id, ip=ip, detail=phone)
@@ -456,3 +468,24 @@ async def update_user_profile(
     db.refresh(current_user)
     
     return _as_user_response(current_user)
+
+
+@router.get("/me/export")
+def export_my_data(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Download this account's history regardless of subscription status."""
+    from fastapi.responses import Response
+    from app.user_export import build_user_export_zip
+
+    payload = build_user_export_zip(db, current_user)
+    stamp = datetime.now().strftime("%Y%m%d")
+    return Response(
+        content=payload,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="shuran-account-{stamp}.zip"',
+            "Cache-Control": "no-store",
+        },
+    )

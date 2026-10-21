@@ -145,6 +145,11 @@
 #long-term .lt-section-title{margin:32px 0 10px}
 .lt-report-section{margin:28px 0}
 .lt-report-section>h2{margin-bottom:14px!important}
+.lt-premium-gate{margin:22px 0;padding:22px;border:1px solid #d6ddd2;border-radius:8px;background:#f3f4ed;color:var(--lt-ink)}
+.lt-premium-gate strong{display:block;font-size:16px;font-weight:600;margin-bottom:8px}
+.lt-premium-gate p{font-size:13px;line-height:1.7;color:var(--lt-muted);margin:0 0 8px}
+#ltGoalGate{padding:12px 14px;border-left:3px solid var(--lt-rust);background:#f4f1e9}
+#ltGoalGate button{margin-left:8px}
 .lt-reading-types{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--lt-line);border-radius:6px;margin:16px 0}
 .lt-reading-types>span{display:flex;flex-direction:column;gap:8px;padding:16px;font-size:12px}
 .lt-reading-types strong{font-size:19px;font-weight:500}

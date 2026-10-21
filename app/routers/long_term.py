@@ -208,5 +208,5 @@ def period_bounds(period: str, anchor: date) -> tuple[date, date]:
 
 @router.get("/report")
 def get_report(period: Literal["day", "week", "month", "quarter", "year"], anchor: date = Query(default=None), user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
-    from app.routers.long_term_details import report_payload
-    return report_payload(db, user.id, period, anchor or beijing_today())
+    from app.routers.long_term_details import report_for_user
+    return report_for_user(db, user, period, anchor or beijing_today())

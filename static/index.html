@@ -669,6 +669,22 @@
             min-width: 120px;
         }
 
+        .owner-payment-form label {
+            display: flex;
+            flex: 1 1 190px;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 0;
+            color: #655d54;
+            font-size: 0.78rem;
+        }
+
+        .owner-payment-form label.owner-form-wide { flex-basis: 100%; }
+        .owner-payment-form label[hidden] { display: none; }
+        .owner-payment-form input,
+        .owner-payment-form select { width: 100%; box-sizing: border-box; }
+        .owner-payment-form .me-actions { padding: 0; }
+
         .owner-table-wrap {
             overflow-x: auto;
             padding: 0 8px 12px;
@@ -3435,7 +3451,7 @@
     </style>
     <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261017paper1">
     <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261017paper1">
-    <link rel="stylesheet" href="/static/css/long-term.css?v=20261020focus1">
+    <link rel="stylesheet" href="/static/css/long-term.css?v=20261021review1">
 </head>
 <body>
     <script>
@@ -3764,7 +3780,8 @@
 
                 <div class="me-group" id="meAccountGroup">
                     <div class="me-group-title" data-i18n="me.account.group">账户与套餐</div>
-                    <p class="me-hint" data-i18n="me.plan.hint">付费和续期在微信产品群找站长开通。</p>
+                    <p class="me-hint">书然卖的是对个人项目与生活的深度复盘。免费可完整记录、使用计时、查看日报与周报，并导出自己的历史数据；付费开放月报、季报、年报、跨期对比、阅读主题等深度分析及长期目标页的复盘目标与消费预算。</p>
+                    <p class="me-hint">在产品群联系站长人工付款和开通。请先确认你的账号、套餐和金额；站长核对到账后开通，续费会从原到期日顺延。不会自动续费。</p>
                     <div class="owner-table-wrap">
                         <table class="me-plan-table" id="mePlanTable">
                             <thead>
@@ -3777,6 +3794,8 @@
                             <tbody id="mePlanTableBody"></tbody>
                         </table>
                     </div>
+                    <p class="me-hint">付款后原则上不支持自愿退款；法律规定或服务未按约提供等情形依法处理。到期后付费分析暂停，已保存的记录仍可查看和导出。有开通、账目或使用问题，请在产品群联系站长并提供账号与支付参考号。</p>
+                    <div class="me-actions"><button type="button" class="me-btn me-btn-ghost" id="meExportBtn" onclick="downloadMyData()">导出我的数据</button></div>
                 </div>
 
                 <div class="me-group me-phone-only" id="meBindEmailGroup">
@@ -3992,17 +4011,15 @@
             <div class="section-header">
                 <button type="button" class="page-back-btn" onclick="handlePageBack()">← 返回</button>
                 <h1>站长开通</h1>
-                <p>生成邀请码，给用户开通套餐</p>
+                <p>先核对到账，再为指定账号开通并留下记录。</p>
             </div>
             <div class="owner-page">
                 <div class="me-group">
                     <div class="me-group-title">生成邀请码</div>
-                    <p class="me-hint">四位数字，一次性，7 天有效。一次最多 5 个，不要囤积。</p>
+                    <p class="me-hint">仅用于免费注册。四位数字，一次性，7 天有效；付费权益请在下方核对收款后开通。</p>
                     <div class="owner-form">
                         <select id="ownerInvitePlan">
                             <option value="free">体验</option>
-                            <option value="monthly">月卡</option>
-                            <option value="semester">学期卡</option>
                         </select>
                         <input type="number" id="ownerInviteCount" min="1" max="5" value="1">
                         <input type="text" id="ownerInviteNote" maxlength="40" placeholder="备注，如微信名">
@@ -4024,6 +4041,52 @@
                     </div>
                 </div>
                 <div class="me-group">
+                    <div class="me-group-title">人工收款与开通</div>
+                    <p class="me-hint">只登记已经收到的款。确认账号、金额、渠道和时间后，保存会同时生成收款记录并开通权益；续费和换付费套餐均保留剩余期限。</p>
+                    <div class="owner-form owner-payment-form">
+                        <label>用户账号<select id="ownerPaymentUser" required><option value="">选择用户</option></select></label>
+                        <label>套餐<select id="ownerPaymentPlan" onchange="syncOwnerPaymentPrice()"><option value="monthly">月卡 · 30 天</option><option value="semester">学期卡 · 120 天</option></select></label>
+                        <label>实收金额（元）<input type="number" id="ownerPaymentAmount" min="0.01" step="0.01" value="9.90" required></label>
+                        <label>收款渠道<select id="ownerPaymentChannel"><option value="wechat">微信</option><option value="alipay">支付宝</option><option value="bank">银行转账</option><option value="other">其他</option></select></label>
+                        <label>实际到账时间<input type="datetime-local" id="ownerPaymentAt" required></label>
+                        <label>转账单号（必填）<input type="text" id="ownerPaymentReference" maxlength="100" placeholder="可核对的交易单号" required></label>
+                        <label class="owner-form-wide">内部备注（优惠价必填）<input type="text" id="ownerPaymentNote" maxlength="200" placeholder="金额与标价不同请说明原因；不要填完整付款账号"></label>
+                    </div>
+                    <div class="me-actions"><button type="button" class="me-btn me-btn-primary" id="ownerPaymentSubmit" onclick="recordOwnerPayment()">确认已到账并开通</button></div>
+                    <p class="me-hint" id="ownerPaymentStatus" role="status"></p>
+                </div>
+                <div class="me-group">
+                    <div class="me-group-title">收款与开通台账</div>
+                    <div class="owner-table-wrap"><table class="owner-table"><thead><tr><th>记录号</th><th>到账</th><th>用户</th><th>套餐</th><th>实收</th><th>渠道／参考</th><th>原到期</th><th>新到期</th><th>操作者</th></tr></thead><tbody id="ownerPaymentBody"></tbody></table></div>
+                </div>
+                <div class="me-group">
+                    <div class="me-group-title">赠送与权益纠错</div>
+                    <p class="me-hint">这不是收款入口。赠送会顺延有效期；纠错可重设套餐和到期日。每次操作必须写明原因并留痕。</p>
+                    <div class="owner-form owner-payment-form">
+                        <label>用户账号<select id="ownerGrantUser" required><option value="">选择用户</option></select></label>
+                        <label>操作<select id="ownerGrantKind" onchange="syncOwnerGrantKind()"><option value="gift">赠送付费时长</option><option value="correction">权益纠错</option></select></label>
+                        <label>套餐<select id="ownerGrantPlan"><option value="monthly">月卡 · 30 天</option><option value="semester">学期卡 · 120 天</option></select></label>
+                        <label id="ownerGrantExpiresLabel" hidden>更正到期日（选填）<input type="date" id="ownerGrantExpires"></label>
+                        <label class="owner-form-wide">原因<input type="text" id="ownerGrantReason" maxlength="200" placeholder="例如：补偿服务中断 30 天" required></label>
+                    </div>
+                    <div class="me-actions"><button type="button" class="me-btn me-btn-ghost" id="ownerGrantSubmit" onclick="recordOwnerGrant()">确认赠送并留痕</button></div>
+                    <div class="owner-table-wrap"><table class="owner-table"><thead><tr><th>记录号</th><th>时间</th><th>用户</th><th>类型</th><th>套餐</th><th>原因</th><th>原到期</th><th>新到期</th><th>操作者</th></tr></thead><tbody id="ownerGrantBody"></tbody></table></div>
+                </div>
+                <div class="me-group">
+                    <div class="me-group-title">法定或履约例外退款</div>
+                    <p class="me-hint">一般不支持自愿退款。仅在依法或服务未按约提供等实际退款后登记；退款登记不会自动修改权益，如需纠错请使用上方独立操作。</p>
+                    <div class="owner-form owner-payment-form">
+                        <label class="owner-form-wide">关联收款<select id="ownerRefundPayment" required><option value="">选择原收款记录</option></select></label>
+                        <label>已退金额（元）<input type="number" id="ownerRefundAmount" min="0.01" step="0.01" required></label>
+                        <label>退款渠道<select id="ownerRefundChannel"><option value="wechat">微信</option><option value="alipay">支付宝</option><option value="bank">银行转账</option><option value="other">其他</option></select></label>
+                        <label>实际退款时间<input type="datetime-local" id="ownerRefundAt" required></label>
+                        <label>退款单号（必填）<input type="text" id="ownerRefundReference" maxlength="100" placeholder="可核对的退款单号" required></label>
+                        <label class="owner-form-wide">原因<input type="text" id="ownerRefundReason" maxlength="200" placeholder="例如：服务未按约提供，双方协商退款" required></label>
+                    </div>
+                    <div class="me-actions"><button type="button" class="me-btn me-btn-ghost" id="ownerRefundSubmit" onclick="recordOwnerRefund()">确认已退款并登记</button></div>
+                    <div class="owner-table-wrap"><table class="owner-table"><thead><tr><th>记录号</th><th>实际退款</th><th>原收款</th><th>用户</th><th>金额</th><th>渠道／参考</th><th>原因</th><th>操作者</th></tr></thead><tbody id="ownerRefundBody"></tbody></table></div>
+                </div>
+                <div class="me-group">
                     <div class="me-group-title">导出与备份</div>
                     <p class="me-hint">ZIP 里是给 Excel 打开的 CSV，含账户和业务记录。只存在你自己的电脑，不要转发。</p>
                     <p class="me-hint" id="ownerSaveHint">点「选择保存文件夹」可指定 D 盘等位置。若按钮不可用，到 Chrome「设置 → 下载内容」勾选「下载前询问每个文件的保存位置」，再点导出。</p>
@@ -4037,7 +4100,8 @@
                     </div>
                 </div>
                 <div class="me-group">
-                    <div class="me-group-title">用户套餐</div>
+                    <div class="me-group-title">用户当前权益</div>
+                    <p class="me-hint">升级前已开通的付费账户可能没有历史收款台账；请对照原始转账凭证核对，不能把未核实的历史开通写成新收款。</p>
                     <div class="owner-table-wrap">
                         <table class="owner-table">
                             <thead>
@@ -4047,7 +4111,7 @@
                                     <th>邮箱</th>
                                     <th>套餐</th>
                                     <th>到期</th>
-                                    <th></th>
+                                    <th>登录管理</th>
                                 </tr>
                             </thead>
                             <tbody id="ownerUserBody"></tbody>
@@ -4145,7 +4209,7 @@
                 </section>
                 <section id="ltSettingsPanel" hidden aria-label="目标与分类">
                     <p class="lt-note">只为自己在意的方向设目标。开始日期限定统计范围，周期目标值不按剩余天数自动折算。</p>
-                    <fieldset id="ltSettingsFields" disabled><h2>目标与预算</h2><div id="ltGoals"></div><button type="button" class="lt-text-button" id="ltAddGoal">＋ 添加目标或预算</button>
+                    <fieldset id="ltSettingsFields" disabled><div id="ltGoalArea"><h2>复盘目标与消费预算</h2><p class="lt-note" id="ltGoalGate" hidden>长期目标页的复盘目标和消费预算属于付费深度复盘；现有设置会保留，开通后可继续编辑。<button type="button" class="lt-text-button" onclick="navigateTo('user-center')">查看套餐</button></p><div id="ltGoals"></div><button type="button" class="lt-text-button" id="ltAddGoal">＋ 添加目标或预算</button></div>
                     <h2 class="lt-section-title">消费分类</h2><p class="lt-note">可以改名、新增或停用。停用后历史账目仍保留原分类。</p><div id="ltCategories"></div><button type="button" class="lt-text-button" id="ltAddCategory">＋ 新增分类</button></fieldset>
                     <div class="lt-save-toolbar"><p id="ltSettingsStatus" class="lt-note" role="status"></p><button type="button" class="lt-text-button" id="ltReloadSettings">重新读取设置</button><button type="button" class="lt-text-button" id="ltExportSettings">导出设置草稿</button><button type="button" class="lt-primary" id="ltSaveSettings">保存目标与分类</button></div>
                 </section>
@@ -6123,6 +6187,35 @@
             }
         }
 
+        async function downloadMyData() {
+            const button = document.getElementById('meExportBtn');
+            if (button) button.disabled = true;
+            try {
+                const response = await fetch(`${API_BASE}/auth/me/export`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}` }
+                });
+                if (!response.ok) {
+                    const payload = await response.json().catch(() => ({}));
+                    throw new Error(payload.detail || '导出失败');
+                }
+                const blob = await response.blob();
+                if (blob.size < 20) throw new Error('服务器没有返回有效文件');
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.href = url;
+                link.download = filenameFromDownloadResponse(response, 'shuran-my-data.zip');
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 60000);
+                showMessage('已将个人数据交给浏览器下载', 'success');
+            } catch (error) {
+                showMessage(error.message || '导出失败', 'error');
+            } finally {
+                if (button) button.disabled = false;
+            }
+        }
+
         async function changeUserPassword() {
             const oldPassword = (document.getElementById('oldPasswordInput').value || '');
             const newPassword = (document.getElementById('newPasswordInput').value || '');
@@ -6157,44 +6250,130 @@
             }
         }
 
+        let ownerKnownUsers = [];
+        let ownerKnownPayments = [];
+        let pendingOwnerPayment = null;
+        let pendingOwnerGrant = null;
+        let pendingOwnerRefund = null;
+        const newOwnerKey = () => globalThis.crypto?.randomUUID?.() || `owner-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const ownerDateText = value => {
+            if (!value) return '—';
+            const raw = String(value);
+            const utcValue = /(?:Z|[+-]\d{2}:\d{2})$/i.test(raw) ? raw : `${raw}Z`;
+            const parsed = new Date(utcValue);
+            if (Number.isNaN(parsed.getTime())) return '—';
+            return new Intl.DateTimeFormat('zh-CN', {
+                timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+            }).format(parsed).replace(/\//g, '-') + ' 北京时间';
+        };
+        const ownerUserTitle = user => `${user.name || '未命名'} · ${user.phone || user.email || `ID ${user.id}`}`;
+
+        function syncOwnerPaymentPrice() {
+            const plan = document.getElementById('ownerPaymentPlan').value;
+            document.getElementById('ownerPaymentAmount').value = plan === 'semester' ? '39.00' : '9.90';
+        }
+
+        function syncOwnerGrantKind() {
+            const correction = document.getElementById('ownerGrantKind').value === 'correction';
+            const plan = document.getElementById('ownerGrantPlan');
+            let free = plan.querySelector('option[value="free"]');
+            if (correction && !free) {
+                free = document.createElement('option');
+                free.value = 'free';
+                free.textContent = '体验';
+                plan.prepend(free);
+            } else if (!correction && free) {
+                if (plan.value === 'free') plan.value = 'monthly';
+                free.remove();
+            }
+            document.getElementById('ownerGrantExpiresLabel').hidden = !correction;
+            document.getElementById('ownerGrantSubmit').textContent = correction ? '确认纠错并留痕' : '确认赠送并留痕';
+        }
+
         async function loadOwnerConsole() {
             const inviteBody = document.getElementById('ownerInviteBody');
             const userBody = document.getElementById('ownerUserBody');
             if (!inviteBody || !userBody) return;
             loadOwnerSaveFolder();
             try {
-                const [codes, users, audits] = await Promise.all([
+                const [codes, users, audits, payments, grants, refunds] = await Promise.all([
                     apiRequest('/owner/invite-codes'),
                     apiRequest('/owner/users'),
-                    apiRequest('/owner/audit-logs')
+                    apiRequest('/owner/audit-logs'),
+                    apiRequest('/owner/payments?limit=100'),
+                    apiRequest('/owner/grants?limit=100'),
+                    apiRequest('/owner/refunds?limit=100')
                 ]);
+                ownerKnownUsers = users.items || [];
+                ownerKnownPayments = payments.items || [];
+                const byId = new Map(ownerKnownUsers.map(user => [user.id, user]));
+                const userName = id => byId.has(id) ? ownerUserTitle(byId.get(id)) : `ID ${id}`;
+                ['ownerPaymentUser', 'ownerGrantUser'].forEach(id => {
+                    const select = document.getElementById(id);
+                    const selected = select.value;
+                    select.innerHTML = '<option value="">选择用户</option>' + ownerKnownUsers.map(user =>
+                        `<option value="${Number(user.id)}">${escapeOwnerText(ownerUserTitle(user))}</option>`).join('');
+                    select.value = selected;
+                });
+                const paidAt = document.getElementById('ownerPaymentAt');
+                if (paidAt && !paidAt.value) {
+                    const now = new Date();
+                    paidAt.value = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                }
+                const refundAt = document.getElementById('ownerRefundAt');
+                if (refundAt && !refundAt.value) refundAt.value = paidAt.value;
+                const refundPayment = document.getElementById('ownerRefundPayment');
+                const selectedRefundPayment = refundPayment.value;
+                refundPayment.innerHTML = '<option value="">选择原收款记录</option>' + ownerKnownPayments.map(row =>
+                    `<option value="${Number(row.id)}">#${Number(row.id)} · ${escapeOwnerText(userName(row.user_id))} · ¥${(Number(row.amount_cents) / 100).toFixed(2)}</option>`).join('');
+                refundPayment.value = selectedRefundPayment;
                 const statusText = { unused: '未用', used: '已用', expired: '过期' };
                 inviteBody.innerHTML = (codes.items || []).map((row) => `
                     <tr>
-                        <td class="owner-code">${row.code}</td>
-                        <td>${row.plan_label}</td>
-                        <td>${statusText[row.status] || row.status}</td>
-                        <td>${row.note || '—'}</td>
-                        <td>${row.used_by_name || row.used_by_phone || '—'}</td>
+                        <td class="owner-code">${escapeOwnerText(row.code)}</td>
+                        <td>${escapeOwnerText(row.plan_label)}</td>
+                        <td>${escapeOwnerText(statusText[row.status] || row.status)}</td>
+                        <td>${escapeOwnerText(row.note || '—')}</td>
+                        <td>${escapeOwnerText(row.used_by_name || row.used_by_phone || '—')}</td>
                     </tr>
                 `).join('') || '<tr><td colspan="5">还没有邀请码</td></tr>';
                 userBody.innerHTML = (users.items || []).map((row) => `
                     <tr>
-                        <td>${row.name || '—'}</td>
-                        <td>${row.phone || '—'}</td>
-                        <td>${row.email || '—'}</td>
-                        <td>${row.plan_label || formatUserPlan(row.plan)}</td>
-                        <td>${row.plan_expires_at || '—'}</td>
+                        <td>${escapeOwnerText(row.name || '—')}</td>
+                        <td>${escapeOwnerText(row.phone || '—')}</td>
+                        <td>${escapeOwnerText(row.email || '—')}</td>
+                        <td>${escapeOwnerText(row.plan_label || formatUserPlan(row.plan))}</td>
+                        <td>${escapeOwnerText(row.plan_expires_at || '—')}</td>
                         <td>
-                            <select data-user-id="${row.id}" onchange="changeOwnerUserPlan(this)">
-                                <option value="free" ${row.plan === 'free' ? 'selected' : ''}>体验</option>
-                                <option value="monthly" ${row.plan === 'monthly' ? 'selected' : ''}>月卡</option>
-                                <option value="semester" ${row.plan === 'semester' ? 'selected' : ''}>学期卡</option>
-                            </select>
-                            <button type="button" class="me-link-btn" onclick="revokeOwnerUserSessions(${row.id})">踢下线</button>
+                            <button type="button" class="me-link-btn" onclick="revokeOwnerUserSessions(${Number(row.id)})">踢下线</button>
                         </td>
                     </tr>
                 `).join('') || '<tr><td colspan="6">暂无用户</td></tr>';
+                const channelNames = { wechat: '微信', alipay: '支付宝', bank: '银行', other: '其他' };
+                document.getElementById('ownerPaymentBody').innerHTML = (payments.items || []).map(row => `
+                    <tr><td>#${Number(row.id)}</td><td>${escapeOwnerText(ownerDateText(row.paid_at))}</td>
+                    <td>${escapeOwnerText(userName(row.user_id))}</td><td>${escapeOwnerText(formatUserPlan(row.plan))}</td>
+                    <td>¥${(Number(row.amount_cents) / 100).toFixed(2)}</td>
+                    <td>${escapeOwnerText(channelNames[row.channel] || row.channel)}${row.transaction_reference ? '<br>' + escapeOwnerText(row.transaction_reference) : ''}</td>
+                    <td>${escapeOwnerText(row.prior_expires_at || '—')}</td><td>${escapeOwnerText(row.new_expires_at || '—')}</td>
+                    <td>${Number(row.actor_user_id) || '—'}</td></tr>
+                `).join('') || '<tr><td colspan="9">暂无收款记录</td></tr>';
+                const grantNames = { gift: '赠送', correction: '纠错', legacy_invite: '旧邀请码' };
+                document.getElementById('ownerGrantBody').innerHTML = (grants.items || []).map(row => `
+                    <tr><td>#${Number(row.id)}</td><td>${escapeOwnerText(ownerDateText(row.created_at))}</td>
+                    <td>${escapeOwnerText(userName(row.user_id))}</td><td>${escapeOwnerText(grantNames[row.kind] || row.kind)}</td>
+                    <td>${escapeOwnerText(formatUserPlan(row.plan))}</td><td>${escapeOwnerText(row.reason || '—')}</td>
+                    <td>${escapeOwnerText(row.prior_expires_at || '—')}</td><td>${escapeOwnerText(row.new_expires_at || '—')}</td>
+                    <td>${Number(row.actor_user_id) || '—'}</td></tr>
+                `).join('') || '<tr><td colspan="9">暂无赠送或纠错记录</td></tr>';
+                document.getElementById('ownerRefundBody').innerHTML = (refunds.items || []).map(row => `
+                    <tr><td>#${Number(row.id)}</td><td>${escapeOwnerText(ownerDateText(row.refunded_at))}</td>
+                    <td>#${Number(row.payment_id)}</td><td>${escapeOwnerText(userName(row.user_id))}</td>
+                    <td>¥${(Number(row.amount_cents) / 100).toFixed(2)}</td>
+                    <td>${escapeOwnerText(channelNames[row.channel] || row.channel)}${row.transaction_reference ? '<br>' + escapeOwnerText(row.transaction_reference) : ''}</td>
+                    <td>${escapeOwnerText(row.reason || '—')}</td><td>${Number(row.actor_user_id) || '—'}</td></tr>
+                `).join('') || '<tr><td colspan="8">暂无例外退款记录</td></tr>';
                 const auditBody = document.getElementById('ownerAuditBody');
                 const actionText = {
                     login: '登录',
@@ -6203,6 +6382,9 @@
                     password_change: '改密',
                     invite_generate: '生成邀请码',
                     plan_update: '改套餐',
+                    payment_record: '收款开通',
+                    grant_record: '赠送／纠错',
+                    refund_record: '例外退款',
                     revoke_sessions: '踢下线',
                     export: '导出明细',
                     backup_download: '下载备份'
@@ -6210,11 +6392,11 @@
                 if (auditBody) {
                     auditBody.innerHTML = (audits.items || []).map((row) => `
                         <tr>
-                            <td>${row.created_at ? String(row.created_at).replace('T', ' ').slice(0, 19) : '—'}</td>
-                            <td>${actionText[row.action] || row.action}</td>
-                            <td>${row.actor_user_id || '—'}</td>
-                            <td>${row.target_user_id || '—'}</td>
-                            <td>${row.detail || row.ip || '—'}</td>
+                            <td>${escapeOwnerText(ownerDateText(row.created_at))}</td>
+                            <td>${escapeOwnerText(actionText[row.action] || row.action)}</td>
+                            <td>${Number(row.actor_user_id) || '—'}</td>
+                            <td>${Number(row.target_user_id) || '—'}</td>
+                            <td>${escapeOwnerText(row.detail || row.ip || '—')}</td>
                         </tr>
                     `).join('') || '<tr><td colspan="5">暂无记录</td></tr>';
                 }
@@ -6241,19 +6423,137 @@
             }
         }
 
-        async function changeOwnerUserPlan(selectEl) {
-            const userId = selectEl && selectEl.dataset.userId;
-            const plan = selectEl && selectEl.value;
-            if (!userId || !plan) return;
+        async function recordOwnerPayment() {
+            const userId = Number(document.getElementById('ownerPaymentUser').value);
+            const plan = document.getElementById('ownerPaymentPlan').value;
+            const rawAmount = document.getElementById('ownerPaymentAmount').value.trim();
+            const at = document.getElementById('ownerPaymentAt').value;
+            const reference = document.getElementById('ownerPaymentReference').value.trim();
+            const note = document.getElementById('ownerPaymentNote').value.trim();
+            if (!userId || !/^\d+(?:\.\d{1,2})?$/.test(rawAmount) || Number(rawAmount) <= 0 || !at || !reference) {
+                showMessage('请选用户并核对实收金额、到账时间及转账单号', 'error');
+                return;
+            }
+            if (Math.round(Number(rawAmount) * 100) !== (plan === 'semester' ? 3900 : 990) && !note) {
+                showMessage('实收金额与标价不同，请在内部备注说明原因', 'error');
+                return;
+            }
+            const user = ownerKnownUsers.find(item => item.id === userId);
+            if (!user) { showMessage('用户列表已变化，请重新读取站长页', 'error'); return; }
+            const payload = {
+                user_id: userId,
+                plan,
+                amount_cents: Math.round(Number(rawAmount) * 100),
+                channel: document.getElementById('ownerPaymentChannel').value,
+                transaction_reference: reference,
+                paid_at: new Date(at).toISOString(),
+                note: note || null
+            };
+            if (!window.confirm(`确认已实际收到 ¥${rawAmount}？\n账号：${ownerUserTitle(user)}\n套餐：${formatUserPlan(plan)}\n当前到期：${user.plan_expires_at || '无'}\n保存后将开通并留存收款台账。`)) return;
+            const fingerprint = JSON.stringify(payload);
+            if (!pendingOwnerPayment || pendingOwnerPayment.fingerprint !== fingerprint) {
+                pendingOwnerPayment = { fingerprint, key: newOwnerKey() };
+            }
+            const button = document.getElementById('ownerPaymentSubmit');
+            button.disabled = true;
             try {
-                await apiRequest(`/owner/users/${userId}`, {
-                    method: 'PATCH',
-                    body: JSON.stringify({ plan })
+                const result = await apiRequest('/owner/payments', {
+                    method: 'POST',
+                    body: JSON.stringify({ ...payload, idempotency_key: pendingOwnerPayment.key })
                 });
-                showMessage('套餐已更新', 'success');
+                pendingOwnerPayment = null;
+                document.getElementById('ownerPaymentStatus').textContent = `记录 #${result.id} 已开通，到期 ${result.new_expires_at || '—'}。`;
+                document.getElementById('ownerPaymentUser').value = '';
+                document.getElementById('ownerPaymentReference').value = '';
+                document.getElementById('ownerPaymentNote').value = '';
+                document.getElementById('ownerPaymentAt').value = '';
                 await loadOwnerConsole();
+                showMessage('收款与权益已同时登记', 'success');
             } catch (error) {
-                showMessage(error.message || '更新失败', 'error');
+                showMessage((error.message || '开通失败') + '；如请求超时，请先核对收款台账再重试', 'error');
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function recordOwnerGrant() {
+            const userId = Number(document.getElementById('ownerGrantUser').value);
+            const kind = document.getElementById('ownerGrantKind').value;
+            const plan = document.getElementById('ownerGrantPlan').value;
+            const reason = document.getElementById('ownerGrantReason').value.trim();
+            if (!userId || reason.length < 2) {
+                showMessage('请选择用户并填写具体原因', 'error');
+                return;
+            }
+            const user = ownerKnownUsers.find(item => item.id === userId);
+            if (!user) { showMessage('用户列表已变化，请重新读取站长页', 'error'); return; }
+            if (!window.confirm(`确认${kind === 'gift' ? '赠送' : '纠错'}权益？\n账号：${ownerUserTitle(user)}\n套餐：${formatUserPlan(plan)}\n原因：${reason}`)) return;
+            const button = document.getElementById('ownerGrantSubmit');
+            button.disabled = true;
+            try {
+                const payload = {
+                    user_id: userId, kind, plan, reason,
+                    expires_at: kind === 'correction' ? document.getElementById('ownerGrantExpires').value || null : null
+                };
+                const fingerprint = JSON.stringify(payload);
+                if (!pendingOwnerGrant || pendingOwnerGrant.fingerprint !== fingerprint) {
+                    pendingOwnerGrant = { fingerprint, key: newOwnerKey() };
+                }
+                const result = await apiRequest('/owner/grants', {
+                    method: 'POST',
+                    body: JSON.stringify({ ...payload, idempotency_key: pendingOwnerGrant.key })
+                });
+                pendingOwnerGrant = null;
+                document.getElementById('ownerGrantReason').value = '';
+                document.getElementById('ownerGrantExpires').value = '';
+                document.getElementById('ownerGrantUser').value = '';
+                await loadOwnerConsole();
+                showMessage(`权益操作 #${result.id} 已留痕`, 'success');
+            } catch (error) {
+                showMessage((error.message || '操作失败') + '；如请求超时，请先核对赠送台账再重试', 'error');
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function recordOwnerRefund() {
+            const paymentId = Number(document.getElementById('ownerRefundPayment').value);
+            const payment = ownerKnownPayments.find(item => item.id === paymentId);
+            const rawAmount = document.getElementById('ownerRefundAmount').value.trim();
+            const at = document.getElementById('ownerRefundAt').value;
+            const reason = document.getElementById('ownerRefundReason').value.trim();
+            const reference = document.getElementById('ownerRefundReference').value.trim();
+            if (!payment || !/^\d+(?:\.\d{1,2})?$/.test(rawAmount) || Number(rawAmount) <= 0 || !at || !reference || reason.length < 2) {
+                showMessage('请选择原收款并核对已退金额、时间、退款单号和原因', 'error');
+                return;
+            }
+            const payload = {
+                payment_id: paymentId,
+                amount_cents: Math.round(Number(rawAmount) * 100),
+                channel: document.getElementById('ownerRefundChannel').value,
+                transaction_reference: reference,
+                refunded_at: new Date(at).toISOString(),
+                reason
+            };
+            if (!window.confirm(`确认已实际退款 ¥${rawAmount}？\n原收款：#${paymentId}\n原因：${reason}\n此登记不会自动调整权益。`)) return;
+            const fingerprint = JSON.stringify(payload);
+            if (!pendingOwnerRefund || pendingOwnerRefund.fingerprint !== fingerprint) {
+                pendingOwnerRefund = { fingerprint, key: newOwnerKey() };
+            }
+            const button = document.getElementById('ownerRefundSubmit');
+            button.disabled = true;
+            try {
+                const result = await apiRequest('/owner/refunds', {
+                    method: 'POST', body: JSON.stringify({ ...payload, idempotency_key: pendingOwnerRefund.key })
+                });
+                pendingOwnerRefund = null;
+                ['ownerRefundPayment', 'ownerRefundAmount', 'ownerRefundReference', 'ownerRefundReason', 'ownerRefundAt'].forEach(id => { document.getElementById(id).value = ''; });
+                await loadOwnerConsole();
+                showMessage(`例外退款 #${result.id} 已登记；如需调整权益，请另做纠错`, 'success');
+            } catch (error) {
+                showMessage((error.message || '登记失败') + '；如请求超时，请先核对退款台账再重试', 'error');
+            } finally {
+                button.disabled = false;
             }
         }
 
@@ -6479,7 +6779,7 @@
     <script src="/static/js/today-dashboard.js?v=20261017paper1"></script>
     <script src="/static/js/daily-schedule.js?v=20261020slice1"></script>
     <script src="/static/js/time-log.js?v=20261018momenttask1"></script>
-    <script src="/static/js/long-term.js?v=20261020focus1"></script>
+    <script src="/static/js/long-term.js?v=20261021review1"></script>
     <script src="/static/js/activity-review.js?v=20261017paper1"></script>
     <script src="/static/js/ideas.js?v=20261018momenttask1"></script>
     <script src="/static/js/desktop-shell.js?v=20261017paper1"></script>

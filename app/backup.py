@@ -16,7 +16,10 @@ from app.models import (
     AuditLog,
     DailyTodo,
     Idea,
+    GrantEvent,
     InviteCode,
+    PaymentTransaction,
+    RefundTransaction,
     Subscription,
     TimeLogNode,
     LongTermDailyRecord,
@@ -129,6 +132,9 @@ def build_backup_zip(db: Session) -> bytes:
     }
 
     for name, model in {
+        "payment_transactions.csv": PaymentTransaction,
+        "refund_transactions.csv": RefundTransaction,
+        "grant_events.csv": GrantEvent,
         "goals.csv": Goal,
         "projects.csv": Project,
         "project_stages.csv": ProjectStage,

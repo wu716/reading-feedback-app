@@ -333,6 +333,71 @@ class Subscription(Base):
     user = relationship("User", back_populates="subscription")
 
 
+class PaymentTransaction(Base):
+    """An immutable manual receipt and the entitlement granted for it."""
+
+    __tablename__ = "payment_transactions"
+    __table_args__ = (
+        UniqueConstraint("channel", "transaction_reference", name="uq_payment_channel_reference"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    actor_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    plan = Column(String(50), nullable=False)
+    amount_cents = Column(Integer, nullable=False)
+    channel = Column(String(20), nullable=False)
+    transaction_reference = Column(String(128), nullable=False)
+    idempotency_key = Column(String(128), nullable=False, unique=True)
+    paid_at = Column(DateTime(timezone=True), nullable=False)
+    note = Column(String(300), nullable=True)
+    prior_plan = Column(String(50), nullable=False)
+    prior_expires_at = Column(Date, nullable=True)
+    new_expires_at = Column(Date, nullable=False)
+    recorded_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class RefundTransaction(Base):
+    """An immutable record of money already returned outside this application."""
+
+    __tablename__ = "refund_transactions"
+    __table_args__ = (
+        UniqueConstraint("channel", "transaction_reference", name="uq_refund_channel_reference"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    payment_id = Column(Integer, ForeignKey("payment_transactions.id", ondelete="RESTRICT"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    actor_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    amount_cents = Column(Integer, nullable=False)
+    channel = Column(String(20), nullable=False)
+    transaction_reference = Column(String(128), nullable=False)
+    idempotency_key = Column(String(128), nullable=False, unique=True)
+    refunded_at = Column(DateTime(timezone=True), nullable=False)
+    reason = Column(String(300), nullable=False)
+    recorded_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class GrantEvent(Base):
+    """Immutable nonpayment entitlement change, including old paid invitations."""
+
+    __tablename__ = "grant_events"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    actor_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    kind = Column(String(20), nullable=False)
+    plan = Column(String(50), nullable=False)
+    reason = Column(String(300), nullable=False)
+    idempotency_key = Column(String(128), nullable=True, unique=True)
+    requested_expires_at = Column(Date, nullable=True)
+    prior_plan = Column(String(50), nullable=False)
+    prior_expires_at = Column(Date, nullable=True)
+    new_expires_at = Column(Date, nullable=True)
+    invite_code_id = Column(Integer, ForeignKey("invite_codes.id", ondelete="SET NULL"), unique=True, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
 class InviteCode(Base):
     """一次性四位邀请码。"""
     __tablename__ = "invite_codes"

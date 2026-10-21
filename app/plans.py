@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """产品套餐：体验 / 月卡 / 学期卡。"""
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
@@ -21,7 +22,7 @@ PLANS = {
         "price_text": "免费",
         "days": None,
         "duration_text": "长期有效",
-        "summary": "邀请注册后即可使用。",
+        "summary": "完整记录与计时、日报周报、本人数据导出。",
     },
     PLAN_MONTHLY: {
         "key": PLAN_MONTHLY,
@@ -30,7 +31,7 @@ PLANS = {
         "price_text": "¥9.9 / 30 天",
         "days": 30,
         "duration_text": "30 天",
-        "summary": "按月开通。",
+        "summary": "深度复盘：月季年报、跨期对比、主题分析、复盘目标与消费预算。",
     },
     PLAN_SEMESTER: {
         "key": PLAN_SEMESTER,
@@ -39,7 +40,7 @@ PLANS = {
         "price_text": "¥39 / 120 天",
         "days": 120,
         "duration_text": "120 天",
-        "summary": "按学期开通。",
+        "summary": "与月卡权益相同，连续使用 120 天。",
     },
 }
 
@@ -62,7 +63,7 @@ def get_plan_spec(plan_key: str) -> dict:
 
 
 def _today() -> date:
-    return date.today()
+    return datetime.now(ZoneInfo("Asia/Shanghai")).date()
 
 
 def effective_plan_key(user: User) -> str:
@@ -72,20 +73,20 @@ def effective_plan_key(user: User) -> str:
     if key not in PLANS:
         return PLAN_FREE
     expires = getattr(user, "plan_expires_at", None)
-    if key in PAID_PLANS and expires and expires < _today():
+    if key in PAID_PLANS and (expires is None or expires < _today()):
         return PLAN_FREE
     return key
 
 
 def resolve_user_plan(db: Session, user: User) -> str:
-    """过期套餐落回体验并写回数据库。"""
+    """缺少有效到期日的付费套餐落回体验并写回数据库。"""
     if is_owner_user(user):
         return PLAN_SEMESTER
     key = (getattr(user, "plan", None) or PLAN_FREE).strip().lower()
     if key not in PLANS:
         key = PLAN_FREE
     expires = getattr(user, "plan_expires_at", None)
-    if key in PAID_PLANS and expires and expires < _today():
+    if key in PAID_PLANS and (expires is None or expires < _today()):
         apply_plan(user, PLAN_FREE, persist_subscription=True)
         db.add(user)
         db.commit()
@@ -94,17 +95,24 @@ def resolve_user_plan(db: Session, user: User) -> str:
     return key
 
 
-def apply_plan(user: User, plan_key: str, persist_subscription: bool = True) -> None:
+def apply_plan(user: User, plan_key: str, persist_subscription: bool = True, *, renew: bool = False) -> None:
+    """Apply a plan. Paid renewals preserve the remaining time of any active paid plan."""
     spec = get_plan_spec(plan_key)
-    user.plan = spec["key"]
+    today = _today()
+    previous_plan = (getattr(user, "plan", None) or PLAN_FREE).strip().lower()
+    previous_expiry = getattr(user, "plan_expires_at", None)
     days = spec.get("days")
     if days:
-        user.plan_expires_at = _today() + timedelta(days=days)
+        starts_after = today
+        if renew and previous_plan in PAID_PLANS and previous_expiry and previous_expiry >= today:
+            starts_after = previous_expiry
+        user.plan_expires_at = starts_after + timedelta(days=days)
     else:
         user.plan_expires_at = None
+    user.plan = spec["key"]
     if persist_subscription and getattr(user, "subscription", None):
         user.subscription.plan = spec["key"]
-        user.subscription.start_date = _today()
+        user.subscription.start_date = today
         user.subscription.end_date = user.plan_expires_at
         user.subscription.is_active = True
 

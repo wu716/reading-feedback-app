@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_active_user
 from app.database import get_db
 from app.models import LongTermDailyRecord, LongTermLedgerDay, LongTermNodeCategory, LongTermPreferences, TimeLogNode, User
+from app.plans import PAID_PLANS, effective_plan_key
 from app.routers.time_log import beijing_today
 
 router = APIRouter(prefix="/long-term/details", tags=["长期目标明细"])
@@ -381,7 +382,7 @@ def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get
 
 @router.get("/preferences")
 def get_preferences(user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
-    return prefs(db, user.id)
+    return {**prefs(db, user.id), "premium_locked": effective_plan_key(user) not in PAID_PLANS}
 
 
 @router.put("/preferences")
@@ -389,6 +390,10 @@ def save_preferences(body: PreferencesInput, user: User = Depends(get_current_ac
     previous = prefs(db, user.id)
     if previous["revision"] != body.revision:
         conflict()
+    previous_goals = [Target.model_validate(goal).model_dump(mode="json") for goal in previous["goals"]]
+    requested_goals = [goal.model_dump(mode="json") for goal in body.goals]
+    if effective_plan_key(user) not in PAID_PLANS and requested_goals != previous_goals:
+        raise HTTPException(403, "长期目标页的复盘目标与消费预算需要有效月卡或学期卡；消费分类仍可免费修改")
     old_ids = {c["id"] for c in previous["expense_categories"]}
     new_ids = {c.id for c in body.expense_categories}
     if not old_ids <= new_ids:
@@ -409,7 +414,7 @@ def save_preferences(body: PreferencesInput, user: User = Depends(get_current_ac
     except IntegrityError:
         db.rollback()
         conflict()
-    return prefs(db, user.id)
+    return get_preferences(user=user, db=db)
 
 
 @router.get("/recent")
@@ -502,5 +507,23 @@ def report_payload(db, user_id, period, anchor, now=None):
 
 @router.get("/report")
 def get_report(period: Period = "day", anchor: date = Query(default=None), user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
-    return report_payload(db, user.id, period, anchor or beijing_today())
+    return report_for_user(db, user, period, anchor or beijing_today())
+
+
+def report_for_user(db: Session, user: User, period: Period, anchor: date) -> dict:
+    """Enforce the same report boundary for the current and legacy API routes."""
+    paid = effective_plan_key(user) in PAID_PLANS
+    if period in ("month", "quarter", "year") and not paid:
+        raise HTTPException(403, "月报、季报和年报需要有效月卡或学期卡")
+    result = report_payload(db, user.id, period, anchor)
+    result["premium_locked"] = not paid
+    if not paid:
+        # Daily and weekly totals stay free. Full records are available from /day
+        # and the account export; app-generated deep analysis requires a paid plan.
+        result.update({
+            "topics": {}, "secondary_topics": {}, "investments": {},
+            "activity_groups": {}, "activities": [], "expenses": [],
+            "goals": [], "trend": [], "comparison": None,
+        })
+    return result
 

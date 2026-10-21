@@ -300,6 +300,10 @@
         el('ltCategories').innerHTML = settingsDraft.expense_categories.map(c => '<div class="lt-category-editor">' +
             '<input aria-label="消费分类名称" maxlength="30" required data-c="' + c.id + '" value="' + esc(c.name) + '"' + (c.id === 'unclassified' ? ' disabled' : '') + '>' +
             '<label class="lt-check"><input type="checkbox" data-archive-c="' + c.id + '"' + (c.archived ? ' checked' : '') + (c.id === 'unclassified' ? ' disabled' : '') + '>停用</label></div>').join('');
+        const locked = !!preferences.premium_locked;
+        el('ltGoalGate').hidden = !locked;
+        el('ltAddGoal').disabled = locked;
+        el('ltGoals').querySelectorAll('input,select,button').forEach(control => { control.disabled = locked; });
     }
     function settingsInput(t) {
         if (t.dataset.g) {
@@ -360,6 +364,10 @@
     }
     function renderReport(r) {
         displayedReport = r;
+        if (r.premium_locked) {
+            renderFreeReport(r);
+            return;
+        }
         const total = Object.values(r.total_seconds).reduce((a,b) => a+b,0);
         const names = r.expense_category_names;
         const topicEntries = Object.entries(r.topics).sort((a,b) => b[1].seconds-a[1].seconds), readingTotal = r.total_seconds.reading;
@@ -409,6 +417,25 @@
             '<details class="lt-report-detail"><summary><span>周期内趋势</span><small>' + (['year','quarter'].includes(r.period) ? '按月' : '按日') + '</small></summary><div class="lt-table-wrap"><table class="lt-table"><thead><tr><th>日期</th><th>时间投入</th><th>写作字数</th><th>消费净支出</th><th>消费核对天数</th></tr></thead><tbody>' + trend + '</tbody></table></div></details>' +
             '<section class="lt-report-section"><h2>消费记录足迹</h2><div class="lt-report-calendar">' + r.days.map(d => '<button type="button" data-day="' + d.date + '" class="' + (d.expense_confirmed ? 'is-recorded' : d.recorded ? 'is-partial' : '') + '" title="' + d.date + (d.expense_confirmed ? ' 消费已核对' : d.recorded ? '有记录，消费待核对' : '未记录') + '">' + d.date.slice(5).replace('-','/') + '</button>').join('') + '</div><p class="lt-note">深绿：消费已核对；浅褐：有记录待核对；浅灰：未记录。未来日期不计入已过天数。点击日期可补记。</p></section>';
     }
+    function renderFreeReport(r) {
+        const total = Object.values(r.total_seconds || {}).reduce((a,b) => a + b, 0);
+        const names = r.expense_category_names || {};
+        const spending = Object.entries(r.expense_categories || {}).map(([key,value]) =>
+            '<tr><td>' + esc(names[key] || key) + '</td><td>¥ ' + yuan(value.expense_cents) + '</td><td>¥ ' + yuan(value.refund_cents) + '</td><td>¥ ' + yuan(value.net_cents) + '</td></tr>').join('');
+        const reading = Object.entries(r.reading || {}).map(([key,value]) =>
+            '<span>' + esc(kinds[key] || key) + '<strong>' + time(value.seconds) + '</strong><small>' + value.count + ' 条记录</small></span>').join('');
+        const boards = keys.map(key => '<div class="lt-attention-summary"><span>' + labels[key] + '</span><strong>' +
+            (key === 'investment' ? '¥ ' + yuan(r.investment_cents) : time((r.total_seconds || {})[key])) +
+            ' · ' + ((r.counts || {})[key] || 0) + ' 条</strong></div>').join('');
+        el('ltReport').innerHTML =
+            '<p class="lt-report-range">' + esc(r.start) + ' — ' + esc(r.end) + '<span>活动核对 ' + r.day_confirmed_days + '／' + r.elapsed_days + ' 天 · 消费核对 ' + r.expense_confirmed_days + '／' + r.elapsed_days + ' 天</span></p>' +
+            (dirty || drafts.size ? '<p class="lt-note lt-notice">有尚未保存的每日记录，本报告展示服务器已保存数据。</p>' : '') +
+            '<div class="lt-report-metrics"><div><span>时间投入</span><strong>' + (r.activity_record_count || r.day_confirmed_days ? time(total) : '未记录') + '</strong></div><div><span>写作产出</span><strong>' + r.words + ' 字</strong></div><div><span>消费净支出 · 已记录金额</span><strong>' + (r.expense_record_count || r.expense_confirmed_days ? '¥ ' + yuan(r.money_cents) : '未记录') + '</strong></div><div><span>定投累计投入</span><strong>¥ ' + yuan(r.investment_cents) + '</strong></div></div>' +
+            '<section class="lt-report-section"><h2>各方向投入</h2>' + boards + '</section>' +
+            '<section class="lt-report-section"><h2>阅读类型</h2><div class="lt-reading-types">' + reading + '</div></section>' +
+            '<section class="lt-report-section"><h2>消费分类</h2><p class="lt-note">按已记录账目汇总；未核对的日期可能有漏记。</p><div class="lt-table-wrap"><table class="lt-table"><thead><tr><th>类别</th><th>消费</th><th>退款</th><th>净支出</th></tr></thead><tbody>' + (spending || '<tr><td colspan="4">本周期没有已记录消费。</td></tr>') + '</tbody></table></div></section>' +
+            '<div class="lt-premium-gate"><strong>把一周的记录连成更长的线索</strong><p>月报、季报、年报、阅读主题地图、账目明细、目标预算与跨期对比属于付费深度复盘。你的记录会保留，开通后可继续分析。</p><button type="button" class="lt-text-button" data-upgrade>查看套餐与开通方式 →</button></div>';
+    }
     async function loadReport() {
         const request = ++reportRequest, epoch = sessionEpoch, selected = period, date = el('ltDate').value;
         el('ltReport').innerHTML = '<p class="lt-note">正在汇总…</p>';
@@ -416,7 +443,12 @@
             const report = await api('/report?period=' + selected + '&anchor=' + date);
             if (!sameSession(epoch) || request !== reportRequest || view !== 'report') return;
             renderReport(report);
-        } catch(e) { if (sameSession(epoch) && request === reportRequest) el('ltReport').innerHTML = '<p class="lt-note">' + esc(e.message || '报告读取失败，请重试。') + '</p>'; }
+        } catch(e) {
+            if (!sameSession(epoch) || request !== reportRequest) return;
+            el('ltReport').innerHTML = e.status === 403
+                ? '<div class="lt-premium-gate"><strong>' + periods[selected] + '报属于付费深度复盘</strong><p>开通月卡或学期卡后即可查看。记录、日报、周报和个人数据导出继续可用。</p><button type="button" class="lt-text-button" data-upgrade>查看套餐与开通方式 →</button></div>'
+                : '<p class="lt-note">' + esc(e.message || '报告读取失败，请重试。') + '</p>';
+        }
     }
     function switchView(next) {
         view = next;
@@ -482,6 +514,7 @@
         });
         el('ltReport').addEventListener('click',e=>{
             const b=e.target.closest('button'); if(!b)return;
+            if(b.dataset.upgrade !== undefined){window.navigateTo('user-center');return;}
             if(b.dataset.day){el('ltDate').value=b.dataset.day;switchView('daily');loadDay();document.getElementById('long-term').scrollIntoView({block:'start'});}
             if(b.dataset.expFilter!==undefined){
                 const detail=el('ltReportExpenses');detail.open=true;

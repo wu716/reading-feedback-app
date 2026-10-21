@@ -16,7 +16,12 @@ from app import project_models  # noqa: F401
 from app.auth import get_current_active_user
 from app.backup import build_backup_zip
 from app.database import Base, get_db
-from app.models import User, TimeLogNode, LongTermDailyRecord, LongTermLedgerDay
+from app.models import (
+    User, TimeLogNode, LongTermDailyRecord, LongTermLedgerDay, DailyTask,
+    ReadingEntry, Ebook, EbookChapter, PaymentTransaction, RefundTransaction, GrantEvent,
+)
+from app.project_models import Goal, Project, WorkSession
+from app.routers import auth as auth_routes
 from app.routers import long_term as old
 from app.routers import long_term_details as ledger
 
@@ -230,6 +235,9 @@ def test_category_retirement_keeps_history_and_refuses_new_use(db):
 
 def test_goal_filters_and_budget_and_account_isolation(db):
     user,bob=person(db),person(db,"bob")
+    user.plan = "monthly"
+    user.plan_expires_at = date.today() + timedelta(days=30)
+    db.commit()
     save(db,user,activities=[activity(primary_topic="science",reading_kind="nonfiction"),activity("fiction",reading_kind="fiction")],
          expenses=[expense(amount_cents=1000),expense("refund",kind="refund",amount_cents=200)],expense_confirmed=True)
     goals=[
@@ -267,6 +275,9 @@ def test_calendar_year_leap_and_equal_length_comparison(db):
 
 def test_http_payload_validation_and_backup_include_details(db):
     user=person(db)
+    user.plan = "monthly"
+    user.plan_expires_at = date.today() + timedelta(days=30)
+    db.commit()
     app=FastAPI()
     app.include_router(ledger.router,prefix="/api")
     app.dependency_overrides[get_current_active_user]=lambda:user
@@ -283,4 +294,141 @@ def test_http_payload_validation_and_backup_include_details(db):
         assert "long_term_ledger_days.csv" in archive.namelist()
         assert "long_term_preferences.csv" in archive.namelist()
         assert "书籍" in archive.read("long_term_ledger_days.csv").decode("utf-8-sig")
+
+
+def test_free_reports_keep_basics_and_both_routes_enforce_paid_boundary(db):
+    user = person(db)
+    save(db, user, activities=[activity(primary_topic="science")], expenses=[expense()],
+         day_confirmed=True, expense_confirmed=True)
+    app = FastAPI()
+    app.include_router(ledger.router, prefix="/api")
+    app.include_router(old.router, prefix="/api")
+    app.dependency_overrides[get_current_active_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: db
+    client = TestClient(app)
+
+    for route in ("/api/long-term/details/report", "/api/long-term/report"):
+        for period in ("day", "week"):
+            response = client.get(route, params={"period": period, "anchor": DAY.isoformat()})
+            assert response.status_code == 200
+            data = response.json()
+            assert data["premium_locked"] is True
+            assert data["total_seconds"]["reading"] == 1800
+            assert data["expense_categories"]["food"]["net_cents"] == 1234
+            assert data["topics"] == {} and data["activities"] == []
+            assert data["expenses"] == [] and data["comparison"] is None
+        for period in ("month", "quarter", "year"):
+            assert client.get(route, params={"period": period, "anchor": DAY.isoformat()}).status_code == 403
+
+    day = client.get("/api/long-term/details/day", params={"day": DAY.isoformat()}).json()
+    assert day["activities"][0]["title"] == "书籍"
+    assert day["expenses"][0]["amount_cents"] == 1234
+
+    user.plan = "monthly"
+    user.plan_expires_at = date.today() + timedelta(days=30)
+    db.commit()
+    for route in ("/api/long-term/details/report", "/api/long-term/report"):
+        data = client.get(route, params={"period": "year", "anchor": DAY.isoformat()}).json()
+        assert data["premium_locked"] is False
+        assert data["topics"]["science"]["seconds"] == 1800
+        assert data["expenses"][0]["amount_cents"] == 1234
+
+
+def test_expired_plan_keeps_goal_data_and_free_category_edits(db):
+    user = person(db)
+    user.plan = "monthly"
+    user.plan_expires_at = date.today() + timedelta(days=30)
+    db.commit()
+    goal = ledger.Target(id="read", category="reading", metric="seconds", target=3600,
+                         period="month", start_date=DAY)
+    saved = ledger.save_preferences(settings_body(db, user, goals=[goal]), user=user, db=db)
+    assert len(saved["goals"]) == 1
+    user.plan_expires_at = date.today() - timedelta(days=1)
+    db.commit()
+
+    categories = settings_body(db, user)
+    assert ledger.get_preferences(user=user, db=db)["premium_locked"] is True
+    next(c for c in categories.expense_categories if c.id == "food").name = "日常餐饮"
+    updated = ledger.save_preferences(categories, user=user, db=db)
+    assert updated["premium_locked"] is True
+    assert updated["expense_categories"][0]["name"] == "日常餐饮"
+    assert updated["goals"] == saved["goals"]
+    blocked = settings_body(db, user)
+    blocked.goals[0].target = 7200
+    with pytest.raises(HTTPException) as error:
+        ledger.save_preferences(blocked, user=user, db=db)
+    assert error.value.status_code == 403
+    assert ledger.get_preferences(user=user, db=db)["goals"] == saved["goals"]
+
+
+def test_my_data_export_is_free_complete_and_account_scoped(db):
+    alice, bob = person(db), person(db, "bob")
+    save(db, alice, activities=[activity(title="Alice 的书")], expenses=[expense(note="Alice 账目")])
+    save(db, bob, activities=[activity(title="Bob 的书")], expenses=[expense(note="Bob 账目")])
+    db.add_all([
+        DailyTask(user_id=alice.id, task_date=DAY, text="Alice 日程"),
+        DailyTask(user_id=bob.id, task_date=DAY, text="Bob 日程"),
+        ReadingEntry(user_id=alice.id, entry_date=DAY, content="Alice 阅读"),
+        ReadingEntry(user_id=bob.id, entry_date=DAY, content="Bob 阅读"),
+        Ebook(user_id=alice.id, title="Alice EPUB", original_filename="alice.epub",
+              storage_path="/internal/alice.epub", file_size=1, chapter_count=1),
+        Ebook(user_id=bob.id, title="Bob EPUB", original_filename="bob.epub",
+              storage_path="/internal/bob.epub", file_size=1, chapter_count=1),
+    ])
+    db.commit()
+    alice_book = db.query(Ebook).filter_by(user_id=alice.id).one()
+    bob_book = db.query(Ebook).filter_by(user_id=bob.id).one()
+    db.add_all([
+        EbookChapter(ebook_id=alice_book.id, chapter_index=0, title="Alice 章节", href="1", text_content="Alice 正文"),
+        EbookChapter(ebook_id=bob_book.id, chapter_index=0, title="Bob 章节", href="1", text_content="Bob 正文"),
+        PaymentTransaction(user_id=alice.id, actor_user_id=bob.id, plan="monthly", amount_cents=990,
+                           channel="wechat", transaction_reference="alice-reference", idempotency_key="private-key",
+                           paid_at=datetime(2026, 10, 20, 9), prior_plan="free", new_expires_at=DAY),
+        GrantEvent(user_id=alice.id, actor_user_id=bob.id, kind="gift", plan="monthly",
+                   reason="赠送", prior_plan="free", new_expires_at=DAY),
+    ])
+    db.commit()
+    payment_row = db.query(PaymentTransaction).filter_by(user_id=alice.id).one()
+    db.add(RefundTransaction(payment_id=payment_row.id, user_id=alice.id, actor_user_id=bob.id,
+                             amount_cents=300, channel="wechat", transaction_reference="refund-reference",
+                             idempotency_key="refund-private-key", refunded_at=datetime(2026, 10, 21, 9),
+                             reason="用户申请"))
+    db.commit()
+    goal = Goal(user_id=alice.id, title="Alice 目标")
+    db.add(goal)
+    db.commit()
+    project = Project(user_id=alice.id, goal_id=goal.id, title="Alice 项目")
+    db.add(project)
+    db.add(WorkSession(user_id=alice.id, label="Alice 番茄钟", started_at=datetime(2026, 10, 20, 8)))
+    db.commit()
+    alice.password_hash = "secret-password-hash"
+    alice.plan = "monthly"
+    alice.plan_expires_at = date.today() - timedelta(days=1)
+    db.commit()
+
+    app = FastAPI()
+    app.include_router(auth_routes.router)
+    app.dependency_overrides[get_current_active_user] = lambda: alice
+    app.dependency_overrides[get_db] = lambda: db
+    response = TestClient(app).get("/auth/me/export")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+        names = set(archive.namelist())
+        assert {"daily_tasks.json", "reading_entries.json", "long_term_ledger_days.json",
+                "goals.json", "projects.json", "work_sessions.json", "ebook_chapters.json",
+                "payment_transactions.json", "refund_transactions.json", "grant_events.json"} <= names
+        assert "auth_codes.json" not in names and "users.json" not in names
+        assert json.loads(archive.read("long_term_ledger_days.json"))[0]["user_id"] == alice.id
+        assert json.loads(archive.read("work_sessions.json"))[0]["label"] == "Alice 番茄钟"
+        assert json.loads(archive.read("ebook_chapters.json"))[0]["text_content"] == "Alice 正文"
+        payment = json.loads(archive.read("payment_transactions.json"))[0]
+        assert payment["amount_cents"] == 990 and "actor_user_id" not in payment
+        refund = json.loads(archive.read("refund_transactions.json"))[0]
+        assert refund["payment_id"] == payment["id"] and refund["amount_cents"] == 300
+        assert "actor_user_id" not in refund
+        combined = "\n".join(archive.read(name).decode("utf-8") for name in names)
+        assert "Bob 的书" not in combined and "Bob 日程" not in combined and "Bob 正文" not in combined
+        assert "secret-password-hash" not in combined and "private-key" not in combined
+        assert "/internal/alice.epub" not in combined
 
