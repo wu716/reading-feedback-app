@@ -31,7 +31,7 @@
 
 ## 放到生产机
 
-先在 GitHub 核对目标 Release 和签名构建日志。以下命令对应已核验的 `2.0.15` / `versionCode 57`；APK 的 SHA-256 为 `4ddf25ea85c730e5d955035d0dc87c525070328f5825348c9c79756e6df017d3`。下载或校验失败时不会替换服务器现有安装包。复制命令时不要复制 Markdown 的代码围栏（```）。
+先在 GitHub 核对目标 Release 和签名构建日志。以下命令对应已核验的 `2.0.16` / `versionCode 58`；APK 的 SHA-256 为 `8598bbb79a42f58c89897c58419b6b5079486b81946328188ee7d315f67230ee`。下载或校验失败时不会替换服务器现有安装包。复制命令时不要复制 Markdown 的代码围栏（```）。
 
 Windows PowerShell 登录：
 
@@ -50,8 +50,8 @@ sudo -i
 ```bash
 bash <<'SH'
 set -euo pipefail
-version_name=2.0.15
-version_code=57
+version_name=2.0.16
+version_code=58
 cd /opt/shuran-app
 apk=releases/shuran.apk
 apk_new=releases/shuran.apk.new
@@ -59,7 +59,7 @@ verify_apk=$(mktemp /tmp/shuran-download-XXXXXX.apk)
 trap 'rm -f "$apk_new" "$verify_apk"' EXIT
 curl --retry 3 -fL -o "$apk_new" "https://github.com/wu716/reading-feedback-app/releases/download/android-${version_name}/shuran.apk"
 test -s "$apk_new"
-printf '%s  %s\n' '4ddf25ea85c730e5d955035d0dc87c525070328f5825348c9c79756e6df017d3' "$apk_new" | sha256sum --check -
+printf '%s  %s\n' '8598bbb79a42f58c89897c58419b6b5079486b81946328188ee7d315f67230ee' "$apk_new" | sha256sum --check -
 mkdir -p /opt/shuran-release-backups
 stamp=$(date +%Y%m%d-%H%M%S)
 backup="/opt/shuran-release-backups/shuran-${stamp}.apk"
@@ -88,10 +88,10 @@ printf '%s\n' "$version_code" > "$apk.versioncode"
 cd deploy/aliyun
 docker compose up -d --build
 curl --retry 12 --retry-delay 2 --retry-connrefused -fsS http://127.0.0.1:8000/health
-curl -fsS http://127.0.0.1:8000/download/info | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("available") is True and d.get("versionCode")==57 and d.get("versionName")=="2.0.15", d; print("APK_READY", d["versionName"], d["versionCode"])'
+curl -fsS http://127.0.0.1:8000/download/info | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("available") is True and d.get("versionCode")==58 and d.get("versionName")=="2.0.16", d; print("APK_READY", d["versionName"], d["versionCode"])'
 curl -fsS http://127.0.0.1:8000/download/apk -o "$verify_apk"
-printf '%s  %s\n' '4ddf25ea85c730e5d955035d0dc87c525070328f5825348c9c79756e6df017d3' "$verify_apk" | sha256sum --check -
+printf '%s  %s\n' '8598bbb79a42f58c89897c58419b6b5079486b81946328188ee7d315f67230ee' "$verify_apk" | sha256sum --check -
 SH
 ```
 
-最后确认 `/download/info` 的 `available` 为 `true`、`versionCode` 为 `57`、`versionName` 为 `2.0.15`，且实际下载 APK 的哈希与 Release 一致。以后发布新版本时，先核对新 Release，再替换脚本中的版本号和固定 SHA-256。
+最后确认 `/download/info` 的 `available` 为 `true`、`versionCode` 为 `58`、`versionName` 为 `2.0.16`，且实际下载 APK 的哈希与 Release 一致。以后发布新版本时，先核对新 Release，再替换脚本中的版本号和固定 SHA-256。

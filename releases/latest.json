@@ -1,8 +1,8 @@
 {
-  "versionCode": 57,
-  "versionName": "2.0.15",
+  "versionCode": 58,
+  "versionName": "2.0.16",
   "filename": "shuran.apk",
-  "notes": "书然 2.0.15：安卓下载页始终显示手机安装包入口；免费记录、计时、日报周报和本人数据导出，付费套餐开放深度复盘。",
+  "notes": "书然 2.0.16：修复注册入口，支持手机号或邮箱任选其一并使用邀请码注册。",
   "require_shell": true,
   "force": true,
   "minVersionCode": 20,
