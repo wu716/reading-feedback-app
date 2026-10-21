@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>项目与时间 · 书然</title>
-  <link rel="stylesheet" href="/static/css/projects.css?v=20261020focus1">
+  <link rel="stylesheet" href="/static/css/projects.css?v=20261021stageentry1">
   <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20261020slice1">
   <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261020slice1">
-  <script defer src="/static/js/projects.js?v=20261020focus1"></script>
+  <script defer src="/static/js/projects.js?v=20261021stageentry1"></script>
   <script defer src="/static/js/app-tabbar.js?v=20261018momenttask1"></script>
 </head>
 <body>
@@ -103,20 +103,7 @@
     </section>
 
     <section class="surface" aria-labelledby="taskTitle">
-      <div class="section-head"><div><span class="section-number">03</span><h2 id="taskTitle">任务内容</h2></div><p>先写下一步，需要时再补细节</p></div>
-      <form id="taskForm" class="task-create">
-        <label>下一步 <input name="title" maxlength="500" required placeholder="能开始、能核对的一件事"></label>
-        <label>放进 <select name="stage_id" id="taskStage"></select></label>
-        <details class="optional-fields"><summary>补充估时与完成标准</summary>
-          <div class="field-grid">
-            <label>预计分钟 <input name="estimated_minutes" type="number" min="0" max="100000" placeholder="可稍后估"></label>
-            <label>熟悉程度 <select name="familiarity"><option value="">暂不标记</option><option value="familiar">熟悉</option><option value="unfamiliar">陌生</option></select></label>
-            <label class="wide">对目标的作用 <textarea name="goal_reason" rows="2" maxlength="4000"></textarea></label>
-            <label class="wide">怎样算完成 <textarea name="acceptance_criteria" rows="2" maxlength="4000"></textarea></label>
-          </div>
-        </details>
-        <button type="submit">加入阶段</button>
-      </form>
+      <div class="section-head"><div><span class="section-number">03</span><h2 id="taskTitle">任务详情</h2></div><p>在上方阶段中添加任务，点选任务后在这里补充和核对</p></div>
       <div id="taskDetail" class="task-detail" hidden></div>
     </section>
 

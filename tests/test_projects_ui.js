@@ -8,6 +8,7 @@ function element(selector) {
     const listeners = new Map();
     elements.set(selector, {value:'',innerHTML:'',textContent:'',hidden:false,disabled:false,
       classList:{toggle() {}},scrollIntoView() {},
+      querySelector:element,
       addEventListener(type,listener) {listeners.set(type,listener);},listeners});
   }
   return elements.get(selector);
@@ -16,12 +17,15 @@ element('#focusFinished').hidden = true;
 element('#focusReminderSettings').hidden = true;
 const posted = [], sessions = [];
 const alarms = [], saved = new Map();
+const documentListeners = new Map();
 let ticker;
 let simulatedNow;
 let plan = {queue:[],daily_tasks:[],work_minutes:20,break_minutes:5,paused:null,remaining_seconds:null};
-const overview = {goals:[],projects:[{id:1,title:'项目',outcome:'',stages:[],tasks:[
-  {id:3,project_id:1,title:'已排入今天',state:'pending',can_start:true,blocked_by:[]},
-  {id:4,project_id:1,title:'另一项',state:'pending',can_start:true,blocked_by:[]},
+const overview = {goals:[],projects:[{id:1,title:'项目',outcome:'',stages:[
+  {id:11,title:'当前阶段',state:'current'}, {id:12,title:'下一阶段',state:'next'},
+  {id:13,title:'已结束阶段',state:'closed'}],tasks:[
+  {id:3,project_id:1,stage_id:11,title:'已排入今天',state:'pending',can_start:true,blocked_by:[]},
+  {id:4,project_id:1,stage_id:11,title:'另一项',state:'pending',can_start:true,blocked_by:[]},
 ]}]};
 const schedule = {tasks:[
   {id:7,text:'今天独立任务',completed:false,children:[],project_task_id:null},
@@ -37,7 +41,8 @@ function start(body) {
 const context = {
   Date:class extends Date { static now() { return simulatedNow ?? Date.now(); } },
   URLSearchParams,
-  document:{querySelector:element,addEventListener() {},hidden:false},
+  document:{querySelector:element,addEventListener(type,listener) {documentListeners.set(type,listener);},hidden:false},
+  FormData:class {constructor(form) {this.fields=form.fields;} [Symbol.iterator]() {return this.fields[Symbol.iterator]();}},
   localStorage:{getItem:key=>key==='authToken' ? 'test-token' : saved.get(key) || null,
     setItem:(key,value)=>saved.set(key,value)},location:{href:'',search:''},
   ShuranNative:{hasPermission:()=>true,setFocusTimer:json=>alarms.push(JSON.parse(json))},
@@ -50,6 +55,12 @@ const context = {
     else if(url.endsWith('/execution/resume')) {const old=plan.paused;data=start({...old,planned_seconds:plan.remaining_seconds});}
     else if(url.endsWith('/execution'))data=plan;
     else if(url.endsWith('/sessions/start'))data=start(body);
+    else if(url.match(/\/1\/tasks$/)) {
+      data={...body,id:100+overview.projects[0].tasks.length,project_id:1,state:'pending',
+        can_start:true,blocked_by:[],prerequisite_ids:[],scheduled_dates:[],steps:[],checklist:[],
+        actual_minutes:0,difference_minutes:null,original_estimate_minutes:body.estimated_minutes};
+      overview.projects[0].tasks.push(data);
+    }
     else if(url.match(/\/sessions\/\d+\/stop$/)){
       const row=sessions.find(s=>s.id===Number(url.split('/').at(-2)));row.ended_at=new Date().toISOString();
       if(body.pause){plan.paused=row;plan.remaining_seconds=733;}data=row;
@@ -68,8 +79,28 @@ const context = {
 vm.runInNewContext(fs.readFileSync('static/js/projects.js','utf8'),context);
 const flush=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
 async function click(selector){element(selector).listeners.get('click')();await flush();}
+async function addStageTask(stage, title) {
+  const form={id:'',dataset:{stage:String(stage)},fields:[['title',title],['estimated_minutes','25'],
+    ['familiarity',''],['goal_reason',''],['acceptance_criteria','可核对']],
+    matches:selector=>selector==='form',classList:{contains:name=>name==='stage-task-form'},reset() {}};
+  documentListeners.get('submit')({target:form,preventDefault() {}});
+  await flush();
+}
 (async()=>{
  await flush();
+ const board=element('#stageBoard');
+ assert.equal((board.innerHTML.match(/class="stage-task-form"/g)||[]).length,2,'current and next stages show task entry');
+ assert.match(board.innerHTML,/data-stage="11"[^>]*>[\s\S]*?加入当前阶段/);
+ assert.match(board.innerHTML,/data-stage="12"[^>]*>[\s\S]*?加入下一阶段/);
+ assert.doesNotMatch(board.innerHTML,/class="stage-task-form" data-stage="13"/,'closed stages cannot receive tasks');
+ assert.match(board.innerHTML,/这里还没有任务[\s\S]*?下一阶段的新任务/,'empty next stage still has an entry');
+ assert.doesNotMatch(fs.readFileSync('static/projects.html','utf8'),/id="taskForm"/,'creation has one location');
+ await addStageTask(11,'当前新增任务');
+ assert.equal(posted.at(-1).body.stage_id,11);
+ assert.match(board.innerHTML,/当前新增任务/);
+ await addStageTask(12,'下一阶段新增任务');
+ assert.equal(posted.at(-1).body.stage_id,12);
+ assert.match(board.innerHTML,/下一阶段新增任务/);
  const focus=element('#focusTask');
  assert.match(focus.innerHTML,/value="daily:7"[^>]*>今天独立任务/);
  assert.match(focus.innerHTML,/value="daily:8"[^>]*>已排入今天/);
@@ -109,5 +140,5 @@ async function click(selector){element(selector).listeners.get('click')();await 
  assert.equal(element('#focusFinished').hidden,true);
  ticker(); await flush();
  assert.equal(element('#focusFinished').hidden,true,'acknowledged slice does not remind twice');
- console.log('PASS queue selection, A → B → A rotation, and pause/resume remaining time');
+ console.log('PASS stage task entry, queue rotation, and pause/resume remaining time');
 })().catch(error=>{console.error(error);process.exitCode=1;});

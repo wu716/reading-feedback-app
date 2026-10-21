@@ -232,12 +232,23 @@ a:hover { color: #173c62; }
 .task-row.blocked button { color: #667d86; }
 .task-row.done { opacity: .56; }
 .empty, .stage-empty { margin: 0; color: #81909a; font-size: 13px; line-height: 1.8; }
+.stage-task-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px 12px;
+  margin-top: 14px;
+}
+.stage-task-form > button { white-space: nowrap; }
+.stage-task-form .optional-fields { grid-column: 1 / -1; }
+.stage-transition { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--hairline); }
+.stage-transition > p { margin: 0; color: #718694; font-size: 12px; font-weight: 700; }
 .stage-change {
   display: grid;
   grid-template-columns: 1fr 1.4fr auto;
   align-items: end;
   gap: 9px;
-  padding: 16px 0 0;
+  padding: 9px 0 0;
 }
 
 form label, .detail-zone label, .focus-panel label {
@@ -270,15 +281,13 @@ button.secondary {
   font-weight: 600;
 }
 button.secondary:hover { background: #d3e1e7; }
-.inline-form, .project-form, .task-create {
+.inline-form, .project-form {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(180px, .75fr) auto;
   align-items: end;
   gap: 14px;
 }
 .project-form { grid-template-columns: minmax(150px, 1fr) minmax(220px, 1.4fr) minmax(150px, .8fr) auto; }
-.task-create { grid-template-columns: minmax(0, 1.5fr) minmax(180px, .7fr) auto; }
-.task-create > button { grid-column: 3; grid-row: 1; }
 .optional-fields { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
 .optional-fields summary { color: var(--blue); padding: 8px 0; }
 .field-grid, .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
@@ -372,9 +381,8 @@ button.secondary:hover { background: #d3e1e7; }
   .page-intro { margin-bottom: 42px; }
   .project-columns, .execution-grid { grid-template-columns: 1fr; gap: 28px; }
   .project-context { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
-  .inline-form, .project-form, .task-create { grid-template-columns: 1fr 1fr; }
-  .inline-form label:first-child, .project-form label:nth-child(2), .task-create label:first-child { grid-column: 1 / -1; }
-  .task-create > button { grid-column: 2; grid-row: auto; }
+  .inline-form, .project-form { grid-template-columns: 1fr 1fr; }
+  .inline-form label:first-child, .project-form label:nth-child(2) { grid-column: 1 / -1; }
   .stage-change { grid-template-columns: 1fr 1fr; }
   .stage-change button { grid-column: 2; }
 }
@@ -404,11 +412,11 @@ button.secondary:hover { background: #d3e1e7; }
   .page-intro { grid-template-columns: 1fr; align-items: start; }
   .page-intro h1 .intro-next { display: block; }
   .create-project[open] { grid-column: 1; grid-row: auto; }
-  .inline-form, .project-form, .task-create,
+  .inline-form, .project-form, .stage-task-form,
   .reflection-panel form, .template-form, .field-grid, .detail-grid,
   .stage-change { grid-template-columns: 1fr; }
   .inline-form label:first-child, .project-form label:nth-child(2),
-  .task-create label:first-child, .task-create > button,
+  .stage-task-form > button,
   .stage-change button, .reflection-panel form label:first-child,
   .reflection-panel form label:nth-child(4), #momentNodeLabel,
   .reflection-panel form button, .template-form label:first-of-type,

@@ -201,12 +201,25 @@
     const projects = state.overview.projects;
     $('#projectSelect').innerHTML = projects.length ? projects.map(p => `<option value="${p.id}" ${p.id === state.projectId ? 'selected' : ''}>${esc(p.title)}</option>`).join('') : '<option value="">还没有项目</option>';
     const project = currentProject(); $('#projectOutcome').textContent = project?.outcome || '';
-    $('#taskStage').innerHTML = stageOptions(project, project?.stages.find(s => s.state === 'current')?.id);
     $('#stageBoard').innerHTML = project ? project.stages.map(s => {
       const tasks = project.tasks.filter(t => t.stage_id === s.id);
+      const open = s.state === 'current' || s.state === 'next';
+      const stageLabel = stageName(s);
       return `<article class="stage ${esc(s.state)}"><div class="stage-header"><h3>${esc(s.title)}</h3><span class="state-tag">${stageName(s)}</span></div>
-        ${tasks.length ? tasks.map(t => `<div class="task-row ${t.blocked_by.length ? 'blocked' : ''} ${t.state === 'completed' ? 'done' : ''}"><button type="button" data-act="select-task" data-id="${t.id}">${esc(t.title)}<small>${t.blocked_by.length ? '等待前置任务' : t.state === 'completed' ? '已完成' : t.state === 'partial' ? '部分完成' : t.state === 'rework' ? '需要返工' : '可以推进'} · 原估计 ${t.original_estimate_minutes ?? '未填'} 分 · 实耗 ${t.actual_minutes} 分</small></button></div>`).join('') : '<p class="stage-empty">这里还没有任务</p>'}
-        ${s.state === 'next' ? `<form class="stage-change" data-stage="${s.id}"><select name="decision" aria-label="当前阶段如何处理"><option value="continue">继续当前阶段</option><option value="adjust">调整范围并切换</option><option value="close">结束当前阶段</option></select><input name="reason" placeholder="结束时说明原因" aria-label="阶段结束原因"><button type="submit">确认切换</button></form>` : ''}</article>`;
+        ${tasks.length ? tasks.map(t => `<div class="task-row ${t.blocked_by.length ? 'blocked' : ''} ${t.state === 'completed' ? 'done' : ''}"><button type="button" data-act="select-task" data-id="${t.id}">${esc(t.title)}<small>${t.blocked_by.length ? '等待前置任务' : t.state === 'completed' ? '已完成' : t.state === 'partial' ? '部分完成' : t.state === 'rework' ? '需要返工' : '可以推进'} · 原估计 ${t.original_estimate_minutes ?? '未填'} 分 · 实耗 ${t.actual_minutes} 分</small></button></div>`).join('') : `<p class="stage-empty">这里还没有任务${open ? '，可以在下方写入第一项。' : '。'}</p>`}
+        ${open ? `<form class="stage-task-form" data-stage="${s.id}">
+          <label>${stageLabel}的新任务 <input name="title" maxlength="500" required placeholder="写下一件能开始、能核对的事"></label>
+          <button type="submit">加入${stageLabel}</button>
+          <details class="optional-fields"><summary>补充估时与完成标准</summary>
+            <div class="field-grid">
+              <label>预计分钟 <input name="estimated_minutes" type="number" min="0" max="100000" placeholder="可稍后估"></label>
+              <label>熟悉程度 <select name="familiarity"><option value="">暂不标记</option><option value="familiar">熟悉</option><option value="unfamiliar">陌生</option></select></label>
+              <label class="wide">对目标的作用 <textarea name="goal_reason" rows="2" maxlength="4000"></textarea></label>
+              <label class="wide">怎样算完成 <textarea name="acceptance_criteria" rows="2" maxlength="4000"></textarea></label>
+            </div>
+          </details>
+        </form>` : ''}
+        ${s.state === 'next' ? `<div class="stage-transition"><p>阶段切换</p><form class="stage-change" data-stage="${s.id}"><select name="decision" aria-label="当前阶段如何处理"><option value="continue">继续当前阶段</option><option value="adjust">调整范围并切换</option><option value="close">结束当前阶段</option></select><input name="reason" placeholder="结束时说明原因" aria-label="阶段结束原因"><button type="submit">确认切换</button></form></div>` : ''}</article>`;
     }).join('') : '<p class="empty">建立项目后，这里会出现当前阶段和下一阶段。</p>';
   }
   function renderTaskDetail() {
@@ -327,9 +340,9 @@
       } else if (form.id === 'projectForm') {
         const result = await post('', {title:body.title, outcome:body.outcome || null, goal_id:nullableNumber(body.goal_id)});
         state.projectId = result.id; form.reset(); await afterChange('项目已建立');
-      } else if (form.id === 'taskForm') {
+      } else if (form.classList.contains('stage-task-form')) {
         if (!state.projectId) throw new Error('请先建立项目');
-        const task = await post(`/${state.projectId}/tasks`, {title:body.title, stage_id:nullableNumber(body.stage_id),
+        const task = await post(`/${state.projectId}/tasks`, {title:body.title, stage_id:Number(form.dataset.stage),
           estimated_minutes:nullableNumber(body.estimated_minutes), familiarity:body.familiarity || null,
           goal_reason:body.goal_reason || null, acceptance_criteria:body.acceptance_criteria || null});
         state.taskId = task.id; form.reset(); await afterChange('任务已加入阶段');
