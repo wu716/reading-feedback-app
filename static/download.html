@@ -24,6 +24,18 @@
             padding: 28px 22px 24px;
             box-shadow: 0 18px 50px rgba(40, 20, 80, 0.28);
         }
+        .windows-card {
+            margin-top: 16px;
+            padding: 18px 22px;
+            background: #f8f7ff;
+        }
+        .windows-card h2 { font-size: 1rem; color: #5a4b8c; margin-bottom: 6px; }
+        .windows-card p { color: #666; font-size: 0.88rem; line-height: 1.5; }
+        .windows-card .meta { text-align: left; margin: 10px 0; }
+        .windows-card .btn { margin-top: 0; }
+        @media (max-width: 600px) {
+            .windows-card { display: none; }
+        }
         .icon {
             width: 88px;
             height: 88px;
@@ -154,14 +166,13 @@
     <div class="card">
         <img class="icon" src="/static/icons/app-icon-1024.png" alt="书然">
         <h1>书然</h1>
-        <p class="sub" id="subText">覆盖安装，账号数据会保留</p>
+        <p class="sub" id="subText">安卓手机安装包；覆盖安装后账号数据会保留</p>
         <p class="meta" id="meta">正在检查安装包…</p>
         <p class="warn" id="inAppHint" style="display:none;">将在应用内下载并覆盖安装，不必打开浏览器。</p>
-        <a class="btn btn-primary" id="downloadBtn" href="/download/apk" style="pointer-events:none;opacity:0.45;">立即更新</a>
-        <button type="button" class="btn btn-ghost" id="copyBtn">复制下载链接</button>
+        <a class="btn btn-primary" id="downloadBtn" href="/download/apk" aria-disabled="true" style="pointer-events:none;opacity:0.45;">下载安卓手机 App</a>
+        <button type="button" class="btn btn-ghost" id="copyBtn">复制安卓下载页链接</button>
         <p class="ok" id="copiedHint">链接已复制</p>
         <p class="url-box" id="urlBox"><strong>下载链接</strong><span id="urlText"></span></p>
-        <a class="btn btn-ghost" id="apkLink" href="/download/apk" style="display:none;">下载安装包</a>
         <p class="warn">已安装书然时，打开安装包选择「更新」即可，不必卸载。</p>
         <div class="tips">
             <h2>安装说明</h2>
@@ -173,14 +184,18 @@
         </div>
     </div>
 
+    <div class="card windows-card" id="windowsCard">
+        <h2>Windows 电脑版</h2>
+        <p>仅供电脑使用；安卓手机请使用上方安装包。</p>
+        <p class="meta" id="windowsMeta">正在检查 Windows 应用…</p>
+        <a class="btn btn-ghost" id="windowsBtn" href="/download/windows" aria-disabled="true" style="pointer-events:none;opacity:0.45;">下载 Windows 应用</a>
+    </div>
+
     <script>
         const ua = navigator.userAgent || "";
         const inWeChat = /MicroMessenger/i.test(ua);
-        const inAndroid = /Android/i.test(ua);
         const inShuranApp = /ShuranApp/i.test(ua) || !!window.ShuranNative;
-        const onDesktop = !inAndroid && !inShuranApp;
         const hasNativeUpdater = !!(window.ShuranNative && typeof window.ShuranNative.checkUpdate === "function");
-        const alreadyCopied = /(?:^|[?&])copied=1(?:&|$)/.test(window.location.search);
         const mask = document.getElementById("wechatMask");
         const btn = document.getElementById("downloadBtn");
         const meta = document.getElementById("meta");
@@ -189,9 +204,18 @@
         const copiedHint = document.getElementById("copiedHint");
         const urlBox = document.getElementById("urlBox");
         const urlText = document.getElementById("urlText");
-        const apkLink = document.getElementById("apkLink");
         const tipsList = document.getElementById("tipsList");
+        const windowsCard = document.getElementById("windowsCard");
+        const windowsMeta = document.getElementById("windowsMeta");
+        const windowsBtn = document.getElementById("windowsBtn");
         const pageUrl = window.location.origin + "/download";
+        let apkAvailable = false;
+
+        function setDownloadEnabled(link, enabled) {
+            link.style.pointerEvents = enabled ? "auto" : "none";
+            link.style.opacity = enabled ? "1" : "0.45";
+            link.setAttribute("aria-disabled", enabled ? "false" : "true");
+        }
 
         function copyTextFallback(text) {
             try {
@@ -249,38 +273,15 @@
             return ok;
         }
 
-        if (onDesktop) {
-            document.getElementById("subText").textContent = "电脑请用 Windows 应用，不要用电脑管家打开 APK";
-            meta.textContent = "正在检查 Windows 应用…";
-            btn.href = "/download/windows";
-            btn.textContent = "下载 Windows 应用";
-            btn.style.pointerEvents = "auto";
-            btn.style.opacity = "1";
-            apkLink.removeAttribute("href");
-            apkLink.style.display = "none";
-            copyBtn.style.display = "none";
-            tipsList.innerHTML = ""
-                + "<li>下载后双击打开，窗口标题是「书然」</li>"
-                + "<li>可钉在任务栏；再开一次会回到已有窗口</li>"
-                + "<li>全局 Ctrl+Shift+K 打开「记」（对应手机三击）</li>"
-                + "<li>可用 Win+← / Win+→ 吸附半屏</li>"
-                + "<li>需已安装 Edge WebView2（Win11 通常已有）</li>"
-                + "<li>不要用电脑管家打开安卓安装包，会糊</li>";
-        }
-
         if (inWeChat) {
             mask.classList.add("show");
         }
 
         if (inShuranApp) {
             copyBtn.style.display = "none";
-            apkLink.style.display = "none";
+            windowsCard.style.display = "none";
             inAppHint.style.display = "block";
             btn.textContent = "立即更新";
-            btn.className = "btn btn-primary";
-            btn.style.pointerEvents = "auto";
-            btn.style.opacity = "1";
-            btn.style.display = "block";
             tipsList.innerHTML = ""
                 + "<li>点一次即可在应用内下载并覆盖安装</li>"
                 + "<li>登录会保留，不必卸载</li>"
@@ -293,44 +294,34 @@
         async function loadInfo() {
             try {
                 const res = await fetch("/download/info", { cache: "no-store" });
+                if (!res.ok) throw new Error("下载信息不可用");
                 const data = await res.json();
-                if (onDesktop) {
-                    if (!data.windows_available) {
-                        meta.textContent = "Windows 应用尚未上传";
-                        btn.style.pointerEvents = "none";
-                        btn.style.opacity = "0.45";
-                    } else {
-                        meta.textContent = data.windows_size_mb
-                            ? ("约 " + data.windows_size_mb + " MB")
-                            : "可下载";
-                        btn.style.pointerEvents = "auto";
-                        btn.style.opacity = "1";
-                    }
-                    return;
-                }
+                windowsMeta.textContent = data.windows_available
+                    ? (data.windows_size_mb ? "约 " + data.windows_size_mb + " MB" : "可下载")
+                    : "Windows 应用尚未上传";
+                setDownloadEnabled(windowsBtn, !!data.windows_available);
                 if (!data.available) {
                     meta.textContent = "安装包暂不可用，请稍后重试";
-                    apkLink.style.pointerEvents = "none";
-                    apkLink.style.opacity = "0.45";
-                    if (!inShuranApp) {
-                        btn.style.pointerEvents = "none";
-                        btn.style.opacity = "0.45";
-                    }
+                    apkAvailable = false;
+                    setDownloadEnabled(btn, false);
                     return;
                 }
                 const version = data.versionName ? ("v" + data.versionName + " · ") : "";
                 meta.textContent = version + "约 " + data.size_mb + " MB";
-                if (!onDesktop) {
-                    btn.style.pointerEvents = "auto";
-                    btn.style.opacity = "1";
-                }
+                apkAvailable = true;
+                setDownloadEnabled(btn, true);
             } catch (e) {
                 meta.textContent = "无法检查安装包，请稍后重试";
+                windowsMeta.textContent = "无法检查 Windows 应用，请稍后重试";
+                apkAvailable = false;
+                setDownloadEnabled(btn, false);
+                setDownloadEnabled(windowsBtn, false);
             }
         }
 
         btn.addEventListener("click", function (event) {
-            if (onDesktop) {
+            if (!apkAvailable) {
+                event.preventDefault();
                 return;
             }
             if (inWeChat) {
@@ -346,6 +337,12 @@
             if (inShuranApp) {
                 event.preventDefault();
                 window.location.href = "/download/apk";
+            }
+        });
+
+        windowsBtn.addEventListener("click", function (event) {
+            if (windowsBtn.getAttribute("aria-disabled") === "true") {
+                event.preventDefault();
             }
         });
 
