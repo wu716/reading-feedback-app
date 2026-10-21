@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+from app import project_models  # noqa: F401 - register FK targets before create_all
 from app.database import Base, get_db
 from app.models import InviteCode, User
 from app.routers.auth import router as auth_router, settings
