@@ -31,7 +31,7 @@
 
 ## 放到生产机
 
-先在 GitHub 核对目标 Release 和签名构建日志。以下命令对应已核验的 `2.0.13` / `versionCode 55`；APK 的 SHA-256 为 `d222d70b7cabe2be0dd1cbf844617ae6eef9d6e9d285c9eb05560ade1c6dcd59`。下载或校验失败时不会替换服务器现有安装包。复制命令时不要复制 Markdown 的代码围栏（```）。
+先在 GitHub 核对目标 Release 和签名构建日志。以下命令对应已发布的 `2.0.14` / `versionCode 56`；Release 给出的 APK SHA-256 为 `91fefb563d44492d51ff1e379df3d23b8b74b46b1ec2be84e41e5cdd092d881f`。下载或校验失败时不会替换服务器现有安装包。复制命令时不要复制 Markdown 的代码围栏（```）。
 
 Windows PowerShell 登录：
 
@@ -50,37 +50,48 @@ sudo -i
 ```bash
 bash <<'SH'
 set -euo pipefail
-version_name=2.0.13
-version_code=55
+version_name=2.0.14
+version_code=56
 cd /opt/shuran-app
 apk=releases/shuran.apk
 apk_new=releases/shuran.apk.new
-trap 'rm -f "$apk_new"' EXIT
+verify_apk=$(mktemp /tmp/shuran-download-XXXXXX.apk)
+trap 'rm -f "$apk_new" "$verify_apk"' EXIT
 curl --retry 3 -fL -o "$apk_new" "https://github.com/wu716/reading-feedback-app/releases/download/android-${version_name}/shuran.apk"
 test -s "$apk_new"
-printf '%s  %s\n' 'd222d70b7cabe2be0dd1cbf844617ae6eef9d6e9d285c9eb05560ade1c6dcd59' "$apk_new" | sha256sum --check -
-git pull --ff-only origin main
-python3 - "$version_name" "$version_code" <<'PY'
-import json
-import sys
-
-with open("releases/latest.json", encoding="utf-8") as fh:
-    metadata = json.load(fh)
-if metadata.get("versionName") != sys.argv[1] or metadata.get("versionCode") != int(sys.argv[2]):
-    raise SystemExit("releases/latest.json has not been updated for this APK")
-PY
+printf '%s  %s\n' '91fefb563d44492d51ff1e379df3d23b8b74b46b1ec2be84e41e5cdd092d881f' "$apk_new" | sha256sum --check -
 mkdir -p /opt/shuran-release-backups
 stamp=$(date +%Y%m%d-%H%M%S)
 backup="/opt/shuran-release-backups/shuran-${stamp}.apk"
 if [ -f "$apk" ]; then cp -p "$apk" "$backup"; fi
 if [ -f "$apk.versioncode" ]; then cp -p "$apk.versioncode" "$backup.versioncode"; fi
+# 旧版仓库跟踪了 versioncode=23；只恢复这一个已备份的生成文件，避免它阻止 git pull。
+if git ls-files --error-unmatch -- "$apk.versioncode" >/dev/null 2>&1; then
+  git restore --staged --worktree -- "$apk.versioncode"
+fi
+git pull --ff-only origin main
+python3 - "$apk_new" "$version_name" "$version_code" <<'PY'
+import json
+import sys
+from pathlib import Path
+from app.apk_version import read_apk_version
+
+with open("releases/latest.json", encoding="utf-8") as fh:
+    metadata = json.load(fh)
+if metadata.get("versionName") != sys.argv[2] or metadata.get("versionCode") != int(sys.argv[3]):
+    raise SystemExit("releases/latest.json has not been updated for this APK")
+if read_apk_version(Path(sys.argv[1])) != (int(sys.argv[3]), sys.argv[2]):
+    raise SystemExit("APK manifest does not match the published version")
+PY
 mv "$apk_new" "$apk"
 printf '%s\n' "$version_code" > "$apk.versioncode"
 cd deploy/aliyun
 docker compose up -d --build
 curl --retry 12 --retry-delay 2 --retry-connrefused -fsS http://127.0.0.1:8000/health
-curl -fsS http://127.0.0.1:8000/download/info | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("available") is True and d.get("versionCode")==55 and d.get("versionName")=="2.0.13", d; print("APK_READY", d["versionName"], d["versionCode"])'
+curl -fsS http://127.0.0.1:8000/download/info | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("available") is True and d.get("versionCode")==56 and d.get("versionName")=="2.0.14", d; print("APK_READY", d["versionName"], d["versionCode"])'
+curl -fsS http://127.0.0.1:8000/download/apk -o "$verify_apk"
+printf '%s  %s\n' '91fefb563d44492d51ff1e379df3d23b8b74b46b1ec2be84e41e5cdd092d881f' "$verify_apk" | sha256sum --check -
 SH
 ```
 
-最后确认 `/download/info` 的 `available` 为 `true`、`versionCode` 为 `55`、`versionName` 为 `2.0.13`，并实际下载 APK 核对包内版本。以后发布新版本时，先核对新 Release，再替换脚本中的版本号和固定 SHA-256。
+最后确认 `/download/info` 的 `available` 为 `true`、`versionCode` 为 `56`、`versionName` 为 `2.0.14`，且实际下载 APK 的哈希与 Release 一致。以后发布新版本时，先核对新 Release，再替换脚本中的版本号和固定 SHA-256。

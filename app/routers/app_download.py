@@ -5,6 +5,7 @@ import logging
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -19,10 +20,7 @@ from app.legacy_origin import canonical_url, is_legacy_singapore
 
 logger = logging.getLogger(__name__)
 
-GITHUB_APK_URL = (
-    "https://github.com/wu716/reading-feedback-app/releases/download/"
-    "android-2.0.13/shuran.apk"
-)
+GITHUB_RELEASE_BASE = "https://github.com/wu716/reading-feedback-app/releases/download"
 # 线上 latest.json 若过旧，1.3.4 会误以为已是最新。接口永不低于此门槛。
 MIN_SHELL_VERSION_CODE = 20
 MIN_SHELL_VERSION_NAME = "1.5.4"
@@ -125,7 +123,12 @@ def _apk_file_ok(path: Path) -> bool:
     return path.is_file() and path.stat().st_size > 1024
 
 
-def _cache_apk_from(url: str, dest: Path, expect_code: int | None = None) -> Path | None:
+def _cache_apk_from(
+    url: str,
+    dest: Path,
+    expect_code: int | None = None,
+    expected_version: tuple[int, str] | None = None,
+) -> Path | None:
     temporary = dest.with_name(dest.name + ".download")
     try:
         RELEASE_DIR.mkdir(parents=True, exist_ok=True)
@@ -142,6 +145,7 @@ def _cache_apk_from(url: str, dest: Path, expect_code: int | None = None) -> Pat
             not _apk_file_ok(temporary)
             or version is None
             or version[0] < max(expect_code or 0, MIN_SHELL_VERSION_CODE)
+            or (expected_version is not None and version != expected_version)
         ):
             logger.warning("Downloaded APK from %s has an invalid or old manifest", url)
             return None
@@ -166,7 +170,18 @@ def ensure_apk() -> Path | None:
     if dest.is_file():
         # Preserve an unusable package for diagnosis; never overwrite it implicitly.
         return None
-    return _cache_apk_from(GITHUB_APK_URL, dest, expect_code=MIN_SHELL_VERSION_CODE)
+    meta = load_latest_meta()
+    version_code = int(meta.get("versionCode") or 0)
+    version_name = str(meta.get("versionName") or "").strip()
+    if version_code < MIN_SHELL_VERSION_CODE or not version_name:
+        return None
+    url = f"{GITHUB_RELEASE_BASE}/android-{quote(version_name, safe='')}/shuran.apk"
+    return _cache_apk_from(
+        url,
+        dest,
+        expect_code=version_code,
+        expected_version=(version_code, version_name),
+    )
 
 
 def fetch_apk_from_canonical() -> Path | None:

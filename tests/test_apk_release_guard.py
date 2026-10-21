@@ -1,6 +1,7 @@
 """The download endpoint must use the version inside the signed package."""
 
 import asyncio
+from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
@@ -12,7 +13,7 @@ from fastapi import HTTPException
 from fastapi.responses import FileResponse
 
 from app.apk_version import apk_meets_min, read_apk_version, sidecar_path
-from app.routers.app_download import build_info, download_apk, ensure_apk
+from app.routers.app_download import _cache_apk_from, build_info, download_apk, ensure_apk
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -107,3 +108,40 @@ class ApkReleaseGuardTests(TestCase):
                 self.assertIsNone(ensure_apk())
             self.assertEqual(old.read_bytes(), original)
             self.assertEqual(sidecar_path(old).read_text(encoding="utf-8"), "50")
+
+    def test_missing_package_uses_release_from_metadata(self):
+        with TemporaryDirectory() as directory:
+            dest = Path(directory) / "shuran.apk"
+            with patch("app.routers.app_download.RELEASE_DIR", Path(directory)), patch(
+                "app.routers.app_download.APK_CANDIDATES", [dest]
+            ), patch(
+                "app.routers.app_download.load_latest_meta",
+                return_value=_metadata(code=56, name="2.0.14"),
+            ), patch("app.routers.app_download._cache_apk_from") as cache:
+                ensure_apk()
+            cache.assert_called_once_with(
+                "https://github.com/wu716/reading-feedback-app/releases/download/android-2.0.14/shuran.apk",
+                dest,
+                expect_code=56,
+                expected_version=(56, "2.0.14"),
+            )
+
+    def test_auto_download_rejects_package_from_other_release(self):
+        with TemporaryDirectory() as directory:
+            source = _package(directory, "2.0.8")
+            with ZipFile(source, "a") as archive:
+                archive.writestr("padding.bin", b"0" * 2048)
+            dest = Path(directory) / "cached.apk"
+            with patch("app.routers.app_download.RELEASE_DIR", Path(directory)), patch(
+                "app.routers.app_download.urllib.request.urlopen",
+                return_value=BytesIO(source.read_bytes()),
+            ):
+                self.assertIsNone(
+                    _cache_apk_from(
+                        "https://example.invalid/shuran.apk",
+                        dest,
+                        expect_code=56,
+                        expected_version=(56, "2.0.14"),
+                    )
+                )
+            self.assertFalse(dest.exists())
