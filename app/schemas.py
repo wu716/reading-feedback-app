@@ -1,14 +1,27 @@
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, validator
 
 # 用户相关模型
 class UserCreate(BaseModel):
-    phone: str = Field(..., min_length=11, max_length=20)
+    account: Optional[str] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, min_length=11, max_length=20)
+    email: Optional[str] = Field(None, max_length=255)
     name: str = Field(..., min_length=2, max_length=20)
     password: str = Field(..., min_length=6, max_length=100)
     invite_code: str = Field(..., min_length=4, max_length=8)
+
+    @model_validator(mode='after')
+    def validate_account_choice(self):
+        supplied = [value for value in (self.account, self.phone, self.email) if value and value.strip()]
+        if len(supplied) != 1:
+            raise ValueError('请填写一个手机号或邮箱')
+        return self
+
+    @property
+    def registration_id(self) -> str:
+        return next(value.strip() for value in (self.account, self.phone, self.email) if value and value.strip())
 
     @validator('password')
     def validate_password(cls, v):

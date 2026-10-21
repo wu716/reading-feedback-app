@@ -6,10 +6,12 @@ import smtplib
 from email.mime.text import MIMEText
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.accounts import (
     find_active_phone,
+    is_placeholder_email,
     placeholder_email,
     user_to_public_dict,
     validate_phone,
@@ -149,31 +151,38 @@ def _consume_invite_code(db: Session, raw_code: str, ip: str) -> InviteCode:
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate, request: Request, db: Session = Depends(get_db)):
-    """手机号 + 真实姓名 + 一次性邀请码注册。"""
+    """手机号或邮箱 + 真实姓名 + 一次性邀请码注册。"""
     if not settings.is_registration_allowed:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="当前未开放注册，请使用已有账号登录，或向管理员索取邀请码",
         )
 
+    account = user.registration_id
     try:
-        phone = validate_phone(user.phone)
         real_name = validate_real_name(user.name)
+        if user.email or (user.account and '@' in account):
+            email = _normalize_email(account)
+            if is_placeholder_email(email):
+                raise ValueError("请填写有效的邮箱地址")
+            phone = None
+        else:
+            phone = validate_phone(account)
+            email = placeholder_email(phone)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    if find_active_phone(db, phone):
+    if phone and db.query(User).filter(User.phone == phone).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该手机号已注册")
+    if db.query(User).filter(func.lower(func.trim(User.email)) == email).first():
+        detail = "该手机号已注册" if phone else "该邮箱已注册"
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
     ip = client_ip(request)
     guard_rate_limit(f"register:{ip}", REGISTER_LIMIT, REGISTER_WINDOW, "注册次数过多，请稍后再试")
     record_rate_hit(f"register:{ip}")
     invite = _consume_invite_code(db, user.invite_code, ip)
     plan_key = invite.plan if invite.plan in ("free", "monthly", "semester") else PLAN_FREE
-
-    email = placeholder_email(phone)
-    if db.query(User).filter(User.email == email).first():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该手机号已注册")
 
     db_user = User(
         email=email,
@@ -213,7 +222,7 @@ async def register(user: UserCreate, request: Request, db: Session = Depends(get
         ))
     db.commit()
     db.refresh(db_user)
-    write_audit(db, "register", actor_user_id=db_user.id, ip=ip, detail=phone)
+    write_audit(db, "register", actor_user_id=db_user.id, ip=ip, detail=account)
     return _as_user_response(db_user)
 
 

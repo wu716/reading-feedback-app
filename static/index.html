@@ -3460,7 +3460,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261017paper1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.15';
+            window.SHURAN_VERSION = '2.0.16';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -4430,8 +4430,8 @@
 
                 <form class="auth-form" id="registerForm">
                     <div class="form-group">
-                        <label for="registerPhone" data-i18n="auth.phone.label">手机号</label>
-                        <input type="tel" id="registerPhone" required maxlength="11" placeholder="11 位手机号" data-i18n-placeholder="auth.phone.placeholder" autocomplete="tel">
+                        <label for="registerAccount" data-i18n="auth.account.label">手机号或邮箱</label>
+                        <input type="text" id="registerAccount" required maxlength="255" placeholder="手机号或邮箱" data-i18n-placeholder="auth.account.placeholder" autocomplete="username">
                     </div>
                     <div class="form-group">
                         <label for="registerName" data-i18n="auth.name.label">真实姓名</label>
@@ -4501,7 +4501,7 @@
     </div>
 
 
-    <script src="/static/js/i18n.js?v=20261018momenttask1"></script>
+    <script src="/static/js/i18n.js?v=20261022register1"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -4711,6 +4711,28 @@
                     } finally {
                         btn.disabled = false;
                         btn.textContent = shuranText('auth.login.submit', '登录');
+                    }
+                });
+            }
+
+            const registerForm = document.getElementById('registerForm');
+            if (registerForm) {
+                registerForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const account = document.getElementById('registerAccount').value.trim();
+                    const name = document.getElementById('registerName').value.trim();
+                    const password = document.getElementById('registerPassword').value;
+                    const inviteCode = document.getElementById('registerInvite').value.trim();
+                    const btn = registerForm.querySelector('.auth-btn');
+                    btn.disabled = true;
+                    btn.textContent = shuranText('auth.register.loading', '注册中...');
+                    try {
+                        if (await register(account, password, name, inviteCode)) {
+                            registerForm.reset();
+                        }
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = shuranText('auth.register.submit', '注册');
                     }
                 });
             }
@@ -5604,7 +5626,7 @@
             if (title && desc) {
                 if (tab === 'register') {
                     title.textContent = shuranText('auth.register.title', '开卷');
-                    desc.textContent = shuranText('auth.register.desc', '用手机号和邀请码注册');
+                    desc.textContent = shuranText('auth.register.desc', '用手机号或邮箱及邀请码注册');
                 } else {
                     title.textContent = shuranText('auth.login.title', '入册');
                     desc.textContent = shuranText('auth.login.desc', '手机号或邮箱登录，新用户需邀请码');
@@ -5669,12 +5691,12 @@
         }
         
         // 用户注册
-        async function register(phone, password, name, inviteCode) {
+        async function register(account, password, name, inviteCode) {
             try {
                 await apiRequest('/auth/register', {
                     method: 'POST',
                     body: JSON.stringify({
-                        phone,
+                        account,
                         password,
                         name,
                         invite_code: inviteCode
@@ -5684,7 +5706,7 @@
                 showMessage('注册成功！正在自动登录...', 'success');
                 
                 // 注册成功后自动登录
-                return await login(phone, password);
+                return await login(account, password);
             } catch (error) {
                 showMessage('注册失败: ' + error.message, 'error');
                 return false;
