@@ -11,6 +11,8 @@
     let sortReturnMode = 'list';
     let addingTask = false;
     let newTaskFamiliarity = null;
+    let newTaskDifficulty = null;
+    let newTaskImportance = null;
     let newTaskPriority = 0;
     let newTaskDuration = '';
     let splitFor = null;
@@ -240,8 +242,8 @@
         const addRow = document.getElementById('scheduleAddRow');
         if (sortBtn) {
             sortBtn.textContent = mode === 'sort'
-                ? t('schedule.finishOrder', '完成排序')
-                : t('schedule.adjustOrder', '调整顺序');
+                ? t('schedule.finishDesign', '完成设计')
+                : t('schedule.designFlow', '设计流程');
             sortBtn.setAttribute('aria-pressed', String(mode === 'sort'));
         }
         if (flowBtn) flowBtn.textContent = mode === 'flow' ? '回到清单' : '查看流程';
@@ -264,6 +266,13 @@
             button.classList.toggle('active', active);
             button.setAttribute('aria-pressed', active ? 'true' : 'false');
         });
+        for (const [act, value] of [['difficulty', newTaskDifficulty], ['importance', newTaskImportance]]) {
+            addRow.querySelectorAll(`[data-new-act="${act}"]`).forEach(button => {
+                const active = button.dataset.value === value;
+                button.classList.toggle('active', active);
+                button.setAttribute('aria-pressed', String(active));
+            });
+        }
     }
 
     function renderTitle(task) {
@@ -309,10 +318,11 @@
                 <div class="flow-attribute-group">
                     <span class="flow-attribute-label">难度</span>
                     <div class="flow-attribute-options">
-                        <button type="button" class="flow-chip${difficulty === 'simple' ? ' active' : ''}" data-act="difficulty" data-value="simple" aria-pressed="${difficulty === 'simple'}">容易</button>
-                        <button type="button" class="flow-chip${difficulty === 'difficult' ? ' active' : ''}" data-act="difficulty" data-value="difficult" aria-pressed="${difficulty === 'difficult'}">困难</button>
+                        <button type="button" class="flow-chip${difficulty === 'simple' ? ' active' : ''}" data-act="difficulty" data-value="simple" aria-pressed="${difficulty === 'simple'}">${escapeHtml(t('schedule.difficulty.simple', '简单'))}</button>
+                        <button type="button" class="flow-chip${difficulty === 'difficult' ? ' active' : ''}" data-act="difficulty" data-value="difficult" aria-pressed="${difficulty === 'difficult'}">${escapeHtml(t('schedule.difficulty.difficult', '困难'))}</button>
                     </div>
                 </div>
+                ${task.practice?.importance ? `<div class="flow-attribute-group"><span class="flow-attribute-label">${escapeHtml(t('schedule.importanceLabel', '重要性'))}</span><span class="flow-importance-value">${escapeHtml(t('schedule.importance.' + task.practice.importance, ({unimportant:'不重要',ordinary:'一般',important:'重要'})[task.practice.importance]))}</span></div>` : ''}
             </div>`;
     }
 
@@ -623,6 +633,8 @@
                 task_date: taskDay,
                 parent_id: parentId || null,
                 familiarity: attributes?.familiarity || null,
+                difficulty: attributes?.difficulty || null,
+                importance: attributes?.importance || null,
                 priority: Number.isInteger(attributes?.priority) ? attributes.priority : 0,
                 estimated_minutes: Number.isInteger(attributes?.estimatedMinutes) ? attributes.estimatedMinutes : null,
             }),
@@ -1035,6 +1047,8 @@
             try {
                 await addTask(submittedText, null, false, {
                     familiarity: newTaskFamiliarity,
+                    difficulty: newTaskDifficulty,
+                    importance: newTaskImportance,
                     priority: newTaskPriority,
                     estimatedMinutes,
                 });
@@ -1042,6 +1056,8 @@
                 const durationInput = document.getElementById('scheduleAddDuration');
                 if (durationInput) durationInput.value = '';
                 newTaskFamiliarity = null;
+                newTaskDifficulty = null;
+                newTaskImportance = null;
                 newTaskPriority = 0;
                 newTaskDuration = '';
                 updateAddComposer();
@@ -1058,13 +1074,17 @@
             if (!button) return;
             if (button.dataset.newAct === 'fam') {
                 newTaskFamiliarity = newTaskFamiliarity === button.dataset.value ? null : button.dataset.value;
+            } else if (button.dataset.newAct === 'difficulty') {
+                newTaskDifficulty = newTaskDifficulty === button.dataset.value ? null : button.dataset.value;
+            } else if (button.dataset.newAct === 'importance') {
+                newTaskImportance = newTaskImportance === button.dataset.value ? null : button.dataset.value;
             } else if (button.dataset.newAct === 'priority') {
                 newTaskPriority = parseInt(button.dataset.value, 10);
             }
             updateAddComposer();
         });
-        document.getElementById('scheduleAddInput')?.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
+        document.getElementById('scheduleAddRow')?.addEventListener('keydown', (e) => {
+            if (['scheduleAddInput', 'scheduleAddDuration'].includes(e.target.id) && e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
                 e.preventDefault();
                 document.getElementById('scheduleAddBtn')?.click();
             }

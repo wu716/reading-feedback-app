@@ -57,6 +57,43 @@ class PlanningPracticeTests(unittest.TestCase):
         self.assertEqual(report['sample_count'],1)
         self.assertEqual(report['recorded_seconds'],0)
 
+    def test_schedule_creation_saves_design_before_first_work_snapshot(self):
+        response = self.client.post('/api/schedule/tasks', json={
+            "text":"边写边设置", "task_date":"2026-10-22", "familiarity":"unfamiliar",
+            "difficulty":"difficult", "importance":"important", "estimated_minutes":90,
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        task = response.json()['tasks'][-1]
+        self.assertEqual(task['familiarity'], 'unfamiliar')
+        self.assertEqual(task['estimated_minutes'], 90)
+        state = task['practice']
+        self.assertEqual(state['difficulty'], 'difficult')
+        self.assertEqual(state['importance'], 'important')
+        self.assertEqual(state['initial_importance'], 'important')
+        self.assertIsNotNone(state['initial_marked_at'])
+        self.assertIsNone(state['reviewed_at'])
+        self.assertEqual(state['original_estimate'], 90)
+        self.assertEqual(state['estimate_origin'], 'before_start')
+        interval = self.manual(daily_id=task['id'])
+        with self.Session() as db:
+            snapshot = json.loads(db.get(WorkSession, interval['id']).practice_snapshot_json)
+        self.assertEqual(snapshot['difficulty'], 'difficult')
+        self.assertEqual(snapshot['importance'], 'important')
+        self.assertEqual(self.req('GET', f"/practice/tasks/daily/{task['id']}", user=2).status_code, 404)
+
+    def test_schedule_creation_rejects_invalid_design_without_partial_task(self):
+        for values in [{"difficulty":"easy"}, {"importance":"highest"}]:
+            response = self.client.post('/api/schedule/tasks', json={"text":"无效设计", "task_date":"2026-10-22", **values})
+            self.assertEqual(response.status_code, 422, response.text)
+        with self.Session() as db:
+            self.assertEqual(db.query(DailyTask).count(), 0)
+            self.assertEqual(db.query(TaskPractice).count(), 0)
+        task = self.daily(None, text="只写文字也能添加")
+        self.assertIsNone(task['familiarity'])
+        self.assertIsNone(task['practice']['difficulty'])
+        self.assertIsNone(task['practice']['importance'])
+        self.assertIsNone(task['practice']['initial_marked_at'])
+
     def test_recorded_20_confirmed_30_not_50_and_beijing_midnight_clip(self):
         t=self.daily()
         self.manual(daily_id=t['id'])

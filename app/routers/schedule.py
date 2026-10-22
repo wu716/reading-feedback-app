@@ -3,7 +3,7 @@
 from collections import defaultdict
 import json
 from datetime import date, datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -39,6 +39,8 @@ class TaskCreate(BaseModel):
     parent_id: Optional[int] = None
     priority: int = Field(0, ge=0, le=2)
     familiarity: Optional[str] = None
+    difficulty: Literal["simple", "difficult"] | None = None
+    importance: Literal["unimportant", "ordinary", "important"] | None = None
     estimated_minutes: Optional[int] = Field(None, ge=0, le=24 * 60)
 
     @field_validator("text")
@@ -435,6 +437,17 @@ async def create_task(
     db.flush()
     from app import practice_service as practice
     practice.note_estimate(db, current_user.id, "daily", task, body.estimated_minutes, created=True)
+    if body.difficulty is not None or body.importance is not None:
+        state = practice.practice(db, current_user.id, "daily", task)
+        state.difficulty = body.difficulty
+        state.importance = body.importance
+        if body.importance is not None:
+            state.initial_importance = body.importance
+            state.initial_marked_at = datetime.utcnow()
+        practice.event(db, current_user.id, "daily", task.id, "attributes", {
+            "difficulty": body.difficulty, "importance": body.importance,
+            "title": task.text, "source": "task_create",
+        })
     db.commit()
     return day_payload(db, current_user, day)
 

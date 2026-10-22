@@ -182,28 +182,30 @@ body.workspace-layout {background:var(--workspace-paper);background-image:radial
 .workspace-layout #schedule .flow-add-row {margin:0 0 24px;gap:6px;}
 .workspace-layout #schedule .flow-add-main {border-bottom:1px solid #d8d1c4!important;}
 .workspace-layout #schedule #scheduleAddInput {font-size:17px;}
-.workspace-layout #schedule #scheduleAddBtn {background:#9c3b32;border-radius:5px;padding:8px 18px;}
+.workspace-layout #schedule #scheduleAddBtn {background:var(--workspace-blue);border-radius:5px;padding:8px 18px;}
 .workspace-layout #schedule .flow-task {padding:16px 0 18px;margin:0;border-bottom:1px solid #e6e1d6!important;}
 .workspace-layout #schedule .flow-task-summary {display:block;}
 .workspace-layout #schedule .flow-task-main {flex:1;min-width:0;}
-.workspace-layout #schedule .flow-task-text {padding:0;min-height:28px;border:0;border-radius:0;background:transparent;text-align:left;font:400 18px/1.6 "Noto Serif SC","Songti SC","SimSun",serif;white-space:normal;overflow-wrap:anywhere;}
+.workspace-layout #schedule .flow-task-text {padding:0;min-height:28px;border:0;border-radius:0;background:transparent;color:var(--workspace-ink);text-align:left;font:400 18px/1.6 "Noto Serif SC","Songti SC","SimSun",serif;white-space:normal;overflow-wrap:anywhere;}
+.workspace-layout #schedule .flow-task-text:hover {color:var(--workspace-blue);}
 .workspace-layout #schedule .flow-task-launch {display:flex;align-items:center;justify-content:flex-start;gap:6px 20px;flex-wrap:wrap;margin-top:9px;}
 .workspace-layout #schedule .flow-task-launch button,.workspace-layout #schedule .flow-task-launch a {appearance:none;font:400 13px/1.6 "Microsoft YaHei",system-ui,sans-serif;color:#6b6560;border:0;border-radius:0;background:transparent;padding:4px 0;min-height:30px;text-decoration:none;white-space:nowrap;cursor:pointer;}
 .workspace-layout #schedule .flow-task-launch .schedule-execute-link {color:var(--workspace-blue);}
 .workspace-layout #schedule .flow-done-btn {width:auto;min-width:2.5em;height:auto;flex:none;border-radius:0;margin:0;letter-spacing:0;line-height:1.5;}
-.workspace-layout #schedule .flow-done-btn.is-on {background:none;color:#9c3b32;}
+.workspace-layout #schedule .flow-done-btn.is-on {background:none;color:var(--workspace-blue);}
 .workspace-layout #schedule .flow-task-attributes {display:flex;flex-wrap:wrap;margin:8px 0 0;gap:12px 28px;align-items:center;}
 .workspace-layout #schedule .flow-attribute-group {display:flex;align-items:center;gap:10px;}
 .workspace-layout #schedule .flow-attribute-label {font-size:12px;color:#8a8478;letter-spacing:0;flex-shrink:0;white-space:nowrap;}
 .workspace-layout #schedule .flow-attribute-options {gap:4px;width:auto;}
 .workspace-layout #schedule .flow-attribute-options .flow-chip {flex:none;min-height:28px;padding:3px 9px;font-size:13px;border-radius:4px;}
-.workspace-layout #schedule .flow-attribute-options .flow-chip.active {color:#9c3b32;background:#f1e8dc;}
+.workspace-layout #schedule .flow-attribute-options .flow-chip.active {color:var(--workspace-blue);background:var(--workspace-selected);}
+.workspace-layout #schedule .flow-importance-value {font-size:13px;color:var(--workspace-blue);}
 .workspace-layout #schedule .flow-time-feedback {display:flex;flex-wrap:wrap;align-items:center;gap:7px 18px;margin-top:10px;color:#8a8478;font-size:12px;}
 .workspace-layout #schedule .flow-time-feedback label {display:flex;align-items:center;gap:8px;}
-.workspace-layout #schedule .flow-time-feedback .flow-minutes {width:112px;max-width:100%;height:30px;min-height:30px;margin:0;padding:3px 4px;border-bottom:1px solid #d8d1c4!important;background:transparent;color:#5c5148;font-size:13px;}
-.workspace-layout #schedule .flow-time-feedback .flow-mini-btn {font-size:12px;color:#9c3b32;padding:3px 0;}
+.workspace-layout #schedule .flow-time-feedback .flow-minutes {width:112px;max-width:100%;height:30px;min-height:30px;margin:0;padding:3px 4px;border-bottom:1px solid #d8d1c4!important;background:transparent;color:var(--workspace-ink);font-size:13px;}
+.workspace-layout #schedule .flow-time-feedback .flow-mini-btn {font-size:12px;color:var(--workspace-blue);padding:3px 0;}
 .workspace-layout #schedule .flow-time-comparison {font-size:12px;color:#71818b;}
-.workspace-layout #schedule .flow-time-status {font-size:12px;color:#9c3b32;}
+.workspace-layout #schedule .flow-time-status {font-size:12px;color:var(--workspace-blue);}
 .workspace-layout #schedule .flow-task-detail {max-width:720px;margin-top:12px;padding:4px 0 0 18px;border-left:1px solid #d8d1c4;}
 .workspace-layout #schedule .flow-detail-group {margin:0 0 16px;}
 .workspace-layout #schedule .flow-detail-group h3 {margin:0 0 5px;font:400 12px/1.6 "Microsoft YaHei",system-ui,sans-serif;color:#8a8478;letter-spacing:.04em;}
@@ -211,7 +213,7 @@ body.workspace-layout {background:var(--workspace-paper);background-image:radial
 .workspace-layout #schedule .flow-task-detail button,.workspace-layout #schedule .flow-task-detail .flow-project-links a {appearance:none;display:inline-flex;align-items:center;justify-content:flex-start;min-height:32px;padding:3px 0;margin:0;border:0;border-radius:0;box-shadow:none;background:transparent;font:400 13px/1.6 "Microsoft YaHei",system-ui,sans-serif;color:var(--workspace-blue);text-decoration:none;cursor:pointer;}
 .workspace-layout #schedule .flow-task-detail button:hover,.workspace-layout #schedule .flow-task-detail a:hover,.workspace-layout #schedule .flow-task-launch button:hover,.workspace-layout #schedule .flow-task-launch a:hover {text-decoration:underline;text-underline-offset:4px;}
 .workspace-layout #schedule .flow-task-actions {margin:12px 0 0;padding-top:5px;}
-.workspace-layout #schedule .flow-task-detail .flow-danger {color:#9c3b32;}
+.workspace-layout #schedule .flow-task-detail .flow-danger {color:var(--workspace-muted);}
 .workspace-layout #schedule .flow-feedback {margin-left:0;width:100%;}
 .workspace-layout #schedule .flow-feedback-label {display:block;width:100%;font-size:12px;}
 .workspace-layout #schedule .flow-note {width:100%;max-width:560px;margin:6px 0 0;padding:6px 0;font-size:14px;border-bottom:1px solid #d8d1c4!important;}
@@ -222,7 +224,12 @@ body.workspace-layout {background:var(--workspace-paper);background-image:radial
 .workspace-layout #schedule .schedule-review summary {cursor:pointer;width:fit-content;}
 .workspace-layout #schedule .schedule-review button {margin-top:12px;}
 .workspace-layout #schedule .schedule-blocked {font-size:12px;color:#866144;max-width:180px;}
-.workspace-layout #schedule .flow-add-attributes .flow-attribute-group {display:grid;}
+.workspace-layout #schedule .flow-add-attributes {padding:10px 0 4px;gap:12px 24px;align-items:center;}
+.workspace-layout #schedule .flow-add-attributes .flow-attribute-group {display:flex;align-items:center;gap:10px;}
+.workspace-layout #schedule .flow-add-attributes .flow-duration-group {width:auto;}
+.workspace-layout #schedule #scheduleAddDuration {flex:none;width:112px;min-width:0;min-height:30px;padding:3px 4px;border-bottom:1px solid #cfd7d9!important;color:var(--workspace-ink);font:13px/1.6 "Microsoft YaHei",system-ui,sans-serif;}
+.workspace-layout #schedule .flow-sort-handle:active,.workspace-layout #schedule .is-dragging .flow-sort-handle {border-color:var(--workspace-blue);color:var(--workspace-blue);}
+.workspace-layout #schedule .flow-sort-handle.is-drop-target {border-color:var(--workspace-blue);color:var(--workspace-blue);background:var(--workspace-selected);box-shadow:0 0 0 2px rgba(49,90,126,.12);}
 @media(max-width:1000px) {
  .workspace-layout #schedule .flow-task-launch button,.workspace-layout #schedule .flow-task-launch a {min-height:32px;}
  .workspace-layout #schedule .flow-time-feedback {gap:8px 16px;}
@@ -235,4 +242,5 @@ body.workspace-layout {background:var(--workspace-paper);background-image:radial
  .workspace-layout #schedule .flow-time-feedback .flow-minutes {width:100px;}
  .workspace-layout #schedule .flow-task-detail {padding-left:12px;}
  .workspace-layout #schedule .flow-detail-actions,.workspace-layout #schedule .flow-task-detail .flow-project-links {gap:4px 18px;}
+ .workspace-layout #schedule .flow-add-attributes {gap:10px 18px;}
 }
