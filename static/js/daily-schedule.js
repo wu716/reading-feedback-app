@@ -308,21 +308,21 @@
         const difficulty = task.practice?.difficulty;
         return `
             <div class="flow-task-attributes">
-                <div class="flow-attribute-group">
-                    <span class="flow-attribute-label">${escapeHtml(t('schedule.familiarityLabel', '熟悉度'))}</span>
+                <div class="flow-attribute-group" role="group" aria-labelledby="taskFamiliarityLabel-${task.id}">
+                    <span class="flow-attribute-label" id="taskFamiliarityLabel-${task.id}">${escapeHtml(t('schedule.familiarityLabel', '熟悉度'))}</span>
                     <div class="flow-attribute-options">
-                        <button type="button" class="flow-chip${task.familiarity === 'familiar' ? ' active' : ''}" data-act="fam" data-value="familiar">${escapeHtml(t('schedule.familiar', '熟悉'))}</button>
-                        <button type="button" class="flow-chip${task.familiarity === 'unfamiliar' ? ' active' : ''}" data-act="fam" data-value="unfamiliar">${escapeHtml(t('schedule.unfamiliar', '陌生'))}</button>
+                        <button type="button" class="flow-chip${task.familiarity === 'familiar' ? ' active' : ''}" data-act="fam" data-value="familiar" aria-pressed="${task.familiarity === 'familiar'}">${escapeHtml(t('schedule.familiar', '熟悉'))}</button>
+                        <button type="button" class="flow-chip${task.familiarity === 'unfamiliar' ? ' active' : ''}" data-act="fam" data-value="unfamiliar" aria-pressed="${task.familiarity === 'unfamiliar'}">${escapeHtml(t('schedule.unfamiliar', '陌生'))}</button>
                     </div>
                 </div>
-                <div class="flow-attribute-group">
-                    <span class="flow-attribute-label">难度</span>
+                <div class="flow-attribute-group" role="group" aria-labelledby="taskDifficultyLabel-${task.id}">
+                    <span class="flow-attribute-label" id="taskDifficultyLabel-${task.id}">${escapeHtml(t('schedule.difficultyLabel', '难度'))}</span>
                     <div class="flow-attribute-options">
                         <button type="button" class="flow-chip${difficulty === 'simple' ? ' active' : ''}" data-act="difficulty" data-value="simple" aria-pressed="${difficulty === 'simple'}">${escapeHtml(t('schedule.difficulty.simple', '简单'))}</button>
                         <button type="button" class="flow-chip${difficulty === 'difficult' ? ' active' : ''}" data-act="difficulty" data-value="difficult" aria-pressed="${difficulty === 'difficult'}">${escapeHtml(t('schedule.difficulty.difficult', '困难'))}</button>
                     </div>
                 </div>
-                ${task.practice?.importance ? `<div class="flow-attribute-group"><span class="flow-attribute-label">${escapeHtml(t('schedule.importanceLabel', '重要性'))}</span><span class="flow-importance-value">${escapeHtml(t('schedule.importance.' + task.practice.importance, ({unimportant:'不重要',ordinary:'一般',important:'重要'})[task.practice.importance]))}</span></div>` : ''}
+                ${task.practice?.importance ? `<div class="flow-attribute-group flow-attribute-readonly" role="group" aria-labelledby="taskImportanceLabel-${task.id}"><span class="flow-attribute-label" id="taskImportanceLabel-${task.id}">${escapeHtml(t('schedule.importanceLabel', '重要性'))}</span><span class="flow-importance-value">${escapeHtml(t('schedule.importance.' + task.practice.importance, ({unimportant:'不重要',ordinary:'一般',important:'重要'})[task.practice.importance]))}</span></div>` : ''}
             </div>`;
     }
 
