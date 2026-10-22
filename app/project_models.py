@@ -1,5 +1,7 @@
 """Project and time tracking tables. Legacy rows are kept in their original tables."""
 
+from datetime import datetime
+
 from sqlalchemy import Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.sql import func
 
@@ -25,6 +27,9 @@ class Project(Base):
     title = Column(String(200), nullable=False)
     outcome = Column(Text, nullable=True)
     status = Column(String(20), nullable=False, default="active")
+    # NULL means a legacy project whose formal start was never recorded.
+    execution_state = Column(String(20), nullable=True)
+    started_at = Column(DateTime(timezone=False), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -51,6 +56,7 @@ class ProjectTask(Base):
     title = Column(String(500), nullable=False)
     state = Column(String(20), nullable=False, default="todo")
     familiarity = Column(String(20), nullable=True)
+    execution_role = Column(String(20), nullable=False, default="formal")
     original_estimate_minutes = Column(Integer, nullable=True)
     estimated_minutes = Column(Integer, nullable=True)
     goal_reason = Column(Text, nullable=True)
@@ -151,3 +157,45 @@ class ProcessTemplate(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class StartCondition(Base):
+    """Explicit conditions; polymorphic references are validated by the service."""
+    __tablename__ = "start_conditions"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    owner_kind = Column(String(20), nullable=False)
+    owner_id = Column(Integer, nullable=False)
+    title = Column(String(500), nullable=False)
+    kind = Column(String(20), nullable=False)
+    strength = Column(String(20), nullable=False, default="required")
+    check_at = Column(String(20), nullable=False, default="start")
+    target_kind = Column(String(20), nullable=True)
+    target_id = Column(Integer, nullable=True)
+    required_state = Column(String(20), nullable=True)
+    not_before = Column(DateTime(timezone=False), nullable=True)
+    confirmation = Column(String(20), nullable=False, default="unknown")
+    evidence = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=False), nullable=False, default=datetime.utcnow)
+    removed_at = Column(DateTime(timezone=False), nullable=True)
+    __table_args__ = (
+        Index("ix_start_condition_owner", "user_id", "owner_kind", "owner_id"),
+        CheckConstraint("owner_kind IN ('project', 'task', 'daily')", name="ck_condition_owner_kind"),
+        CheckConstraint("strength IN ('required', 'reminder')", name="ck_condition_strength"),
+    )
+
+
+class ExecutionConditionEvent(Base):
+    """Append-only condition, dependency, and project lifecycle history."""
+    __tablename__ = "execution_condition_events"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    owner_kind = Column(String(20), nullable=False)
+    owner_id = Column(Integer, nullable=False)
+    condition_id = Column(Integer, ForeignKey("start_conditions.id", ondelete="RESTRICT"), nullable=True)
+    action = Column(String(40), nullable=False)
+    before_json = Column(Text, nullable=True)
+    after_json = Column(Text, nullable=True)
+    reason = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=False), nullable=False, default=datetime.utcnow)
+    __table_args__ = (Index("ix_condition_event_owner", "user_id", "owner_kind", "owner_id"),)

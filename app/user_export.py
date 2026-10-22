@@ -26,6 +26,7 @@ USER_TABLES = (
     project_models.TaskChecklistItem, project_models.WorkSession,
     project_models.ExecutionPlan, project_models.TimeActivityAssessment,
     project_models.ProcessTemplate,
+    project_models.StartCondition, project_models.ExecutionConditionEvent,
 )
 
 

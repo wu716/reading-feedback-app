@@ -126,6 +126,7 @@ class TaskOut(BaseModel):
     project_id: Optional[int] = None
     project_title: Optional[str] = None
     actual_minutes: float = 0
+    readiness: dict | None = None
     text: str
     completed: bool
     note: Optional[str] = None
@@ -264,6 +265,11 @@ def refresh_parent_completion(db: Session, user_id: int, task: DailyTask) -> Non
     while parent is not None:
         children = [child for child in parent.children if child.deleted_at is None]
         next_value = bool(children) and all(child.completed for child in children)
+        if next_value:
+            from app.start_conditions import readiness
+            # A container's delivery check must not block an independent child,
+            # or be silently satisfied by completing its final child.
+            next_value = readiness(db, user_id, "daily", parent.id, purpose="delivery")["can_start"]
         if parent.completed == next_value:
             parent = parent.parent
             continue
@@ -271,7 +277,7 @@ def refresh_parent_completion(db: Session, user_id: int, task: DailyTask) -> Non
         parent = parent.parent
 
 
-def build_tree(tasks: List[DailyTask], linked=None, actual=None) -> List[TaskOut]:
+def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id=None) -> List[TaskOut]:
     linked, actual = linked or {}, actual or {}
     by_parent = defaultdict(list)
     for task in tasks:
@@ -286,6 +292,7 @@ def build_tree(tasks: List[DailyTask], linked=None, actual=None) -> List[TaskOut
             project_id=linked[task.project_task_id][0] if task.project_task_id in linked else None,
             project_title=linked[task.project_task_id][1] if task.project_task_id in linked else None,
             actual_minutes=actual.get(("project", task.project_task_id) if task.project_task_id else ("daily", task.id), 0),
+            readiness=(readiness_by_id or {}).get(task.id),
             text=task.text,
             completed=bool(task.completed),
             note=task.note,
@@ -333,6 +340,7 @@ def future_payload(db: Session, user_id: int) -> FutureListOut:
 
 
 def day_payload(db: Session, user: User, day: date) -> DayScheduleOut:
+    from app.start_conditions import readiness
     from app.execution_service import settle_expired
     from app.project_models import Project, ProjectTask, WorkSession
     settle_expired(db, user.id)
@@ -359,7 +367,7 @@ def day_payload(db: Session, user: User, day: date) -> DayScheduleOut:
     return DayScheduleOut(
         date=day,
         designed_at=schedule.designed_at if schedule else None,
-        tasks=build_tree(tasks, linked, actual),
+        tasks=build_tree(tasks, linked, actual, {t.id: readiness(db, user.id, "daily", t.id) for t in tasks}),
     )
 
 
@@ -409,6 +417,7 @@ async def update_task(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    db.query(User).filter(User.id == current_user.id).with_for_update().first()
     task = get_task_or_404(db, current_user.id, task_id)
     if body.text is not None:
         task.text = body.text
@@ -423,6 +432,11 @@ async def update_task(
     if body.completed is not None:
         if task.project_task_id is not None:
             raise HTTPException(status_code=409, detail="请到关联项目核对完成标准并验收；验收结果会同步到日程")
+        if body.completed:
+            from app.start_conditions import require_ready
+            targets = [task] + collect_descendants(visible_tasks(db, current_user.id, task.task_date), task.id)
+            for target in targets:
+                require_ready(db, current_user.id, "daily", target.id, purpose="delivery")
         task.completed = body.completed
         refresh_parent_completion(db, current_user.id, task)
     if body.clear_note:

@@ -31,6 +31,7 @@ from app.models import (
 from app.project_models import (
     ExecutionPlan, Goal, Project, ProjectStage, ProjectTask, TaskDependency,
     TaskChecklistItem, WorkSession, TimeActivityAssessment, ProcessTemplate,
+    StartCondition, ExecutionConditionEvent,
 )
 
 logger = logging.getLogger(__name__)
@@ -137,6 +138,8 @@ def build_backup_zip(db: Session) -> bytes:
         "grant_events.csv": GrantEvent,
         "goals.csv": Goal,
         "projects.csv": Project,
+        "start_conditions.csv": StartCondition,
+        "execution_condition_events.csv": ExecutionConditionEvent,
         "project_stages.csv": ProjectStage,
         "project_tasks.csv": ProjectTask,
         "task_dependencies.csv": TaskDependency,

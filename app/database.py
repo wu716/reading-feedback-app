@@ -78,6 +78,9 @@ def ensure_schema():
         add_column("daily_tasks", "flow_order", "flow_order INTEGER DEFAULT 0")
         add_column("daily_tasks", "project_task_id", "project_task_id INTEGER REFERENCES project_tasks(id) ON DELETE SET NULL")
         add_column("work_sessions", "planned_seconds", "planned_seconds INTEGER")
+        add_column("projects", "execution_state", "execution_state VARCHAR(20)")
+        add_column("projects", "started_at", "started_at TIMESTAMP")
+        add_column("project_tasks", "execution_role", "execution_role VARCHAR(20) NOT NULL DEFAULT 'formal'")
         if "daily_tasks" in existing_tables:
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_daily_tasks_project_task_id ON daily_tasks (project_task_id)"))
         add_column("self_talk_reminder_logs", "detail", "detail TEXT")

@@ -103,6 +103,14 @@
   const post = (path, body) => request(path, {method:'POST',body:JSON.stringify(body)});
   const patch = (path, body) => request(path, {method:'PATCH',body:JSON.stringify(body)});
   const put = (path, body) => request(path, {method:'PUT',body:JSON.stringify(body)});
+  async function confirmReadiness(kind, id) {
+    const ready = await request(`/readiness/${kind}/${id}`);
+    if (ready.blockers?.length) throw new Error(ready.blockers.join('；') + '。请到开始条件与约束处理。');
+    if (ready.reminders?.length && !window.confirm(ready.reminders.join('\n') + '\n\n已了解以上提醒，继续开始？')) {
+      throw new Error('已保留当前安排');
+    }
+    return !!ready.reminders?.length;
+  }
   function currentProject() { return state.overview.projects.find(p => p.id === state.projectId); }
   function currentTask() { return currentProject()?.tasks.find(t => t.id === state.taskId); }
   function allTasks() { return state.overview.projects.flatMap(p => p.tasks.map(t => ({...t, project_title:p.title}))); }
@@ -120,28 +128,31 @@
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : '加载今日任务失败');
-    return dailyLeaves(data.tasks).filter(task => !task.completed);
+    state.historyTasks = dailyLeaves(data.tasks);
+    return state.historyTasks.filter(task => !task.completed);
   }
-  function executionChoices() {
+  function executionChoices(forHistory = false) {
     const projects = allTasks();
     const byId = new Map(projects.map(task => [task.id, task]));
-    const merged = new Map([...(state.plan.daily_tasks || []), ...state.todayTasks].map(t => [t.id, t]));
+    const merged = new Map([...(state.plan.daily_tasks || []), ...state.todayTasks, ...(forHistory ? state.historyTasks || [] : [])].map(t => [t.id, t]));
     const today = [...merged.values()].map(task => {
       const linked = byId.get(task.project_task_id);
       return {key:`daily:${task.id}`, title:`${task.path ? task.path + ' / ' : ''}${task.text}`,
         project_task_id:linked?.id || null, daily_task_id:task.id,
-        disabled:task.completed || (!!linked && !linked.can_start), group:'今日任务'};
+        disabled:task.completed || task.readiness?.can_start === false || (!!linked && !linked.can_start),
+        reason:task.readiness?.summary || linked?.readiness?.summary || '', group:'今日任务'};
     });
     const scheduled = new Set(today.map(task => task.project_task_id).filter(Boolean));
     const remaining = projects.filter(task => !scheduled.has(task.id)).map(task => ({
       key:`project:${task.id}`, title:`${task.project_title} · ${task.title}`,
-      project_task_id:task.id, daily_task_id:null, disabled:!task.can_start, group:'项目任务'
+      project_task_id:task.id, daily_task_id:null, disabled:!task.can_start,
+      reason:task.readiness?.summary || '', group:'项目任务'
     }));
     return [...today, ...remaining];
   }
-  function taskOptions(selectedKey) {
-    const choices = executionChoices();
-    const option = task => `<option value="${task.key}" ${task.key === selectedKey ? 'selected' : ''} ${task.disabled ? 'disabled' : ''}>${esc(task.title)}${task.disabled ? '（等待前置）' : ''}</option>`;
+  function taskOptions(selectedKey, forHistory = false) {
+    const choices = executionChoices(forHistory);
+    const option = task => `<option value="${task.key}" ${task.key === selectedKey ? 'selected' : ''} ${task.disabled && !forHistory ? 'disabled' : ''}>${esc(task.title)}${task.disabled ? `（${esc(task.reason || '当前受阻')}）` : ''}</option>`;
     return '<option value="">选择任务</option>' + ['今日任务', '项目任务'].map(group => {
       const items = choices.filter(task => task.group === group);
       return items.length ? `<optgroup label="${group}">${items.map(option).join('')}</optgroup>` : '';
@@ -201,19 +212,25 @@
     const projects = state.overview.projects;
     $('#projectSelect').innerHTML = projects.length ? projects.map(p => `<option value="${p.id}" ${p.id === state.projectId ? 'selected' : ''}>${esc(p.title)}</option>`).join('') : '<option value="">还没有项目</option>';
     const project = currentProject(); $('#projectOutcome').textContent = project?.outcome || '';
+    $('#projectLifecycle').innerHTML = project ? `<h3>项目执行状态</h3>
+      <p>${esc(({preparation:'筹备中：正式任务需先检查条件并开始项目',started:'已正式开始',delivered:'已交付，待验收',accepted:'已验收'})[project.execution_state] || '历史项目：未记录正式启动，保留原有可用性')}${project.started_at ? ` · 首次正式开始 ${dtLabel(project.started_at)}` : ''}</p>
+      <form id="projectStateForm"><label>操作 <select name="state"><option value="started">检查条件并正式开始／重新开始</option><option value="delivered">确认已经交付</option><option value="accepted">确认已经验收</option><option value="preparation">交付后重新筹备（保留历史）</option></select></label><label>判断依据或原因 <input name="reason" required maxlength="4000"></label><button type="submit">确认项目状态</button></form>` : '';
+    if (project) globalThis.ShuranConditions?.mount($('#projectConditions'), 'project', project.id, () => afterChange());
+    else $('#projectConditions').innerHTML = '';
     $('#stageBoard').innerHTML = project ? project.stages.map(s => {
       const tasks = project.tasks.filter(t => t.stage_id === s.id);
       const open = s.state === 'current' || s.state === 'next';
       const stageLabel = stageName(s);
       return `<article class="stage ${esc(s.state)}"><div class="stage-header"><h3>${esc(s.title)}</h3><span class="state-tag">${stageName(s)}</span></div>
-        ${tasks.length ? tasks.map(t => `<div class="task-row ${t.blocked_by.length ? 'blocked' : ''} ${t.state === 'completed' ? 'done' : ''}"><button type="button" data-act="select-task" data-id="${t.id}">${esc(t.title)}<small>${t.blocked_by.length ? '等待前置任务' : t.state === 'completed' ? '已完成' : t.state === 'partial' ? '部分完成' : t.state === 'rework' ? '需要返工' : '可以推进'} · 原估计 ${t.original_estimate_minutes ?? '未填'} 分 · 实耗 ${t.actual_minutes} 分</small></button></div>`).join('') : `<p class="stage-empty">这里还没有任务${open ? '，可以在下方写入第一项。' : '。'}</p>`}
+        ${tasks.length ? tasks.map(t => `<div class="task-row ${!t.can_start ? 'blocked' : ''} ${t.state === 'completed' ? 'done' : ''}"><button type="button" data-act="select-task" data-id="${t.id}">${esc(t.title)}<small>${t.execution_role === 'preparation' ? '筹备任务 · ' : ''}${t.state === 'completed' ? '已完成' : esc(t.readiness?.summary || (t.blocked_by.length ? '等待前置任务' : '可以推进'))} · 原估计 ${t.original_estimate_minutes ?? '未填'} 分 · 实耗 ${t.actual_minutes} 分</small></button></div>`).join('') : `<p class="stage-empty">这里还没有任务${open ? '，可以在下方写入第一项。' : '。'}</p>`}
         ${open ? `<form class="stage-task-form" data-stage="${s.id}">
           <label>${stageLabel}的新任务 <input name="title" maxlength="500" required placeholder="写下一件能开始、能核对的事"></label>
           <button type="submit">加入${stageLabel}</button>
-          <details class="optional-fields"><summary>补充估时与完成标准</summary>
+          <details class="optional-fields"><summary>补充估时、任务用途与完成标准</summary>
             <div class="field-grid">
               <label>预计分钟 <input name="estimated_minutes" type="number" min="0" max="100000" placeholder="可稍后估"></label>
               <label>熟悉程度 <select name="familiarity"><option value="">暂不标记</option><option value="familiar">熟悉</option><option value="unfamiliar">陌生</option></select></label>
+              <label>任务用途 <select name="execution_role"><option value="formal">正式执行（继承项目条件）</option><option value="preparation">筹备任务（只检查自身条件）</option></select></label>
               <label class="wide">对目标的作用 <textarea name="goal_reason" rows="2" maxlength="4000"></textarea></label>
               <label class="wide">怎样算完成 <textarea name="acceptance_criteria" rows="2" maxlength="4000"></textarea></label>
             </div>
@@ -230,15 +247,18 @@
     const prereq = task.prerequisite_ids.map(id => project.tasks.find(t => t.id === id)).filter(Boolean);
     root.innerHTML = `<div class="detail-header"><h3>${esc(task.title)}</h3><button type="button" class="secondary" data-act="close-detail">收起</button></div>
       <p class="task-metrics">原估计 ${task.original_estimate_minutes ?? '未填'} 分 · 当前估计 ${task.estimated_minutes ?? '未填'} 分 · 实际投入 ${task.actual_minutes} 分${task.difference_minutes == null ? '' : ` · 差额 ${task.difference_minutes > 0 ? '+' : ''}${task.difference_minutes} 分`}</p>
-      <p class="scheduled-dates">已安排：${(task.scheduled_dates || []).map(day => `<a href="/static/index.html?schedule_date=${day}#schedule">${day}</a>`).join(' · ') || '尚未安排到日程'}</p><div class="detail-actions"><button type="button" data-act="queue-task" ${task.can_start ? '' : 'disabled'}>加入时间片轮转</button><a href="/static/index.html#schedule">查看日程</a></div><form id="scheduleTaskForm"><label>安排到哪天 <input name="task_date" type="date" required></label><button type="submit">写入日程</button></form><div class="detail-actions" role="tablist" aria-label="任务操作分区"><button type="button" class="${state.detailMode === 'attributes' ? '' : 'secondary'}" data-act="detail-mode" data-mode="attributes">内容与估时</button><button type="button" class="${state.detailMode === 'dependencies' ? '' : 'secondary'}" data-act="detail-mode" data-mode="dependencies">前置与检查项</button><button type="button" class="${state.detailMode === 'completion' ? '' : 'secondary'}" data-act="detail-mode" data-mode="completion">安排与验收</button></div>
+      <p>${esc(task.readiness?.summary || '未配置启动条件')} · ${task.execution_role === 'preparation' ? '筹备任务：不继承项目条件' : '正式任务：继承项目条件'}</p>
+      <p class="scheduled-dates">已安排：${(task.scheduled_dates || []).map(day => `<a href="/static/index.html?schedule_date=${day}#schedule">${day}</a>`).join(' · ') || '尚未安排到日程'}</p><div class="detail-actions"><button type="button" data-act="queue-task" ${task.can_start ? '' : 'disabled'}>加入时间片轮转</button><a href="/static/index.html#schedule">查看日程</a></div><form id="scheduleTaskForm"><label>安排到哪天 <input name="task_date" type="date" required></label><button type="submit">写入日程</button></form><div class="detail-actions" role="tablist" aria-label="任务操作分区"><button type="button" class="${state.detailMode === 'attributes' ? '' : 'secondary'}" data-act="detail-mode" data-mode="attributes">内容与估时</button><button type="button" class="${state.detailMode === 'conditions' ? '' : 'secondary'}" data-act="detail-mode" data-mode="conditions">开始条件与约束</button><button type="button" class="${state.detailMode === 'dependencies' ? '' : 'secondary'}" data-act="detail-mode" data-mode="dependencies">完成检查</button><button type="button" class="${state.detailMode === 'completion' ? '' : 'secondary'}" data-act="detail-mode" data-mode="completion">安排与验收</button></div>
+      <div class="detail-zone" ${state.detailMode === 'conditions' ? '' : 'hidden'}><div id="taskConditions" class="condition-workspace"></div>
+        <h4>原有任务前置关系</h4><p>${prereq.length ? prereq.map(t => `${esc(t.title)} <button type="button" class="secondary" data-act="remove-dep" data-id="${t.id}">说明原因并移除</button>`).join(' · ') : '未配置原有任务前置。其他条件见上方。'}</p>
+        <form id="dependencyForm"><label>必须先完成 <select name="prerequisite_id">${choices}</select></label><button type="submit" ${choices ? '' : 'disabled'}>添加前置</button></form></div>
       <div class="detail-zone" ${state.detailMode === 'attributes' ? '' : 'hidden'}><h4>内容与估时</h4><form id="detailForm" class="detail-grid">
         <label>任务 <input name="title" maxlength="500" required value="${esc(task.title)}"></label><label>阶段 <select name="stage_id">${stageOptions(project, task.stage_id)}</select></label>
         <label>当前估计分钟 <input name="estimated_minutes" type="number" min="0" value="${task.estimated_minutes ?? ''}"></label><label>熟悉程度 <select name="familiarity"><option value="">未标记</option><option value="familiar" ${task.familiarity === 'familiar' ? 'selected' : ''}>熟悉</option><option value="unfamiliar" ${task.familiarity === 'unfamiliar' ? 'selected' : ''}>陌生</option></select></label>
         <label class="wide">为什么对目标有用 <textarea name="goal_reason" rows="2">${esc(task.goal_reason)}</textarea></label><label class="wide">怎样算完成 <textarea name="acceptance_criteria" rows="2">${esc(task.acceptance_criteria)}</textarea></label>
         <label class="wide">开始前预演（第一步、材料、难处、卡住怎么办） <textarea name="rehearsal_note" rows="3">${esc(task.rehearsal_note)}</textarea></label><label class="wide">流程步骤（每行一项） <textarea name="steps" rows="3">${esc(task.steps.join('\n'))}</textarea></label>
         <label class="wide">难点或阻碍 <textarea name="blocker_note" rows="2">${esc(task.blocker_note)}</textarea></label><button type="submit">保存任务内容</button></form></div>
-      <div class="detail-zone" ${state.detailMode === 'dependencies' ? '' : 'hidden'}><h4>前置任务</h4><p>${prereq.length ? prereq.map(t => `${esc(t.title)} <button type="button" class="secondary" data-act="remove-dep" data-id="${t.id}">移除</button>`).join(' · ') : '没有前置限制，可以开始。'}</p>
-        <form id="dependencyForm"><label>必须先完成 <select name="prerequisite_id">${choices}</select></label><button type="submit" ${choices ? '' : 'disabled'}>添加前置</button></form>
+      <div class="detail-zone" ${state.detailMode === 'dependencies' ? '' : 'hidden'}><p>普通检查项用于核对交付，不会暗中成为开始门槛。</p>
         <h4>检查项</h4><ul>${task.checklist.map(item => `<li><label class="check"><input type="checkbox" data-act="toggle-check" data-id="${item.id}" ${item.done ? 'checked' : ''}>${esc(item.text)}</label></li>`).join('') || '<li>还没有检查项</li>'}</ul>
         <form id="checklistForm"><label>新增检查项 <input name="text" maxlength="500" required></label><button type="submit">添加</button></form></div>
       <div class="detail-zone" ${state.detailMode === 'completion' ? '' : 'hidden'}><h4>安排与验收</h4>
@@ -247,6 +267,7 @@
         <form id="finishTaskForm"><label>结果 <select name="result"><option value="completed">完成</option><option value="partial">部分完成</option><option value="rework">需要返工</option></select></label><label>结果说明 <input name="outcome_note" value="${esc(task.outcome_note)}"></label><label>估时偏差原因 <input name="variance_reason" value="${esc(task.variance_reason)}"></label><button type="submit">保存验收</button></form>
         <div class="detail-actions"><button type="button" class="secondary" data-act="save-template">保存为流程</button></div></div>`;
     const date = $('#scheduleTaskForm [name=task_date]', root); if (date) date.value = params.get('date') || todayISO();
+    if (state.detailMode === 'conditions') globalThis.ShuranConditions?.mount($('#taskConditions', root), 'task', task.id, () => afterChange());
   }
 
   function choiceFor(key) {
@@ -270,9 +291,13 @@
   }
   function renderExecution() {
     $('#focusTask').innerHTML = taskOptions($('#focusTask').value);
-    $('#manualTask').innerHTML = taskOptions($('#manualTask').value);
+    $('#manualTask').innerHTML = taskOptions($('#manualTask').value, true);
     const active = state.active, paused = state.plan.paused;
     const current = active || paused || lastWork();
+    const currentChoice = sessionChoice(current);
+    const warning = $('#activeConditionWarning');
+    warning.hidden = !active || active.kind !== 'work' || (!!currentChoice && !currentChoice.disabled);
+    warning.textContent = !warning.hidden ? `当前条件发生变化：${currentChoice?.reason || '任务当前不可开始或已移除'}。请明确暂停、补齐条件或调整；已记录投入保留。` : '';
     $('#activeTaskTitle').textContent = active?.kind === 'break' || paused?.kind === 'break' ? '休息一下' : current?.label || sessionChoice(current)?.title || nextTask()?.title || '先把要做的事加入轮转';
     const projectTask = allTasks().find(t => t.id === current?.project_task_id);
     const link = $('#activeProjectLink'); link.hidden = !projectTask;
@@ -291,7 +316,7 @@
     $('[data-next=continue]').disabled = !sessionChoice(lastWork()) || sessionChoice(lastWork()).disabled;
     $('#rotationQueue').innerHTML = state.plan.queue.map((key, index) => {
       const task = choiceFor(key), isCurrent = task && active?.kind === 'work' && sessionChoice(active)?.key === task.key;
-      return `<li class="rotation-item ${isCurrent ? 'current' : ''}"><div><strong>${esc(task?.title || '任务已移除')}</strong><small>${isCurrent ? '正在执行' : task?.disabled ? '已完成或等待前置，本轮跳过' : `第 ${index + 1} 项 · 每片 ${state.plan.work_minutes} 分钟`}</small></div><div class="queue-order"><button type="button" class="secondary" data-queue="up" data-index="${index}" ${index === 0 ? 'disabled' : ''} aria-label="上移 ${esc(task?.title || '')}">上移</button><button type="button" class="secondary" data-queue="down" data-index="${index}" ${index === state.plan.queue.length - 1 ? 'disabled' : ''} aria-label="下移 ${esc(task?.title || '')}">下移</button><button type="button" class="secondary" data-queue="remove" data-index="${index}">移出</button></div></li>`;
+      return `<li class="rotation-item ${isCurrent ? 'current' : ''}"><div><strong>${esc(task?.title || '任务已移除')}</strong><small>${isCurrent ? '正在执行' : task?.disabled ? esc(task.reason || '已完成或受阻，本轮跳过') : `第 ${index + 1} 项 · 每片 ${state.plan.work_minutes} 分钟`}</small></div><div class="queue-order"><button type="button" class="secondary" data-queue="up" data-index="${index}" ${index === 0 ? 'disabled' : ''} aria-label="上移 ${esc(task?.title || '')}">上移</button><button type="button" class="secondary" data-queue="down" data-index="${index}" ${index === state.plan.queue.length - 1 ? 'disabled' : ''} aria-label="下移 ${esc(task?.title || '')}">下移</button><button type="button" class="secondary" data-queue="remove" data-index="${index}">移出</button></div></li>`;
     }).join('') || '<li class="empty">先加入 A、B、C；每片结束后，选择下一项即可轮转。</li>';
     $('#dailyProjectLink').hidden = !params.get('daily');
     $('#confirmDailyProject').disabled = !state.projectId;
@@ -340,10 +365,14 @@
       } else if (form.id === 'projectForm') {
         const result = await post('', {title:body.title, outcome:body.outcome || null, goal_id:nullableNumber(body.goal_id)});
         state.projectId = result.id; form.reset(); await afterChange('项目已建立');
+      } else if (form.id === 'projectStateForm') {
+        const acknowledge = body.state === 'started' ? await confirmReadiness('project', state.projectId) : false;
+        await post(`/${state.projectId}/execution-state`, {state:body.state, reason:body.reason, acknowledge_reminders:acknowledge});
+        await afterChange('项目状态已保存；依赖状态已重新核对');
       } else if (form.classList.contains('stage-task-form')) {
         if (!state.projectId) throw new Error('请先建立项目');
         const task = await post(`/${state.projectId}/tasks`, {title:body.title, stage_id:Number(form.dataset.stage),
-          estimated_minutes:nullableNumber(body.estimated_minutes), familiarity:body.familiarity || null,
+          estimated_minutes:nullableNumber(body.estimated_minutes), familiarity:body.familiarity || null, execution_role:body.execution_role || 'formal',
           goal_reason:body.goal_reason || null, acceptance_criteria:body.acceptance_criteria || null});
         state.taskId = task.id; form.reset(); await afterChange('任务已加入阶段');
       } else if (form.classList.contains('stage-change')) {
@@ -365,10 +394,10 @@
         await post(`/tasks/${state.taskId}/schedule`, {task_date:body.task_date}); await afterChange('已关联到 ' + body.task_date + ' 的日程；可从日程查看项目与投入');
       } else if (form.id === 'manualForm') {
         const source = body.source;
-        const task = selectedTask(body.task_ref);
-        if (!task) throw new Error('请先选择可开始的任务');
+        const task = executionChoices(true).find(item => item.key === body.task_ref);
+        if (!task) throw new Error('请先选择要补记的任务');
         await post('/sessions/manual', {project_task_id:task.project_task_id, daily_task_id:task.daily_task_id, label:task.title, source, kind:'work',
-          time_log_node_id:source === 'moment' ? nullableNumber(body.time_log_node_id) : null,
+          time_log_node_id:source === 'moment' ? nullableNumber(body.time_log_node_id) : null, correction_note:body.correction_note || null,
           started_at:new Date(body.started_at).toISOString(), ended_at:new Date(body.ended_at).toISOString()});
         form.reset(); $('#momentNodeLabel').hidden = true; await afterChange('实际投入已保存');
       } else if (form.classList.contains('correct-form')) {
@@ -391,7 +420,10 @@
       else if (action === 'queue-task') { await addQueue(`project:${state.taskId}`); location.hash = 'execution'; notice('已加入轮转，准备好后开始'); }
       else if (action === 'close-detail') { state.taskId = null; renderTaskDetail(); }
       else if (action === 'detail-mode') { state.detailMode = button.dataset.mode; renderTaskDetail(); }
-      else if (action === 'remove-dep') { await request(`/tasks/${state.taskId}/dependencies/${id}`, {method:'DELETE'}); await afterChange('前置关系已移除'); }
+      else if (action === 'remove-dep') {
+        const reason = window.prompt('移除前置会改变可执行状态，历史与实际投入仍保留。请说明原因：');
+        if (reason?.trim()) { await request(`/tasks/${state.taskId}/dependencies/${id}?reason=${encodeURIComponent(reason.trim())}`, {method:'DELETE'}); await afterChange('前置关系已移除并留存原因'); }
+      }
       else if (action === 'edit-goal') {
         const goal = state.overview.goals.find(g => g.id === id), title = window.prompt('修改目标', goal.title);
         if (title && title.trim()) { await patch(`/goals/${id}`, {title:title.trim()}); await afterChange('目标已修改；历史评价仍保留当时目标文字'); }
@@ -451,8 +483,10 @@
     if (!task || task.disabled) throw new Error('请先选择可开始的任务');
     const minutes = Number($('#workMinutes').value) || 20;
     const links = {project_task_id:task.project_task_id, daily_task_id:task.daily_task_id, label:task.title};
-    if (state.active) await post(`/sessions/${state.active.id}/stop`, {});
-    await post('/sessions/start', {...links, kind:'work', planned_minutes:minutes});
+    const acknowledge = await confirmReadiness(task.project_task_id ? 'task' : 'daily', task.project_task_id || task.daily_task_id);
+    const body = {...links, kind:'work', planned_minutes:minutes, acknowledge_reminders:acknowledge};
+    if (state.active) await post('/sessions/switch', {...body, from_session_id:state.active.id});
+    else await post('/sessions/start', body);
     await afterChange('工作片已开始');
   }
   async function chooseNext(choice) {
@@ -473,7 +507,11 @@
     }
   }
   $('#startWork').addEventListener('click', () => { prepareSound(); run(async () => {
-    if (state.plan.paused) { await post('/execution/resume', {}); await afterChange('已恢复剩余时间'); }
+    if (state.plan.paused) {
+      const old = state.plan.paused;
+      const acknowledge = old.kind === 'work' ? await confirmReadiness(old.project_task_id ? 'task' : 'daily', old.project_task_id || old.daily_task_id) : false;
+      await post('/execution/resume' + (acknowledge ? '?acknowledge_reminders=true' : ''), {}); await afterChange('已恢复剩余时间');
+    }
     else if (lastWork()) await chooseNext('switch');
     else await startWork();
   }); });

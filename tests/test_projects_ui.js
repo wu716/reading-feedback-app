@@ -55,6 +55,10 @@ const context = {
     else if(url.endsWith('/execution/resume')) {const old=plan.paused;data=start({...old,planned_seconds:plan.remaining_seconds});}
     else if(url.endsWith('/execution'))data=plan;
     else if(url.endsWith('/sessions/start'))data=start(body);
+    else if(url.endsWith('/sessions/switch')) {
+      const old=sessions.find(s=>s.id===body.from_session_id); old.ended_at=new Date().toISOString();
+      data={ended:old,started:start(body)};
+    }
     else if(url.match(/\/1\/tasks$/)) {
       data={...body,id:100+overview.projects[0].tasks.length,project_id:1,state:'pending',
         can_start:true,blocked_by:[],prerequisite_ids:[],scheduled_dates:[],steps:[],checklist:[],

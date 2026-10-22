@@ -54,6 +54,8 @@ class ProjectFlowTests(unittest.TestCase):
     def project(self, estimate=None):
         goal = self.req("POST", "/goals", {"title": "交出初稿"}).json()
         project = self.req("POST", "", {"title": "论文", "goal_id": goal["id"]}).json()
+        started = self.req("POST", f"/{project['id']}/execution-state", {"state": "started", "reason": "测试项目已具备开始条件"})
+        self.assertEqual(started.status_code, 200, started.text)
         overview = self.req("GET", "/overview").json()["projects"][0]
         current = next(stage for stage in overview["stages"] if stage["state"] == "current")
         return goal, project, current

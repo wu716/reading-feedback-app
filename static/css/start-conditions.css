@@ -1,0 +1,20 @@
+.conditions-dialog { width: min(680px, 92vw); max-height: 88vh; overflow: auto; color: #36424a; background: #faf8f2; border: 1px solid #d8d6ce; border-radius: 16px; padding: 22px; }
+.conditions-dialog::backdrop { background: #28323c66; }
+.conditions-dialog > form { display: flex; justify-content: flex-end; }
+.conditions-body, .condition-workspace { color: #36424a; line-height: 1.65; }
+.condition-summary { background: #eef0ed; border-left: 3px solid #83938c; padding: 10px 14px; overflow-wrap: anywhere; }
+.condition-help { color: #68736e; font-size: 13px; }
+.condition-list details, .condition-create { margin: 12px 0; padding: 12px; border: 1px solid #deded5; border-radius: 8px; }
+.conditions-body summary, .condition-workspace summary { cursor: pointer; }
+.conditions-body form, .condition-workspace form { display: grid; gap: 10px; margin: 12px 0; }
+.conditions-body label, .condition-workspace label { display: grid; gap: 4px; }
+.conditions-body input, .conditions-body select, .conditions-body textarea { font: inherit; padding: 8px; width: 100%; box-sizing: border-box; color: inherit; border: 1px solid #cbd1c9; border-radius: 6px; background: #fffefa; }
+.conditions-dialog button, .conditions-body button { font: inherit; cursor: pointer; padding: 8px 14px; background: #e7ece7; border: 1px solid #bcc7bd; border-radius: 6px; color: #334c3c; }
+.reflection-panel textarea { box-sizing: border-box; width: 100%; font: inherit; padding: 10px; border: 1px solid #cbd1c9; border-radius: 6px; background: #fffefa; }
+.conditions-body [hidden], .condition-workspace [hidden] { display: none !important; }
+.condition-message { color: #755d31; }
+.project-lifecycle { margin: 14px 0; padding: 14px; background: #f3f1e9; border-radius: 10px; }
+.project-lifecycle form { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.project-lifecycle label { flex: 1 1 180px; }
+.active-condition-warning { padding: 12px; background: #f2ead7; color: #67562f; border-radius: 8px; }
+@media (max-width: 600px) { .conditions-dialog { padding: 16px; } }

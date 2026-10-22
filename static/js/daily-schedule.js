@@ -217,7 +217,7 @@
         const date = encodeURIComponent(currentDay());
         const project = task.project_id ? `<a href="/static/projects.html?task=${task.project_task_id}#taskDetail">${escapeHtml(task.project_title || '所属项目')}</a>` : `<a href="/static/projects.html?daily=${task.id}">纳入项目</a>`;
         const execute = task.completed ? '' : `<a href="/static/projects.html?date=${date}&execute=daily:${task.id}#execution">加入时间片</a>`;
-        return `<div class="flow-project-links">${project}<span>已投入 ${task.actual_minutes || 0} 分</span>${execute}</div>`;
+        return `<div class="flow-project-links">${project}<span>已投入 ${task.actual_minutes || 0} 分</span>${execute}<button type="button" data-act="conditions">开始条件与约束</button><span>${escapeHtml(task.readiness?.summary || '未配置启动条件')}</span></div>`;
     }
 
     function renderToolbar() {
@@ -1211,6 +1211,8 @@
                     await moveTask(id, 1);
                 } else if (act === 'parallel') {
                     await toggleParallel(id);
+                } else if (act === 'conditions') {
+                    globalThis.ShuranConditions?.open('daily', id, load);
                 } else if (act === 'priority') {
                     await patchTask(id, { priority: parseInt(actEl.dataset.value, 10) });
                 } else if (act === 'top') {
