@@ -218,6 +218,7 @@
             if (!sameSession(epoch)) return;
             drafts.delete(date); day = data; dirty = false; renderDay();
             el('ltSaveHint').textContent = '已保存到服务器，报告已同步。';
+            window.reminderNotificationService?.checkPendingReminders();
             try { const response = await api('/recent'); if (sameSession(epoch)) recent = response.items; }
             catch { /* Saving succeeded; recent suggestions can refresh on the next visit. */ }
         } catch(e) { if (sameSession(epoch)) { status('保存失败','is-error'); el('ltSaveHint').textContent = (e.message || '请重试') + ' 当前草稿仍保留，可先导出。'; } }
@@ -517,6 +518,13 @@
         }
         if (busy) return;
         if (!token) { status('请登录后记录'); return; }
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('record') === 'today') {
+            el('ltDate').value = today();
+            switchView('daily');
+            url.searchParams.delete('record');
+            window.history.replaceState(null, '', url);
+        }
         const epoch=sessionEpoch; el('ltDate').value ||= today();
         try {
             if (!preferences) {
@@ -528,8 +536,19 @@
             if (view==='settings') renderSettings();
         } catch(e) { if(sameSession(epoch)) status(e.message || '读取失败，请重试','is-error'); }
     };
+    window.openLongTermToday = function () {
+        if (busy) { status('正在保存，请稍后打开今日记录。'); return; }
+        const url = new URL(window.location.href);
+        url.searchParams.set('record', 'today');
+        window.history.replaceState(null, '', url);
+        window.navigateTo('long-term');
+    };
     document.addEventListener('DOMContentLoaded',() => {
         if (!el('ltDate')) return;
+        el('ltReminderSettings').onclick = () => {
+            window.navigateTo('user-center');
+            document.querySelector('.record-reminder-settings')?.scrollIntoView({block:'center',behavior:'smooth'});
+        };
         el('ltDate').onchange=()=>loadDay();
         ['ltPrevDay','ltNextDay'].forEach((id,i)=>el(id).onclick=()=>{
             const d=new Date(el('ltDate').value+'T12:00:00'); d.setDate(d.getDate()+(i?1:-1));

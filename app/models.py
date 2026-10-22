@@ -704,6 +704,11 @@ class SelfTalkReminderSetting(Base):
 
     reading_reminder_enabled = Column(Boolean, default=False)
     reading_reminder_time = Column(String(8), nullable=True)
+
+    # 独立于已停用的旧 self-talk 每日提醒，避免升级后自动替用户开启。
+    record_reminder_enabled = Column(Boolean, default=False)
+    record_reminder_time = Column(String(8), default="21:00")
+    record_reminded_on = Column(Date, nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

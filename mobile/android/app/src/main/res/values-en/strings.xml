@@ -2,12 +2,14 @@
 <resources>
     <string name="app_name">Shuran</string>
     <string name="app_url">http://43.161.238.165:8000/</string>
-    <string name="static_ui_version">20261022register1</string>
+    <string name="static_ui_version">20261022record1</string>
+    <string name="notification_record_title">Record your day</string>
+    <string name="notification_record_body">Take a moment to review today and update your activities, attention and spending in Long-term goals.</string>
     <string name="loading">Opening Shuran…</string>
     <string name="network_error">Cannot connect to the server. Check your network and try again.</string>
     <string name="retry">Retry</string>
     <string name="notification_channel_name">Reminders</string>
-    <string name="notification_channel_desc">Due todos appear in notifications and the top banner.</string>
+    <string name="notification_channel_desc">Todo and daily record reminders appear in notifications and the top banner.</string>
     <string name="notification_delivery_channel_name">Reminder delivery</string>
     <string name="notification_delivery_channel_desc">Used only for background delivery. It is not shown as a reminder.</string>
     <string name="notification_delivery_body">Delivering reminder…</string>

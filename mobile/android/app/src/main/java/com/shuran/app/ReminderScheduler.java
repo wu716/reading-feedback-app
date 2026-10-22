@@ -23,6 +23,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
+import java.util.TimeZone;
 
 public final class ReminderScheduler {
     private static final String TAG = "ShuranReminder";
@@ -48,6 +49,10 @@ public final class ReminderScheduler {
     private static final String KEY_FOCUS_DEADLINE = "focus_deadline";
     private static final String KEY_FOCUS_KIND = "focus_kind";
     private static final String KEY_FOCUS_FIRED = "focus_fired_id";
+    private static final String KEY_RECORD_ENABLED = "record_enabled";
+    private static final String KEY_RECORD_TIME = "record_time";
+    private static final String KEY_RECORD_COMPLETE = "record_complete_date";
+    private static final String KEY_RECORD_SHOWN = "record_shown_date";
 
     static final String ACTION_DAILY = "com.shuran.app.REMINDER_DAILY";
     static final String ACTION_POLL = "com.shuran.app.REMINDER_POLL";
@@ -55,6 +60,7 @@ public final class ReminderScheduler {
     static final String ACTION_TODO = "com.shuran.app.REMINDER_TODO";
     static final String ACTION_TEST = "com.shuran.app.REMINDER_TEST";
     static final String ACTION_FOCUS = "com.shuran.app.REMINDER_FOCUS";
+    static final String ACTION_RECORD = "com.shuran.app.REMINDER_RECORD";
     static final String EXTRA_TODO_ID = "todo_id";
     static final String EXTRA_TODO_TEXT = "todo_text";
 
@@ -63,6 +69,9 @@ public final class ReminderScheduler {
     private static final int REQ_READING = 43;
     private static final int REQ_TEST = 44;
     private static final int REQ_FOCUS = 45;
+    private static final int REQ_RECORD = 46;
+    private static final int REQ_RECORD_BACKUP = 546;
+    private static final int REQ_RECORD_SHOW = 146;
     private static final int REQ_FOCUS_BACKUP = 545;
     private static final int REQ_FOCUS_SHOW = 145;
     private static final int REQ_DAILY_BACKUP = 541;
@@ -129,6 +138,9 @@ public final class ReminderScheduler {
     }
 
     public static void syncSession(Context context, String token, String origin) {
+        if (token != null && !token.equals(sessionToken(context))) {
+            resetRecordSession(context);
+        }
         SharedPreferences.Editor editor = prefs(context).edit();
         editor.putString(KEY_TOKEN, token == null ? "" : token);
         if (origin != null && !origin.isEmpty()) {
@@ -138,9 +150,10 @@ public final class ReminderScheduler {
         editor.apply();
     }
 
-    /** 只清 token，不清闹钟。登录过期后本地到点提醒仍要响。 */
+    /** 保留待办闹钟；退出账号时取消个人每日记录提醒。 */
     public static void clearSession(Context context) {
         prefs(context).edit().remove(KEY_TOKEN).apply();
+        resetRecordSession(context);
     }
 
     public static String storedToken(Context context) {
@@ -162,6 +175,10 @@ public final class ReminderScheduler {
         if (settings.has("enabled")) {
             editor.putBoolean(KEY_USER_DISABLED, !enabled);
         }
+        if (settings.has("recordEnabled")) editor.putBoolean(KEY_RECORD_ENABLED, settings.optBoolean("recordEnabled", false));
+        if (settings.has("recordTime")) editor.putString(KEY_RECORD_TIME, settings.optString("recordTime", "21:00"));
+        if (settings.has("recordDate")) editor.putString(KEY_RECORD_COMPLETE,
+                settings.optBoolean("recordComplete", false) ? settings.optString("recordDate", "") : "");
         editor.commit();
         clearLegacyDaily(context);
 
@@ -208,6 +225,7 @@ public final class ReminderScheduler {
     }
 
     private static void showFromJsLocked(Context context, JSONObject data) {
+        if (!data.optBoolean("system_notification", true)) return;
         boolean force = data.optBoolean("force", false)
                 || "test".equals(data.optString("reminder_type", ""));
         if (!force && !prefs(context).getBoolean(KEY_SYSTEM, true)) {
@@ -241,6 +259,8 @@ public final class ReminderScheduler {
                 clearLegacyDaily(context);
             } else if (ACTION_TODO.equals(action)) {
                 fillTodo(context, intent, delivery);
+            } else if (ACTION_RECORD.equals(action)) {
+                synchronized (LOCK) { fillRecord(context, delivery); }
             } else if (ACTION_TEST.equals(action)) {
                 fillTest(context, delivery);
             } else if (ACTION_FOCUS.equals(action)) {
@@ -431,6 +451,16 @@ public final class ReminderScheduler {
             }
             reader.close();
             JSONObject json = new JSONObject(sb.toString());
+            if (!token.equals(sessionToken(context))) return;
+            if (json.has("record_reminder_enabled")) {
+                JSONObject record = new JSONObject();
+                record.put("recordEnabled", json.optBoolean("record_reminder_enabled", false));
+                record.put("recordTime", json.optString("record_reminder_time", "21:00"));
+                record.put("recordDate", json.optString("record_date", ""));
+                record.put("recordComplete", json.optBoolean("record_complete", false));
+                record.put("systemNotification", json.optBoolean("system_notification", true));
+                applySettings(context, record);
+            }
             JSONArray list = json.optJSONArray("notifications");
             if (list == null) {
                 return;
@@ -447,6 +477,8 @@ public final class ReminderScheduler {
     }
 
     private static boolean shouldSkip(Context context, int logId, String type) {
+        if ("daily_record".equals(type) && (recordToday().equals(prefs(context).getString(KEY_RECORD_SHOWN, ""))
+                || recordToday().equals(prefs(context).getString(KEY_RECORD_COMPLETE, "")))) return true;
         if (logId > 0 && shownIds(context).contains(String.valueOf(logId))) {
             return true;
         }
@@ -454,6 +486,10 @@ public final class ReminderScheduler {
     }
 
     private static void markShown(Context context, int logId, String type) {
+        if ("daily_record".equals(type)) {
+            prefs(context).edit().putString(KEY_RECORD_SHOWN, recordToday()).commit();
+            scheduleRecord(context);
+        }
         if (logId <= 0) {
             return;
         }
@@ -474,6 +510,7 @@ public final class ReminderScheduler {
     private static void scheduleLocked(Context context) {
         schedulePoll(context);
         clearLegacyDaily(context);
+        scheduleRecord(context);
         scheduleTodos(context);
     }
 
@@ -504,6 +541,70 @@ public final class ReminderScheduler {
                 .remove(KEY_LAST_DAILY_FIRE)
                 .apply();
         ReminderNotifications.cancelLegacyDaily(context);
+    }
+
+    private static String recordToday() {
+        return recordDate(System.currentTimeMillis());
+    }
+
+    private static String recordDate(long now) {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+        format.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"));
+        return format.format(new Date(now));
+    }
+
+    static long nextRecordMillis(String rawTime, String completed, String shown, long now) {
+        Calendar at = Calendar.getInstance(TimeZone.getTimeZone("Asia/Shanghai"));
+        at.setTimeInMillis(now);
+        int[] hm = parseTime(rawTime);
+        at.set(Calendar.HOUR_OF_DAY, hm[0]); at.set(Calendar.MINUTE, hm[1]);
+        at.set(Calendar.SECOND, 0); at.set(Calendar.MILLISECOND, 0);
+        String today = recordDate(now);
+        if (today.equals(shown) || today.equals(completed)) at.add(Calendar.DAY_OF_MONTH, 1);
+        return Math.max(at.getTimeInMillis(), now + 3000);
+    }
+
+    private static void cancelRecord(Context context) {
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        am.cancel(pending(context, ACTION_RECORD, REQ_RECORD));
+        am.cancel(pending(context, ACTION_RECORD, REQ_RECORD_BACKUP));
+    }
+
+    private static void resetRecordSession(Context context) {
+        prefs(context).edit().remove(KEY_RECORD_ENABLED).remove(KEY_RECORD_TIME)
+                .remove(KEY_RECORD_COMPLETE).remove(KEY_RECORD_SHOWN).commit();
+        cancelRecord(context);
+        android.app.NotificationManager manager = context.getSystemService(android.app.NotificationManager.class);
+        if (manager != null) manager.cancel(9005);
+    }
+
+    private static void scheduleRecord(Context context) {
+        cancelRecord(context);
+        SharedPreferences p = prefs(context);
+        if (!masterOn(context) || !p.getBoolean(KEY_SYSTEM, true) || !p.getBoolean(KEY_RECORD_ENABLED, false)) return;
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        long when = nextRecordMillis(p.getString(KEY_RECORD_TIME, "21:00"),
+                p.getString(KEY_RECORD_COMPLETE, ""), p.getString(KEY_RECORD_SHOWN, ""), System.currentTimeMillis());
+        setWakeup(context, am, when, pending(context, ACTION_RECORD, REQ_RECORD), REQ_RECORD_SHOW, true);
+        setBackupWakeup(am, when, pending(context, ACTION_RECORD, REQ_RECORD_BACKUP));
+    }
+
+    private static void fillRecord(Context context, Delivery delivery) {
+        SharedPreferences p = prefs(context);
+        String today = recordToday();
+        if (!masterOn(context) || !p.getBoolean(KEY_SYSTEM, true) || !p.getBoolean(KEY_RECORD_ENABLED, false)) return;
+        if (!today.equals(p.getString(KEY_RECORD_SHOWN, "")) && !today.equals(p.getString(KEY_RECORD_COMPLETE, ""))) {
+            delivery.userVisible = true;
+            delivery.notificationId = 9005;
+            delivery.notification = ReminderNotifications.build(context,
+                    context.getString(R.string.notification_record_title), context.getString(R.string.notification_record_body),
+                    "/static/index.html?record=today#long-term");
+            ReminderNotifications.showPrepared(context, delivery.notificationId, delivery.notification);
+            p.edit().putString(KEY_RECORD_SHOWN, today).commit();
+        }
+        scheduleRecord(context);
     }
 
     private static void schedulePoll(Context context) {
@@ -607,6 +708,7 @@ public final class ReminderScheduler {
     }
 
     private static void cancelAll(Context context) {
+        cancelRecord(context);
         clearLegacyReading(context);
         cancelFocusAlarms(context);
         prefs(context).edit().remove(KEY_FOCUS_ID).remove(KEY_FOCUS_DEADLINE)

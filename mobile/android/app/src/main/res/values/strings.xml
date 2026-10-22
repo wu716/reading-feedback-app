@@ -3,12 +3,14 @@
     <string name="app_name">书然</string>
     <string name="app_url">http://43.161.238.165:8000/</string>
     <!-- Keep in sync with STATIC_UI_VERSION in main.py -->
-    <string name="static_ui_version">20261022register1</string>
+    <string name="static_ui_version">20261022record1</string>
     <string name="loading">正在打开书然…</string>
     <string name="network_error">无法连接服务器，请检查网络后重试</string>
     <string name="retry">重试</string>
     <string name="notification_channel_name">到点提醒</string>
-    <string name="notification_channel_desc">待办到点会出现在通知栏与顶部横幅</string>
+    <string name="notification_channel_desc">待办和每日记录提醒会出现在通知栏与顶部横幅</string>
+    <string name="notification_record_title">记录这一天</string>
+    <string name="notification_record_body">留一点时间回看今天，补充长期目标里的活动、注意力与开销记录。</string>
     <string name="notification_delivery_channel_name">提醒投递</string>
     <string name="notification_delivery_channel_desc">仅用于后台投递，不会作为提醒展示</string>
     <string name="notification_delivery_body">正在送达提醒…</string>

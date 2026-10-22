@@ -300,10 +300,15 @@ class ReminderNotificationService {
             });
             if (!response.ok) return;
             const settings = await response.json();
+            if (token !== this.authToken()) return;
             window.ShuranNative.scheduleReminders(JSON.stringify({
                 enabled: !!settings.is_enabled,
                 dailyEnabled: false,
                 systemNotification: settings.browser_notification !== false,
+                recordEnabled: !!settings.record_reminder_enabled,
+                recordTime: settings.record_reminder_time || '21:00',
+                recordDate: settings.record_date,
+                recordComplete: !!settings.record_complete,
             }));
             window.ShuranNative.requestPermission();
             window.ShuranNative.pollNow();
@@ -742,6 +747,16 @@ class ReminderNotificationService {
             });
             if (response.ok) {
                 const data = await response.json();
+                if (token !== this.authToken()) return;
+                if (this.isNativeApp()) {
+                    window.ShuranNative.scheduleReminders(JSON.stringify({
+                        recordEnabled: !!data.record_reminder_enabled,
+                        recordTime: data.record_reminder_time || '21:00',
+                        recordDate: data.record_date,
+                        recordComplete: !!data.record_complete,
+                        systemNotification: data.system_notification !== false,
+                    }));
+                }
                 const list = data.notifications || [];
                 const prevIds = new Set(this.pending.map((n) => n.log_id));
                 const firstLoad = !this._loadedOnce;
@@ -762,6 +777,10 @@ class ReminderNotificationService {
     }
 
     announceNew(notification) {
+        if (notification.system_notification === false) {
+            this.showInPageToast(notification);
+            return;
+        }
         if (this.isNativeApp()) {
             this.showNativeNotification(notification);
             return;
@@ -779,6 +798,8 @@ class ReminderNotificationService {
                 reminder_type: reminderData.reminder_type,
                 action_url: reminderData.action_url || '/static/index.html#overview',
                 triggered_at: reminderData.triggered_at || '',
+                record_date: reminderData.record_date,
+                system_notification: reminderData.system_notification !== false,
             }));
         } catch (error) {
             console.error('显示系统通知失败:', error);
@@ -910,7 +931,7 @@ class ReminderNotificationService {
                 <p>${this.escapeHtml(this.stripHtml(first.message))}</p>
             </div>
             <div class="bar-actions">
-                <button type="button" class="primary" data-act>去处理</button>
+                <button type="button" class="primary" data-act>${this.escapeHtml(first.action_label || '去处理')}</button>
                 <button type="button" class="ghost" data-dismiss>知道了</button>
             </div>
         `;
@@ -934,6 +955,10 @@ class ReminderNotificationService {
         this.dismissReminder(reminderData.log_id, actionTaken);
         this.closeDropdown();
         const type = reminderData.reminder_type;
+        if (type === 'daily_record' && window.openLongTermToday) {
+            window.openLongTermToday();
+            return;
+        }
         if (type === 'todo') {
             if (typeof navigateTo === 'function') {
                 navigateTo('overview');

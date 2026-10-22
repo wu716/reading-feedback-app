@@ -85,6 +85,10 @@ def ensure_schema():
         add_column("self_talk_reminder_settings", "reading_reminder_enabled",
                    f"reading_reminder_enabled BOOLEAN DEFAULT {bool_default}")
         add_column("self_talk_reminder_settings", "reading_reminder_time", "reading_reminder_time VARCHAR(8)")
+        add_column("self_talk_reminder_settings", "record_reminder_enabled",
+                   f"record_reminder_enabled BOOLEAN DEFAULT {bool_default}")
+        add_column("self_talk_reminder_settings", "record_reminder_time", "record_reminder_time VARCHAR(8) DEFAULT '21:00'")
+        add_column("self_talk_reminder_settings", "record_reminded_on", "record_reminded_on DATE")
         add_column("ebook_notes", "thought_type", "thought_type VARCHAR(20) DEFAULT 'concept'")
         add_column("ebook_notes", "relation_type", "relation_type VARCHAR(30)")
         add_column("users", "phone", "phone VARCHAR(20)")

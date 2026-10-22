@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Todo reminder delivery; legacy table names remain until schema migration."""
+"""Todo and daily record reminders; preserve the existing settings and log tables."""
 import logging
 import smtplib
 from datetime import datetime, time
@@ -10,11 +10,13 @@ from typing import Optional
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.models import DailyTodo, SelfTalkReminderLog, SelfTalkReminderSetting, User
 
 logger = logging.getLogger(__name__)
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
+REMINDER_TYPES = ("todo", "daily_record")
 
 
 class ReminderService:
@@ -44,8 +46,8 @@ class ReminderService:
         db: Session, user_id: int, reminder_type: str,
         notification_method: str = "both", detail: Optional[str] = None,
     ) -> SelfTalkReminderLog:
-        if reminder_type != "todo":
-            raise ValueError("Only todo reminders are supported")
+        if reminder_type not in REMINDER_TYPES:
+            raise ValueError("Unsupported reminder type")
         row = SelfTalkReminderLog(
             user_id=user_id,
             reminder_type=reminder_type,
@@ -71,7 +73,7 @@ class ReminderService:
             msg["Subject"] = subject
             body = (
                 '<html><body style="font-family:Arial,sans-serif;padding:20px">'
-                f'<h2>书然待办提醒</h2><p>{escape(content)}</p>'
+                f'<h2>{escape(subject)}</h2><p>{escape(content)}</p>'
                 '</body></html>'
             )
             msg.attach(MIMEText(body, "html"))
@@ -107,8 +109,10 @@ class ReminderService:
     def get_reminder_message(
         reminder_type: str, user_name: str = "用户", detail: Optional[str] = None,
     ) -> tuple[str, str]:
+        if reminder_type == "daily_record":
+            return "记录这一天", "留一点时间回看今天，补充长期目标里的活动、注意力与开销记录。"
         if reminder_type != "todo":
-            raise ValueError("Only todo reminders are supported")
+            raise ValueError("Unsupported reminder type")
         return "待办提醒", detail or f"{user_name}，你有一条待办到点了。"
 
 
@@ -157,4 +161,57 @@ def check_todo_reminders(db: Session, user_id: Optional[int] = None) -> int:
     if fired:
         db.commit()
         logger.info("已触发 %s 条待办提醒", fired)
+    return fired
+
+
+def record_status(db: Session, user_id: int, day=None) -> dict:
+    from app.routers.long_term_details import read_range
+
+    day = day or datetime.now(BEIJING_TZ).date()
+    record = read_range(db, user_id, day, day)[0]
+    return {"record_date": day, "record_complete": all(record[key] for key in (
+        "day_confirmed", "attention_confirmed", "expense_confirmed",
+    ))}
+
+
+def check_record_reminders(db: Session, user_id: Optional[int] = None, *, now=None) -> int:
+    """Claim each Beijing calendar day atomically before logging or sending mail."""
+    now = now or datetime.now(BEIJING_TZ)
+    now = now.astimezone(BEIJING_TZ)
+    day = now.date()
+    query = db.query(SelfTalkReminderSetting).join(User).filter(
+        User.is_active == True,
+        SelfTalkReminderSetting.is_enabled == True,
+        SelfTalkReminderSetting.record_reminder_enabled == True,
+        or_(SelfTalkReminderSetting.record_reminded_on.is_(None),
+            SelfTalkReminderSetting.record_reminded_on < day),
+    )
+    if user_id is not None:
+        query = query.filter(SelfTalkReminderSetting.user_id == user_id)
+    fired = 0
+    for setting in query.all():
+        try:
+            due = time.fromisoformat(setting.record_reminder_time or "21:00")
+        except ValueError:
+            continue
+        if now.time().replace(tzinfo=None) < due or record_status(db, setting.user_id, day)["record_complete"]:
+            continue
+        claimed = db.query(SelfTalkReminderSetting).filter(
+            SelfTalkReminderSetting.id == setting.id,
+            SelfTalkReminderSetting.is_enabled == True,
+            SelfTalkReminderSetting.record_reminder_enabled == True,
+            or_(SelfTalkReminderSetting.record_reminded_on.is_(None),
+                SelfTalkReminderSetting.record_reminded_on < day),
+        ).update({"record_reminded_on": day}, synchronize_session=False)
+        if not claimed:
+            continue
+        method = ("both" if setting.browser_notification else "email") if setting.email_notification else (
+            "browser" if setting.browser_notification else "in_app")
+        db.add(SelfTalkReminderLog(user_id=setting.user_id, reminder_type="daily_record",
+                                   detail=day.isoformat(), triggered_at=now, notification_method=method))
+        db.commit()
+        fired += 1
+        if setting.email_notification:
+            title, message = ReminderService.get_reminder_message("daily_record")
+            ReminderService.send_email_notification(db, setting.user_id, title, message)
     return fired

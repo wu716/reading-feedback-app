@@ -390,7 +390,7 @@ def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get
             raise HTTPException(400, "停用的分类不能用于新账目，请选择有效分类")
     # Old clients may still submit the legacy alias; allow unchanged data and deletion only.
     old_attention = {(a["name"], a["minutes"]) for a in previous["legacy_attention"]}
-    if any((a["name"], a["minutes"]) not in old_attention for a in body.legacy_attention):
+    if any((a.name, a.minutes) not in old_attention for a in body.legacy_attention):
         raise HTTPException(400, "旧版注意力记录不能新增，请使用新的注意力开销字段")
     try:
         if body.revision:

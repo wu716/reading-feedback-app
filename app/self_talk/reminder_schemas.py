@@ -1,15 +1,19 @@
 # -*- coding: utf-8 -*-
-"""Schemas for the retained todo reminder settings and logs."""
-from datetime import datetime
-from typing import List, Optional
+"""Settings and logs for todo and daily record reminders."""
+from datetime import date, datetime
+from typing import Annotated, List, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+ReminderTime = Annotated[str, Field(pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")]
 
 
 class ReminderSettingBase(BaseModel):
     is_enabled: bool = True
     browser_notification: bool = True
     email_notification: bool = True
+    record_reminder_enabled: bool = False
+    record_reminder_time: ReminderTime = "21:00"
 
 
 class ReminderSettingCreate(ReminderSettingBase):
@@ -20,6 +24,8 @@ class ReminderSettingUpdate(BaseModel):
     is_enabled: Optional[bool] = None
     browser_notification: Optional[bool] = None
     email_notification: Optional[bool] = None
+    record_reminder_enabled: Optional[bool] = None
+    record_reminder_time: Optional[ReminderTime] = None
 
 
 class ReminderSettingResponse(ReminderSettingBase):
@@ -27,6 +33,8 @@ class ReminderSettingResponse(ReminderSettingBase):
     user_id: int
     created_at: datetime
     updated_at: Optional[datetime]
+    record_date: date
+    record_complete: bool
 
     model_config = ConfigDict(from_attributes=True)
 
