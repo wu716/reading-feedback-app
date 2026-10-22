@@ -133,13 +133,19 @@ def attributes(kind: str, row_id: int, body: Attributes, user: User = Depends(ge
     svc.lock_user(db, user.id)
     kind, row = task_owner(db, user.id, kind, row_id)
     state = svc.practice(db, user.id, kind, row)
-    state.difficulty = body.difficulty
-    if state.importance != body.importance or state.goal_snapshot != body.goal:
+    fields = body.model_fields_set
+    if "difficulty" in fields:
+        state.difficulty = body.difficulty
+    if ("importance" in fields and state.importance != body.importance
+            or "goal" in fields and state.goal_snapshot != body.goal):
         state.reviewed_at = None
-    state.importance, state.goal_snapshot = body.importance, body.goal
-    if state.initial_marked_at is None and body.importance is not None:
+    if "importance" in fields:
+        state.importance = body.importance
+    if "goal" in fields:
+        state.goal_snapshot = body.goal
+    if "importance" in fields and state.initial_marked_at is None and body.importance is not None:
         state.initial_importance, state.initial_marked_at = body.importance, datetime.utcnow()
-    svc.event(db, user.id, kind, row.id, "attributes", body.model_dump() | {"title": svc.title(row)})
+    svc.event(db, user.id, kind, row.id, "attributes", body.model_dump(exclude_unset=True) | {"title": svc.title(row)})
     db.commit()
     return svc.task_payload(db, user.id, kind, row)
 

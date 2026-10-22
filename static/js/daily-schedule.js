@@ -1,12 +1,14 @@
 /**
- * 日程安排：清单、任务属性和顺序各有独立模式。
+ * 日程安排：直接写任务，就近标记难度、记录用时；排序单独操作。
  */
 (function () {
     let day = null;
     let data = { date: null, designed_at: null, tasks: [] };
     let mode = 'list';
     const expandedTasks = new Set();
-    let sortReturnMode = 'flow';
+    const timeDrafts = new Map();
+    let sortReturnMode = 'list';
+    let addingTask = false;
     let newTaskFamiliarity = null;
     let newTaskPriority = 0;
     let newTaskDuration = '';
@@ -136,16 +138,17 @@
         return minutesLabel(mins);
     }
 
-    function parseDuration(value) {
+    function parseDuration(value, limit = 1440) {
         const raw = String(value || '').trim().toLowerCase();
         if (!raw) return null;
-        if (/^\d+$/.test(raw)) return Math.min(1440, parseInt(raw, 10));
+        if (/^\d+(?:\.\d+)?$/.test(raw)) return Math.min(limit, Number(raw));
+        if (!/^(?:(?:\d+(?:\.\d+)?)\s*(?:小时|小時|hrs?|h)\s*)?(?:(?:\d+(?:\.\d+)?)\s*(?:分钟|分鐘|mins?|分|m)\s*)?$/.test(raw)) return NaN;
         const hours = raw.match(/(\d+(?:\.\d+)?)\s*(?:小时|小時|h|hr|hrs)/);
-        const minutes = raw.match(/(\d+)\s*(?:分钟|分鐘|分|min|mins|m)/);
+        const minutes = raw.match(/(\d+(?:\.\d+)?)\s*(?:分钟|分鐘|分|min|mins|m)/);
         const h = hours ? Number(hours[1]) * 60 : 0;
         const m = minutes ? Number(minutes[1]) : 0;
         if (!hours && !minutes) return NaN;
-        return Math.min(1440, Math.round(h + m));
+        return Math.min(limit, h + m);
     }
 
     async function api(path, options) {
@@ -171,10 +174,6 @@
     function setHint() {
         const hint = document.getElementById('scheduleHint');
         if (!hint) return;
-        if (mode === 'design') {
-            hint.textContent = t('schedule.hint.design', '这里只设置任务属性；修改任务请回到清单');
-            return;
-        }
         if (mode === 'sort') {
             hint.textContent = t('schedule.hint.sort', '这里只调整顺序和并行关系');
             return;
@@ -182,12 +181,12 @@
         if (mode === 'flow' && data.designed_at) {
             hint.textContent = allDone()
                 ? t('schedule.hint.done', '今日已完成')
-                : t('schedule.hint.flow', '勾选完成，也可记下执行情况。点任务内容即可修改，也可删除');
+                : t('schedule.hint.flow', '点任务内容即可修改，难度与用时直接记在任务下面');
             return;
         }
         hint.textContent = allDone()
             ? t('schedule.hint.done', '今日已完成')
-            : t('schedule.hint.list', '添加一件事，即可安排熟悉程度和预计用时');
+            : t('schedule.hint.list', '写下要做的事，按回车添加');
     }
 
     function allDone() {
@@ -204,7 +203,7 @@
             const undoLabel = escapeHtml(t('schedule.undoDone', '取消完成'));
             return `<button type="button" class="flow-done-btn is-on" data-act="toggle" aria-pressed="true" aria-label="${undoLabel}">${undoLabel}</button>`;
         }
-        return `<button type="button" class="flow-done-btn" data-act="toggle" aria-pressed="false" aria-label="${doneLabel}"></button>`;
+        return `<button type="button" class="flow-done-btn" data-act="toggle" aria-pressed="false" aria-label="${doneLabel}">${doneLabel}</button>`;
     }
 
     function renderNote(task) {
@@ -217,13 +216,12 @@
         if ((task.children || []).length) return '';
         const date = encodeURIComponent(currentDay());
         const project = task.project_id ? `<a href="/static/projects.html?task=${task.project_task_id}#taskDetail">${escapeHtml(task.project_title || '所属项目')}</a>` : `<a href="/static/projects.html?daily=${task.id}&date=${date}">纳入项目</a>`;
-        return `<div class="flow-project-links">${project}<button type="button" data-act="conditions">开始条件与约束</button><button type="button" data-act="reminder">${task.remind_time ? '修改提醒' : '设置提醒'}</button></div>`;
+        return `<div class="flow-project-links">${project}<button type="button" data-act="conditions">开始条件与约束</button><button type="button" data-act="reminder">${task.remind_time ? '提醒 ' + escapeHtml(task.remind_time) : '设置提醒'}</button>${task.priority ? `<span>旧优先级：${escapeHtml(priorityLabel(task.priority))}</span>` : ''}</div>`;
     }
 
     function renderTaskLaunch(task) {
         const execute = task.completed || task.children?.length ? '' : task.readiness?.can_start === false ? `<span class="schedule-blocked">${escapeHtml(task.readiness.summary || '条件待核对')}</span>` : `<a class="schedule-execute-link" href="/static/projects.html?view=execution&date=${encodeURIComponent(currentDay())}&execute=daily:${task.id}">加入执行</a>`;
-        const p=task.practice||{}, labels={unimportant:'不重要',ordinary:'一般',important:'重要',simple:'简单',difficult:'困难'};
-        return `<div class="flow-task-launch"><span class="practice-tag ${p.difficulty==='difficult'?'difficult':''}">${labels[p.difficulty]||'难度未标'} · ${labels[p.importance]||'重要性未标'}${p.reviewed_at?'':' · 待审视'}</span>${execute}<button type="button" data-act="practice">估时与预演</button><button type="button" data-act="feedback">用时反馈</button><button type="button" data-act="expand" aria-expanded="${expandedTasks.has(task.id)}">详情</button></div>`;
+        return `<div class="flow-task-launch">${execute}<button type="button" data-act="split">拆开</button><button type="button" data-act="expand" aria-expanded="${expandedTasks.has(task.id)}">更多</button>${renderDoneBtn(task)}</div>`;
     }
 
     function renderMethod(task) {
@@ -237,28 +235,17 @@
         if (label) label.textContent = dayLabel(currentDay());
         const dateInput = document.getElementById('scheduleDateInput');
         if (dateInput) dateInput.value = currentDay();
-        document.querySelectorAll('[data-schedule-mode]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.scheduleMode === mode)));
-        const doneBtn = document.getElementById('scheduleDoneBtn');
-        const designBtn = document.getElementById('scheduleDesignBtn');
-        const backBtn = document.getElementById('scheduleBackBtn');
         const sortBtn = document.getElementById('scheduleSortBtn');
+        const flowBtn = document.getElementById('scheduleFlowBtn');
         const addRow = document.getElementById('scheduleAddRow');
-        if (doneBtn) doneBtn.hidden = mode !== 'design';
-        if (designBtn) {
-            designBtn.hidden = mode !== 'list';
-            designBtn.disabled = flatten(data.tasks || [], []).length === 0;
-        }
-        if (backBtn) {
-            backBtn.hidden = mode === 'list';
-            backBtn.textContent = t('schedule.backToList', '回到清单');
-        }
         if (sortBtn) {
-            sortBtn.hidden = mode === 'list';
             sortBtn.textContent = mode === 'sort'
                 ? t('schedule.finishOrder', '完成排序')
                 : t('schedule.adjustOrder', '调整顺序');
+            sortBtn.setAttribute('aria-pressed', String(mode === 'sort'));
         }
-        if (addRow) addRow.hidden = mode !== 'list';
+        if (flowBtn) flowBtn.textContent = mode === 'flow' ? '回到清单' : '查看流程';
+        if (addRow) addRow.hidden = false;
         const later = document.getElementById('scheduleLater');
         if (later) later.hidden = mode !== 'list';
         updateAddComposer();
@@ -309,6 +296,7 @@
     }
 
     function renderQuickAttributes(task) {
+        const difficulty = task.practice?.difficulty;
         return `
             <div class="flow-task-attributes">
                 <div class="flow-attribute-group">
@@ -319,13 +307,72 @@
                     </div>
                 </div>
                 <div class="flow-attribute-group">
-                    <span class="flow-attribute-label">难度与目标重要性</span><div class="flow-attribute-options"><button type="button" class="flow-chip" data-act="practice-attributes">${({simple:'简单',difficult:'困难'})[task.practice?.difficulty]||'难度未标'} · ${({unimportant:'不重要',ordinary:'一般',important:'重要'})[task.practice?.importance]||'重要性未标'} · 修改标记</button>${task.priority ? `<small>旧优先级：${escapeHtml(priorityLabel(task.priority))}（保留来源）</small>` : ''}</div>
+                    <span class="flow-attribute-label">难度</span>
+                    <div class="flow-attribute-options">
+                        <button type="button" class="flow-chip${difficulty === 'simple' ? ' active' : ''}" data-act="difficulty" data-value="simple" aria-pressed="${difficulty === 'simple'}">容易</button>
+                        <button type="button" class="flow-chip${difficulty === 'difficult' ? ' active' : ''}" data-act="difficulty" data-value="difficult" aria-pressed="${difficulty === 'difficult'}">困难</button>
+                    </div>
                 </div>
-                <label class="flow-attribute-group flow-duration-group">
-                    <span class="flow-attribute-label">${escapeHtml(t('schedule.estimatedDuration', '预计用时'))}</span>
-                    <input type="text" class="flow-minutes" maxlength="20" placeholder="${escapeHtml(t('schedule.durationPlaceholder', '如 1小时30分'))}" value="${escapeHtml(durationInputValue(task.estimated_minutes))}" data-act="duration" aria-label="${escapeHtml(t('schedule.estimatedDuration', '预计用时'))}">
-                </label>
             </div>`;
+    }
+
+    function renderTimeFeedback(task) {
+        if (task.children?.length) return '';
+        const p = task.practice || {}, feedback = p.feedback;
+        const actual = feedback?.actual_minutes;
+        const difference = feedback?.difference;
+        const future = currentDay() > todayISO();
+        const draft = timeDrafts.get(`${currentDay()}:${task.id}`);
+        let comparison = difference == null ? '' : difference === 0 ? '与最初预计一致' : `${difference > 0 ? '比最初预计多' : '比最初预计少'} ${Math.abs(difference)} 分钟`;
+        if (p.original_estimate != null && p.original_estimate !== task.estimated_minutes) {
+            comparison = `最初预计 ${p.original_estimate} 分${comparison ? ' · ' + comparison : ''}`;
+        }
+        return `<form class="flow-time-feedback" data-time-form>
+            <label>预计 <input type="text" name="estimate" class="flow-minutes" maxlength="20" placeholder="如 30分钟" value="${escapeHtml(draft?.estimate ?? (task.estimated_minutes == null ? '' : task.estimated_minutes + '分钟'))}" aria-label="预计用时"></label>
+            <label>实际 <input type="text" name="actual" class="flow-minutes" maxlength="24" placeholder="${future ? '当天再记' : '用后填写'}" value="${escapeHtml(draft?.actual ?? (actual == null ? '' : actual + '分钟'))}" aria-label="实际用时" ${future ? 'disabled' : ''}></label>
+            <button type="submit" class="flow-mini-btn">保存用时</button>
+            <span class="flow-time-comparison">${escapeHtml(comparison)}${p.recorded_minutes ? `${comparison ? ' · ' : ''}计时记录 ${p.recorded_minutes} 分` : ''}</span>
+            <span class="flow-time-status" role="status"></span>
+        </form>`;
+    }
+
+    function timeFeedbackBody(prior, actual, result, basis = 'self_report') {
+        const body = {actual_minutes:actual, result, basis};
+        ['reason','next_estimate','outcome','scope_changed','checklist_exception','feedback_date'].forEach(key => {
+            if (prior?.[key] != null) body[key] = prior[key];
+        });
+        return body;
+    }
+
+    async function saveTimeFeedback(id, form) {
+        const savedDay = currentDay();
+        const task = flatten(data.tasks || [], []).find(item => item.id === id);
+        const estimateText = form.elements.estimate.value.trim();
+        const actualText = form.elements.actual.value.trim();
+        const estimate = estimateText ? parseDuration(estimateText) : null;
+        const actual = actualText ? parseDuration(actualText, 1000000) : null;
+        if ((estimateText && (!Number.isInteger(estimate) || estimate < 0)) || (actualText && !Number.isFinite(actual))) {
+            throw new Error('请填写分钟数，或如 1小时30分；预计用时请用整数分钟');
+        }
+        const path = `/api/projects/practice/tasks/daily/${id}`;
+        const latest = await apiRequest(path);
+        const prior = latest.feedback;
+        if (actual == null && prior?.actual_minutes != null) {
+            throw new Error('已有实际用时会保留；需要更正时请直接填写新的总用时');
+        }
+        if (estimate !== (task.estimated_minutes ?? null)) {
+            // Do not replace the form during a save: both fields belong to this action.
+            await api(`/tasks/${id}`, {method:'PATCH', body:JSON.stringify(estimate == null ? {clear_estimate:true} : {estimated_minutes:estimate})});
+        }
+        const result = latest.completed ? 'completed' : prior?.result === 'rework' ? 'rework' : 'partial';
+        if (actual != null && (actual !== prior?.actual_minutes || prior?.basis === 'pending' || result !== prior?.result)) {
+            await apiRequest(path + '/feedback', {method:'POST', body:JSON.stringify(timeFeedbackBody(prior, actual, result))});
+        }
+        timeDrafts.delete(`${savedDay}:${id}`);
+        if (currentDay() !== savedDay) return;
+        await load(savedDay);
+        const status = document.querySelector(`[data-task-id="${id}"] .flow-time-status`);
+        if (status) status.textContent = '已保存';
     }
 
     function renderTask(task, isChild) {
@@ -333,51 +380,23 @@
             <article class="flow-task${isChild ? ' is-child' : ''}${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
                 <div class="flow-task-summary">
                 <div class="flow-task-main">
-                    ${renderDoneBtn(task)}
                     ${renderTitle(task)}
                 </div>
-                <div class="flow-task-meta">${escapeHtml([task.project_title || (isChild ? '子任务' : '普通日程'),familiarityLabel(task.familiarity),task.estimated_minutes == null ? '' : '预计 ' + minutesLabel(task.estimated_minutes),task.priority ? '旧优先级：' + priorityLabel(task.priority) : '',`已投入 ${task.actual_minutes || 0} 分`,task.remind_time ? '提醒 ' + task.remind_time : ''].filter(Boolean).join(' · '))}</div>
                 ${renderTaskLaunch(task)}
                 </div>
+                ${renderQuickAttributes(task)}
+                ${renderTimeFeedback(task)}
                 <div class="flow-task-detail" ${expandedTasks.has(task.id) || splitFor === task.id ? '' : 'hidden'}>
+                <div class="flow-project-links"><button type="button" data-act="practice-attributes">目标重要性</button><button type="button" data-act="practice">估时与预演</button><button type="button" data-act="feedback">完整反馈与历史</button></div>
                 ${renderTaskLinks(task)}
                 ${renderMethod(task)}
                 ${renderNote(task)}
-                ${renderEditActions(true)}
+                ${renderEditActions(false)}
                 ${renderSplitRow(task)}
                 </div>
             </article>
             ${(task.children || []).map((child) => renderTask(child, true)).join('')}
         `;
-    }
-
-    function renderDesignPlan(tasks) {
-        return tasks.map((task) => {
-            const path = task.parent_path && task.parent_path.length
-                ? `<div class="flow-parent-path">${escapeHtml(task.parent_path.join(' / '))}</div>`
-                : '';
-            return `
-                <article class="flow-task${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
-                    <div class="flow-task-main"><div class="flow-task-text flow-task-text-static">${escapeHtml(task.text)}</div></div>
-                    ${path}
-                    <div class="flow-task-attributes">
-                        <div class="flow-attribute-group">
-                            <span class="flow-attribute-label">${escapeHtml(t('schedule.familiarityLabel', '熟悉度'))}</span>
-                            <div class="flow-attribute-options">
-                                <button type="button" class="flow-chip${task.familiarity === 'familiar' ? ' active' : ''}" data-act="fam" data-value="familiar">${escapeHtml(t('schedule.familiar', '熟悉'))}</button>
-                                <button type="button" class="flow-chip${task.familiarity === 'unfamiliar' ? ' active' : ''}" data-act="fam" data-value="unfamiliar">${escapeHtml(t('schedule.unfamiliar', '陌生'))}</button>
-                            </div>
-                        </div>
-                        <div class="flow-attribute-group">
-                            <span class="flow-attribute-label">难度与目标重要性</span><div class="flow-attribute-options"><button type="button" class="flow-chip" data-act="practice-attributes">${({simple:'简单',difficult:'困难'})[task.practice?.difficulty]||'难度未标'} · ${({unimportant:'不重要',ordinary:'一般',important:'重要'})[task.practice?.importance]||'重要性未标'} · 修改标记</button>${task.priority ? `<small>旧优先级：${escapeHtml(priorityLabel(task.priority))}（保留来源）</small>` : ''}</div>
-                        </div>
-                        <label class="flow-attribute-group flow-duration-group">
-                            <span class="flow-attribute-label">${escapeHtml(t('schedule.estimatedDuration', '预计用时'))}</span>
-                            <input type="text" class="flow-minutes" maxlength="20" placeholder="${escapeHtml(t('schedule.durationPlaceholder', '如 1小时30分'))}" value="${escapeHtml(durationInputValue(task.estimated_minutes))}" data-act="duration" aria-label="${escapeHtml(t('schedule.estimatedDuration', '预计用时'))}">
-                        </label>
-                    </div>
-                </article>`;
-        }).join('');
     }
 
     function renderSortPlan(tasks) {
@@ -432,29 +451,7 @@
     }
 
     function renderFlowNode(task) {
-        const fam = familiarityLabel(task.familiarity);
-        const extra = [];
-        if (fam) extra.push(fam);
-        if (task.estimated_minutes != null) extra.push(minutesLabel(task.estimated_minutes));
-        if (task.priority) extra.push('旧优先级：' + priorityLabel(task.priority));
-        const path = task.parent_path && task.parent_path.length
-            ? `<div class="flow-parent-path">${escapeHtml(task.parent_path.join(' / '))}</div>`
-            : '';
-        return `
-            <article class="flow-task${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
-                <div class="flow-task-main">
-                    ${renderDoneBtn(task)}
-                    ${renderTitle(task)}
-                </div>
-                ${path}
-                ${extra.length ? `<div class="flow-task-meta">${extra.map((x) => `<span class="flow-mark">${escapeHtml(x)}</span>`).join('')}</div>` : ''}
-                ${renderTaskLinks(task)}
-                ${renderMethod(task)}
-                ${renderNote(task)}
-                ${renderEditActions(false)}
-                ${task.children && task.children.length ? renderFlowGroups(task.children) : ''}
-            </article>
-        `;
+        return renderTask(task, false);
     }
 
     function renderFlowGroups(tasks) {
@@ -553,6 +550,10 @@
     function render() {
         const list = document.getElementById('scheduleList');
         if (!list) return;
+        const active = document.activeElement;
+        const activeTask = active?.closest?.('[data-task-id]')?.dataset.taskId;
+        const activeName = active?.closest?.('[data-time-form]') ? active.name : null;
+        const selection = activeName ? [active.selectionStart, active.selectionEnd] : null;
         renderToolbar();
         let projectEntry = document.getElementById('scheduleProjectEntry');
         if (!projectEntry) {
@@ -567,9 +568,7 @@
             list.innerHTML = `<p class="flow-empty">${escapeHtml(t('schedule.emptyTasks', '还没有行动'))}</p>`;
             return;
         }
-        if (mode === 'design') {
-            list.innerHTML = renderDesignPlan(executionLeaves(data.tasks));
-        } else if (mode === 'sort') {
+        if (mode === 'sort') {
             list.innerHTML = renderSortPlan(executionLeaves(data.tasks));
         } else if (mode === 'flow') {
             list.innerHTML = renderFlowGroups(executionLeaves(data.tasks));
@@ -577,6 +576,11 @@
             list.innerHTML = data.tasks.map((task) => renderTask(task, false)).join('');
         }
         focusEditor();
+        if (activeName && activeTask) {
+            const input = list.querySelector(`[data-task-id="${activeTask}"] [name="${activeName}"]`);
+            input?.focus({preventScroll:true});
+            if (input && selection) input.setSelectionRange(...selection);
+        }
     }
 
     async function loadLater() {
@@ -605,7 +609,6 @@
         editingId = null;
         editingLaterId = null;
         data = await api(`?task_date=${encodeURIComponent(day)}`);
-        if (mode === 'flow' && !data.designed_at) mode = 'list';
         await loadLater();
         render();
     }
@@ -628,7 +631,7 @@
         if (openDesign) {
             const tasks = flatten(data.tasks || [], []);
             const newest = tasks.reduce((latest, task) => (!latest || task.id > latest.id ? task : latest), null);
-            mode = 'design';
+            mode = 'list';
             editingId = newest ? newest.id : null;
         }
         render();
@@ -999,10 +1002,10 @@
         day = /^\d{4}-\d{2}-\d{2}$/.test(requestedDay || '') ? requestedDay : todayISO();
         const list = document.getElementById('scheduleList');
         bindDragSorting(list);
-        document.querySelectorAll('[data-schedule-mode]').forEach(button => button.addEventListener('click', () => {
-            mode = button.dataset.scheduleMode;
+        document.getElementById('scheduleFlowBtn')?.addEventListener('click', () => {
+            mode = mode === 'flow' ? 'list' : 'flow';
             editingId = null; splitFor = null; render();
-        }));
+        });
         document.getElementById('scheduleDateInput')?.addEventListener('change', e => {
             if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) load(e.target.value).catch(err => showMessage(err.message,'error'));
         });
@@ -1013,29 +1016,41 @@
         document.getElementById('scheduleNextDay')?.addEventListener('click', () => {
             load(shiftDay(currentDay(), 1));
         });
-        document.getElementById('scheduleAddBtn')?.addEventListener('click', () => {
+        document.getElementById('scheduleAddBtn')?.addEventListener('click', async () => {
+            if (addingTask) return;
             const input = document.getElementById('scheduleAddInput');
+            const submittedText = input?.value || '';
+            if (!submittedText.trim()) { input?.focus(); return; }
             const durationValue = newTaskDuration.trim();
             const estimatedMinutes = durationValue ? parseDuration(durationValue) : null;
-            if (durationValue && !Number.isFinite(estimatedMinutes)) {
+            if (durationValue && !Number.isInteger(estimatedMinutes)) {
                 if (typeof showMessage === 'function') showMessage(t('schedule.durationInvalid', '请输入例如 30分钟、1小时或1小时30分'), 'error');
                 return;
             }
-            addTask(input?.value, null, false, {
-                familiarity: newTaskFamiliarity,
-                priority: newTaskPriority,
-                estimatedMinutes,
-            }).then(() => {
-                if (input) input.value = '';
+            addingTask = true;
+            const addButton = document.getElementById('scheduleAddBtn');
+            const focusFromAdd = document.activeElement === addButton;
+            addButton.disabled = true;
+            try {
+                await addTask(submittedText, null, false, {
+                    familiarity: newTaskFamiliarity,
+                    priority: newTaskPriority,
+                    estimatedMinutes,
+                });
+                if (input && input.value === submittedText) input.value = '';
                 const durationInput = document.getElementById('scheduleAddDuration');
                 if (durationInput) durationInput.value = '';
                 newTaskFamiliarity = null;
                 newTaskPriority = 0;
                 newTaskDuration = '';
                 updateAddComposer();
-            }).catch((e) => {
+            } catch (e) {
                 if (typeof showMessage === 'function') showMessage(e.message, 'error');
-            });
+            } finally {
+                addingTask = false;
+                addButton.disabled = false;
+                if (document.activeElement === addButton || (focusFromAdd && document.activeElement === document.body)) input?.focus();
+            }
         });
         document.getElementById('scheduleAddRow')?.addEventListener('click', (e) => {
             const button = e.target.closest('[data-new-act]');
@@ -1048,7 +1063,7 @@
             updateAddComposer();
         });
         document.getElementById('scheduleAddInput')?.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
                 e.preventDefault();
                 document.getElementById('scheduleAddBtn')?.click();
             }
@@ -1084,26 +1099,6 @@
         window.addEventListener('shuran-language-change', () => render());
         window.addEventListener('shuran-practice-change', () => load(currentDay()));
         document.getElementById('schedulePractice')?.addEventListener('click', () => globalThis.ShuranPractice?.openDay(currentDay()));
-        document.getElementById('scheduleDoneBtn')?.addEventListener('click', async () => {
-            try {
-                data = await api('/design', {
-                    method: 'POST',
-                    body: JSON.stringify({ task_date: currentDay() }),
-                });
-                mode = 'flow';
-                editingId = null;
-                render();
-            } catch (e) {
-                if (typeof showMessage === 'function') showMessage(e.message, 'error');
-            }
-        });
-        document.getElementById('scheduleDesignBtn')?.addEventListener('click', () => {
-            if (!flatten(data.tasks || [], []).length) return;
-            mode = 'design';
-            splitFor = null;
-            editingId = null;
-            render();
-        });
         document.getElementById('scheduleSortBtn')?.addEventListener('click', () => {
             if (mode === 'sort') {
                 mode = sortReturnMode;
@@ -1114,13 +1109,6 @@
             editingId = null;
             render();
         });
-        document.getElementById('scheduleBackBtn')?.addEventListener('click', () => {
-            mode = 'list';
-            editingId = null;
-            editingLaterId = null;
-            render();
-        });
-
         const laterList = document.getElementById('scheduleLaterList');
 
         laterList?.addEventListener('mousedown', (e) => {
@@ -1206,8 +1194,20 @@
                     render();
                 } else if (act === 'toggle') {
                     const task = flatten(data.tasks || [], []).find((item) => item.id === id);
-                    if (task&&!task.completed&&!task.children?.length&&globalThis.ShuranPractice) await globalThis.ShuranPractice.openTask('daily',id,'feedback');
-                    else await patchTask(id, { completed: !(task && task.completed) });
+                    const prior = task.practice?.feedback;
+                    if (!task.children?.length && prior?.actual_minutes != null) {
+                        const result = task.completed ? 'partial' : 'completed';
+                        await apiRequest(`/api/projects/practice/tasks/daily/${id}/feedback`, {method:'POST',body:JSON.stringify(timeFeedbackBody(prior,prior.actual_minutes,result,prior.basis))});
+                        await load(currentDay());
+                        window.reminderNotificationService?.syncNativeTodos();
+                    } else {
+                        await patchTask(id, { completed: !task.completed });
+                    }
+                } else if (act === 'difficulty') {
+                    const task = flatten(data.tasks || [], []).find(item => item.id === id);
+                    const difficulty = task.practice?.difficulty === actEl.dataset.value ? null : actEl.dataset.value;
+                    await apiRequest(`/api/projects/practice/tasks/daily/${id}/attributes`, {method:'PATCH',body:JSON.stringify({difficulty})});
+                    await load(currentDay());
                 } else if (act === 'practice' || act === 'feedback' || act === 'practice-attributes') {
                     await globalThis.ShuranPractice?.openTask('daily',id,act==='feedback'?'feedback':act==='practice-attributes'?'attributes':'rehearsal');
                 } else if (act === 'delete') {
@@ -1298,6 +1298,30 @@
                     if (typeof showMessage === 'function') showMessage(err.message, 'error');
                 });
             }, 120);
+        });
+
+        list?.addEventListener('input', (e) => {
+            const form = e.target.closest('[data-time-form]');
+            if (!form) return;
+            const id = form.closest('[data-task-id]').dataset.taskId;
+            timeDrafts.set(`${currentDay()}:${id}`, {estimate:form.elements.estimate.value,actual:form.elements.actual.value});
+        });
+
+        list?.addEventListener('submit', async (e) => {
+            if (!e.target.matches('[data-time-form]')) return;
+            e.preventDefault();
+            const form = e.target;
+            const id = Number(form.closest('[data-task-id]').dataset.taskId);
+            const button = form.querySelector('[type="submit"]');
+            if (button.disabled) return;
+            button.disabled = true;
+            try {
+                await saveTimeFeedback(id, form);
+            } catch (err) {
+                form.querySelector('[role="status"]').textContent = err.message;
+            } finally {
+                button.disabled = false;
+            }
         });
 
         list?.addEventListener('change', async (e) => {

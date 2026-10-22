@@ -13,7 +13,7 @@ class ScheduleUiSeparationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.source = SCHEDULE_JS.read_text(encoding="utf-8")
-        cls.design = cls.source.split("function renderDesignPlan", 1)[1].split(
+        cls.task = cls.source.split("function renderTask(task, isChild)", 1)[1].split(
             "function renderSortPlan", 1
         )[0]
         cls.sort = cls.source.split("function renderSortPlan", 1)[1].split(
@@ -23,16 +23,14 @@ class ScheduleUiSeparationTests(unittest.TestCase):
         cls.api = SCHEDULE_API.read_text(encoding="utf-8")
         cls.tabbar = APP_TABBAR_JS.read_text(encoding="utf-8")
 
-    def test_design_mode_contains_attributes_but_no_ordering_controls(self):
-        self.assertIn("flow-task-attributes", self.design)
-        self.assertIn('data-act="fam"', self.design)
-        self.assertIn('data-act="practice-attributes"', self.design)
-        self.assertNotIn('data-act="priority"', self.design)
-        self.assertIn('旧优先级', self.design)
-        self.assertNotIn('data-act="parallel"', self.design)
-        self.assertNotIn("data-sort-handle", self.design)
-        self.assertNotIn('data-act="edit"', self.design)
-        self.assertNotIn('data-act="delete"', self.design)
+    def test_task_writing_and_feedback_do_not_require_attributes_mode(self):
+        self.assertNotIn("function renderDesignPlan", self.source)
+        self.assertNotIn('data-schedule-mode="design"', self.index)
+        self.assertIn("if (addRow) addRow.hidden = false", self.source)
+        self.assertIn("renderTitle(task)", self.task)
+        self.assertIn("renderQuickAttributes(task)", self.task)
+        self.assertIn("renderTimeFeedback(task)", self.task)
+        self.assertNotIn("data-sort-handle", self.task)
 
     def test_sort_mode_contains_ordering_controls_but_no_attributes(self):
         self.assertIn("data-sort-handle", self.sort)
@@ -49,7 +47,7 @@ class ScheduleUiSeparationTests(unittest.TestCase):
         self.assertIn("priority: Number.isInteger(attributes?.priority)", self.source)
         self.assertIn("flow-feedback", self.source)
         self.assertIn("function renderQuickAttributes", self.source)
-        self.assertIn("mode !== 'list' && !task.completed", self.source)
+        self.assertIn("!e.isComposing && e.keyCode !== 229", self.source)
         self.assertIn("familiarity: Optional[str] = None", self.api)
         self.assertIn("familiarity=body.familiarity", self.api)
 

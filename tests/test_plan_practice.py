@@ -109,6 +109,27 @@ class PlanningPracticeTests(unittest.TestCase):
         self.req('POST',path+'/progress',{"date":"2026-10-22","status":"recorded","advanced":"核对资料","blocker":"论证未完成","next_step":"列两条证据","reduce_prompts":True})
         self.assertEqual(self.report()['progress'][0]['advanced'],'核对资料')
 
+    def test_inline_difficulty_patch_preserves_goal_importance_and_review(self):
+        t = self.daily()
+        path = f"/practice/tasks/daily/{t['id']}/attributes"
+        self.req('PATCH', path, {"difficulty":"simple", "importance":"important", "goal":"完成课程"})
+        self.req('POST', '/practice/review', {"goal":"完成课程", "items":[{"kind":"daily","id":t['id'],"importance":"ordinary"}]})
+        before = self.req('GET', f"/practice/tasks/daily/{t['id']}").json()
+        changed = self.req('PATCH', path, {"difficulty":"difficult"})
+        self.assertEqual(changed.status_code, 200, changed.text)
+        after = changed.json()
+        self.assertEqual(after['difficulty'], 'difficult')
+        for field in ['importance','initial_importance','initial_marked_at','reviewed_at','goal']:
+            self.assertEqual(after[field], before[field])
+        cleared = self.req('PATCH', path, {"difficulty":None}).json()
+        self.assertIsNone(cleared['difficulty'])
+        self.assertEqual(cleared['importance'], 'ordinary')
+        self.assertEqual(cleared['goal'], '完成课程')
+        self.assertIsNotNone(cleared['reviewed_at'])
+        changed_goal = self.req('PATCH', path, {"goal":"新目标"}).json()
+        self.assertIsNone(changed_goal['reviewed_at'])
+        self.assertEqual(changed_goal['importance'], 'ordinary')
+
     def test_new_importance_does_not_translate_legacy_priority(self):
         t=self.daily()
         self.client.patch(f"/api/schedule/tasks/{t['id']}",json={"priority":2,"familiarity":"unfamiliar"})

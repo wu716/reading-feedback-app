@@ -3455,7 +3455,7 @@
     </style>
     <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261017paper1">
     <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261017paper1">
-    <link rel="stylesheet" href="/static/css/workspace.css?v=20261022practice1">
+    <link rel="stylesheet" href="/static/css/workspace.css?v=20261022schedulefix1">
     <link rel="stylesheet" href="/static/css/long-term.css?v=20261021download1">
 </head>
 <body>
@@ -3465,7 +3465,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261017paper1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.20';
+            window.SHURAN_VERSION = '2.0.21';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -3666,7 +3666,7 @@
         <section id="schedule" class="content-section active">
             <div class="section-header">
                 <h1 data-i18n="schedule.title">日程安排</h1>
-                <p class="flow-hint" id="scheduleHint">添加一件事，即可安排熟悉程度和预计用时</p>
+                <p class="flow-hint" id="scheduleHint">写下要做的事，按回车添加</p>
             </div>
             <div class="home-schedule" id="homeSchedule">
                 <div class="home-schedule-head">
@@ -3676,17 +3676,16 @@
                             <div class="flow-date-label" id="scheduleDateLabel"></div>
                             <button type="button" id="scheduleNextDay" aria-label="后一天" data-i18n-aria-label="schedule.nextDay">›</button>
                         </div>
-                        <div class="schedule-date-actions"><label class="schedule-date-picker">选择日期 <input type="date" id="scheduleDateInput" aria-label="选择日程日期"></label><a href="/static/projects.html?view=execution" class="flow-ghost-btn">进入执行</a></div>
+                        <div class="schedule-date-actions"><button type="button" class="flow-ghost-btn" id="scheduleFlowBtn">查看流程</button><button type="button" class="flow-ghost-btn" id="scheduleSortBtn" aria-pressed="false">调整顺序</button><label class="schedule-date-picker">选择日期 <input type="date" id="scheduleDateInput" aria-label="选择日程日期"></label><a href="/static/projects.html?view=execution" class="flow-ghost-btn">进入执行</a></div>
                     </div>
                 </div>
 
-                <nav class="schedule-modes" role="tablist" aria-label="日程操作模式"><button type="button" role="tab" data-schedule-mode="list" aria-selected="true">当天安排</button><button type="button" role="tab" data-schedule-mode="design" aria-selected="false">任务属性</button><button type="button" role="tab" data-schedule-mode="sort" aria-selected="false">调整顺序</button></nav>
                 <div class="flow-add-row" id="scheduleAddRow">
                     <div class="flow-add-main">
                         <input type="text" id="scheduleAddInput" maxlength="500" placeholder="写下要做的事" data-i18n-placeholder="schedule.add.placeholder">
                         <button type="button" class="flow-solid-btn" id="scheduleAddBtn" data-i18n="schedule.add.button">添加</button>
                     </div>
-                    <details class="composer-options"><summary>补充熟悉度、重要性与估时</summary><div class="flow-add-attributes">
+                    <details class="composer-options"><summary>选填熟悉度与预计用时</summary><div class="flow-add-attributes">
                         <div class="flow-attribute-group">
                             <span class="flow-attribute-label" data-i18n="schedule.familiarityLabel">熟悉度</span>
                             <div class="flow-attribute-options">
@@ -3694,15 +3693,14 @@
                                 <button type="button" class="flow-chip" data-new-act="fam" data-value="unfamiliar" aria-pressed="false" data-i18n="schedule.unfamiliar">陌生</button>
                             </div>
                         </div>
-                        <p class="practice-note">保存任务后，可在任务属性中标记简单／困难、目标重要性并再次审视。</p>
                         <label class="flow-attribute-group flow-duration-group">
                             <span class="flow-attribute-label" data-i18n="schedule.estimatedDuration">预计用时</span>
                             <input type="text" id="scheduleAddDuration" class="flow-minutes" maxlength="20" placeholder="如 1小时30分" data-i18n-placeholder="schedule.durationPlaceholder" aria-label="预计用时">
                         </label>
                     </div></details>
                 </div>
-                <div class="practice-entry-row"><button type="button" id="schedulePractice">审视与当天反馈</button><span class="practice-note">先安排，再按目标审视；结束后核对投入与结果</span></div>
                 <div id="scheduleList" class="home-schedule-list"></div>
+                <details class="schedule-review"><summary>计划与回顾</summary><button type="button" class="flow-ghost-btn" id="schedulePractice">打开当天计划与回顾</button></details>
             </div>
         </section>
         
@@ -4474,7 +4472,7 @@
     </div>
 
 
-    <script src="/static/js/i18n.js?v=20261022practice1"></script>
+    <script src="/static/js/i18n.js?v=20261022schedulefix1"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -6789,17 +6787,17 @@
     <!-- 待办提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
     <script src="/static/reminder_notification.js?v=20261022record1"></script>
-    <script src="/static/js/app-tabbar.js?v=20261022practice1"></script>
-    <script src="/static/js/workspace-shell.js?v=20261022practice1"></script>
-    <link rel="stylesheet" href="/static/css/start-conditions.css?v=20261022practice1">
-    <link rel="stylesheet" href="/static/css/plan-practice.css?v=20261022practice1">
-    <script src="/static/js/plan-practice.js?v=20261022practice1"></script>
-    <script src="/static/js/start-conditions.js?v=20261022practice1"></script>
-    <script src="/static/js/daily-schedule.js?v=20261022practice1"></script>
-    <script src="/static/js/time-log.js?v=20261022practice1"></script>
-    <script src="/static/js/long-term.js?v=20261022practice1"></script>
+    <script src="/static/js/app-tabbar.js?v=20261022schedulefix1"></script>
+    <script src="/static/js/workspace-shell.js?v=20261022schedulefix1"></script>
+    <link rel="stylesheet" href="/static/css/start-conditions.css?v=20261022schedulefix1">
+    <link rel="stylesheet" href="/static/css/plan-practice.css?v=20261022schedulefix1">
+    <script src="/static/js/plan-practice.js?v=20261022schedulefix1"></script>
+    <script src="/static/js/start-conditions.js?v=20261022schedulefix1"></script>
+    <script src="/static/js/daily-schedule.js?v=20261022schedulefix1"></script>
+    <script src="/static/js/time-log.js?v=20261022schedulefix1"></script>
+    <script src="/static/js/long-term.js?v=20261022schedulefix1"></script>
     <script src="/static/js/activity-review.js?v=20261017paper1"></script>
     <script src="/static/js/ideas.js?v=20261018momenttask1"></script>
-    <script src="/static/js/desktop-shell.js?v=20261022practice1"></script>
+    <script src="/static/js/desktop-shell.js?v=20261022schedulefix1"></script>
 </body>
 </html>
