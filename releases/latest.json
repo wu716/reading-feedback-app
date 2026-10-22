@@ -1,8 +1,8 @@
 {
-  "versionCode": 58,
-  "versionName": "2.0.16",
+  "versionCode": 59,
+  "versionName": "2.0.17",
   "filename": "shuran.apk",
-  "notes": "书然 2.0.16：修复注册入口，支持手机号或邮箱任选其一并使用邀请码注册。",
+  "notes": "书然 2.0.17：新增长期目标每日记录提醒，可自选时间；当天活动、注意力和消费均已核对后跳过，点击直接记录今天。修复旧版注意力记录保存兼容问题。",
   "require_shell": true,
   "force": true,
   "minVersionCode": 20,
