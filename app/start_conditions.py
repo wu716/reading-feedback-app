@@ -7,7 +7,7 @@ from sqlalchemy import and_, or_
 
 from app.models import DailyTask
 from app.project_models import (
-    ExecutionConditionEvent, Project, ProjectTask, StartCondition, TaskDependency,
+    ExecutionConditionEvent, Project, ProjectStage, ProjectTask, StartCondition, TaskDependency,
 )
 
 OWNER_MODELS = {"project": Project, "task": ProjectTask, "daily": DailyTask}
@@ -64,7 +64,7 @@ def evaluate_condition(db, condition, now=None):
             # A reopened or newly added task invalidates the claimed delivery.
             if satisfied:
                 satisfied = not db.query(ProjectTask.id).filter(ProjectTask.user_id == condition.user_id,
-                    ProjectTask.project_id == target.id, ProjectTask.deleted_at.is_(None), ProjectTask.state != "completed").first()
+                    ProjectTask.project_id == target.id, ProjectTask.deleted_at.is_(None), ProjectTask.state.notin_(["completed", "cancelled"])).first()
             detail = f"前置项目《{target.title}》" + (
                 "已达到要求" if satisfied else ("尚未验收" if condition.required_state == "accepted" else "尚未交付"))
     elif condition.kind == "time" and condition.not_before is not None:
@@ -101,12 +101,15 @@ def readiness(db, user_id, kind, row_id, *, purpose="start", now=None):
                 blockers.append("所属项目尚未正式开始" if project.execution_state == "preparation" else "所属项目已交付，请先说明原因并重新开始")
             conditions += [dict(evaluate_condition(db, c, now), inherited=True, source_title=project.title)
                            for c in active_conditions(db, user_id, "project", project.id)]
+            stage = db.get(ProjectStage, owner.stage_id) if owner.stage_id else None
+            if purpose == "start" and stage and stage.state != "current":
+                blockers.append("任务属于下一阶段或历史阶段，请先完成阶段交接")
         for dep in db.query(TaskDependency).filter(TaskDependency.user_id == user_id, TaskDependency.task_id == owner.id):
             prior = db.get(ProjectTask, dep.prerequisite_id)
             if prior is None or prior.user_id != user_id or prior.deleted_at is not None or prior.state != "completed":
                 blockers.append(f"前置任务《{prior.title if prior and prior.user_id == user_id else '已移除'}》尚未完成或已移除")
-        if purpose == "start" and owner.state == "completed":
-            blockers.append("任务已完成")
+        if purpose == "start" and owner.state == "completed": blockers.append("任务已完成")
+        if purpose == "start" and owner.state == "cancelled": blockers.append("任务已取消，原投入与结果保留")
     elif kind == "daily" and purpose == "start" and owner.completed:
         blockers.append("日程任务已完成")
     for condition in conditions:

@@ -96,6 +96,8 @@ class TaskChecklistItem(Base):
     text = Column(String(500), nullable=False)
     done = Column(Boolean, nullable=False, default=False)
     position = Column(Integer, nullable=False, default=0)
+    purpose = Column(String(20), nullable=False, default="delivery")
+    not_applicable_reason = Column(Text, nullable=True)
 
 
 class WorkSession(Base):
@@ -114,6 +116,7 @@ class WorkSession(Base):
     planned_minutes = Column(Integer, nullable=True)
     planned_seconds = Column(Integer, nullable=True)
     correction_note = Column(Text, nullable=True)
+    practice_snapshot_json = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     __table_args__ = (
         CheckConstraint("ended_at IS NULL OR ended_at > started_at", name="ck_work_session_interval"),
@@ -199,3 +202,81 @@ class ExecutionConditionEvent(Base):
     reason = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=False), nullable=False, default=datetime.utcnow)
     __table_args__ = (Index("ix_condition_event_owner", "user_id", "owner_kind", "owner_id"),)
+
+
+class TaskPractice(Base):
+    """One learning identity per real task, never per scheduled appearance."""
+    __tablename__ = "task_practices"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    owner_kind = Column(String(20), nullable=False)
+    owner_id = Column(Integer, nullable=False)
+    original_estimate = Column(Integer, nullable=True)
+    estimate_origin = Column(String(20), nullable=True)
+    difficulty = Column(String(20), nullable=True)
+    importance = Column(String(20), nullable=True)
+    initial_importance = Column(String(20), nullable=True)
+    initial_marked_at = Column(DateTime, nullable=True)
+    goal_snapshot = Column(Text, nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    rehearsal_json = Column(Text, nullable=False, default="{}")
+    __table_args__ = (UniqueConstraint("user_id", "owner_kind", "owner_id", name="uq_task_practice_owner"),)
+
+
+class PracticeEvent(Base):
+    """Append-only estimates, judgements, feedback, feasibility and reflections."""
+    __tablename__ = "practice_events"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    owner_kind = Column(String(20), nullable=False)
+    owner_id = Column(Integer, nullable=False)
+    event_type = Column(String(40), nullable=False)
+    record_date = Column(Date, nullable=False)
+    payload_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    __table_args__ = (Index("ix_practice_event_owner", "user_id", "owner_kind", "owner_id", "event_type"),)
+
+
+class PlanningCycle(Base):
+    __tablename__ = "planning_cycles"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    horizon = Column(String(20), nullable=False)
+    expected_result = Column(Text, nullable=False)
+    available_minutes = Column(Integer, nullable=True)
+    plan_json = Column(Text, nullable=False)
+    review_json = Column(Text, nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    previous_cycle_id = Column(Integer, ForeignKey("planning_cycles.id"), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class StageCommitment(Base):
+    __tablename__ = "stage_commitments"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    stage_id = Column(Integer, ForeignKey("project_stages.id"), nullable=False, index=True)
+    snapshot_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class CommitmentAdjustment(Base):
+    __tablename__ = "commitment_adjustments"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    stage_id = Column(Integer, ForeignKey("project_stages.id"), nullable=False)
+    plan_json = Column(Text, nullable=False)
+    impact_json = Column(Text, nullable=False)
+    fingerprint = Column(String(64), nullable=False)
+    elapsed_ms = Column(Integer, nullable=False, default=0)
+    lease_token = Column(String(100), nullable=True)
+    last_visible_at = Column(DateTime, nullable=True)
+    confirmed_at = Column(DateTime, nullable=True)
+    reason = Column(Text, nullable=True)
+    result_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

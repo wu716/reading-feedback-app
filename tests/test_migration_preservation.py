@@ -7,6 +7,28 @@ from app import database, models, project_models  # register all models
 
 
 class AdditiveMigrationTests(TestCase):
+    def test_practice_upgrade_keeps_work_checklist_and_unknown_history(self):
+        engine = create_engine("sqlite:///:memory:")
+        database.Base.metadata.create_all(engine)
+        with engine.begin() as conn:
+            for table, column in [("work_sessions", "practice_snapshot_json"),
+                                  ("task_checklist_items", "purpose"), ("task_checklist_items", "not_applicable_reason")]:
+                conn.execute(text(f"ALTER TABLE {table} DROP COLUMN {column}"))
+            conn.execute(text("INSERT INTO users (id,email,name,password_hash,capture_kind) VALUES (1,'practice@test','旧用户','x','moment')"))
+            conn.execute(text("INSERT INTO projects (id,user_id,title,status) VALUES (1,1,'原项目','active')"))
+            conn.execute(text("INSERT INTO project_tasks (id,user_id,project_id,title,state,execution_role,steps_json,original_estimate_minutes,estimated_minutes,rehearsal_note) VALUES (1,1,1,'原任务','partial','formal','[]',30,45,'原笔记')"))
+            conn.execute(text("INSERT INTO task_checklist_items (id,user_id,task_id,text,done,position) VALUES (1,1,1,'原检查',1,3)"))
+            conn.execute(text("INSERT INTO work_sessions (id,user_id,project_task_id,kind,source,started_at,ended_at) VALUES (1,1,1,'work','manual','2026-10-21 15:50:00','2026-10-21 16:10:00')"))
+        with patch.object(database, "engine", engine):
+            database.ensure_schema(); database.ensure_schema()
+        with engine.connect() as conn:
+            self.assertEqual(conn.execute(text("SELECT original_estimate_minutes,estimated_minutes,rehearsal_note FROM project_tasks")).one(), (30,45,"原笔记"))
+            self.assertEqual(conn.execute(text("SELECT text,done,position,purpose,not_applicable_reason FROM task_checklist_items")).one(), ("原检查",1,3,"delivery",None))
+            self.assertIsNone(conn.execute(text("SELECT practice_snapshot_json FROM work_sessions")).scalar())
+            self.assertEqual(conn.execute(text("SELECT COUNT(*) FROM task_practices")).scalar(),0)
+            self.assertEqual(conn.execute(text("SELECT COUNT(*) FROM stage_commitments")).scalar(),0)
+        engine.dispose()
+
     def test_condition_upgrade_preserves_unknown_start_and_existing_task_facts(self):
         engine = create_engine("sqlite:///:memory:")
         database.Base.metadata.create_all(engine)

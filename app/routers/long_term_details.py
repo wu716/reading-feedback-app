@@ -547,6 +547,8 @@ def report_for_user(db: Session, user: User, period: Period, anchor: date) -> di
     if period in ("month", "quarter", "year") and not paid:
         raise HTTPException(403, "月报、季报和年报需要有效月卡或学期卡")
     result = report_payload(db, user.id, period, anchor)
+    from app.practice_service import training_report
+    result["practice"] = training_report(db, user.id, result["start"], result["end"])
     result["premium_locked"] = not paid
     if not paid:
         # Daily and weekly totals stay free. Full records are available from /day

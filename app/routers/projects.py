@@ -21,9 +21,15 @@ from app.project_models import (
 )
 from app.start_conditions import readiness, record_event, require_ready, validate_dependency_graph
 from app.routers.start_conditions import router as conditions_router
+from app.routers.practice import router as practice_router
+from app.routers.commitments import router as commitments_router
+from app import practice_service
+from app.commitment_service import guard_scope, record_scope_addition
 
 router = APIRouter(prefix="/projects", tags=["个人项目"])
 router.include_router(conditions_router)
+router.include_router(practice_router)
+router.include_router(commitments_router)
 
 
 def fail(message: str, code: int = 400):
@@ -108,6 +114,7 @@ class CompletionInput(BaseModel):
     result: Literal["completed", "partial", "rework"]
     outcome_note: str | None = Field(default=None, max_length=4000)
     variance_reason: str | None = Field(default=None, max_length=4000)
+    checklist_exception: str | None = Field(default=None, max_length=4000)
 
 
 class ChecklistInput(BaseModel):
@@ -149,6 +156,7 @@ def task_payload(db: Session, row: ProjectTask) -> dict:
         "id": row.id, "project_id": row.project_id, "stage_id": row.stage_id,
         "title": row.title, "state": row.state, "familiarity": row.familiarity,
         "execution_role": row.execution_role, "readiness": ready,
+        "practice": practice_service.task_payload(db, row.user_id, "task", row),
         "original_estimate_minutes": row.original_estimate_minutes,
         "estimated_minutes": row.estimated_minutes, "actual_minutes": actual,
         "scheduled_dates": [str(d[0]) for d in db.query(DailyTask.task_date).filter(DailyTask.user_id == row.user_id,
@@ -159,8 +167,10 @@ def task_payload(db: Session, row: ProjectTask) -> dict:
         "steps": json.loads(row.steps_json or "[]"),
         "outcome_note": row.outcome_note, "variance_reason": row.variance_reason,
         "prerequisite_ids": [dep.prerequisite_id for dep in prerequisites],
+        "dependencies": [{"id": dep.id, "prerequisite_id": dep.prerequisite_id} for dep in prerequisites],
         "blocked_by": blockers, "can_start": ready["can_start"],
-        "checklist": [{"id": c.id, "text": c.text, "done": c.done} for c in checks],
+        "checklist": [{"id": c.id, "text": c.text, "done": c.done, "group": c.purpose,
+                       "not_applicable": c.not_applicable_reason} for c in checks],
     }
 
 
@@ -193,11 +203,15 @@ def create_goal(body: GoalInput, user: User = Depends(get_current_active_user), 
 
 @router.patch("/goals/{goal_id}")
 def update_goal(goal_id: int, body: GoalUpdate, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    practice_service.lock_user(db, user.id)
     row = owned(db, Goal, goal_id, user.id)
+    before = {"title": row.title, "horizon_end": row.horizon_end}
     if "title" in body.model_fields_set:
         if body.title is None: fail("目标名称不能为空")
         row.title = required_text(body.title)
     if "horizon_end" in body.model_fields_set: row.horizon_end = body.horizon_end
+    practice_service.event(db, user.id, "goal", row.id, "goal_revision", {"before": before,
+        "after": {"title": row.title, "horizon_end": row.horizon_end}, "source": "目标编辑入口，未填写修订原因"})
     db.commit()
     return {"id": row.id, "title": row.title, "horizon_end": row.horizon_end}
 
@@ -228,6 +242,7 @@ def add_stage(project_id: int, body: StageInput, user: User = Depends(get_curren
 
 @router.post("/stages/{stage_id}/activate")
 def activate_stage(stage_id: int, body: StageChangeInput, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    practice_service.lock_user(db, user.id)
     target = owned(db, ProjectStage, stage_id, user.id)
     project = owned(db, Project, target.project_id, user.id)
     current = db.query(ProjectStage).filter(ProjectStage.project_id == project.id, ProjectStage.state == "current").first()
@@ -236,14 +251,22 @@ def activate_stage(stage_id: int, body: StageChangeInput, user: User = Depends(g
     # Internal sequential prerequisites are checked when each task starts; they
     # must not prevent entering a stage containing the whole sequence.
     require_ready(db, user.id, "project", project.id)
+    from app.commitment_service import commitment, commit_stage, require_stage_ready
+    if target.state != "next": fail("只能交接到下一阶段", 409)
+    require_stage_ready(db, user.id, target)
     if current and current.id != target.id:
-        incomplete = db.query(ProjectTask).filter(ProjectTask.stage_id == current.id, ProjectTask.state != "completed", ProjectTask.deleted_at.is_(None)).count()
-        if incomplete and body.decision == "close" and not (body.reason or "").strip():
-            fail("结束有未完成任务的阶段时请说明原因")
-        current.state = "closed" if body.decision == "close" else "next"
-        current.closed_reason = body.reason if body.decision == "close" else None
-        current.closed_at = datetime.utcnow() if body.decision == "close" else None
+        incomplete = db.query(ProjectTask).filter(ProjectTask.stage_id == current.id, ProjectTask.state.notin_(["completed", "cancelled"]), ProjectTask.deleted_at.is_(None)).count()
+        if incomplete and commitment(db, user.id, current.id):
+            fail("当前承诺尚未完成，请在“调整当前承诺”中逐项交接并完成30秒暂停", 409)
+        if incomplete and not (body.reason or "").strip(): fail("交接未完成的草稿时请说明去向和原因", 409)
+        if incomplete:
+            fail("请先逐项处理未完成任务，再交接阶段", 409)
+        current.state, current.closed_reason, current.closed_at = "closed", body.reason, datetime.utcnow()
     target.state = "current"
+    commit_stage(db, user.id, target)
+    db.flush()
+    if not db.query(ProjectStage).filter_by(project_id=project.id, state="next").first():
+        db.add(ProjectStage(user_id=user.id, project_id=project.id, title="下一阶段", state="next", position=target.position + 1))
     db.commit()
     return {"id": target.id, "state": target.state}
 
@@ -260,15 +283,25 @@ def create_task(project_id: int, body: TaskInput, user: User = Depends(get_curre
     row.title = required_text(row.title)
     row.original_estimate_minutes = body.estimated_minutes
     row.steps_json = json.dumps(clean_items(body.steps), ensure_ascii=False)
-    db.add(row); db.commit(); db.refresh(row)
+    db.add(row); db.flush()
+    practice_service.note_estimate(db, user.id, "task", row, body.estimated_minutes, created=True)
+    record_scope_addition(db, user.id, row)
+    db.commit(); db.refresh(row)
     return task_payload(db, row)
 
 
 @router.patch("/tasks/{task_id}")
 def update_task(task_id: int, body: TaskUpdate, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    practice_service.lock_user(db, user.id)
     row = owned(db, ProjectTask, task_id, user.id)
     changes = body.model_dump(exclude_unset=True)
     steps = changes.pop("steps", None)
+    if "stage_id" in changes and changes["stage_id"] != row.stage_id:
+        guard_scope(db, user.id, row)
+    if "acceptance_criteria" in changes and changes["acceptance_criteria"] != row.acceptance_criteria:
+        guard_scope(db, user.id, row, include_completed=True)
+    if "estimated_minutes" in changes:
+        practice_service.note_estimate(db, user.id, "task", row, changes["estimated_minutes"], "任务内容中修订")
     if "stage_id" in changes and changes["stage_id"] is not None:
         stage = owned(db, ProjectStage, changes["stage_id"], user.id)
         if stage.project_id != row.project_id or stage.state == "closed": fail("阶段不属于此项目或已结束")
@@ -320,6 +353,7 @@ def remove_dependency(task_id: int, prerequisite_id: int, reason: str | None = N
                       user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     db.query(User).filter(User.id == user.id).with_for_update().first()
     task = owned(db, ProjectTask, task_id, user.id)
+    guard_scope(db, user.id, task)
     row = db.query(TaskDependency).filter(TaskDependency.user_id == user.id, TaskDependency.task_id == task.id, TaskDependency.prerequisite_id == prerequisite_id).first()
     if row is None: fail("依赖不存在", 404)
     if not (reason or "").strip(): fail("移除前置条件会改变可执行状态，请更新页面并说明原因", 409)
@@ -347,10 +381,17 @@ def toggle_checklist(item_id: int, done: bool, user: User = Depends(get_current_
 
 @router.post("/tasks/{task_id}/finish")
 def finish_task(task_id: int, body: CompletionInput, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    result = apply_task_completion(task_id, body, user, db)
+    db.commit()
+    return result
+
+
+def apply_task_completion(task_id, body, user, db):
     settle_expired(db, user.id)
     row = owned(db, ProjectTask, task_id, user.id)
     if body.result == "completed":
         require_ready(db, user.id, "task", row.id, purpose="delivery")
+        practice_service.require_checklist(db, user.id, "task", row, body.checklist_exception)
     else:
         project = owned(db, Project, row.project_id, user.id)
         if project.execution_state in ("delivered", "accepted"):
@@ -373,16 +414,16 @@ def finish_task(task_id: int, body: CompletionInput, user: User = Depends(get_cu
                 DailyTask.task_date == day, DailyTask.legacy_todo_id.isnot(None), DailyTask.deleted_at.is_(None)).all():
             sync_task_reminder(db, daily)
     if body.result == "completed":
-        for active in db.query(WorkSession).filter(WorkSession.user_id == user.id,
-                WorkSession.project_task_id == row.id, WorkSession.kind == "work", WorkSession.ended_at.is_(None)).all():
-            active.ended_at = max(datetime.utcnow(), active.started_at + timedelta(microseconds=1))
+        for active in practice_service.task_sessions(db, user.id, "task", row.id):
+            if active.ended_at is None:
+                active.ended_at = max(datetime.utcnow(), active.started_at + timedelta(microseconds=1))
         plan = execution_plan(db, user.id)
         paused = db.get(WorkSession, plan.paused_session_id) if plan.paused_session_id else None
         if paused and paused.project_task_id == row.id:
             plan.paused_session_id = None
             plan.remaining_seconds = None
     unchecked = db.query(TaskChecklistItem).filter(TaskChecklistItem.task_id == row.id, TaskChecklistItem.done.is_(False)).count()
-    db.commit()
+    db.flush()
     return {"task": task_payload(db, row), "unchecked_count": unchecked}
 
 
@@ -539,8 +580,16 @@ def promote_daily(daily_id: int, body: DailyProjectInput, user: User = Depends(g
                        blocker_note=daily.common_problems, acceptance_criteria=daily.acceptance_criteria)
     db.add(task); db.flush()
     for position, item in enumerate(json.loads(daily.checklist_json or "[]")):
-        db.add(TaskChecklistItem(user_id=user.id, task_id=task.id, text=item["text"], position=position, done=item["done"]))
+        db.add(TaskChecklistItem(user_id=user.id, task_id=task.id, text=item["text"], position=position, done=item["done"],
+                                purpose=item.get("group", "delivery"), not_applicable_reason=item.get("not_applicable")))
     daily.project_task_id = task.id
+    old_practice = db.query(practice_service.TaskPractice).filter_by(user_id=user.id, owner_kind="daily", owner_id=daily.id).first()
+    if old_practice:
+        old_practice.owner_kind, old_practice.owner_id = "task", task.id
+        task.original_estimate_minutes = old_practice.original_estimate
+    for e in practice_service.events(db, user.id, "daily", daily.id):
+        e.owner_kind, e.owner_id = "task", task.id
+    record_scope_addition(db, user.id, task)
     db.flush()
     validate_dependency_graph(db, user.id)
     # Existing daily intervals belong to the same task; preserve their original dates and durations.
@@ -616,6 +665,7 @@ def session_payload(row: WorkSession, assessment: TimeActivityAssessment | None 
         "deadline_at": stamp(row.started_at + timedelta(seconds=budget_seconds(row))) if row.source == "timer" else None,
         "duration_minutes": round((row.ended_at - row.started_at).total_seconds() / 60, 2) if row.ended_at else None,
         "correction_note": row.correction_note,
+        "practice_snapshot": json.loads(row.practice_snapshot_json or "{}"),
         "assessment": None if assessment is None else {
             "goal_id": assessment.goal_id, "goal_title_snapshot": assessment.goal_title_snapshot,
             "importance": assessment.importance, "interesting": assessment.interesting,
@@ -664,6 +714,7 @@ def start_session(body: StartSessionInput, user: User = Depends(get_current_acti
     plan = execution_plan(db, user.id)
     plan.paused_session_id = None
     plan.remaining_seconds = None
+    practice_service.snapshot_session(db, row)
     db.add(row); db.commit(); db.refresh(row)
     return session_payload(row)
 
@@ -692,6 +743,7 @@ def switch_session(body: SwitchSessionInput, user: User = Depends(get_current_ac
     new = WorkSession(user_id=user.id, project_task_id=body.project_task_id, daily_task_id=body.daily_task_id,
                       kind=body.kind, source="timer", started_at=moment,
                       planned_minutes=body.planned_minutes, planned_seconds=body.planned_seconds, label=body.label)
+    practice_service.snapshot_session(db, new)
     db.add(new); db.commit(); db.refresh(new)
     return {"ended": session_payload(old), "started": session_payload(new)}
 
@@ -734,6 +786,7 @@ def manual_session(body: ManualSessionInput, user: User = Depends(get_current_ac
     row = WorkSession(user_id=user.id, project_task_id=body.project_task_id, daily_task_id=body.daily_task_id,
                       time_log_node_id=body.time_log_node_id, kind=body.kind, source=body.source,
                       started_at=start, ended_at=end, label=body.label, correction_note=body.correction_note)
+    practice_service.snapshot_session(db, row)
     db.add(row); db.commit(); db.refresh(row)
     return session_payload(row)
 
@@ -752,6 +805,7 @@ def correct_session(session_id: int, body: SessionCorrectionInput, user: User = 
 
 @router.put("/sessions/{session_id}/assessment")
 def assess_session(session_id: int, body: AssessmentInput, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    practice_service.lock_user(db, user.id)
     session = owned(db, WorkSession, session_id, user.id)
     if session.ended_at is None: fail("片段结束后才能回看")
     goal = owned(db, Goal, body.goal_id, user.id) if body.goal_id is not None else None
@@ -766,6 +820,8 @@ def assess_session(session_id: int, body: AssessmentInput, user: User = Depends(
     row.interesting = body.interesting
     row.note = body.note
     row.assessed_at = datetime.utcnow()
+    practice_service.event(db, user.id, "session", session.id, "actual_assessment", {
+        "goal": row.goal_title_snapshot, "importance": row.importance, "interesting": row.interesting, "note": row.note})
     db.commit()
     return session_payload(session, row)
 
@@ -836,5 +892,6 @@ def instantiate_template(template_id: int, body: InstantiateInput, user: User = 
     db.add(task); db.flush()
     for index, item in enumerate(json.loads(template.checklist_json or "[]")):
         db.add(TaskChecklistItem(user_id=user.id, task_id=task.id, text=item, position=index))
+    record_scope_addition(db, user.id, task)
     db.commit(); db.refresh(task)
     return task_payload(db, task)

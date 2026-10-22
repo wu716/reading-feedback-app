@@ -27,6 +27,8 @@ USER_TABLES = (
     project_models.ExecutionPlan, project_models.TimeActivityAssessment,
     project_models.ProcessTemplate,
     project_models.StartCondition, project_models.ExecutionConditionEvent,
+    project_models.TaskPractice, project_models.PracticeEvent, project_models.PlanningCycle,
+    project_models.StageCommitment, project_models.CommitmentAdjustment,
 )
 
 

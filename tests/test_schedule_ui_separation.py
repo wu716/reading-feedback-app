@@ -26,7 +26,9 @@ class ScheduleUiSeparationTests(unittest.TestCase):
     def test_design_mode_contains_attributes_but_no_ordering_controls(self):
         self.assertIn("flow-task-attributes", self.design)
         self.assertIn('data-act="fam"', self.design)
-        self.assertIn('data-act="priority"', self.design)
+        self.assertIn('data-act="practice-attributes"', self.design)
+        self.assertNotIn('data-act="priority"', self.design)
+        self.assertIn('旧优先级', self.design)
         self.assertNotIn('data-act="parallel"', self.design)
         self.assertNotIn("data-sort-handle", self.design)
         self.assertNotIn('data-act="edit"', self.design)
@@ -41,7 +43,8 @@ class ScheduleUiSeparationTests(unittest.TestCase):
 
     def test_new_task_composer_submits_attributes_and_list_shows_feedback(self):
         self.assertIn('data-new-act="fam"', self.index)
-        self.assertIn('data-new-act="priority"', self.index)
+        self.assertNotIn('data-new-act="priority"', self.index)
+        self.assertIn('schedulePractice', self.index)
         self.assertIn("familiarity: attributes?.familiarity", self.source)
         self.assertIn("priority: Number.isInteger(attributes?.priority)", self.source)
         self.assertIn("flow-feedback", self.source)

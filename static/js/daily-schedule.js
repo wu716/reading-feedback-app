@@ -222,13 +222,14 @@
 
     function renderTaskLaunch(task) {
         const execute = task.completed || task.children?.length ? '' : task.readiness?.can_start === false ? `<span class="schedule-blocked">${escapeHtml(task.readiness.summary || '条件待核对')}</span>` : `<a class="schedule-execute-link" href="/static/projects.html?view=execution&date=${encodeURIComponent(currentDay())}&execute=daily:${task.id}">加入执行</a>`;
-        return `<div class="flow-task-launch">${execute}<button type="button" data-act="expand" aria-expanded="${expandedTasks.has(task.id)}">详情</button></div>`;
+        const p=task.practice||{}, labels={unimportant:'不重要',ordinary:'一般',important:'重要',simple:'简单',difficult:'困难'};
+        return `<div class="flow-task-launch"><span class="practice-tag ${p.difficulty==='difficult'?'difficult':''}">${labels[p.difficulty]||'难度未标'} · ${labels[p.importance]||'重要性未标'}${p.reviewed_at?'':' · 待审视'}</span>${execute}<button type="button" data-act="practice">估时与预演</button><button type="button" data-act="feedback">用时反馈</button><button type="button" data-act="expand" aria-expanded="${expandedTasks.has(task.id)}">详情</button></div>`;
     }
 
     function renderMethod(task) {
         if (task.project_task_id) return ''; // The linked project owns its steps and checks.
         if (!(task.steps?.length || task.checklist?.length || task.acceptance_criteria || task.common_problems)) return '';
-        return `<details class="flow-method"><summary>步骤与完成检查</summary>${task.steps?.length ? `<ol>${task.steps.map(text=>`<li>${escapeHtml(text)}</li>`).join('')}</ol>` : ''}${(task.checklist || []).map((item,index)=>`<label><input type="checkbox" data-act="method-check" data-check-index="${index}" ${item.done ? 'checked' : ''}>${escapeHtml(item.text)}</label>`).join('')}${task.common_problems ? `<p>常见难点：${escapeHtml(task.common_problems)}</p>` : ''}${task.acceptance_criteria ? `<p>验收标准：${escapeHtml(task.acceptance_criteria)}</p>` : ''}</details>`;
+        return `<details class="flow-method"><summary>步骤与完成检查</summary>${task.steps?.length ? `<ol>${task.steps.map(text=>`<li>${escapeHtml(text)}</li>`).join('')}</ol>` : ''}${(task.checklist || []).map((item,index)=>`<label><input type="checkbox" data-act="method-check" data-check-index="${index}" ${item.done ? 'checked' : ''}>${item.group==='preparation'?'准备核对：':'交付核对：'}${escapeHtml(item.text)}${item.not_applicable?'（不适用：'+escapeHtml(item.not_applicable)+'）':''}</label>`).join('')}${task.common_problems ? `<p>常见难点：${escapeHtml(task.common_problems)}</p>` : ''}${task.acceptance_criteria ? `<p>验收标准：${escapeHtml(task.acceptance_criteria)}</p>` : ''}</details>`;
     }
 
     function renderToolbar() {
@@ -318,12 +319,7 @@
                     </div>
                 </div>
                 <div class="flow-attribute-group">
-                    <span class="flow-attribute-label">${escapeHtml(t('schedule.importanceLabel', '重要性'))}</span>
-                    <div class="flow-attribute-options">
-                        <button type="button" class="flow-chip${task.priority === 2 ? ' active' : ''}" data-act="priority" data-value="2">${escapeHtml(t('schedule.priority.high', '最高'))}</button>
-                        <button type="button" class="flow-chip${task.priority === 1 ? ' active' : ''}" data-act="priority" data-value="1">${escapeHtml(t('schedule.priority.important', '重要'))}</button>
-                        <button type="button" class="flow-chip${!task.priority ? ' active' : ''}" data-act="priority" data-value="0">${escapeHtml(t('schedule.priority.normal', '普通'))}</button>
-                    </div>
+                    <span class="flow-attribute-label">难度与目标重要性</span><div class="flow-attribute-options"><button type="button" class="flow-chip" data-act="practice-attributes">${({simple:'简单',difficult:'困难'})[task.practice?.difficulty]||'难度未标'} · ${({unimportant:'不重要',ordinary:'一般',important:'重要'})[task.practice?.importance]||'重要性未标'} · 修改标记</button>${task.priority ? `<small>旧优先级：${escapeHtml(priorityLabel(task.priority))}（保留来源）</small>` : ''}</div>
                 </div>
                 <label class="flow-attribute-group flow-duration-group">
                     <span class="flow-attribute-label">${escapeHtml(t('schedule.estimatedDuration', '预计用时'))}</span>
@@ -340,7 +336,7 @@
                     ${renderDoneBtn(task)}
                     ${renderTitle(task)}
                 </div>
-                <div class="flow-task-meta">${escapeHtml([task.project_title || (isChild ? '子任务' : '普通日程'),familiarityLabel(task.familiarity),task.estimated_minutes == null ? '' : '预计 ' + minutesLabel(task.estimated_minutes),task.priority ? priorityLabel(task.priority) : '',`已投入 ${task.actual_minutes || 0} 分`,task.remind_time ? '提醒 ' + task.remind_time : ''].filter(Boolean).join(' · '))}</div>
+                <div class="flow-task-meta">${escapeHtml([task.project_title || (isChild ? '子任务' : '普通日程'),familiarityLabel(task.familiarity),task.estimated_minutes == null ? '' : '预计 ' + minutesLabel(task.estimated_minutes),task.priority ? '旧优先级：' + priorityLabel(task.priority) : '',`已投入 ${task.actual_minutes || 0} 分`,task.remind_time ? '提醒 ' + task.remind_time : ''].filter(Boolean).join(' · '))}</div>
                 ${renderTaskLaunch(task)}
                 </div>
                 <div class="flow-task-detail" ${expandedTasks.has(task.id) || splitFor === task.id ? '' : 'hidden'}>
@@ -373,12 +369,7 @@
                             </div>
                         </div>
                         <div class="flow-attribute-group">
-                            <span class="flow-attribute-label">${escapeHtml(t('schedule.importanceLabel', '重要性'))}</span>
-                            <div class="flow-attribute-options">
-                                <button type="button" class="flow-chip${task.priority === 2 ? ' active' : ''}" data-act="priority" data-value="2">${escapeHtml(t('schedule.priority.high', '最高'))}</button>
-                                <button type="button" class="flow-chip${task.priority === 1 ? ' active' : ''}" data-act="priority" data-value="1">${escapeHtml(t('schedule.priority.important', '重要'))}</button>
-                                <button type="button" class="flow-chip${!task.priority ? ' active' : ''}" data-act="priority" data-value="0">${escapeHtml(t('schedule.priority.normal', '普通'))}</button>
-                            </div>
+                            <span class="flow-attribute-label">难度与目标重要性</span><div class="flow-attribute-options"><button type="button" class="flow-chip" data-act="practice-attributes">${({simple:'简单',difficult:'困难'})[task.practice?.difficulty]||'难度未标'} · ${({unimportant:'不重要',ordinary:'一般',important:'重要'})[task.practice?.importance]||'重要性未标'} · 修改标记</button>${task.priority ? `<small>旧优先级：${escapeHtml(priorityLabel(task.priority))}（保留来源）</small>` : ''}</div>
                         </div>
                         <label class="flow-attribute-group flow-duration-group">
                             <span class="flow-attribute-label">${escapeHtml(t('schedule.estimatedDuration', '预计用时'))}</span>
@@ -445,7 +436,7 @@
         const extra = [];
         if (fam) extra.push(fam);
         if (task.estimated_minutes != null) extra.push(minutesLabel(task.estimated_minutes));
-        if (task.priority) extra.push(priorityLabel(task.priority));
+        if (task.priority) extra.push('旧优先级：' + priorityLabel(task.priority));
         const path = task.parent_path && task.parent_path.length
             ? `<div class="flow-parent-path">${escapeHtml(task.parent_path.join(' / '))}</div>`
             : '';
@@ -1091,6 +1082,8 @@
             renderLater();
         });
         window.addEventListener('shuran-language-change', () => render());
+        window.addEventListener('shuran-practice-change', () => load(currentDay()));
+        document.getElementById('schedulePractice')?.addEventListener('click', () => globalThis.ShuranPractice?.openDay(currentDay()));
         document.getElementById('scheduleDoneBtn')?.addEventListener('click', async () => {
             try {
                 data = await api('/design', {
@@ -1213,7 +1206,10 @@
                     render();
                 } else if (act === 'toggle') {
                     const task = flatten(data.tasks || [], []).find((item) => item.id === id);
-                    await patchTask(id, { completed: !(task && task.completed) });
+                    if (task&&!task.completed&&!task.children?.length&&globalThis.ShuranPractice) await globalThis.ShuranPractice.openTask('daily',id,'feedback');
+                    else await patchTask(id, { completed: !(task && task.completed) });
+                } else if (act === 'practice' || act === 'feedback' || act === 'practice-attributes') {
+                    await globalThis.ShuranPractice?.openTask('daily',id,act==='feedback'?'feedback':act==='practice-attributes'?'attributes':'rehearsal');
                 } else if (act === 'delete') {
                     editingId = null;
                     data = await api(`/tasks/${id}`, { method: 'DELETE' });

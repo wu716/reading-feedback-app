@@ -81,6 +81,9 @@ def ensure_schema():
         for column in ("steps_json", "checklist_json", "common_problems", "acceptance_criteria"):
             add_column("daily_tasks", column, f"{column} TEXT")
         add_column("work_sessions", "planned_seconds", "planned_seconds INTEGER")
+        add_column("work_sessions", "practice_snapshot_json", "practice_snapshot_json TEXT")
+        add_column("task_checklist_items", "purpose", "purpose VARCHAR(20) NOT NULL DEFAULT 'delivery'")
+        add_column("task_checklist_items", "not_applicable_reason", "not_applicable_reason TEXT")
         add_column("projects", "execution_state", "execution_state VARCHAR(20)")
         add_column("projects", "started_at", "started_at TIMESTAMP")
         add_column("project_tasks", "execution_role", "execution_role VARCHAR(20) NOT NULL DEFAULT 'formal'")

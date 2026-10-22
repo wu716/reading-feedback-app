@@ -7,12 +7,14 @@
   <link rel="stylesheet" href="/static/css/projects.css?v=20261021stageentry1">
   <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20261020slice1">
   <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261020slice1">
-  <link rel="stylesheet" href="/static/css/start-conditions.css?v=20261022workspace1">
-  <link rel="stylesheet" href="/static/css/workspace.css?v=20261022workspace1">
-  <script defer src="/static/js/workspace-shell.js?v=20261022workspace1"></script>
-  <script defer src="/static/js/start-conditions.js?v=20261022workspace1"></script>
-  <script defer src="/static/js/projects.js?v=20261022workspace1"></script>
-  <script defer src="/static/js/app-tabbar.js?v=20261022workspace1"></script>
+  <link rel="stylesheet" href="/static/css/start-conditions.css?v=20261022practice1">
+  <link rel="stylesheet" href="/static/css/workspace.css?v=20261022practice1">
+  <script defer src="/static/js/workspace-shell.js?v=20261022practice1"></script>
+  <script defer src="/static/js/start-conditions.js?v=20261022practice1"></script>
+  <script defer src="/static/js/projects.js?v=20261022practice1"></script>
+  <link rel="stylesheet" href="/static/css/plan-practice.css?v=20261022practice1">
+  <script defer src="/static/js/plan-practice.js?v=20261022practice1"></script>
+  <script defer src="/static/js/app-tabbar.js?v=20261022practice1"></script>
 </head>
 <body>
   <header class="app-head">
@@ -50,6 +52,7 @@
           <h3 id="activeTaskTitle">先把要做的事加入轮转</h3>
           <a id="activeProjectLink" hidden>查看所属项目</a>
           <p id="activeConditionWarning" class="active-condition-warning" hidden></p>
+          <div id="executionPractice" class="practice-execution" hidden></div>
           <div id="timerDisplay" class="timer-display">20:00</div>
           <div id="timerCaption" class="timer-caption">准备开始工作片</div>
           <div id="focusFinished" class="focus-finished" role="alert" hidden><strong id="focusFinishedTitle"></strong><p id="focusFinishedText"></p><button type="button" id="focusAcknowledge" class="secondary">知道了</button></div>
@@ -89,6 +92,7 @@
         <div class="project-work">
           <div class="project-select-row"><label>正在推进 <select id="projectSelect" aria-label="选择项目"></select></label><span id="projectOutcome"></span></div>
           <div id="projectLifecycle" class="project-lifecycle"></div>
+          <div class="practice-entry-row"><button type="button" id="projectFeasibility">可行性判断</button><button type="button" id="projectCommitment">当前承诺与调整</button><button type="button" id="projectCycles">计划周期与复盘</button></div>
           <details><summary>项目的开始条件与约束</summary><div id="projectConditions" class="condition-workspace"></div></details>
           <nav class="workspace-tabs" role="tablist" aria-label="项目阶段"><button type="button" role="tab" data-stage-view="current" aria-selected="true">当前阶段</button><button type="button" role="tab" data-stage-view="next" aria-selected="false">下一阶段</button><button type="button" role="tab" data-stage-view="closed" aria-selected="false">已结束阶段</button></nav>
           <div id="stageBoard" class="stage-board" aria-live="polite"></div>

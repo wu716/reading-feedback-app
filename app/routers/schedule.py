@@ -76,6 +76,7 @@ class TaskUpdate(BaseModel):
     clear_note: bool = False
     remind_time: Optional[str] = None
     checklist_done: Optional[List[bool]] = None
+    checklist_exception: Optional[str] = Field(None, max_length=4000)
 
     @field_validator("text")
     @classmethod
@@ -146,6 +147,7 @@ class TaskOut(BaseModel):
     checklist: List[dict] = Field(default_factory=list)
     common_problems: Optional[str] = None
     acceptance_criteria: Optional[str] = None
+    practice: dict | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -286,7 +288,7 @@ def refresh_parent_completion(db: Session, user_id: int, task: DailyTask) -> Non
         parent = parent.parent
 
 
-def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id=None, reminders=None) -> List[TaskOut]:
+def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id=None, reminders=None, practice_by_id=None) -> List[TaskOut]:
     linked, actual = linked or {}, actual or {}
     by_parent = defaultdict(list)
     for task in tasks:
@@ -309,7 +311,8 @@ def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id
             priority=task.priority or 0,
             flow_order=task.flow_order or task.sort_order or 0,
             familiarity=task.familiarity,
-            estimated_minutes=task.estimated_minutes,
+            estimated_minutes=(practice_by_id or {}).get(task.id, {}).get("estimated_minutes", task.estimated_minutes)
+                if task.project_task_id else task.estimated_minutes,
             parallel_group=task.parallel_group,
             children=[node(child) for child in by_parent.get(task.id, [])],
             remind_time=(reminders or {}).get(task.legacy_todo_id),
@@ -317,6 +320,7 @@ def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id
             checklist=json.loads(task.checklist_json or "[]"),
             common_problems=task.common_problems,
             acceptance_criteria=task.acceptance_criteria,
+            practice=(practice_by_id or {}).get(task.id),
         )
 
     return [node(task) for task in by_parent.get(None, [])]
@@ -354,6 +358,7 @@ def future_payload(db: Session, user_id: int) -> FutureListOut:
 
 
 def day_payload(db: Session, user: User, day: date) -> DayScheduleOut:
+    from app import practice_service as practice
     from app.start_conditions import readiness
     from app.execution_service import settle_expired
     from app.project_models import Project, ProjectTask, WorkSession
@@ -384,7 +389,11 @@ def day_payload(db: Session, user: User, day: date) -> DayScheduleOut:
         designed_at=schedule.designed_at if schedule else None,
         tasks=build_tree(tasks, linked, actual, {t.id: readiness(db, user.id, "daily", t.id) for t in tasks},
             dict(db.query(DailyTodo.id, DailyTodo.remind_time).filter(DailyTodo.user_id == user.id,
-                 DailyTodo.id.in_([t.legacy_todo_id for t in tasks if t.legacy_todo_id])).all())),
+                 DailyTodo.id.in_([t.legacy_todo_id for t in tasks if t.legacy_todo_id])).all()),
+            {t.id: practice.day_task_payload(db, user.id, "task" if t.project_task_id else "daily",
+                db.get(ProjectTask, t.project_task_id) if t.project_task_id else t, day)
+                for t in tasks if not t.project_task_id or (db.get(ProjectTask, t.project_task_id) is not None
+                    and db.get(ProjectTask, t.project_task_id).user_id == user.id)}),
     )
 
 
@@ -423,6 +432,9 @@ async def create_task(
         flow_order=next_flow_order(db, current_user.id, day),
     )
     db.add(task)
+    db.flush()
+    from app import practice_service as practice
+    practice.note_estimate(db, current_user.id, "daily", task, body.estimated_minutes, created=True)
     db.commit()
     return day_payload(db, current_user, day)
 
@@ -436,6 +448,7 @@ async def update_task(
 ):
     db.query(User).filter(User.id == current_user.id).with_for_update().first()
     task = get_task_or_404(db, current_user.id, task_id)
+    from app import practice_service as practice
     if body.text is not None:
         task.text = body.text
         if task.project_task_id:
@@ -454,7 +467,11 @@ async def update_task(
             targets = [task] + collect_descendants(visible_tasks(db, current_user.id, task.task_date), task.id)
             for target in targets:
                 require_ready(db, current_user.id, "daily", target.id, purpose="delivery")
+                practice.require_checklist(db, current_user.id, "daily", target, body.checklist_exception)
         task.completed = body.completed
+        if task.completed:
+            for target in [task] + collect_descendants(visible_tasks(db, current_user.id, task.task_date), task.id):
+                if target.completed: practice.settle_daily_completion(db, current_user.id, target)
         refresh_parent_completion(db, current_user.id, task)
     if body.clear_note:
         task.note = None
@@ -465,8 +482,14 @@ async def update_task(
     elif body.familiarity is not None:
         task.familiarity = body.familiarity
     if body.clear_estimate:
+        kind, actual_task = practice.owner(db, current_user.id, "daily", task.id)
+        practice.note_estimate(db, current_user.id, kind, actual_task, None, "日程中清除当前估计")
+        actual_task.estimated_minutes = None
         task.estimated_minutes = None
     elif body.estimated_minutes is not None:
+        kind, actual_task = practice.owner(db, current_user.id, "daily", task.id)
+        practice.note_estimate(db, current_user.id, kind, actual_task, body.estimated_minutes, "日程中修订")
+        actual_task.estimated_minutes = body.estimated_minutes
         task.estimated_minutes = body.estimated_minutes
     if body.sort_order is not None:
         task.sort_order = body.sort_order

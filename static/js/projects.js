@@ -205,7 +205,7 @@
 
   function renderGoals() {
     $('#goalList').innerHTML = state.overview.goals.length ? state.overview.goals.map(g =>
-      `<span class="chip">${esc(g.title)}${g.horizon_end ? `<small>至 ${esc(g.horizon_end)}</small>` : ''} <button type="button" class="plain-action" data-act="edit-goal" data-id="${g.id}" aria-label="修改目标 ${esc(g.title)}">修改</button></span>`).join('') : '<p class="empty">先从一个近期目标开始；简单事项也可以不建目标。</p>';
+      `<span class="chip">${esc(g.title)}${g.horizon_end ? `<small>至 ${esc(g.horizon_end)}</small>` : ''}${g.status==='stopped'?'<small>已停止，历史保留</small>':''} <button type="button" class="plain-action" data-act="edit-goal" data-id="${g.id}" aria-label="修改目标 ${esc(g.title)}">修改</button><button type="button" class="plain-action" data-act="goal-feasibility" data-id="${g.id}">可行性</button></span>`).join('') : '<p class="empty">先从一个近期目标开始；简单事项也可以不建目标。</p>';
     $('#projectGoal').innerHTML = goalOptions(null);
   }
   function renderProjects() {
@@ -214,7 +214,7 @@
     const project = currentProject(); $('#projectOutcome').textContent = project?.outcome || '';
     $('#projectLifecycle').innerHTML = project ? `<h3>项目执行状态</h3>
       <p>${esc(({preparation:'筹备中：正式任务需先检查条件并开始项目',started:'已正式开始',delivered:'已交付，待验收',accepted:'已验收'})[project.execution_state] || '历史项目：未记录正式启动，保留原有可用性')}${project.started_at ? ` · 首次正式开始 ${dtLabel(project.started_at)}` : ''}</p>
-      <details><summary>变更项目状态</summary><form id="projectStateForm"><label>操作 <select name="state"><option value="started">检查条件并正式开始／重新开始</option><option value="delivered">确认已经交付</option><option value="accepted">确认已经验收</option><option value="preparation">交付后重新筹备（保留历史）</option></select></label><label>判断依据或原因 <input name="reason" required maxlength="4000"></label><button type="submit">确认项目状态</button></form></details>` : '';
+      <details><summary>变更项目状态</summary><p>当前列表是本阶段的执行承诺。严格执行有助于集中投入、完成关键工作，并检验原先的计划是否合理。后续想法先放入下一阶段，避免不断打断当前任务。</p><form id="projectStateForm"><label>操作 <select name="state"><option value="started">检查条件并正式开始／重新开始</option><option value="delivered">确认已经交付</option><option value="accepted">确认已经验收</option><option value="preparation">交付后重新筹备（保留历史）</option></select></label><label>判断依据或原因 <input name="reason" required maxlength="4000"></label><button type="submit">确认项目状态</button></form></details>` : '';
     if (project) globalThis.ShuranConditions?.mount($('#projectConditions'), 'project', project.id, () => afterChange());
     else $('#projectConditions').innerHTML = '';
     $('#stageBoard').innerHTML = project ? project.stages.map(s => {
@@ -222,7 +222,7 @@
       const open = s.state === 'current' || s.state === 'next';
       const stageLabel = stageName(s);
       return `<article class="stage ${esc(s.state)}"><div class="stage-header"><h3>${esc(s.title)}</h3><span class="state-tag">${stageName(s)}</span></div>
-        ${tasks.length ? tasks.map(t => `<div class="task-row ${!t.can_start ? 'blocked' : ''} ${t.state === 'completed' ? 'done' : ''}"><button type="button" data-act="select-task" data-id="${t.id}">${esc(t.title)}<small>${t.execution_role === 'preparation' ? '筹备任务 · ' : ''}${t.state === 'completed' ? '已完成' : esc(t.readiness?.summary || (t.blocked_by.length ? '等待前置任务' : '可以推进'))} · 原估计 ${t.original_estimate_minutes ?? '未填'} 分 · 实耗 ${t.actual_minutes} 分</small></button></div>`).join('') : `<p class="stage-empty">这里还没有任务${open ? '，可以在下方写入第一项。' : '。'}</p>`}
+        ${tasks.length ? tasks.map(t => `<div class="task-row ${!t.can_start ? 'blocked' : ''} ${t.state === 'completed' ? 'done' : ''}"><button type="button" data-act="select-task" data-id="${t.id}">${esc(t.title)}<small>${t.execution_role === 'preparation' ? '筹备任务 · ' : ''}${t.state === 'completed' ? '已完成' : esc(t.readiness?.summary || (t.blocked_by.length ? '等待前置任务' : '可以推进'))} · ${{simple:'简单',difficult:'困难'}[t.practice?.difficulty]||'难度未标'} · ${{unimportant:'不重要',ordinary:'一般',important:'重要'}[t.practice?.importance]||'重要性未标'}${t.practice?.reviewed_at?'':' · 待审视'} · 原估计 ${t.original_estimate_minutes ?? '未填'} 分 · 实耗 ${t.actual_minutes} 分</small></button></div>`).join('') : `<p class="stage-empty">这里还没有任务${open ? '，可以在下方写入第一项。' : '。'}</p>`}
         ${open ? `<form class="stage-task-form" data-stage="${s.id}">
           <label>${stageLabel}的新任务 <input name="title" maxlength="500" required placeholder="写下一件能开始、能核对的事"></label>
           <button type="submit">加入${stageLabel}</button>
@@ -236,7 +236,7 @@
             </div>
           </details>
         </form>` : ''}
-        ${s.state === 'next' ? `<div class="stage-transition"><p>阶段切换</p><form class="stage-change" data-stage="${s.id}"><select name="decision" aria-label="当前阶段如何处理"><option value="continue">继续当前阶段</option><option value="adjust">调整范围并切换</option><option value="close">结束当前阶段</option></select><input name="reason" placeholder="结束时说明原因" aria-label="阶段结束原因"><button type="submit">确认切换</button></form></div>` : ''}</article>`;
+        ${s.state === 'next' ? `<div class="stage-transition"><button type="button" class="secondary" data-act="stage-handover" data-id="${s.id}">核对结果并交接到此阶段</button></div>` : ''}</article>`;
     }).join('') : '<p class="empty">建立项目后，这里会出现当前阶段和下一阶段。</p>';
   }
   function renderTaskDetail() {
@@ -252,22 +252,27 @@
       <div class="detail-zone" ${state.detailMode === 'conditions' ? '' : 'hidden'}><div id="taskConditions" class="condition-workspace"></div>
         <h4>原有任务前置关系</h4><p>${prereq.length ? prereq.map(t => `${esc(t.title)} <button type="button" class="secondary" data-act="remove-dep" data-id="${t.id}">说明原因并移除</button>`).join(' · ') : '未配置原有任务前置。其他条件见上方。'}</p>
         <form id="dependencyForm"><label>必须先完成 <select name="prerequisite_id">${choices}</select></label><button type="submit" ${choices ? '' : 'disabled'}>添加前置</button></form></div>
-      <div class="detail-zone" ${state.detailMode === 'attributes' ? '' : 'hidden'}><h4>内容与估时</h4><form id="detailForm" class="detail-grid">
+      <div class="detail-zone" ${state.detailMode === 'attributes' ? '' : 'hidden'}><h4>内容与估时</h4><p><button type="button" class="secondary" data-act="practice-task">标记难度、目标重要性与估时经验</button></p><form id="detailForm" class="detail-grid">
         <label>任务 <input name="title" maxlength="500" required value="${esc(task.title)}"></label><label>阶段 <select name="stage_id">${stageOptions(project, task.stage_id)}</select></label>
         <label>当前估计分钟 <input name="estimated_minutes" type="number" min="0" value="${task.estimated_minutes ?? ''}"></label><label>熟悉程度 <select name="familiarity"><option value="">未标记</option><option value="familiar" ${task.familiarity === 'familiar' ? 'selected' : ''}>熟悉</option><option value="unfamiliar" ${task.familiarity === 'unfamiliar' ? 'selected' : ''}>陌生</option></select></label>
         <label class="wide">为什么对目标有用 <textarea name="goal_reason" rows="2">${esc(task.goal_reason)}</textarea></label><label class="wide">怎样算完成 <textarea name="acceptance_criteria" rows="2">${esc(task.acceptance_criteria)}</textarea></label>
-        <label class="wide">开始前预演（第一步、材料、难处、卡住怎么办） <textarea name="rehearsal_note" rows="3">${esc(task.rehearsal_note)}</textarea></label><label class="wide">流程步骤（每行一项） <textarea name="steps" rows="3">${esc(task.steps.join('\n'))}</textarea></label>
+        <input type="hidden" name="rehearsal_note" value="${esc(task.rehearsal_note)}"><details class="wide"><summary>原有预演笔记</summary><p>${esc(task.rehearsal_note||'尚未记录原笔记；可使用独立预演入口。')}</p></details><label class="wide">流程步骤（每行一项） <textarea name="steps" rows="3">${esc(task.steps.join('\n'))}</textarea></label>
         <label class="wide">难点或阻碍 <textarea name="blocker_note" rows="2">${esc(task.blocker_note)}</textarea></label><button type="submit">保存任务内容</button></form></div>
       <div class="detail-zone" ${state.detailMode === 'dependencies' ? '' : 'hidden'}><p>普通检查项用于核对交付，不会暗中成为开始门槛。</p>
-        <h4>检查项</h4><ul>${task.checklist.map(item => `<li><label class="check"><input type="checkbox" data-act="toggle-check" data-id="${item.id}" ${item.done ? 'checked' : ''}>${esc(item.text)}</label></li>`).join('') || '<li>还没有检查项</li>'}</ul>
+        <h4>检查项</h4><p><button type="button" class="secondary" data-act="practice-checklist">编辑内容、顺序与不适用说明</button></p><ul>${task.checklist.map(item => `<li><label class="check"><input type="checkbox" data-act="toggle-check" data-id="${item.id}" ${item.done ? 'checked' : ''}>${item.group==='preparation'?'准备核对：':'交付核对：'}${esc(item.text)}</label>${item.not_applicable?`<small>本次不适用：${esc(item.not_applicable)}</small>`:''}</li>`).join('') || '<li>还没有检查项</li>'}</ul>
         <form id="checklistForm"><label>新增检查项 <input name="text" maxlength="500" required></label><button type="submit">添加</button></form></div>
       <div class="detail-zone" ${state.detailMode === 'completion' ? '' : 'hidden'}><h4>安排与验收</h4>
 
         <p>完成时核对标准：${esc(task.acceptance_criteria || '尚未填写，可先判断实际结果。')}</p>
-        <form id="finishTaskForm"><label>结果 <select name="result"><option value="completed">完成</option><option value="partial">部分完成</option><option value="rework">需要返工</option></select></label><label>结果说明 <input name="outcome_note" value="${esc(task.outcome_note)}"></label><label>估时偏差原因 <input name="variance_reason" value="${esc(task.variance_reason)}"></label><button type="submit">保存验收</button></form>
+        <p>结果与用时在专用反馈中一次核对，保留原估计、累计用时、来源和下次经验。</p><button type="button" data-act="practice-feedback">核对结果与实际用时</button>
         <div class="detail-actions"><button type="button" class="secondary" data-act="save-template">保存为流程</button></div></div>`;
     const date = $('#scheduleTaskForm [name=task_date]', root); if (date) date.value = params.get('date') || todayISO();
     if (state.detailMode === 'conditions') globalThis.ShuranConditions?.mount($('#taskConditions', root), 'task', task.id, () => afterChange());
+    if (globalThis.ShuranPractice) {
+      const practiceEntry = document.createElement('div'); practiceEntry.className='practice-entry-row';
+      practiceEntry.innerHTML='<button type="button" data-act="practice-rehearsal">开始前预演</button><button type="button" data-act="practice-feedback">用时与结果反馈</button>';
+      root.prepend(practiceEntry);
+    }
   }
 
   function choiceFor(key) {
@@ -300,6 +305,15 @@
     warning.textContent = !warning.hidden ? `当前条件发生变化：${currentChoice?.reason || '任务当前不可开始或已移除'}。请明确暂停、补齐条件或调整；已记录投入保留。` : '';
     $('#activeTaskTitle').textContent = active?.kind === 'break' || paused?.kind === 'break' ? '休息一下' : current?.label || sessionChoice(current)?.title || nextTask()?.title || '先把要做的事加入轮转';
     const projectTask = allTasks().find(t => t.id === current?.project_task_id);
+    const practice = $('#executionPractice');
+    if (practice) {
+      const target = current?.kind === 'work' ? current : nextTask();
+      const taskId = target?.project_task_id || target?.daily_task_id;
+      const kind = target?.project_task_id ? 'task' : 'daily';
+      const r = current?.practice_snapshot?.rehearsal || {};
+      practice.hidden = !taskId;
+      practice.innerHTML = taskId ? `${kind==='task'&&!active?'<p class="practice-note">当前列表是本阶段的执行承诺；先集中完成关键工作，后续想法放入下一阶段。</p>':''}${r.first_step?`<p><strong>第一步</strong> ${esc(r.first_step)}</p>`:''}${r.preparation?`<p>关键准备：${esc(r.preparation)}</p>`:''}${r.response?`<p>卡住时：${esc(r.response)}</p>`:''}<button type="button" data-execution-practice="${kind}:${taskId}" data-section="rehearsal">预演与有点难开始</button><button type="button" data-execution-practice="${kind}:${taskId}" data-section="feedback">核对结果与用时</button>` : '';
+    }
     const link = $('#activeProjectLink'); link.hidden = !projectTask;
     if (projectTask) { link.href = `/static/projects.html?task=${projectTask.id}#taskDetail`; link.textContent = `${projectTask.project_title} · 查看任务与投入`; }
     $('.focus-panel').classList.toggle('break', active?.kind === 'break');
@@ -356,15 +370,16 @@
 
   document.addEventListener('submit', event => {
     const form = event.target;
+    if (form.closest?.('.practice-dialog')) return;
     if (!form.matches('form')) return;
     event.preventDefault();
     run(async () => {
       const body = formData(form);
       if (form.id === 'goalForm') {
-        await post('/goals', {title:body.title, horizon_end:body.horizon_end || null}); form.reset(); await afterChange('目标已保存');
+        const goal=await post('/goals', {title:body.title, horizon_end:body.horizon_end || null}); form.reset(); await afterChange('目标已保存'); await globalThis.ShuranPractice?.openGoal(goal.id);
       } else if (form.id === 'projectForm') {
         const result = await post('', {title:body.title, outcome:body.outcome || null, goal_id:nullableNumber(body.goal_id)});
-        state.projectId = result.id; form.reset(); await afterChange('项目已建立');
+        state.projectId = result.id; form.reset(); await afterChange('项目已建立'); await globalThis.ShuranPractice?.openProject(result.id,'feasibility');
       } else if (form.id === 'projectStateForm') {
         const acknowledge = body.state === 'started' ? await confirmReadiness('project', state.projectId) : false;
         await post(`/${state.projectId}/execution-state`, {state:body.state, reason:body.reason, acknowledge_reminders:acknowledge});
@@ -376,6 +391,7 @@
           goal_reason:body.goal_reason || null, acceptance_criteria:body.acceptance_criteria || null});
         state.taskId = task.id; form.reset(); await afterChange('任务已加入阶段');
       } else if (form.classList.contains('stage-change')) {
+        if (body.decision !== 'continue') { await globalThis.ShuranPractice?.openProject(state.projectId,'commitment'); return; }
         await post(`/stages/${form.dataset.stage}/activate`, {decision:body.decision, reason:body.reason || null});
         await afterChange(body.decision === 'continue' ? '继续当前阶段' : '阶段已调整');
       } else if (form.id === 'detailForm') {
@@ -388,8 +404,7 @@
       } else if (form.id === 'checklistForm') {
         await post(`/tasks/${state.taskId}/checklist`, {text:body.text}); await afterChange('检查项已添加');
       } else if (form.id === 'finishTaskForm') {
-        const result = await post(`/tasks/${state.taskId}/finish`, {result:body.result, outcome_note:body.outcome_note || null, variance_reason:body.variance_reason || null});
-        await afterChange(result.unchecked_count ? `验收已保存；仍有 ${result.unchecked_count} 个检查项未完成` : '验收已保存');
+        await globalThis.ShuranPractice?.openTask('task',state.taskId,'feedback');
       } else if (form.id === 'scheduleTaskForm') {
         await post(`/tasks/${state.taskId}/schedule`, {task_date:body.task_date}); await afterChange('已关联到 ' + body.task_date + ' 的日程；可从日程查看项目与投入');
       } else if (form.id === 'manualForm') {
@@ -430,6 +445,11 @@
     run(async () => {
       const id = Number(button.dataset.id), action = button.dataset.act;
       if (action === 'select-task') { state.taskId = id; state.detailMode = 'attributes'; renderTaskDetail(); $('#taskDetail').scrollIntoView({behavior:'smooth',block:'start'}); }
+      else if (action === 'stage-handover') await globalThis.ShuranPractice?.openProject(state.projectId,'commitment',id);
+      else if (action === 'practice-task') await globalThis.ShuranPractice?.openTask('task',state.taskId,'attributes');
+      else if (action === 'practice-rehearsal') await globalThis.ShuranPractice?.openTask('task',state.taskId,'rehearsal');
+      else if (action === 'practice-feedback') await globalThis.ShuranPractice?.openTask('task',state.taskId,'feedback');
+      else if (action === 'practice-checklist') await globalThis.ShuranPractice?.openTask('task',state.taskId,'checklist');
       else if (action === 'queue-task') { await addQueue(`project:${state.taskId}`); globalThis.ShuranWorkspace?.show('execution'); notice('已加入轮转，准备好后开始'); }
       else if (action === 'close-detail') { state.taskId = null; renderTaskDetail(); }
       else if (action === 'detail-mode') { state.detailMode = button.dataset.mode; renderTaskDetail(); }
@@ -437,10 +457,8 @@
         const reason = window.prompt('移除前置会改变可执行状态，历史与实际投入仍保留。请说明原因：');
         if (reason?.trim()) { await request(`/tasks/${state.taskId}/dependencies/${id}?reason=${encodeURIComponent(reason.trim())}`, {method:'DELETE'}); await afterChange('前置关系已移除并留存原因'); }
       }
-      else if (action === 'edit-goal') {
-        const goal = state.overview.goals.find(g => g.id === id), title = window.prompt('修改目标', goal.title);
-        if (title && title.trim()) { await patch(`/goals/${id}`, {title:title.trim()}); await afterChange('目标已修改；历史评价仍保留当时目标文字'); }
-      }
+      else if (action === 'goal-feasibility') await globalThis.ShuranPractice?.openGoal(id);
+      else if (action === 'edit-goal') await globalThis.ShuranPractice?.openGoal(id,'goal-settings');
       else if (action === 'save-template') { await post(`/tasks/${state.taskId}/save-template`, {}); await afterChange('已从任务保存流程'); globalThis.ShuranWorkspace?.show('templates'); }
       else if (action === 'edit-template') {
         const template = state.templates.find(t => t.id === id), form = $('#templateForm');
@@ -570,6 +588,15 @@
     params.delete('daily'); state.taskId = task.id; await afterChange('已纳入项目，原日程和投入记录已关联');
   }));
   document.addEventListener('visibilitychange', () => { if (!document.hidden && !actionBusy) run(refreshExecution); });
+  globalThis.addEventListener?.('shuran-practice-change', () => run(() => afterChange()));
+  for (const [id,section] of [['projectFeasibility','feasibility'],['projectCommitment','commitment'],['projectCycles','cycles']]) {
+    $('#' + id)?.addEventListener('click', () => { if(state.projectId) globalThis.ShuranPractice?.openProject(state.projectId,section); });
+  }
+  document.addEventListener('click', event => {
+    const el=event.target.closest('[data-execution-practice]'); if(!el)return;
+    const [kind,id]=el.dataset.executionPractice.split(':'); globalThis.ShuranPractice?.openTask(kind,Number(id),el.dataset.section);
+  });
+
 
   setInterval(tick, 1000);
   refresh().then(async () => {

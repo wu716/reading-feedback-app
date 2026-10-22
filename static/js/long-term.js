@@ -404,6 +404,7 @@
         displayedReport = r;
         if (r.premium_locked) {
             renderFreeReport(r);
+            el('ltReport').insertAdjacentHTML('beforeend',globalThis.ShuranPractice?.reportHTML(r.practice)||'');
             return;
         }
         const total = Object.values(r.total_seconds).reduce((a,b) => a+b,0);
@@ -455,6 +456,7 @@
             '<section class="lt-report-section"><h2>与上一周期比较</h2>' + comparison + '</section>' +
             '<details class="lt-report-detail"><summary><span>周期内趋势</span><small>' + (['year','quarter'].includes(r.period) ? '按月' : '按日') + '</small></summary><div class="lt-table-wrap"><table class="lt-table"><thead><tr><th>日期</th><th>时间投入</th><th>注意力浪费</th><th>写作字数</th><th>消费净支出</th><th>消费核对天数</th></tr></thead><tbody>' + trend + '</tbody></table></div></details>' +
             '<section class="lt-report-section"><h2>消费记录足迹</h2><div class="lt-report-calendar">' + r.days.map(d => '<button type="button" data-day="' + d.date + '" class="' + (d.expense_confirmed ? 'is-recorded' : d.recorded ? 'is-partial' : '') + '" title="' + d.date + (d.expense_confirmed ? ' 消费已核对' : d.recorded ? '有记录，消费待核对' : '未记录') + '">' + d.date.slice(5).replace('-','/') + '</button>').join('') + '</div><p class="lt-note">深绿：消费已核对；浅褐：有记录待核对；浅灰：未记录。未来日期不计入已过天数。点击日期可补记。</p></section>';
+        el('ltReport').insertAdjacentHTML('beforeend',globalThis.ShuranPractice?.reportHTML(r.practice)||'');
     }
     function renderFreeReport(r) {
         const total = Object.values(r.total_seconds || {}).reduce((a,b) => a + b, 0);

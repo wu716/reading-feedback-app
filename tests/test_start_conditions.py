@@ -191,8 +191,8 @@ class StartConditionTests(unittest.TestCase):
             row = db.get(ProjectTask, a["id"]); row.state = "completed"; row.deleted_at = datetime.now(timezone.utc); db.commit()
         self.assertFalse(self.ready("task", b["id"])["can_start"])
         self.assertEqual(self.req("DELETE", f"/tasks/{b['id']}/dependencies/{a['id']}").status_code, 409)
-        self.assertEqual(self.req("DELETE", f"/tasks/{b['id']}/dependencies/{a['id']}?reason=条件变更").status_code, 200)
-        self.assertTrue(self.ready("task", b["id"])["can_start"])
+        self.assertEqual(self.req("DELETE", f"/tasks/{b['id']}/dependencies/{a['id']}?reason=条件变更").status_code, 409)
+        self.assertFalse(self.ready("task", b["id"])["can_start"])
 
     def test_cross_project_task_dependency_and_legacy_edges_share_cycle_validation(self):
         _, p, stage = self.project()

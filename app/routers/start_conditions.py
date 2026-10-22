@@ -127,6 +127,9 @@ def update_condition(condition_id: int, body: ConditionInput, user: User = Depen
     reason = nonblank(body.reason)
     before = condition_snapshot(row)
     fields = condition_values(db, user.id, row.owner_kind, row.owner_id, body)
+    if row.strength == "required" and (fields["strength"] != "required" or fields["check_at"] != row.check_at
+            or fields["not_before"] != row.not_before):
+        guard_condition_scope(db, user.id, row)
     if fields["target_id"] and any(c.id != row.id and (c.target_kind, c.target_id) == (fields["target_kind"], fields["target_id"])
                                     for c in active_conditions(db, user.id, row.owner_kind, row.owner_id)):
         raise HTTPException(400, "已存在该前置关系")
@@ -149,6 +152,7 @@ def remove_condition(condition_id: int, body: ReasonInput, user: User = Depends(
     if row is None or row.user_id != user.id or row.removed_at is not None:
         raise HTTPException(404, "条件不存在")
     resolve_owner(db, user.id, row.owner_kind, row.owner_id)
+    if row.strength == "required": guard_condition_scope(db, user.id, row)
     reason, before = nonblank(body.reason), condition_snapshot(row)
     row.removed_at = datetime.utcnow()
     record_event(db, user.id, row.owner_kind, row.owner_id, "condition_removed", before, condition_snapshot(row), reason, row.id)
@@ -172,16 +176,37 @@ def change_project_state(project_id: int, body: ProjectStateInput, user: User = 
         if result["reminders"] and not body.acknowledge_reminders:
             raise HTTPException(409, "请先阅读开始条件中的提醒事项并确认")
         project.started_at = project.started_at or datetime.utcnow()
+        from app.commitment_service import current_stage, commitment, commit_stage
+        stage = current_stage(db, project.id)
+        if stage and not commitment(db, user.id, stage.id): commit_stage(db, user.id, stage)
     elif body.state in ("delivered", "accepted"):
         if previous not in (("started",) if body.state == "delivered" else ("delivered",)):
             raise HTTPException(409, "请先正式开始，再交付，最后验收")
         decision = require_ready(db, user.id, "project", project.id, purpose="delivery")
         incomplete = db.query(ProjectTask).filter(ProjectTask.project_id == project.id, ProjectTask.user_id == user.id,
-            ProjectTask.deleted_at.is_(None), ProjectTask.state != "completed").count()
+            ProjectTask.deleted_at.is_(None), ProjectTask.state.notin_(["completed", "cancelled"])).count()
         if incomplete:
             raise HTTPException(409, "仍有未完成任务，不能把未完成范围记为已交付或已验收")
+        cancelled = db.query(ProjectTask).filter_by(project_id=project.id, user_id=user.id, state="cancelled").count()
+        if cancelled:
+            import json
+            from app.project_models import CommitmentAdjustment
+            revisions = db.query(CommitmentAdjustment).filter(CommitmentAdjustment.user_id == user.id,
+                CommitmentAdjustment.project_id == project.id, CommitmentAdjustment.confirmed_at.isnot(None)).all()
+            if not any(any(c["kind"] == "project_outcome" and (c.get("value") or "").strip()
+                           for c in json.loads(a.plan_json).get("changes", [])) for a in revisions):
+                raise HTTPException(409, "取消项没有变成完成。请先在当前承诺中明确调整交付结果，再核对调整后的实际交付")
     project.execution_state = body.state
     record_event(db, user.id, "project", project.id, "project_state_changed",
                  {"state": previous}, {"state": body.state, "readiness": decision}, reason)
     db.commit()
     return {"state": project.execution_state, "started_at": project.started_at}
+
+
+def guard_condition_scope(db, user_id, condition):
+    from app.commitment_service import guard_scope, current_stage, task_scope
+    kind, row = resolve_owner(db, user_id, condition.owner_kind, condition.owner_id)
+    if kind == "task": guard_scope(db, user_id, row)
+    if kind == "project":
+        stage = current_stage(db, row.id)
+        for task in task_scope(db, user_id, stage.id) if stage else []: guard_scope(db, user_id, task)
