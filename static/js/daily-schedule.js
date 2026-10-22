@@ -7,6 +7,7 @@
     let mode = 'list';
     const expandedTasks = new Set();
     const timeDrafts = new Map();
+    const splitDrafts = new Map();
     let sortReturnMode = 'list';
     let addingTask = false;
     let newTaskFamiliarity = null;
@@ -207,21 +208,20 @@
     }
 
     function renderNote(task) {
-        if (mode !== 'list' && !task.completed && !(task.note || '').trim()) return '';
         const label = escapeHtml(t('schedule.note', '执行反馈'));
-        return `<div class="flow-feedback"><label class="flow-feedback-label">${label}<input type="text" class="flow-note" maxlength="500" placeholder="${label}" value="${escapeHtml(task.note || '')}" data-act="note" aria-label="${label}"></label></div>`;
+        return `<div class="flow-feedback"><label class="flow-feedback-label">${label}<input type="text" class="flow-note" maxlength="500" placeholder="记一句实际进展（选填）" value="${escapeHtml(task.note || '')}" data-act="note" aria-label="${label}"></label></div>`;
     }
 
     function renderTaskLinks(task) {
         if ((task.children || []).length) return '';
         const date = encodeURIComponent(currentDay());
         const project = task.project_id ? `<a href="/static/projects.html?task=${task.project_task_id}#taskDetail">${escapeHtml(task.project_title || '所属项目')}</a>` : `<a href="/static/projects.html?daily=${task.id}&date=${date}">纳入项目</a>`;
-        return `<div class="flow-project-links">${project}<button type="button" data-act="conditions">开始条件与约束</button><button type="button" data-act="reminder">${task.remind_time ? '提醒 ' + escapeHtml(task.remind_time) : '设置提醒'}</button>${task.priority ? `<span>旧优先级：${escapeHtml(priorityLabel(task.priority))}</span>` : ''}</div>`;
+        return `<div class="flow-detail-group"><h3>归属与开始</h3><div class="flow-project-links">${project}<button type="button" data-act="conditions">开始条件与约束</button><button type="button" data-act="reminder">${task.remind_time ? '提醒 ' + escapeHtml(task.remind_time) : '设置提醒'}</button>${task.priority ? `<span>旧优先级：${escapeHtml(priorityLabel(task.priority))}</span>` : ''}</div></div>`;
     }
 
     function renderTaskLaunch(task) {
         const execute = task.completed || task.children?.length ? '' : task.readiness?.can_start === false ? `<span class="schedule-blocked">${escapeHtml(task.readiness.summary || '条件待核对')}</span>` : `<a class="schedule-execute-link" href="/static/projects.html?view=execution&date=${encodeURIComponent(currentDay())}&execute=daily:${task.id}">加入执行</a>`;
-        return `<div class="flow-task-launch">${execute}<button type="button" data-act="split">拆开</button><button type="button" data-act="expand" aria-expanded="${expandedTasks.has(task.id)}">更多</button>${renderDoneBtn(task)}</div>`;
+        return `<div class="flow-task-launch">${execute}<button type="button" data-act="split" aria-expanded="${splitFor === task.id}">${splitFor === task.id ? '收起拆分' : '拆开'}</button><button type="button" data-act="expand" aria-expanded="${expandedTasks.has(task.id)}" aria-controls="scheduleDetail-${task.id}">${expandedTasks.has(task.id) ? '收起更多' : '更多'}</button>${renderDoneBtn(task)}</div>`;
     }
 
     function renderMethod(task) {
@@ -281,8 +281,8 @@
     function renderSplitRow(task) {
         if (splitFor !== task.id) return '';
         return `
-            <div class="flow-split-row">
-                <input type="text" maxlength="500" placeholder="${escapeHtml(t('schedule.split.placeholder', '写下更具体的一步'))}" data-split-input>
+            <div class="flow-split-row" role="group" aria-label="拆成下一步">
+                <input type="text" maxlength="500" placeholder="${escapeHtml(t('schedule.split.placeholder', '写下更具体的一步'))}" value="${escapeHtml(splitDrafts.get(`${currentDay()}:${task.id}`) || '')}" aria-label="更具体的一步" data-split-input>
                 <button type="button" class="flow-ghost-btn" data-act="split-save">${escapeHtml(t('schedule.split.add', '加入'))}</button>
             </div>`;
     }
@@ -382,17 +382,17 @@
                 <div class="flow-task-main">
                     ${renderTitle(task)}
                 </div>
-                ${renderTaskLaunch(task)}
                 </div>
                 ${renderQuickAttributes(task)}
                 ${renderTimeFeedback(task)}
-                <div class="flow-task-detail" ${expandedTasks.has(task.id) || splitFor === task.id ? '' : 'hidden'}>
-                <div class="flow-project-links"><button type="button" data-act="practice-attributes">目标重要性</button><button type="button" data-act="practice">估时与预演</button><button type="button" data-act="feedback">完整反馈与历史</button></div>
+                ${renderTaskLaunch(task)}
+                ${renderSplitRow(task)}
+                <div class="flow-task-detail" id="scheduleDetail-${task.id}" ${expandedTasks.has(task.id) ? '' : 'hidden'}>
+                <div class="flow-detail-group"><h3>准备与回顾</h3><div class="flow-detail-actions"><button type="button" data-act="practice-attributes">目标重要性</button><button type="button" data-act="practice">估时与预演</button><button type="button" data-act="feedback">完整反馈与历史</button></div></div>
                 ${renderTaskLinks(task)}
                 ${renderMethod(task)}
                 ${renderNote(task)}
                 ${renderEditActions(false)}
-                ${renderSplitRow(task)}
                 </div>
             </article>
             ${(task.children || []).map((child) => renderTask(child, true)).join('')}
@@ -483,7 +483,6 @@
             editInput.select();
             return;
         }
-        if (mode === 'list' || mode === 'design') list.querySelector('[data-split-input]')?.focus();
     }
 
     function laterIntoLabel() {
@@ -616,17 +615,19 @@
     async function addTask(text, parentId, openDesign, attributes) {
         const value = (text || '').trim();
         if (!value) return;
+        const taskDay = currentDay();
         data = await api('/tasks', {
             method: 'POST',
             body: JSON.stringify({
                 text: value,
-                task_date: currentDay(),
+                task_date: taskDay,
                 parent_id: parentId || null,
                 familiarity: attributes?.familiarity || null,
                 priority: Number.isInteger(attributes?.priority) ? attributes.priority : 0,
                 estimated_minutes: Number.isInteger(attributes?.estimatedMinutes) ? attributes.estimatedMinutes : null,
             }),
         });
+        if (parentId) splitDrafts.delete(`${taskDay}:${parentId}`);
         splitFor = null;
         if (openDesign) {
             const tasks = flatten(data.tasks || [], []);
@@ -1192,6 +1193,7 @@
                 } else if (act === 'expand') {
                     if (expandedTasks.has(id)) expandedTasks.delete(id); else expandedTasks.add(id);
                     render();
+                    document.querySelector(`#scheduleList [data-task-id="${id}"] [data-act="expand"]`)?.focus({preventScroll:true});
                 } else if (act === 'toggle') {
                     const task = flatten(data.tasks || [], []).find((item) => item.id === id);
                     const prior = task.practice?.feedback;
@@ -1218,6 +1220,7 @@
                     splitFor = splitFor === id ? null : id;
                     editingId = null;
                     render();
+                    document.querySelector(`#scheduleList [data-task-id="${id}"] [data-split-input]`)?.focus();
                 } else if (act === 'split-save') {
                     const input = article.querySelector('[data-split-input]');
                     await addTask(input?.value, id);
@@ -1301,6 +1304,11 @@
         });
 
         list?.addEventListener('input', (e) => {
+            if (e.target.matches('[data-split-input]')) {
+                const id = e.target.closest('[data-task-id]').dataset.taskId;
+                splitDrafts.set(`${currentDay()}:${id}`, e.target.value);
+                return;
+            }
             const form = e.target.closest('[data-time-form]');
             if (!form) return;
             const id = form.closest('[data-task-id]').dataset.taskId;
