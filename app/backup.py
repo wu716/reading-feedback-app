@@ -15,6 +15,8 @@ from app.database import SessionLocal
 from app.models import (
     AuditLog,
     DailyTodo,
+    DailyTask,
+    DailySchedule,
     Idea,
     GrantEvent,
     InviteCode,
@@ -133,6 +135,9 @@ def build_backup_zip(db: Session) -> bytes:
     }
 
     for name, model in {
+        "daily_tasks.csv": DailyTask,
+        "daily_schedules.csv": DailySchedule,
+        "daily_todos_history.csv": DailyTodo,
         "payment_transactions.csv": PaymentTransaction,
         "refund_transactions.csv": RefundTransaction,
         "grant_events.csv": GrantEvent,

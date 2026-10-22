@@ -214,7 +214,7 @@
     const project = currentProject(); $('#projectOutcome').textContent = project?.outcome || '';
     $('#projectLifecycle').innerHTML = project ? `<h3>项目执行状态</h3>
       <p>${esc(({preparation:'筹备中：正式任务需先检查条件并开始项目',started:'已正式开始',delivered:'已交付，待验收',accepted:'已验收'})[project.execution_state] || '历史项目：未记录正式启动，保留原有可用性')}${project.started_at ? ` · 首次正式开始 ${dtLabel(project.started_at)}` : ''}</p>
-      <form id="projectStateForm"><label>操作 <select name="state"><option value="started">检查条件并正式开始／重新开始</option><option value="delivered">确认已经交付</option><option value="accepted">确认已经验收</option><option value="preparation">交付后重新筹备（保留历史）</option></select></label><label>判断依据或原因 <input name="reason" required maxlength="4000"></label><button type="submit">确认项目状态</button></form>` : '';
+      <details><summary>变更项目状态</summary><form id="projectStateForm"><label>操作 <select name="state"><option value="started">检查条件并正式开始／重新开始</option><option value="delivered">确认已经交付</option><option value="accepted">确认已经验收</option><option value="preparation">交付后重新筹备（保留历史）</option></select></label><label>判断依据或原因 <input name="reason" required maxlength="4000"></label><button type="submit">确认项目状态</button></form></details>` : '';
     if (project) globalThis.ShuranConditions?.mount($('#projectConditions'), 'project', project.id, () => afterChange());
     else $('#projectConditions').innerHTML = '';
     $('#stageBoard').innerHTML = project ? project.stages.map(s => {
@@ -347,9 +347,9 @@
     }).join('') : '<p class="empty">还没有实际时间片。开始计时，或事后补记。</p>';
   }
   function renderTemplates() {
-    $('#templateList').innerHTML = state.templates.length ? state.templates.map(t => `<article class="template-card"><h3>${esc(t.title)}</h3><p>${t.steps.length} 个步骤 · ${t.checklist.length} 个检查项${t.acceptance_criteria ? ` · ${esc(t.acceptance_criteria)}` : ''}</p><div class="detail-actions"><button type="button" class="secondary" data-act="edit-template" data-id="${t.id}">修改流程</button><button type="button" data-act="instantiate" data-id="${t.id}" ${state.projectId ? '' : 'disabled'}>生成可编辑任务</button></div></article>`).join('') : '<p class="empty">从空白写一个流程，或从已有任务保存。</p>';
+    $('#templateList').innerHTML = state.templates.length ? state.templates.map(t => `<article class="template-card"><h3>${esc(t.title)}</h3><p>${t.steps.length} 个步骤 · ${t.checklist.length} 个检查项</p><details class="template-content"><summary>查看步骤与完成检查</summary><ol>${t.steps.map(text=>`<li>${esc(text)}</li>`).join('')}</ol><ul>${t.checklist.map(text=>`<li>${esc(text)}</li>`).join('')}</ul>${t.common_problems ? `<p>常见难点：${esc(t.common_problems)}</p>` : ''}${t.acceptance_criteria ? `<p>验收标准：${esc(t.acceptance_criteria)}</p>` : ''}</details><button type="button" class="secondary" data-act="edit-template" data-id="${t.id}">修改流程</button><details class="template-use"><summary>使用此流程</summary><form class="template-use-form" data-template="${t.id}"><label>放到哪里 <select name="destination" required><option value="">选择日程或项目</option><option value="schedule">日程</option><option value="project">项目</option></select></label><label class="template-day-target" hidden>安排日期 <input name="task_date" type="date" value="${esc(params.get('date') || todayISO())}" disabled></label><label class="template-project-target" hidden>选择项目 <select name="project_id" disabled><option value="">请选择项目</option>${state.overview.projects.filter(p=>!['delivered','accepted'].includes(p.execution_state)).map(p=>`<option value="${p.id}">${esc(p.title)}</option>`).join('')}</select></label><label class="template-project-target" hidden>项目阶段 <select name="stage_id" disabled><option value="">先选择项目</option></select></label><button type="submit">生成任务</button></form><p>生成独立任务；流程后续修改保留已有内容和核对状态。</p></details></article>`).join('') : '<p class="empty">还没有流程。点“新建流程”写入方法，也可从项目任务保存。</p>';
   }
-  function render() { renderGoals(); renderProjects(); renderTaskDetail(); renderExecution(); renderSessions(); renderTemplates(); }
+  function render() { renderGoals(); renderProjects(); renderTaskDetail(); renderExecution(); renderSessions(); renderTemplates(); globalThis.ShuranWorkspace?.sync(); }
   function formData(form) { return Object.fromEntries(new FormData(form)); }
   function nullableNumber(value) { return value === '' || value == null ? null : Number(value); }
   function lines(value) { return String(value || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean); }
@@ -406,7 +406,20 @@
       } else if (form.id === 'templateForm') {
         const payload = {title:body.title, steps:lines(body.steps), checklist:lines(body.checklist), common_problems:body.common_problems || null, acceptance_criteria:body.acceptance_criteria || null};
         if (body.id) await put(`/templates/${body.id}`, payload); else await post('/templates', payload);
-        form.reset(); await afterChange('流程已保存');
+        form.reset(); $('#templateEditor').open = false; $('#templateEditor').hidden = true; await afterChange('流程已保存');
+      } else if (form.classList.contains('template-use-form')) {
+        if (body.destination === 'schedule') {
+          await post(`/templates/${form.dataset.template}/schedule`, {task_date:body.task_date});
+          location.href = `/static/index.html?schedule_date=${encodeURIComponent(body.task_date)}#schedule`;
+        } else if (body.destination === 'project') {
+          const projectId = Number(body.project_id);
+          if (!projectId || !body.stage_id) throw new Error('请选择项目及阶段');
+          const task = await post(`/templates/${form.dataset.template}/instantiate`, {project_id:projectId,stage_id:Number(body.stage_id)});
+          state.projectId = projectId; state.taskId = task.id;
+          await afterChange('流程已生成独立项目任务');
+          globalThis.ShuranWorkspace?.show('projects');
+          $('#taskDetail').scrollIntoView({block:'start'});
+        }
       }
     });
   });
@@ -417,7 +430,7 @@
     run(async () => {
       const id = Number(button.dataset.id), action = button.dataset.act;
       if (action === 'select-task') { state.taskId = id; state.detailMode = 'attributes'; renderTaskDetail(); $('#taskDetail').scrollIntoView({behavior:'smooth',block:'start'}); }
-      else if (action === 'queue-task') { await addQueue(`project:${state.taskId}`); location.hash = 'execution'; notice('已加入轮转，准备好后开始'); }
+      else if (action === 'queue-task') { await addQueue(`project:${state.taskId}`); globalThis.ShuranWorkspace?.show('execution'); notice('已加入轮转，准备好后开始'); }
       else if (action === 'close-detail') { state.taskId = null; renderTaskDetail(); }
       else if (action === 'detail-mode') { state.detailMode = button.dataset.mode; renderTaskDetail(); }
       else if (action === 'remove-dep') {
@@ -428,13 +441,14 @@
         const goal = state.overview.goals.find(g => g.id === id), title = window.prompt('修改目标', goal.title);
         if (title && title.trim()) { await patch(`/goals/${id}`, {title:title.trim()}); await afterChange('目标已修改；历史评价仍保留当时目标文字'); }
       }
-      else if (action === 'save-template') { await post(`/tasks/${state.taskId}/save-template`, {}); await afterChange('已从任务保存流程'); }
+      else if (action === 'save-template') { await post(`/tasks/${state.taskId}/save-template`, {}); await afterChange('已从任务保存流程'); globalThis.ShuranWorkspace?.show('templates'); }
       else if (action === 'edit-template') {
         const template = state.templates.find(t => t.id === id), form = $('#templateForm');
         form.elements.id.value = template.id; form.elements.title.value = template.title;
         form.elements.steps.value = template.steps.join('\n'); form.elements.checklist.value = template.checklist.join('\n');
         form.elements.common_problems.value = template.common_problems || '';
         form.elements.acceptance_criteria.value = template.acceptance_criteria || '';
+        $('#templateEditor').hidden = false; $('#templateEditor').open = true;
         form.scrollIntoView({behavior:'smooth',block:'center'});
       }
       else if (action === 'instantiate') {
@@ -452,6 +466,15 @@
     if (el.matches('[data-act=toggle-check]')) run(async () => { await patch(`/checklist/${el.dataset.id}?done=${el.checked}`, {}); await afterChange('检查项已更新'); });
     if (el.id === 'manualSource' || el.matches('#manualForm [name=started_at]')) run(loadMomentChoices);
     if (el.id === 'workMinutes' && !state.active) tick();
+    const useForm = el.closest?.('.template-use-form');
+    if (useForm && el.name === 'destination') {
+      useForm.querySelectorAll('.template-day-target').forEach(label => {label.hidden = el.value !== 'schedule'; const input = $('input',label); input.disabled = label.hidden; input.required = !label.hidden;});
+      useForm.querySelectorAll('.template-project-target').forEach(label => {label.hidden = el.value !== 'project'; const input = $('select',label); input.disabled = label.hidden; input.required = !label.hidden;});
+    }
+    if (useForm && el.name === 'project_id') {
+      const project = state.overview.projects.find(p=>p.id === Number(el.value));
+      useForm.elements.stage_id.innerHTML = stageOptions(project, null) || '<option value="">没有可用阶段</option>';
+    }
   });
 
   async function loadMomentChoices() {
@@ -525,7 +548,7 @@
   $('#pauseWork').addEventListener('click', () => run(() => stopCurrent('已暂停；暂停期间不计任务实耗', true)));
   $('#endWork').addEventListener('click', () => run(() => stopCurrent('片段已结束')));
   $('#switchWork').addEventListener('click', () => run(() => chooseNext('switch')));
-  $('#resetTemplate').addEventListener('click', () => $('#templateForm').reset());
+  $('#resetTemplate').addEventListener('click', () => { $('#templateForm').reset(); $('#templateEditor').open = false; $('#templateEditor').hidden = true; });
   $('#addQueueTask').addEventListener('click', () => run(() => addQueue($('#focusTask').value)));
   $('#addTodayQueue').addEventListener('click', () => run(async () => {
     const keys = new Set(state.plan.queue);

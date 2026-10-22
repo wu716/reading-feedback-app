@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-"""每日日程：安排任务和流程。"""
+"""每日日程：安排日期、任务属性与顺序。"""
 from collections import defaultdict
+import json
 from datetime import date, datetime
 from typing import List, Optional
 from zoneinfo import ZoneInfo
@@ -12,7 +13,8 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user
 from app.database import get_db
-from app.models import DailySchedule, DailyTask, FutureAction, User
+from app.models import DailySchedule, DailyTask, DailyTodo, FutureAction, User
+from app.schedule_todos import import_day_todos, sync_task_reminder
 
 router = APIRouter(prefix="/schedule", tags=["日程安排"])
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
@@ -72,6 +74,8 @@ class TaskUpdate(BaseModel):
     clear_estimate: bool = False
     clear_parallel: bool = False
     clear_note: bool = False
+    remind_time: Optional[str] = None
+    checklist_done: Optional[List[bool]] = None
 
     @field_validator("text")
     @classmethod
@@ -137,6 +141,11 @@ class TaskOut(BaseModel):
     estimated_minutes: Optional[int] = None
     parallel_group: Optional[int] = None
     children: List["TaskOut"] = Field(default_factory=list)
+    remind_time: Optional[str] = None
+    steps: List[str] = Field(default_factory=list)
+    checklist: List[dict] = Field(default_factory=list)
+    common_problems: Optional[str] = None
+    acceptance_criteria: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -277,7 +286,7 @@ def refresh_parent_completion(db: Session, user_id: int, task: DailyTask) -> Non
         parent = parent.parent
 
 
-def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id=None) -> List[TaskOut]:
+def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id=None, reminders=None) -> List[TaskOut]:
     linked, actual = linked or {}, actual or {}
     by_parent = defaultdict(list)
     for task in tasks:
@@ -303,6 +312,11 @@ def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id
             estimated_minutes=task.estimated_minutes,
             parallel_group=task.parallel_group,
             children=[node(child) for child in by_parent.get(task.id, [])],
+            remind_time=(reminders or {}).get(task.legacy_todo_id),
+            steps=json.loads(task.steps_json or "[]"),
+            checklist=json.loads(task.checklist_json or "[]"),
+            common_problems=task.common_problems,
+            acceptance_criteria=task.acceptance_criteria,
         )
 
     return [node(task) for task in by_parent.get(None, [])]
@@ -343,6 +357,7 @@ def day_payload(db: Session, user: User, day: date) -> DayScheduleOut:
     from app.start_conditions import readiness
     from app.execution_service import settle_expired
     from app.project_models import Project, ProjectTask, WorkSession
+    import_day_todos(db, user.id, day)
     settle_expired(db, user.id)
     db.commit()
     tasks = visible_tasks(db, user.id, day)
@@ -367,7 +382,9 @@ def day_payload(db: Session, user: User, day: date) -> DayScheduleOut:
     return DayScheduleOut(
         date=day,
         designed_at=schedule.designed_at if schedule else None,
-        tasks=build_tree(tasks, linked, actual, {t.id: readiness(db, user.id, "daily", t.id) for t in tasks}),
+        tasks=build_tree(tasks, linked, actual, {t.id: readiness(db, user.id, "daily", t.id) for t in tasks},
+            dict(db.query(DailyTodo.id, DailyTodo.remind_time).filter(DailyTodo.user_id == user.id,
+                 DailyTodo.id.in_([t.legacy_todo_id for t in tasks if t.legacy_todo_id])).all())),
     )
 
 
@@ -471,6 +488,24 @@ async def update_task(
         if body.parent_id in descendants:
             raise HTTPException(status_code=400, detail="不能把行动挂到自己的子行动下")
         task.parent_id = body.parent_id
+    if body.checklist_done is not None:
+        if task.project_task_id:
+            raise HTTPException(status_code=409, detail="请在项目任务中核对检查项")
+        checks = json.loads(task.checklist_json or "[]")
+        if len(checks) != len(body.checklist_done):
+            raise HTTPException(status_code=409, detail="检查项已变化，请刷新后重试")
+        task.checklist_json = json.dumps([dict(item, done=done) for item, done in zip(checks, body.checklist_done)], ensure_ascii=False)
+    if "remind_time" in body.model_fields_set:
+        from app.routers.today import normalize_remind_time
+        sync_task_reminder(db, task, remind_time=normalize_remind_time(body.remind_time))
+    else:
+        sync_task_reminder(db, task)
+    for related in visible_tasks(db, current_user.id, task.task_date):
+        sync_task_reminder(db, related)
+    if body.text is not None and task.project_task_id:
+        for related in db.query(DailyTask).filter(DailyTask.user_id == current_user.id,
+                DailyTask.project_task_id == task.project_task_id, DailyTask.deleted_at.is_(None)).all():
+            sync_task_reminder(db, related)
     db.commit()
     return day_payload(db, current_user, task.task_date)
 
@@ -481,12 +516,15 @@ async def delete_task(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    db.query(User).filter(User.id == current_user.id).with_for_update().first()
     task = get_task_or_404(db, current_user.id, task_id)
     day = task.task_date
     now = beijing_now()
     task.deleted_at = now
     for child in collect_descendants(visible_tasks(db, current_user.id, day), task.id):
         child.deleted_at = now
+        sync_task_reminder(db, child)
+    sync_task_reminder(db, task)
     db.commit()
     return day_payload(db, current_user, day)
 

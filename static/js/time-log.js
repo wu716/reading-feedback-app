@@ -467,17 +467,15 @@
             if (captureKind === 'idea' && typeof window.loadIdeas === 'function') {
                 window.loadIdeas();
             }
-            if (captureKind === 'todo' && captureTodoWhen === 'today' && typeof window.loadTodayDashboard === 'function') {
-                window.loadTodayDashboard();
-            }
-            if (captureKind === 'todo' && captureTodoWhen === 'later' && typeof window.loadDailySchedule === 'function') {
-                window.loadDailySchedule();
+            if (captureKind === 'todo' && typeof window.loadDailySchedule === 'function') {
+                await window.loadDailySchedule();
+                if (captureTodoWhen === 'today') window.reminderNotificationService?.syncNativeTodos();
             }
             if (typeof showMessage === 'function') {
                 const done = captureKind === 'idea'
                     ? t('capture.saved.idea', '已记入灵感')
                     : (captureKind === 'todo'
-                        ? (captureTodoWhen === 'later' ? t('capture.saved.later', '已记入以后想做') : t('capture.saved.todo', '已记入今日待办'))
+                        ? (captureTodoWhen === 'later' ? t('capture.saved.later', '已记入以后想做') : t('capture.saved.todo', '已记入当天日程'))
                         : t('capture.saved.moment', '已记入时刻'));
                 showMessage(done, 'success');
             }

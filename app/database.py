@@ -77,12 +77,16 @@ def ensure_schema():
         add_column("daily_tasks", "priority", "priority INTEGER DEFAULT 0")
         add_column("daily_tasks", "flow_order", "flow_order INTEGER DEFAULT 0")
         add_column("daily_tasks", "project_task_id", "project_task_id INTEGER REFERENCES project_tasks(id) ON DELETE SET NULL")
+        add_column("daily_tasks", "legacy_todo_id", "legacy_todo_id INTEGER REFERENCES daily_todos(id) ON DELETE SET NULL")
+        for column in ("steps_json", "checklist_json", "common_problems", "acceptance_criteria"):
+            add_column("daily_tasks", column, f"{column} TEXT")
         add_column("work_sessions", "planned_seconds", "planned_seconds INTEGER")
         add_column("projects", "execution_state", "execution_state VARCHAR(20)")
         add_column("projects", "started_at", "started_at TIMESTAMP")
         add_column("project_tasks", "execution_role", "execution_role VARCHAR(20) NOT NULL DEFAULT 'formal'")
         if "daily_tasks" in existing_tables:
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_daily_tasks_project_task_id ON daily_tasks (project_task_id)"))
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_daily_tasks_legacy_todo_id ON daily_tasks (legacy_todo_id)"))
         add_column("self_talk_reminder_logs", "detail", "detail TEXT")
         bool_default = "FALSE" if engine.dialect.name == "postgresql" else "0"
         add_column("self_talk_reminder_settings", "reading_reminder_enabled",

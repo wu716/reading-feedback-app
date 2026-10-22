@@ -3455,6 +3455,7 @@
     </style>
     <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261017paper1">
     <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261017paper1">
+    <link rel="stylesheet" href="/static/css/workspace.css?v=20261022workspace1">
     <link rel="stylesheet" href="/static/css/long-term.css?v=20261021download1">
 </head>
 <body>
@@ -3464,7 +3465,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261017paper1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.18';
+            window.SHURAN_VERSION = '2.0.19';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -3600,7 +3601,6 @@
             <span class="app-title" data-i18n="app.title">书然</span>
         </div>
         <nav class="paper-top-nav" aria-label="主导航">
-            <button type="button" class="nav-item active" data-section="overview" onclick="navigateTo('overview')" data-i18n="nav.today">今日</button>
             <button type="button" class="nav-item" data-section="schedule" onclick="navigateTo('schedule')" data-i18n="nav.schedule">日程</button>
             <button type="button" class="nav-item" data-section="projects" onclick="location.href='/static/projects.html'" data-i18n="nav.projects">项目</button>
             <button type="button" class="nav-item" data-section="long-term" onclick="navigateTo('long-term')" data-i18n="nav.longTerm">长期目标</button>
@@ -3638,10 +3638,6 @@
     <!-- 侧边导航栏 -->
     <aside class="app-sidebar">
         <nav class="sidebar-nav">
-            <div class="nav-item active" data-section="overview" onclick="navigateTo('overview')" title="今日" data-i18n-title="nav.today">
-                <span class="nav-icon">今</span>
-                <span class="nav-text" data-i18n="nav.today">今日</span>
-            </div>
             <div class="nav-item" data-section="schedule" onclick="navigateTo('schedule')" title="日程" data-i18n-title="nav.schedule">
                 <span class="nav-icon">程</span>
                 <span class="nav-text" data-i18n="nav.schedule">日程</span>
@@ -3667,37 +3663,7 @@
         <div id="message"></div>
         
 
-        <!-- 首页概览区 -->
-        <section id="overview" class="content-section active">
-            <div class="section-header"><h1 data-i18n="nav.today">今日</h1></div>
-            <div class="in-app-reminder-bar" id="inAppReminderBar" hidden></div>
-            <div class="homepage-dashboard">
-                <div class="dashboard-row today-calendar-row"><div class="widget-card">
-                    <h3 class="block-title">日历</h3>
-                    <div class="calendar-widget">
-                        <div class="calendar-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                            <button class="nav-btn" onclick="previousMonth()" aria-label="上个月">‹</button>
-                            <span class="month-year" id="monthYear"></span>
-                            <button class="nav-btn" onclick="nextMonth()" aria-label="下个月">›</button>
-                        </div>
-                        <div class="calendar-grid" id="calendarGrid"></div>
-                        <div class="day-todo-panel" id="dayTodoPanel" hidden>
-                            <div class="day-todo-panel-head"><h4 id="dayTodoPanelTitle">该日待办</h4><button type="button" class="day-todo-panel-close" id="dayTodoPanelClose" aria-label="关闭">×</button></div>
-                            <div id="dayTodoList" class="todos-list"></div>
-                            <div class="todo-add-row" id="dayTodoAddRow"><input type="text" id="dayTodoInput" class="todo-add-input" placeholder="为这一天添加待办…" maxlength="500"><input type="time" id="dayTodoRemindTime" class="todo-remind-input" aria-label="提醒时间"><button type="button" class="todo-add-btn" id="dayTodoAddBtn">＋ 添加</button></div>
-                            <p class="day-todo-hint" id="dayTodoHint"></p>
-                        </div>
-                    </div>
-                    <div class="today-todos"><h4 class="block-title">今日待办</h4><div id="todayTodosList" class="todos-list"></div><div class="todo-add-row"><input type="text" id="newTodoInput" class="todo-add-input" placeholder="添加今日待办…" maxlength="500"><input type="time" id="newTodoRemindTime" class="todo-remind-input" aria-label="提醒时间"><button type="button" class="todo-add-btn" onclick="addDailyTodo()">＋ 添加</button></div></div>
-                </div></div>
-                <div class="dashboard-row"><div class="widget-card"><h3 class="block-title">继续推进</h3><div class="quick-actions">
-                    <button type="button" class="quick-action-btn" onclick="location.href='/static/projects.html'"><div class="action-text">打开项目与时间片</div></button>
-                    <button type="button" class="quick-action-btn" onclick="navigateTo('capture')"><div class="action-text">打开“记”</div></button>
-                </div></div></div>
-            </div>
-        </section>
-
-        <section id="schedule" class="content-section">
+        <section id="schedule" class="content-section active">
             <div class="section-header">
                 <h1 data-i18n="schedule.title">日程安排</h1>
                 <p class="flow-hint" id="scheduleHint">添加一件事，即可安排熟悉程度和预计用时</p>
@@ -3710,21 +3676,17 @@
                             <div class="flow-date-label" id="scheduleDateLabel"></div>
                             <button type="button" id="scheduleNextDay" aria-label="后一天" data-i18n-aria-label="schedule.nextDay">›</button>
                         </div>
-                        <div>
-                            <button type="button" class="flow-ghost-btn" id="scheduleBackBtn" data-i18n="schedule.backToList" hidden>回到清单</button>
-                            <button type="button" class="flow-ghost-btn" id="scheduleSortBtn" data-i18n="schedule.adjustOrder" hidden>调整顺序</button>
-                            <button type="button" class="flow-solid-btn" id="scheduleDesignBtn" data-i18n="schedule.designToday">设计今日流程</button>
-                            <button type="button" class="flow-solid-btn" id="scheduleDoneBtn" data-i18n="schedule.makeFlow" hidden>做成当日流程</button>
-                        </div>
+                        <div class="schedule-date-actions"><label class="schedule-date-picker">选择日期 <input type="date" id="scheduleDateInput" aria-label="选择日程日期"></label><a href="/static/projects.html?view=execution" class="flow-ghost-btn">进入执行</a></div>
                     </div>
                 </div>
 
+                <nav class="schedule-modes" role="tablist" aria-label="日程操作模式"><button type="button" role="tab" data-schedule-mode="list" aria-selected="true">当天安排</button><button type="button" role="tab" data-schedule-mode="design" aria-selected="false">任务属性</button><button type="button" role="tab" data-schedule-mode="sort" aria-selected="false">调整顺序</button></nav>
                 <div class="flow-add-row" id="scheduleAddRow">
                     <div class="flow-add-main">
                         <input type="text" id="scheduleAddInput" maxlength="500" placeholder="写下要做的事" data-i18n-placeholder="schedule.add.placeholder">
                         <button type="button" class="flow-solid-btn" id="scheduleAddBtn" data-i18n="schedule.add.button">添加</button>
                     </div>
-                    <div class="flow-add-attributes">
+                    <details class="composer-options"><summary>补充熟悉度、重要性与估时</summary><div class="flow-add-attributes">
                         <div class="flow-attribute-group">
                             <span class="flow-attribute-label" data-i18n="schedule.familiarityLabel">熟悉度</span>
                             <div class="flow-attribute-options">
@@ -3744,7 +3706,7 @@
                             <span class="flow-attribute-label" data-i18n="schedule.estimatedDuration">预计用时</span>
                             <input type="text" id="scheduleAddDuration" class="flow-minutes" maxlength="20" placeholder="如 1小时30分" data-i18n-placeholder="schedule.durationPlaceholder" aria-label="预计用时">
                         </label>
-                    </div>
+                    </div></details>
                 </div>
                 <div id="scheduleList" class="home-schedule-list"></div>
             </div>
@@ -3819,12 +3781,12 @@
                 </div>
 
                 <div class="me-group me-phone-only">
-                    <button type="button" class="me-row" onclick="navigateTo('overview')">
+                    <button type="button" class="me-row" onclick="navigateTo('schedule')">
                         <span class="me-row-icon" aria-hidden="true">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
                         </span>
                         <span class="me-row-main">
-                            <span class="me-row-title" data-i18n="me.quick.today.title">今日</span>
+                            <span class="me-row-title" data-i18n="nav.schedule">日程</span>
                             <span class="me-row-desc" data-i18n="me.quick.today.desc">日历与待办</span>
                         </span>
                         <span class="me-chevron">›</span>
@@ -4331,26 +4293,26 @@
                 <p>坐下工作时用电脑：看项目、排日程、记录时间片。出门用手机：看日程、点「记」。账号是同一个。</p>
             </div>
             <div class="guide-card">
-                <h3>1. 今日</h3>
+                <h3>1. 日程</h3>
                 <ol>
-                    <li>打开先看日历和待办，再进入项目推进任务。</li>
-                    <li>点日历上的某一天，可以为那天添加待办。添加时可选提醒时间，到点后会收到系统通知。</li>
+                    <li>打开先进入当天日程；安排任务、设置属性和调整顺序分别操作。</li>
+                    <li>选择日期安排事项，可设置提醒；进入独立「执行」工作区开始计时，在「投入记录」中补记或更正。</li>
                 </ol>
             </div>
             <div class="guide-card">
-                <h3>2. 日程</h3>
+                <h3>2. 执行</h3>
                 <ol>
-                    <li>在日程中写下今天要处理的具体任务，再排成流程。</li>
-                    <li>直接写下即可。写错了点「修改」；较大的事项可以在项目中拆分。</li>
-                    <li>还没规划、但自己想做的，写在「记 → 以后想做」。不进今天、不提醒；准备好了再安排。</li>
+                    <li>在日程点「加入执行」，或在执行工作区选择任务，准备好后开始计时。</li>
+                    <li>「进行中」显示当前任务、时间片与本轮顺序。按暂停或结束时保存实际投入。</li>
+                    <li>事后补记和时间更正统一在「投入记录」，继续关联原任务。</li>
                 </ol>
             </div>
             <div class="guide-card">
                 <h3>3. 项目</h3>
-                <p>在项目里按阶段拆解任务，设置前置关系，并记录实际投入。</p>
+                <p>在项目里按阶段拆解任务、设置前置关系。任务安排到日程后继续关联原项目；计时与补记统一在「执行」。</p>
             </div>
             <div class="guide-card">
-                <h3>4. moment 与 idea</h3>
+                <h3>4. 流程库</h3><p>独立保存可复用的步骤、检查项和验收标准。使用时选择日程日期或项目阶段，已有任务的内容与勾选状态不随后续模板修改而改变。</p></div><div class="guide-card"><h3>5. moment 与 idea</h3>
                 <ol>
                     <li>手机点底栏「记」，或三击音量加，先写下。电脑 Windows 应用按 Ctrl+Shift+K（全局），或窗口内 Ctrl+K / 点右下角「记」。去处可选 moment、idea 或 todo；全体默认 moment，可在「我的 → 快捷记下」改。</li>
                     <li>todo 再选 today 或 later。idea 在「我的 → idea」。</li>
@@ -4358,7 +4320,7 @@
                 </ol>
             </div>
             <div class="guide-card">
-                <h3>5. 我的</h3>
+                <h3>6. 我的</h3>
                 <p>改昵称、开关提醒、打开「快捷记下」。这份说明随时可以再打开。</p>
             </div>
         </section>
@@ -4518,7 +4480,7 @@
     </div>
 
 
-    <script src="/static/js/i18n.js?v=20261022record1"></script>
+    <script src="/static/js/i18n.js?v=20261022workspace1"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -4539,7 +4501,7 @@
 
         function currentSectionId() {
             const active = document.querySelector('.content-section.active');
-            return active ? active.id : 'overview';
+            return active ? active.id : 'schedule';
         }
 
         function closeMobileSidebar() {
@@ -4558,7 +4520,7 @@
             if (overlay) overlay.classList.toggle('visible', open);
         }
 
-        const PRIMARY_TABS_DESKTOP = new Set(['overview', 'schedule', 'capture', 'long-term', 'user-center']);
+        const PRIMARY_TABS_DESKTOP = new Set(['schedule', 'capture', 'long-term', 'user-center']);
         const PRIMARY_TABS_PHONE = new Set(['schedule', 'capture', 'long-term', 'user-center']);
         const SECTION_PARENT_SHARED = { guide: 'user-center', owner: 'user-center', 'time-log': 'capture', ideas: 'capture' };
 
@@ -4579,7 +4541,7 @@
         }
 
         function defaultSection() {
-            return isMobileNav() ? 'schedule' : 'overview';
+            return 'schedule';
         }
 
         function updateHeaderBackButton() {
@@ -4622,6 +4584,7 @@
         };
 
         function navigateTo(sectionId) {
+            if (sectionId === 'overview') sectionId = 'schedule';
             if (!document.getElementById(sectionId)) sectionId = defaultSection();
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
@@ -4663,6 +4626,7 @@
             closeMobileSidebar();
             updateHeaderBackButton();
             if (typeof syncAppTabbar === 'function') syncAppTabbar();
+            window.ShuranWorkspace?.sync();
             window.scrollTo(0, 0);
         }
         
@@ -4691,7 +4655,7 @@
                 navigateTo(defaultSection());
             }
             
-            initializeCalendar();
+
             updateHeaderBackButton();
             initPasswordToggles();
             if (window.shuranI18n) window.shuranI18n.apply();
@@ -6831,15 +6795,15 @@
     <!-- 待办提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
     <script src="/static/reminder_notification.js?v=20261022record1"></script>
-    <script src="/static/js/app-tabbar.js?v=20261018momenttask1"></script>
-    <script src="/static/js/today-dashboard.js?v=20261017paper1"></script>
-    <link rel="stylesheet" href="/static/css/start-conditions.css?v=20261022conditions1">
-    <script src="/static/js/start-conditions.js?v=20261022conditions1"></script>
-    <script src="/static/js/daily-schedule.js?v=20261022conditions1"></script>
-    <script src="/static/js/time-log.js?v=20261018momenttask1"></script>
+    <script src="/static/js/app-tabbar.js?v=20261022workspace1"></script>
+    <script src="/static/js/workspace-shell.js?v=20261022workspace1"></script>
+    <link rel="stylesheet" href="/static/css/start-conditions.css?v=20261022workspace1">
+    <script src="/static/js/start-conditions.js?v=20261022workspace1"></script>
+    <script src="/static/js/daily-schedule.js?v=20261022workspace1"></script>
+    <script src="/static/js/time-log.js?v=20261022workspace1"></script>
     <script src="/static/js/long-term.js?v=20261022record1"></script>
     <script src="/static/js/activity-review.js?v=20261017paper1"></script>
     <script src="/static/js/ideas.js?v=20261018momenttask1"></script>
-    <script src="/static/js/desktop-shell.js?v=20261017paper1"></script>
+    <script src="/static/js/desktop-shell.js?v=20261022workspace1"></script>
 </body>
 </html>

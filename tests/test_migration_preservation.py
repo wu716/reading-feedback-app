@@ -60,6 +60,7 @@ class AdditiveMigrationTests(TestCase):
             database.ensure_schema()
         with engine.connect() as conn:
             self.assertEqual(conn.execute(text("SELECT text,project_task_id FROM daily_tasks WHERE id=9")).one(), ("原日程", None))
+            self.assertEqual(conn.execute(text("SELECT legacy_todo_id,steps_json,checklist_json,acceptance_criteria FROM daily_tasks WHERE id=9")).one(), (None, None, None, None))
             self.assertEqual(conn.execute(text("SELECT content FROM reading_entries WHERE id=8")).scalar(), "旧阅读")
             self.assertEqual(conn.execute(text("SELECT text FROM daily_todos WHERE id=7")).scalar(), "原待办")
         self.assertTrue(new_tables.issubset(set(inspect(engine).get_table_names())))

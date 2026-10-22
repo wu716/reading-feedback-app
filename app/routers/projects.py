@@ -14,6 +14,7 @@ from app.auth import get_current_active_user
 from app.database import get_db
 from app.execution_service import budget_seconds, execution_plan, settle_expired
 from app.models import DailyTask, TimeLogNode, User
+from app.schedule_todos import sync_task_reminder
 from app.project_models import (
     Goal, ProcessTemplate, Project, ProjectStage, ProjectTask, TaskChecklistItem,
     TaskDependency, TimeActivityAssessment, WorkSession,
@@ -279,6 +280,8 @@ def update_task(task_id: int, body: TaskUpdate, user: User = Depends(get_current
     if "title" in changes:
         db.query(DailyTask).filter(DailyTask.user_id == user.id, DailyTask.project_task_id == row.id,
                                    DailyTask.deleted_at.is_(None)).update({"text": row.title})
+        for daily in db.query(DailyTask).filter(DailyTask.user_id == user.id, DailyTask.project_task_id == row.id).all():
+            sync_task_reminder(db, daily)
     db.commit()
     return task_payload(db, row)
 
@@ -364,6 +367,11 @@ def finish_task(task_id: int, body: CompletionInput, user: User = Depends(get_cu
     for daily in linked:
         daily.completed = body.result == "completed"
         refresh_parent_completion(db, user.id, daily)
+        sync_task_reminder(db, daily)
+    for day in {daily.task_date for daily in linked}:
+        for daily in db.query(DailyTask).filter(DailyTask.user_id == user.id,
+                DailyTask.task_date == day, DailyTask.legacy_todo_id.isnot(None), DailyTask.deleted_at.is_(None)).all():
+            sync_task_reminder(db, daily)
     if body.result == "completed":
         for active in db.query(WorkSession).filter(WorkSession.user_id == user.id,
                 WorkSession.project_task_id == row.id, WorkSession.kind == "work", WorkSession.ended_at.is_(None)).all():
@@ -527,8 +535,11 @@ def promote_daily(daily_id: int, body: DailyProjectInput, user: User = Depends(g
     task = ProjectTask(user_id=user.id, project_id=project.id, stage_id=stage.id if stage else None,
                        title=daily.text, estimated_minutes=daily.estimated_minutes,
                        original_estimate_minutes=daily.estimated_minutes, familiarity=daily.familiarity,
-                       state="completed" if daily.completed else "pending")
+                       state="completed" if daily.completed else "pending", steps_json=daily.steps_json or "[]",
+                       blocker_note=daily.common_problems, acceptance_criteria=daily.acceptance_criteria)
     db.add(task); db.flush()
+    for position, item in enumerate(json.loads(daily.checklist_json or "[]")):
+        db.add(TaskChecklistItem(user_id=user.id, task_id=task.id, text=item["text"], position=position, done=item["done"]))
     daily.project_task_id = task.id
     db.flush()
     validate_dependency_graph(db, user.id)
@@ -551,6 +562,28 @@ class InstantiateInput(BaseModel):
     project_id: int
     stage_id: int | None = None
     title: str | None = Field(default=None, min_length=1, max_length=500)
+
+
+class ScheduleTemplateInput(BaseModel):
+    task_date: date
+
+
+@router.post("/templates/{template_id}/schedule")
+def schedule_template(template_id: int, body: ScheduleTemplateInput,
+                      user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    from app.routers.schedule import next_sort_order, next_flow_order, get_or_create_schedule
+    db.query(User).filter(User.id == user.id).with_for_update().first()
+    template = owned(db, ProcessTemplate, template_id, user.id)
+    get_or_create_schedule(db, user.id, body.task_date)
+    task = DailyTask(user_id=user.id, task_date=body.task_date, text=template.title,
+        sort_order=next_sort_order(db, user.id, body.task_date, None),
+        flow_order=next_flow_order(db, user.id, body.task_date), steps_json=template.steps_json,
+        checklist_json=json.dumps([{"text":text,"done":False} for text in json.loads(template.checklist_json or "[]")], ensure_ascii=False),
+        common_problems=template.common_problems, acceptance_criteria=template.acceptance_criteria)
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return {"id": task.id, "task_date": task.task_date}
 
 
 def validate_session_links(db: Session, user_id: int, task_id: int | None, daily_id: int | None, node_id: int | None = None):

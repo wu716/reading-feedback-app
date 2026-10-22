@@ -445,7 +445,7 @@ class DailyTodo(Base):
 
 
 class DailyTask(Base):
-    """每日行动：清单底稿，也可进入流程设计。"""
+    """每日日程任务；项目和旧待办通过明确ID关联。"""
     __tablename__ = "daily_tasks"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -463,6 +463,11 @@ class DailyTask(Base):
     parallel_group = Column(Integer, nullable=True)
     action_id = Column(Integer, ForeignKey("actions.id", ondelete="SET NULL"), nullable=True, index=True)
     project_task_id = Column(Integer, ForeignKey("project_tasks.id", ondelete="SET NULL"), nullable=True, index=True)
+    legacy_todo_id = Column(Integer, ForeignKey("daily_todos.id", ondelete="SET NULL"), nullable=True, unique=True)
+    steps_json = Column(Text, nullable=True)
+    checklist_json = Column(Text, nullable=True)
+    common_problems = Column(Text, nullable=True)
+    acceptance_criteria = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
@@ -472,7 +477,7 @@ class DailyTask(Base):
 
 
 class DailySchedule(Base):
-    """某日是否已走出当日流程。"""
+    """当日安排元数据，保留旧designed_at兼容字段。"""
     __tablename__ = "daily_schedules"
     __table_args__ = (
         UniqueConstraint("user_id", "schedule_date", name="uq_daily_schedule_user_date"),

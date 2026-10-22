@@ -7,18 +7,21 @@
   <link rel="stylesheet" href="/static/css/projects.css?v=20261021stageentry1">
   <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20261020slice1">
   <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261020slice1">
-  <link rel="stylesheet" href="/static/css/start-conditions.css?v=20261022conditions1">
-  <script defer src="/static/js/start-conditions.js?v=20261022conditions1"></script>
-  <script defer src="/static/js/projects.js?v=20261022conditions1"></script>
-  <script defer src="/static/js/app-tabbar.js?v=20261018momenttask1"></script>
+  <link rel="stylesheet" href="/static/css/start-conditions.css?v=20261022workspace1">
+  <link rel="stylesheet" href="/static/css/workspace.css?v=20261022workspace1">
+  <script defer src="/static/js/workspace-shell.js?v=20261022workspace1"></script>
+  <script defer src="/static/js/start-conditions.js?v=20261022workspace1"></script>
+  <script defer src="/static/js/projects.js?v=20261022workspace1"></script>
+  <script defer src="/static/js/app-tabbar.js?v=20261022workspace1"></script>
 </head>
 <body>
   <header class="app-head">
     <a class="brand" href="/static/index.html#schedule"><span class="brand-mark" aria-hidden="true">书</span>书然</a>
     <nav aria-label="主要页面">
-      <a href="/static/index.html#overview">今日</a>
+      <a href="/static/projects.html?view=execution">执行</a>
       <a href="/static/index.html#schedule">日程</a>
       <a class="active" href="/static/projects.html">项目</a>
+      <a href="/static/projects.html?view=templates">流程库</a>
       <a href="/static/index.html#long-term">长期目标</a>
       <a href="/static/index.html#capture">记</a>
       <a href="/static/index.html#user-center">我的</a>
@@ -26,14 +29,9 @@
   </header>
 
   <main class="project-page">
-    <nav class="workspace-nav" aria-label="项目工作区"><a href="#execution">时间片执行</a><a href="#projectTitle">项目与阶段</a><a href="/static/index.html#schedule">返回日程</a></nav>
-    <div id="dailyProjectLink" class="time-decision" hidden><p>将日程任务纳入上方选中的项目，保留原日程和已记录的投入。</p><button type="button" id="confirmDailyProject">纳入当前项目</button></div>
-    <div class="page-intro">
-      <div class="intro-copy">
-        <p class="eyebrow">02 / 项目</p>
-        <h1>项目有方向，<span class="intro-next"><em>下一步</em>看得见。</span></h1>
-        <p>把结果、阶段和现在能做的事放在同一个视野里。</p>
-      </div>
+    <header class="workspace-page-header"><div><h1 id="workspaceTitle">项目</h1><p id="workspaceSubtitle">围绕交付结果，拆分阶段与任务</p></div></header>
+    <section data-workspace-view="projects">
+    <div id="dailyProjectLink" class="time-decision" hidden><p>将日程任务纳入下方选中的项目，保留原日程和已记录的投入。</p><button type="button" id="confirmDailyProject">纳入当前项目</button></div>
       <details class="create-project" id="newProject">
         <summary>＋ 新建项目</summary>
         <form id="projectForm" class="project-form">
@@ -43,12 +41,12 @@
           <button type="submit">保存项目</button>
         </form>
       </details>
-    </div>
+    </section>
 
-    <section class="surface execution-workspace" id="execution" aria-labelledby="executionTitle">
-      <div class="section-head"><div><span class="section-number">04</span><h2 id="executionTitle">时间片</h2></div><p>到点挂起，任务未完成也可以轮转</p></div>
+    <section class="surface execution-workspace" id="execution" data-workspace-view="execution" hidden aria-label="执行工作区">
+      <nav class="workspace-tabs" role="tablist" aria-label="执行模式"><button type="button" role="tab" data-execution-tab="focus" aria-selected="true">进行中</button><button type="button" role="tab" data-execution-tab="records" aria-selected="false">投入记录</button></nav>
       <div class="execution-grid">
-        <div class="focus-panel">
+        <div class="focus-panel" data-execution-panel="focus">
           <h3 id="activeTaskTitle">先把要做的事加入轮转</h3>
           <a id="activeProjectLink" hidden>查看所属项目</a>
           <p id="activeConditionWarning" class="active-condition-warning" hidden></p>
@@ -68,8 +66,8 @@
           <div id="timeDecision" class="time-decision" hidden><p id="decisionCaption">这一片已结束，未完成的任务保留在轮转中。</p><button type="button" data-next="break">休息 5 分钟</button><button type="button" data-next="switch">做下一项</button><button type="button" data-next="continue" class="secondary">再做当前任务一片</button></div>
           <div class="rotation-panel"><h3>本轮任务</h3><p>按顺序轮转；完成或等待前置的任务会跳过。</p><ol id="rotationQueue"></ol><div class="queue-add"><label>加入任务 <select id="focusTask"></select></label><button type="button" id="addQueueTask" class="secondary">加入轮转</button><button type="button" id="addTodayQueue" class="secondary">加入当天可做任务</button></div></div>
         </div>
-        <div class="reflection-panel">
-          <h3>事后补记</h3><p>只记录实际工作或休息的区间。重叠时会提示更正。</p>
+        <div data-execution-panel="records" hidden>
+        <details class="record-editor"><summary>补记实际投入</summary><div class="reflection-panel"><p>填写实际发生的工作区间，记录继续关联原任务。</p>
           <form id="manualForm">
             <label>任务 <select name="task_ref" id="manualTask"></select></label>
             <label>开始 <input type="datetime-local" name="started_at" required></label>
@@ -79,47 +77,43 @@
             <label>当时情况说明（条件未满足时仍可补记真实工作） <textarea name="correction_note" rows="2" maxlength="2000"></textarea></label>
             <button type="submit">保存实际投入</button>
           </form>
+        </div></details>
+        <div id="sessionList" class="session-list" aria-live="polite"></div>
         </div>
       </div>
     </section>
 
-    <section class="surface project-overview" aria-labelledby="projectTitle">
+    <section class="surface project-overview" data-workspace-view="projects" aria-labelledby="projectTitle">
       <div class="section-head"><div><span class="section-number">01</span><h2 id="projectTitle">当前项目</h2></div><p>每个项目围绕一个可交付结果</p></div>
       <div class="project-columns">
         <div class="project-work">
           <div class="project-select-row"><label>正在推进 <select id="projectSelect" aria-label="选择项目"></select></label><span id="projectOutcome"></span></div>
           <div id="projectLifecycle" class="project-lifecycle"></div>
           <details><summary>项目的开始条件与约束</summary><div id="projectConditions" class="condition-workspace"></div></details>
+          <nav class="workspace-tabs" role="tablist" aria-label="项目阶段"><button type="button" role="tab" data-stage-view="current" aria-selected="true">当前阶段</button><button type="button" role="tab" data-stage-view="next" aria-selected="false">下一阶段</button><button type="button" role="tab" data-stage-view="closed" aria-selected="false">已结束阶段</button></nav>
           <div id="stageBoard" class="stage-board" aria-live="polite"></div>
         </div>
-        <aside class="project-context" aria-label="目标与项目说明">
-          <div class="context-note"><h3>你的目标</h3><div id="goalList" class="chip-list" aria-live="polite"></div></div>
-          <div class="context-note"><h3>项目视图</h3><p>当前阶段先做已经决定的事；后续想法可以放进下一阶段。</p></div>
-        </aside>
+
       </div>
     </section>
 
-    <section class="surface" aria-labelledby="goalTitle">
+    <details class="surface workspace-goals" data-workspace-view="projects"><summary>关联目标与近期目标</summary>
+      <div id="goalList" class="chip-list" aria-live="polite"></div>
       <div class="section-head"><div><span class="section-number">02</span><h2 id="goalTitle">目标</h2></div><p>从一周开始也可以</p></div>
       <form id="goalForm" class="inline-form">
         <label>想达成什么结果 <input name="title" maxlength="200" required placeholder="例如：这周完成论文第一版"></label>
         <label>计划到 <input name="horizon_end" type="date"></label>
         <button type="submit">保存目标</button>
       </form>
-    </section>
+    </details>
 
-    <section class="surface" aria-labelledby="taskTitle">
-      <div class="section-head"><div><span class="section-number">03</span><h2 id="taskTitle">任务详情</h2></div><p>在上方阶段中添加任务，点选任务后在这里补充和核对</p></div>
+    <section class="surface" data-workspace-view="projects" aria-label="选中任务详情">
       <div id="taskDetail" class="task-detail" hidden></div>
     </section>
 
-    <section class="surface" aria-labelledby="reviewTitle">
-      <div class="section-head"><div><span class="section-number">05</span><h2 id="reviewTitle">片段与更正</h2></div><p>重要性评价在「记 → 时间日志」</p></div>
-      <div id="sessionList" class="session-list" aria-live="polite"></div>
-    </section>
-
-    <section class="surface" aria-labelledby="templateTitle">
-      <div class="section-head"><div><span class="section-number">06</span><h2 id="templateTitle">流程库</h2></div><p>可从空白建立，也可从任务保存</p></div>
+    <section class="surface" data-workspace-view="templates" hidden aria-label="流程库">
+      <button type="button" data-new-template>新建流程</button>
+      <details id="templateEditor" class="template-editor" hidden><summary>编辑流程</summary>
       <form id="templateForm" class="template-form">
         <input name="id" type="hidden">
         <label>流程名称 <input name="title" maxlength="200" required placeholder="例如：提交一份文稿"></label>
@@ -127,8 +121,9 @@
         <label>检查项（每行一项） <textarea name="checklist" rows="3" placeholder="提交前检查…"></textarea></label>
         <label>常见难点 <textarea name="common_problems" rows="2"></textarea></label>
         <label>验收标准 <textarea name="acceptance_criteria" rows="2"></textarea></label>
-        <div class="form-actions"><button type="submit">保存流程</button><button type="button" id="resetTemplate" class="secondary">清空表单</button></div>
+        <div class="form-actions"><button type="submit">保存流程</button><button type="button" id="resetTemplate" class="secondary">取消</button></div>
       </form>
+      </details>
       <div id="templateList" class="template-list" aria-live="polite"></div>
     </section>
   </main>

@@ -1,10 +1,11 @@
 /**
- * 日程安排：添加行动后在同一页完成可选的流程设计。
+ * 日程安排：清单、任务属性和顺序各有独立模式。
  */
 (function () {
     let day = null;
     let data = { date: null, designed_at: null, tasks: [] };
     let mode = 'list';
+    const expandedTasks = new Set();
     let sortReturnMode = 'flow';
     let newTaskFamiliarity = null;
     let newTaskPriority = 0;
@@ -209,20 +210,33 @@
     function renderNote(task) {
         if (mode !== 'list' && !task.completed && !(task.note || '').trim()) return '';
         const label = escapeHtml(t('schedule.note', '执行反馈'));
-        return `<div class="flow-feedback"><span class="flow-feedback-label">${label}</span><input type="text" class="flow-note" maxlength="500" placeholder="${label}" value="${escapeHtml(task.note || '')}" data-act="note" aria-label="${label}"></div>`;
+        return `<div class="flow-feedback"><label class="flow-feedback-label">${label}<input type="text" class="flow-note" maxlength="500" placeholder="${label}" value="${escapeHtml(task.note || '')}" data-act="note" aria-label="${label}"></label></div>`;
     }
 
     function renderTaskLinks(task) {
         if ((task.children || []).length) return '';
         const date = encodeURIComponent(currentDay());
-        const project = task.project_id ? `<a href="/static/projects.html?task=${task.project_task_id}#taskDetail">${escapeHtml(task.project_title || '所属项目')}</a>` : `<a href="/static/projects.html?daily=${task.id}">纳入项目</a>`;
-        const execute = task.completed ? '' : `<a href="/static/projects.html?date=${date}&execute=daily:${task.id}#execution">加入时间片</a>`;
-        return `<div class="flow-project-links">${project}<span>已投入 ${task.actual_minutes || 0} 分</span>${execute}<button type="button" data-act="conditions">开始条件与约束</button><span>${escapeHtml(task.readiness?.summary || '未配置启动条件')}</span></div>`;
+        const project = task.project_id ? `<a href="/static/projects.html?task=${task.project_task_id}#taskDetail">${escapeHtml(task.project_title || '所属项目')}</a>` : `<a href="/static/projects.html?daily=${task.id}&date=${date}">纳入项目</a>`;
+        return `<div class="flow-project-links">${project}<button type="button" data-act="conditions">开始条件与约束</button><button type="button" data-act="reminder">${task.remind_time ? '修改提醒' : '设置提醒'}</button></div>`;
+    }
+
+    function renderTaskLaunch(task) {
+        const execute = task.completed || task.children?.length ? '' : task.readiness?.can_start === false ? `<span class="schedule-blocked">${escapeHtml(task.readiness.summary || '条件待核对')}</span>` : `<a class="schedule-execute-link" href="/static/projects.html?view=execution&date=${encodeURIComponent(currentDay())}&execute=daily:${task.id}">加入执行</a>`;
+        return `<div class="flow-task-launch">${execute}<button type="button" data-act="expand" aria-expanded="${expandedTasks.has(task.id)}">详情</button></div>`;
+    }
+
+    function renderMethod(task) {
+        if (task.project_task_id) return ''; // The linked project owns its steps and checks.
+        if (!(task.steps?.length || task.checklist?.length || task.acceptance_criteria || task.common_problems)) return '';
+        return `<details class="flow-method"><summary>步骤与完成检查</summary>${task.steps?.length ? `<ol>${task.steps.map(text=>`<li>${escapeHtml(text)}</li>`).join('')}</ol>` : ''}${(task.checklist || []).map((item,index)=>`<label><input type="checkbox" data-act="method-check" data-check-index="${index}" ${item.done ? 'checked' : ''}>${escapeHtml(item.text)}</label>`).join('')}${task.common_problems ? `<p>常见难点：${escapeHtml(task.common_problems)}</p>` : ''}${task.acceptance_criteria ? `<p>验收标准：${escapeHtml(task.acceptance_criteria)}</p>` : ''}</details>`;
     }
 
     function renderToolbar() {
         const label = document.getElementById('scheduleDateLabel');
         if (label) label.textContent = dayLabel(currentDay());
+        const dateInput = document.getElementById('scheduleDateInput');
+        if (dateInput) dateInput.value = currentDay();
+        document.querySelectorAll('[data-schedule-mode]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.scheduleMode === mode)));
         const doneBtn = document.getElementById('scheduleDoneBtn');
         const designBtn = document.getElementById('scheduleDesignBtn');
         const backBtn = document.getElementById('scheduleBackBtn');
@@ -268,7 +282,7 @@
         if (editingId === task.id) {
             return `<input type="text" class="flow-task-text-input" maxlength="500" value="${escapeHtml(task.text)}" data-act="text" aria-label="${escapeHtml(t('schedule.editStepAria', '修改这一步'))}">`;
         }
-        return `<div class="flow-task-text" data-act="edit" title="${escapeHtml(t('schedule.editTitle', '点此修改'))}">${escapeHtml(task.text)}</div>`;
+        return `<button type="button" class="flow-task-text" data-act="edit" aria-label="编辑任务：${escapeHtml(task.text)}">${escapeHtml(task.text)}</button>`;
     }
 
     function renderDeleteBtn() {
@@ -321,15 +335,21 @@
     function renderTask(task, isChild) {
         return `
             <article class="flow-task${isChild ? ' is-child' : ''}${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
+                <div class="flow-task-summary">
                 <div class="flow-task-main">
                     ${renderDoneBtn(task)}
                     ${renderTitle(task)}
                 </div>
-                ${renderQuickAttributes(task)}
+                <div class="flow-task-meta">${escapeHtml([task.project_title || (isChild ? '子任务' : '普通日程'),familiarityLabel(task.familiarity),task.estimated_minutes == null ? '' : '预计 ' + minutesLabel(task.estimated_minutes),task.priority ? priorityLabel(task.priority) : '',`已投入 ${task.actual_minutes || 0} 分`,task.remind_time ? '提醒 ' + task.remind_time : ''].filter(Boolean).join(' · '))}</div>
+                ${renderTaskLaunch(task)}
+                </div>
+                <div class="flow-task-detail" ${expandedTasks.has(task.id) || splitFor === task.id ? '' : 'hidden'}>
                 ${renderTaskLinks(task)}
+                ${renderMethod(task)}
                 ${renderNote(task)}
                 ${renderEditActions(true)}
                 ${renderSplitRow(task)}
+                </div>
             </article>
             ${(task.children || []).map((child) => renderTask(child, true)).join('')}
         `;
@@ -438,6 +458,7 @@
                 ${path}
                 ${extra.length ? `<div class="flow-task-meta">${extra.map((x) => `<span class="flow-mark">${escapeHtml(x)}</span>`).join('')}</div>` : ''}
                 ${renderTaskLinks(task)}
+                ${renderMethod(task)}
                 ${renderNote(task)}
                 ${renderEditActions(false)}
                 ${task.children && task.children.length ? renderFlowGroups(task.children) : ''}
@@ -545,8 +566,8 @@
         let projectEntry = document.getElementById('scheduleProjectEntry');
         if (!projectEntry) {
             projectEntry = document.createElement('a'); projectEntry.id = 'scheduleProjectEntry';
-            projectEntry.className = 'schedule-project-entry'; projectEntry.textContent = '从项目安排任务';
-            list.before(projectEntry);
+            projectEntry.className = 'schedule-project-entry'; projectEntry.textContent = '从项目安排';
+            document.querySelector('.schedule-date-actions').appendChild(projectEntry);
         }
         projectEntry.href = `/static/projects.html?date=${encodeURIComponent(currentDay())}#projectTitle`;
         setHint();
@@ -685,6 +706,7 @@
             body: JSON.stringify(body),
         });
         render();
+        if ('remind_time' in body || body.completed != null) window.reminderNotificationService?.syncNativeTodos();
         if (body.completed != null && typeof window.loadHabitFocus === 'function') {
             window.loadHabitFocus();
         }
@@ -986,6 +1008,13 @@
         day = /^\d{4}-\d{2}-\d{2}$/.test(requestedDay || '') ? requestedDay : todayISO();
         const list = document.getElementById('scheduleList');
         bindDragSorting(list);
+        document.querySelectorAll('[data-schedule-mode]').forEach(button => button.addEventListener('click', () => {
+            mode = button.dataset.scheduleMode;
+            editingId = null; splitFor = null; render();
+        }));
+        document.getElementById('scheduleDateInput')?.addEventListener('change', e => {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) load(e.target.value).catch(err => showMessage(err.message,'error'));
+        });
 
         document.getElementById('schedulePrevDay')?.addEventListener('click', () => {
             load(shiftDay(currentDay(), -1));
@@ -1178,11 +1207,10 @@
             if (act === 'note' || act === 'text' || act === 'minutes') return;
             try {
                 if (act === 'edit') {
-                    if (mode === 'list') {
-                        openDesign(id);
-                    } else {
-                        await beginEdit(id);
-                    }
+                    await beginEdit(id);
+                } else if (act === 'expand') {
+                    if (expandedTasks.has(id)) expandedTasks.delete(id); else expandedTasks.add(id);
+                    render();
                 } else if (act === 'toggle') {
                     const task = flatten(data.tasks || [], []).find((item) => item.id === id);
                     await patchTask(id, { completed: !(task && task.completed) });
@@ -1213,6 +1241,10 @@
                     await toggleParallel(id);
                 } else if (act === 'conditions') {
                     globalThis.ShuranConditions?.open('daily', id, load);
+                } else if (act === 'reminder') {
+                    const task = flatten(data.tasks || [], []).find(item => item.id === id);
+                    const value = await window.TimePicker.pick({value:task.remind_time || '09:00', title:'提醒时间', optional:true});
+                    if (value !== undefined) await patchTask(id, {remind_time:value || null});
                 } else if (act === 'priority') {
                     await patchTask(id, { priority: parseInt(actEl.dataset.value, 10) });
                 } else if (act === 'top') {
@@ -1277,6 +1309,13 @@
             if (!article) return;
             const id = parseInt(article.dataset.taskId, 10);
             try {
+                if (e.target.dataset.act === 'method-check') {
+                    const task = flatten(data.tasks || [], []).find(item => item.id === id);
+                    const checks = task.checklist.map((item,index) => index === Number(e.target.dataset.checkIndex) ? e.target.checked : item.done);
+                    await patchTask(id, {checklist_done:checks});
+                    document.querySelector(`[data-task-id="${id}"] .flow-method`)?.setAttribute('open','');
+                    return;
+                }
                 if (e.target.dataset.act === 'duration') {
                     const raw = e.target.value;
                     if (raw === '') {

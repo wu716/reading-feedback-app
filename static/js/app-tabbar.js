@@ -17,7 +17,10 @@
 
     function currentTab() {
         const path = location.pathname || '';
-        if (path.includes('projects')) return 'projects';
+        if (path.includes('projects')) {
+            const view = new URLSearchParams(location.search).get('view');
+            return view === 'execution' || view === 'templates' ? view : 'projects';
+        }
         const hash = (location.hash || '').replace('#', '');
         if (hash === '' || hash === 'overview') return 'schedule';
         if (hash === 'capture' || hash === 'time-log' || hash === 'ideas') return 'capture';

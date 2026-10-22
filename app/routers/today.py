@@ -17,6 +17,7 @@ from app.models import (
     DailyTodo,
     User,
 )
+from app.schedule_todos import attach_todo, task_for_todo
 
 router = APIRouter(prefix="/today", tags=["今日概览"])
 logger = logging.getLogger(__name__)
@@ -86,6 +87,13 @@ class DailyTodoUpdate(BaseModel):
     text: Optional[str] = Field(None, min_length=1, max_length=500)
     completed: Optional[bool] = None
     remind_time: Optional[str] = None
+
+    @field_validator("text")
+    @classmethod
+    def strip_text(cls, value):
+        if value is not None and not value.strip():
+            raise ValueError("待办内容不能为空")
+        return value.strip() if value is not None else None
 
 
 class DailyTodoResponse(BaseModel):
@@ -214,7 +222,10 @@ async def create_daily_todo(
         remind_time=normalize_remind_time(body.remind_time),
     )
     try:
+        db.query(User).filter(User.id == current_user.id).with_for_update().first()
         db.add(row)
+        db.flush()
+        attach_todo(db, row)
         db.commit()
         db.refresh(row)
     except Exception:
@@ -243,15 +254,11 @@ async def update_daily_todo(
     if not row:
         raise HTTPException(status_code=404, detail="待办不存在")
 
-    if body.text is not None:
-        row.text = body.text.strip()
-    if body.completed is not None:
-        row.completed = body.completed
-    if "remind_time" in body.model_fields_set:
-        row.remind_time = normalize_remind_time(body.remind_time)
-        row.reminded_at = None
-    row.updated_at = datetime.utcnow()
-    db.commit()
+    task = attach_todo(db, row)
+    # Delegate shared mutations to the schedule rules (including project acceptance).
+    from app.routers.schedule import TaskUpdate, update_task
+    changes = body.model_dump(exclude_unset=True)
+    await update_task(task.id, TaskUpdate(**changes), current_user, db)
     db.refresh(row)
     return row
 
@@ -262,6 +269,7 @@ async def delete_daily_todo(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    db.query(User).filter(User.id == current_user.id).with_for_update().first()
     row = (
         db.query(DailyTodo)
         .filter(
@@ -273,6 +281,11 @@ async def delete_daily_todo(
     )
     if not row:
         raise HTTPException(status_code=404, detail="待办不存在")
+    task = task_for_todo(db, row)
+    if task is not None and task.deleted_at is None:
+        from app.routers.schedule import delete_task
+        await delete_task(task.id, current_user, db)
+        return {"message": "已删除"}
     row.deleted_at = datetime.utcnow()
     db.commit()
     return {"message": "已删除"}
