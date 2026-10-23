@@ -10,7 +10,8 @@ from sqlalchemy.pool import StaticPool
 
 from app import project_models  # noqa: F401 - register FK targets before create_all
 from app.database import Base, get_db
-from app.models import InviteCode, User
+from app.models import AuthCode, InviteCode, User
+from app.routers import auth as auth_module
 from app.routers.auth import router as auth_router, settings
 
 
@@ -90,6 +91,65 @@ def test_duplicate_email_and_invalid_account_keep_invite_available(monkeypatch):
             assert db.query(InviteCode).filter_by(code="7314").one().used_at is None
         created = signup(client, "new@example.com", field="email", ip="198.51.100.16")
         assert created.status_code == 201, created.text
+    finally:
+        client.close()
+        engine.dispose()
+
+
+def test_phone_account_can_verify_email_after_database_roundtrip(monkeypatch):
+    sent = {}
+
+    def capture_mail(email, code, purpose):
+        sent[email] = code
+        return True
+
+    monkeypatch.setattr(auth_module, "_send_code_email", capture_mail)
+    engine, client = make_app(monkeypatch)
+    try:
+        assert signup(client, "13900000001", ip="198.51.100.17").status_code == 201
+        login = client.post("/api/auth/login", json={"account":"13900000001", "password":"testing123"},
+                            headers={"X-Forwarded-For":"198.51.100.18"})
+        headers = {"Authorization":f"Bearer {login.json()['access_token']}"}
+        body = {"email":"linked@example.com", "current_password":"testing123"}
+        response = client.post("/api/auth/email/bind-code", json=body, headers=headers)
+        assert response.status_code == 200, response.text
+        code = sent[body['email']]
+        wrong = ('1' if code[0] == '0' else '0') + code[1:]
+        assert client.put(f"/api/auth/email?code={wrong}", json=body, headers=headers).status_code == 400
+        bound = client.put(f"/api/auth/email?code={code}", json=body, headers=headers)
+        assert bound.status_code == 200, bound.text
+        assert bound.json()['email'] == body['email']
+        assert bound.json()['phone'] == '13900000001'
+        assert client.put(f"/api/auth/email?code={code}", json=body, headers=headers).status_code == 400
+        for account in [body['email'], '13900000001']:
+            assert client.post("/api/auth/login", json={"account":account, "password":"testing123"},
+                               headers={"X-Forwarded-For":"198.51.100.19"}).status_code == 200
+    finally:
+        client.close()
+        engine.dispose()
+
+
+def test_email_codes_preserve_expiry_purpose_and_attempt_limit(monkeypatch):
+    engine, client = make_app(monkeypatch)
+    try:
+        with Session(engine) as db:
+            code = auth_module._issue_code(db, 'expiry@example.com', 'bind_email')
+            row = db.query(AuthCode).filter_by(email='expiry@example.com').one()
+            row.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+            db.commit()
+        with Session(engine) as db:
+            assert not auth_module._consume_code(db, 'expiry@example.com', 'bind_email', code)
+            assert db.query(AuthCode).filter_by(email='expiry@example.com').one().used_at is None
+            code = auth_module._issue_code(db, 'attempts@example.com', 'bind_email')
+        wrong = ('1' if code[0] == '0' else '0') + code[1:]
+        with Session(engine) as db:
+            assert not auth_module._consume_code(db, 'attempts@example.com', 'reset_password', code)
+            for _ in range(5):
+                assert not auth_module._consume_code(db, 'attempts@example.com', 'bind_email', wrong)
+            assert not auth_module._consume_code(db, 'attempts@example.com', 'bind_email', code)
+            row = db.query(AuthCode).filter_by(email='attempts@example.com').one()
+            assert row.attempts == 5
+            assert row.used_at is None
     finally:
         client.close()
         engine.dispose()

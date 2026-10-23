@@ -90,7 +90,12 @@ def _issue_code(db: Session, email: str, purpose: str) -> str:
 def _consume_code(db: Session, email: str, purpose: str, code: str) -> bool:
     row = db.query(AuthCode).filter(AuthCode.email == email, AuthCode.purpose == purpose, AuthCode.used_at.is_(None)).order_by(AuthCode.id.desc()).first()
     now = datetime.now(timezone.utc)
-    if not row or row.expires_at < now or row.attempts >= 5:
+    if not row:
+        return False
+    expires_at = row.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < now or row.attempts >= 5:
         return False
     row.attempts += 1
     valid = secrets.compare_digest(row.code_hash, hashlib.sha256(code.encode()).hexdigest())

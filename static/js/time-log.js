@@ -539,7 +539,9 @@
         const label = document.getElementById('captureKindDefaultDesc');
         if (label) {
             const names = { moment: '时刻', idea: '灵感', todo: '待办' };
-            label.textContent = `三击快捷记录默认写入${names[captureKind] || '时刻'}；底栏「记」打开各自的入口。`;
+            delete label.dataset.i18n;
+            label.textContent = t('me.capture.default.current', '快捷记录默认写入{kind}；也可在「记」中选择其他入口。')
+                .replace('{kind}', t(`capture.kind.${captureKind}`, names[captureKind] || '时刻'));
         }
     }
 
@@ -1043,6 +1045,7 @@
         }
         syncOverlaySwitch();
         syncAssistRow();
+        window.addEventListener('shuran-language-change', syncCaptureKindRow);
         const previousResume = window.onNativeAppResume;
         window.onNativeAppResume = function (info) {
             if (typeof previousResume === 'function') previousResume(info);

@@ -1,0 +1,102 @@
+/* Account settings share the paper and blue palette of the workspaces. */
+.workspace-layout #user-center [hidden] {display:none!important;}
+.workspace-layout #user-center > .section-header {display:block;max-width:960px;margin:0 0 20px;}
+.workspace-layout #user-center > .section-header p {margin:7px 0 0;color:#62717c;font-size:13px;}
+.workspace-layout #user-center .me-page {max-width:960px;margin:0;padding:0 0 36px;}
+.workspace-layout #user-center .me-profile {min-height:0;display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:0 0 25px;margin:0;}
+.workspace-layout #user-center .me-avatar {flex:0 0 56px;width:56px;height:56px;background:var(--workspace-selected);color:var(--workspace-blue);font:600 24px/1.4 "Noto Serif SC","SimSun",serif;}
+.workspace-layout #user-center .me-profile-meta {flex:0 1 auto;max-width:calc(100% - 72px);}
+.workspace-layout #user-center .me-profile-name {font-size:22px;line-height:1.4;white-space:normal;overflow-wrap:anywhere;}
+.workspace-layout #user-center .me-profile-email {font-size:13px;color:#62717c;opacity:1;white-space:normal;overflow-wrap:anywhere;}
+.workspace-layout #user-center .me-plan {margin-top:7px;padding:2px 8px;background:var(--workspace-selected);color:var(--workspace-blue);font-size:12px;}
+.workspace-layout #user-center .me-edit {margin-left:8px;}
+.workspace-layout #user-center .me-settings-grid {display:grid;grid-template-columns:minmax(0,1fr);gap:0 40px;align-items:start;}
+.workspace-layout #user-center .me-settings-main,.workspace-layout #user-center .me-settings-side {min-width:0;}
+.workspace-layout #user-center .me-group {padding:22px 0 24px;margin:0;border-top:1px solid #d5dcde!important;overflow:visible;}
+.workspace-layout #user-center .me-group-title {margin:0 0 16px;padding:0;color:var(--workspace-ink);font:600 18px/1.5 Georgia,"Noto Serif SC","SimSun",serif;letter-spacing:.03em;}
+.workspace-layout #user-center .me-hint {padding:0;margin:5px 0 12px;color:#62717c;font:400 12px/1.8 "Microsoft YaHei",system-ui,sans-serif;}
+.workspace-layout #user-center .me-row {min-height:48px;gap:12px;padding:10px 0;color:var(--workspace-ink);border-radius:5px;}
+.workspace-layout #user-center .me-row-main {display:flex;flex-direction:column;gap:3px;}
+.workspace-layout #user-center .me-row-title {margin:0;color:var(--workspace-ink);font:400 14px/1.5 "Microsoft YaHei",system-ui,sans-serif;}
+.workspace-layout #user-center .me-row-desc {margin:0;color:#62717c;font:400 12px/1.7 "Microsoft YaHei",system-ui,sans-serif;}
+.workspace-layout #user-center .me-row-static:hover {background:transparent;}
+.workspace-layout #user-center button.me-row:hover,.workspace-layout #user-center a.me-row:hover {background:rgba(225,232,235,.5);}
+.workspace-layout #user-center .me-row-icon {flex:0 0 30px;width:30px;height:30px;border:0;background:transparent;color:var(--workspace-blue);}
+.workspace-layout #user-center .me-chevron {color:var(--workspace-blue);}
+.workspace-layout #user-center .me-benefits {display:grid;gap:12px;margin:0 0 18px;}
+.workspace-layout #user-center .me-benefits h3,.workspace-layout #user-center .me-subheading {margin:0 0 4px;color:var(--workspace-ink);font:600 13px/1.5 "Microsoft YaHei",system-ui,sans-serif;}
+.workspace-layout #user-center .me-benefits p {margin:0;color:#62717c;font-size:12px;line-height:1.8;}
+.workspace-layout #user-center .owner-table-wrap {margin:0 0 12px;overflow-x:auto;}
+.workspace-layout #user-center .me-plan-table {font-size:13px;font-variant-numeric:tabular-nums;}
+.workspace-layout #user-center .me-plan-table th {padding:9px 10px;background:transparent;color:#62717c;font-size:12px;font-weight:500;border-bottom:1px solid #d5dcde;}
+.workspace-layout #user-center .me-plan-table td {padding:12px 10px;color:var(--workspace-ink);border-bottom:1px solid #e1e4df;}
+.workspace-layout #user-center .me-plan-table tr.is-current td {background:var(--workspace-selected);color:var(--workspace-blue);}
+.workspace-layout #user-center .me-plan-table tr.is-current td:first-child {box-shadow:inset 2px 0 var(--workspace-blue);}
+.workspace-layout #user-center .me-plan-note {margin-bottom:8px;}
+.workspace-layout #user-center .me-details {margin:10px 0 0;}
+.workspace-layout #user-center .me-details summary {width:fit-content;max-width:100%;padding:6px 0;cursor:pointer;color:var(--workspace-blue);font-size:13px;}
+.workspace-layout #user-center .me-details[open] summary {margin-bottom:10px;}
+.workspace-layout #user-center .me-details .me-hint {margin:5px 0 12px;}
+.workspace-layout #user-center .me-account-summary {display:flex;flex-wrap:wrap;align-items:flex-start;gap:7px 24px;margin-bottom:18px;}
+.workspace-layout #user-center .me-field-label,.workspace-layout #user-center .me-field > span {color:#62717c;font-size:12px;line-height:1.5;}
+.workspace-layout #user-center #meAccountValue {margin:4px 0 0;font-size:14px;overflow-wrap:anywhere;}
+.workspace-layout #user-center #meBindingStatus {margin:21px 0 0;}
+.workspace-layout #user-center .me-binding {padding:0 0 16px;}
+.workspace-layout #user-center .me-inline-form,.workspace-layout #user-center .me-password-form {display:flex;flex-wrap:wrap;gap:10px;padding:0;margin:10px 0;align-items:flex-end;}
+.workspace-layout #user-center .me-inline-form input,.workspace-layout #user-center .me-control,.workspace-layout #user-center .me-password-form input {box-sizing:border-box;flex:1 1 160px;width:100%;min-width:0;max-width:340px;min-height:40px;padding:8px 10px;border:1px solid #b8c8d0;border-radius:6px;background:rgba(225,232,235,.22);color:var(--workspace-ink);font:400 14px/1.5 "Microsoft YaHei",system-ui,sans-serif;}
+.workspace-layout #user-center input::placeholder {color:#62717c;opacity:1;}
+.workspace-layout #user-center .me-field {display:flex;flex:1 1 190px;flex-direction:column;gap:6px;min-width:0;}
+.workspace-layout #user-center .me-edit,.workspace-layout #user-center .me-link-btn,.workspace-layout #user-center .me-btn,.workspace-layout #user-center .me-logout {appearance:none;flex:0 0 auto;width:auto;min-height:38px;padding:8px 14px;margin-top:0;border:1px solid #b8c8d0;border-radius:6px;box-shadow:none;background:transparent;color:var(--workspace-blue);font:400 13px/1.5 "Microsoft YaHei",system-ui,sans-serif;text-align:center;cursor:pointer;}
+.workspace-layout #user-center .me-edit:hover,.workspace-layout #user-center .me-link-btn:hover,.workspace-layout #user-center .me-btn-ghost:hover,.workspace-layout #user-center .me-logout:hover {background:var(--workspace-selected);}
+.workspace-layout #user-center .me-btn-primary {border-color:var(--workspace-blue);background:var(--workspace-blue);color:var(--workspace-paper);}
+.workspace-layout #user-center .me-btn-primary:hover {background:#274b6c;}
+.workspace-layout #user-center .me-logout {margin:16px 0 0;border-color:transparent;color:#62717c;}
+.workspace-layout #user-center .me-export-row {display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin-bottom:14px;}
+.workspace-layout #user-center .me-export-row .me-hint {margin-bottom:0;}
+.workspace-layout #user-center .me-utility-list {margin:0;}
+.workspace-layout #user-center .me-utility-list + .me-utility-list {margin-top:10px;padding-top:10px;border-top:1px solid #e1e4df;}
+.workspace-layout #user-center .me-language-options,.workspace-layout #user-center #captureKindDefaultRow {display:inline-flex;justify-content:flex-start;gap:2px;width:auto;max-width:100%;padding:3px;margin:8px 0 0;border:1px solid #b8c8d0;border-radius:7px;background:rgba(225,232,235,.22);}
+.workspace-layout #user-center .me-chip {flex:0 0 auto;min-width:0;background:transparent;border:0;border-radius:4px;}
+.workspace-layout #user-center .me-chip span {min-width:74px;min-height:36px;padding:6px 12px;border:0;border-radius:4px;background:transparent;color:var(--workspace-blue);font-size:13px;}
+.workspace-layout #user-center .me-chip:hover span {background:rgba(49,90,126,.08);}
+.workspace-layout #user-center .me-chip input:checked + span {border:0;background:var(--workspace-selected);color:var(--workspace-blue);box-shadow:inset 0 0 0 1px #9eb3bf;}
+.workspace-layout #user-center .me-chip input:focus-visible + span {outline:2px solid var(--workspace-blue);outline-offset:2px;}
+.workspace-layout #user-center .me-switch input:checked + .me-switch-ui {background:var(--workspace-blue);}
+.workspace-layout #user-center .me-switch-ui {background:#aab5b9;}
+.workspace-layout #user-center .me-switch input:focus-visible + .me-switch-ui {outline:2px solid var(--workspace-blue);outline-offset:3px;}
+.workspace-layout #user-center .me-switch input:disabled + .me-switch-ui {opacity:.45;}
+.workspace-layout #user-center .me-control {flex:0 0 auto;width:116px;max-width:100%;}
+.workspace-layout #user-center .reminder-subsection {padding:14px 0 8px;margin:10px 0 0;border:0;border-top:1px solid #e1e4df;background:transparent;}
+.workspace-layout #user-center .reminder-subsection h5 {margin:0 0 7px;color:var(--workspace-ink);font-size:13px;font-weight:600;}
+.workspace-layout #user-center .record-reminder-settings .me-row {flex-wrap:wrap;gap:10px;}
+.workspace-layout #user-center .record-reminder-settings .me-row-main {flex:1 1 150px;}
+.workspace-layout #user-center .me-notification-channels {margin-top:12px;padding-top:16px;border-top:1px solid #e1e4df;}
+.workspace-layout #user-center .me-actions {padding:0;margin-top:14px;}
+.workspace-layout #user-center input:focus-visible,.workspace-layout #user-center button:focus-visible,.workspace-layout #user-center a:focus-visible,.workspace-layout #user-center summary:focus-visible {outline:2px solid var(--workspace-blue);outline-offset:3px;}
+.workspace-layout #user-center button:disabled {opacity:.55;cursor:not-allowed;}
+@media(min-width:1200px) {
+ .workspace-layout #user-center .me-settings-grid {grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);}
+}
+@media(max-width:768px) {
+ .workspace-layout #user-center .me-profile {gap:12px;padding-bottom:20px;}
+ .workspace-layout #user-center .me-profile-meta {max-width:calc(100% - 68px);}
+ .workspace-layout #user-center .me-edit {margin-left:68px;}
+ .workspace-layout #user-center .me-group {padding:20px 0;}
+ .workspace-layout #user-center .me-group-title {font-size:17px;}
+ .workspace-layout #user-center .me-inline-form {align-items:stretch;}
+ .workspace-layout #user-center .me-plan-table th,.workspace-layout #user-center .me-plan-table td {padding-left:7px;padding-right:7px;}
+ .workspace-layout #user-center .me-account-summary {display:block;}
+ .workspace-layout #user-center #meBindingStatus {margin:7px 0 0;}
+}
+/* Existing account dialogs keep their forms and use the same restrained controls. */
+.workspace-layout .me-dialog .practice-container {width:min(420px,calc(100vw - 32px))!important;max-height:calc(100dvh - 40px);overflow:auto;background:var(--workspace-paper);border:1px solid #c6d1d6;border-radius:10px;padding:24px;box-shadow:0 16px 48px rgba(33,54,74,.15);}
+.workspace-layout .me-dialog .practice-header {padding:0 0 16px;border-bottom:1px solid #d5dcde;}
+.workspace-layout .me-dialog h3 {margin:0;color:var(--workspace-ink);font:600 20px/1.5 "Noto Serif SC","SimSun",serif;}
+.workspace-layout .me-dialog .form-group {margin:16px 0;}
+.workspace-layout .me-dialog .form-group label {display:block;margin-bottom:6px;font-size:13px;color:#62717c;}
+.workspace-layout .me-dialog .form-group input {width:100%;min-width:0;min-height:42px;padding:8px 10px;border:1px solid #b8c8d0;border-radius:6px;background:transparent;color:var(--workspace-ink);font:14px/1.5 "Microsoft YaHei",system-ui,sans-serif;}
+.workspace-layout .me-dialog .form-group input[readonly] {background:var(--workspace-selected)!important;}
+.workspace-layout .me-dialog .me-dialog-actions {display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;margin-top:20px;}
+.workspace-layout .me-dialog .me-dialog-button {appearance:none;min-height:38px;padding:8px 16px;border:1px solid #b8c8d0;border-radius:6px;background:transparent;color:var(--workspace-blue);font:13px/1.5 "Microsoft YaHei",system-ui,sans-serif;cursor:pointer;}
+.workspace-layout .me-dialog .me-dialog-button.is-primary {background:var(--workspace-blue);border-color:var(--workspace-blue);color:var(--workspace-paper);}
+.workspace-layout .me-dialog .me-dialog-button:hover {box-shadow:inset 0 0 0 1px var(--workspace-blue);}
