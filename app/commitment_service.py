@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException
 
 from app.models import DailyTask
-from app.project_models import (Goal, Project, ProjectStage, ProjectTask, PracticeEvent, StageCommitment, CommitmentAdjustment,
+from app.project_models import (Goal, Project, ProjectStage, ProjectTask, PracticeEvent, StageCommitment, StageCommitmentDraft, CommitmentAdjustment,
                                 StartCondition, TaskDependency, WorkSession)
 from app.practice_service import dumps, lock_user, owner, recorded_minutes
 
@@ -25,12 +25,34 @@ def task_scope(db, user_id, stage_id):
     return db.query(ProjectTask).filter_by(user_id=user_id, stage_id=stage_id).filter(ProjectTask.deleted_at.is_(None)).order_by(ProjectTask.id).all()
 
 
-def commit_stage(db, user_id, stage):
+def owned_current_stage(db, user_id, stage_id):
+    stage = db.get(ProjectStage, stage_id)
+    if not stage or stage.user_id != user_id:
+        raise HTTPException(404, "阶段不存在")
+    owner(db, user_id, "project", stage.project_id)
+    if stage.state != "current":
+        raise HTTPException(409, "只能填写当前阶段的承诺")
+    return stage
+
+
+def draft(db, user_id, stage_id):
+    return db.query(StageCommitmentDraft).filter_by(user_id=user_id, stage_id=stage_id).first()
+
+
+def stage_snapshot(db, user_id, stage):
     project = db.get(Project, stage.project_id)
     tasks = task_scope(db, user_id, stage.id)
-    row = StageCommitment(user_id=user_id, project_id=project.id, stage_id=stage.id,
-        snapshot_json=dumps({"outcome": project.outcome, "tasks": [{"id": t.id, "title": t.title,
-            "criteria": t.acceptance_criteria, "estimate": t.estimated_minutes} for t in tasks], "notice": COMMITMENT_TEXT}))
+    return {"outcome": project.outcome, "tasks": [{"id": t.id, "title": t.title,
+        "criteria": t.acceptance_criteria, "estimate": t.estimated_minutes} for t in tasks], "notice": COMMITMENT_TEXT}
+
+
+def commit_stage(db, user_id, stage, *, statement=None):
+    previous = commitment(db, user_id, stage.id)
+    # Automatic scope versions carry only already-confirmed text, never a draft.
+    if statement is None:
+        statement = json.loads(previous.snapshot_json).get("statement", "") if previous else ""
+    row = StageCommitment(user_id=user_id, project_id=stage.project_id, stage_id=stage.id,
+        snapshot_json=dumps(stage_snapshot(db, user_id, stage) | {"statement": statement}))
     db.add(row); db.flush()
     return row
 
@@ -83,7 +105,8 @@ def project_scope_snapshot(db, user_id, project):
             PracticeEvent.record_date.in_({d.task_date for d in daily})).order_by(PracticeEvent.id.desc()):
         day_plans.setdefault(str(e.record_date), {"id": e.id, "data": json.loads(e.payload_json)})
     return {"project": project.id, "outcome": project.outcome,
-        "stages": [{"id": s.id, "state": s.state, "commitment": (c.id if (c := commitment(db, user_id, s.id)) else None)}
+        "stages": [{"id": s.id, "state": s.state, "commitment": (c.id if (c := commitment(db, user_id, s.id)) else None),
+                    "draft_revision": (d.revision if (d := draft(db, user_id, s.id)) else 0)}
                    for s in db.query(ProjectStage).filter_by(project_id=project.id).order_by(ProjectStage.id)],
         "tasks": [{"id": t.id, "stage": t.stage_id, "state": t.state, "deleted": t.deleted_at,
             "title": t.title, "estimate": t.estimated_minutes, "criteria": t.acceptance_criteria} for t in tasks],
@@ -122,7 +145,17 @@ def preview(db, user_id, project_id, plan):
     if not target_id and not any(a != "retain" for a in action_map.values()) and not plan.get("changes"):
         raise HTTPException(400, "方案没有改变，可以直接继续当前列表")
     for change in plan.get("changes", []):
-        if change["kind"] == "task_criteria":
+        if change["kind"] == "commitment_statement":
+            value = change["value"].strip()
+            if not value or len(value) > 2000:
+                raise HTTPException(400, "承诺文字须为1至2000字")
+            if sum(c["kind"] == "commitment_statement" for c in plan["changes"]) > 1:
+                raise HTTPException(400, "每次只能提交一份承诺文字")
+            old = commitment(db, user_id, stage.id)
+            if not target_id and old and value == json.loads(old.snapshot_json).get("statement", "") and len(plan["changes"]) == 1 and all(a == "retain" for a in action_map.values()):
+                raise HTTPException(400, "承诺文字和任务范围没有变化，可以继续当前承诺")
+            change["value"] = value
+        elif change["kind"] == "task_criteria":
             _, t = owner(db, user_id, "task", change["id"])
             if t.stage_id != stage.id: raise HTTPException(400, "只能调整当前范围的完成标准")
         elif change["kind"] == "condition_remove":
@@ -185,7 +218,8 @@ def preview(db, user_id, project_id, plan):
     existing = db.query(CommitmentAdjustment).filter_by(user_id=user_id, project_id=project.id,
         stage_id=stage.id, plan_json=encoded, fingerprint=fp, confirmed_at=None).order_by(CommitmentAdjustment.id.desc()).first()
     if existing: return existing
-    must_wait = bool(commitment(db, user_id, stage.id) and (unfinished or plan.get("changes")))
+    scope_changes = any(c["kind"] != "commitment_statement" for c in plan.get("changes", []))
+    must_wait = bool(commitment(db, user_id, stage.id) and (unfinished or scope_changes))
     row = CommitmentAdjustment(user_id=user_id, project_id=project.id, stage_id=stage.id,
         plan_json=encoded, impact_json=dumps(impact | {"requires_wait": must_wait}), fingerprint=fp, elapsed_ms=0)
     db.add(row); db.flush(); return row
@@ -279,7 +313,14 @@ def confirm(db, row, reason):
         current.state, current.closed_at, current.closed_reason = "closed", datetime.utcnow(), reason
         target.state = "current"
     db.flush()
-    new_commit = commit_stage(db, row.user_id, target or current) if had_commitment else None
+    statement = next((c["value"] for c in plan.get("changes", []) if c["kind"] == "commitment_statement"), None)
+    if not had_commitment and statement is not None:
+        saved = draft(db, row.user_id, (target or current).id)
+        if saved is None:
+            saved = StageCommitmentDraft(user_id=row.user_id, stage_id=(target or current).id, revision=0)
+            db.add(saved)
+        saved.statement, saved.revision, saved.updated_at = statement, saved.revision + 1, datetime.utcnow()
+    new_commit = commit_stage(db, row.user_id, target or current, statement=statement) if had_commitment else None
     row.reason, row.confirmed_at, row.last_visible_at = reason, datetime.utcnow(), None
     result = {"current_stage_id": (target or current).id, "commitment_id": new_commit.id if new_commit else None, "dispositions": plan["dispositions"]}
     row.result_json = dumps(result)

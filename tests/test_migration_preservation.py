@@ -7,6 +7,22 @@ from app import database, models, project_models  # register all models
 
 
 class AdditiveMigrationTests(TestCase):
+    def test_commitment_draft_upgrade_preserves_legacy_snapshots_without_inventing_text(self):
+        engine = create_engine("sqlite:///:memory:")
+        database.Base.metadata.create_all(engine)
+        with engine.begin() as conn:
+            conn.execute(text("DROP TABLE stage_commitment_drafts"))
+            conn.execute(text("INSERT INTO users (id,email,name,password_hash,capture_kind) VALUES (1,'commitment@test','旧用户','x','moment')"))
+            conn.execute(text("INSERT INTO projects (id,user_id,title,status) VALUES (1,1,'原项目','active')"))
+            conn.execute(text("INSERT INTO project_stages (id,user_id,project_id,title,position,state) VALUES (1,1,1,'原阶段',0,'current')"))
+            conn.execute(text("INSERT INTO stage_commitments (id,user_id,project_id,stage_id,snapshot_json,created_at) VALUES (1,1,1,1,:snapshot,'2026-10-23 09:00:00')"), {"snapshot": '{"outcome":"原交付","tasks":[]}'})
+        with patch.object(database, "engine", engine):
+            database.ensure_schema(); database.ensure_schema()
+        with engine.connect() as conn:
+            self.assertEqual(conn.execute(text("SELECT snapshot_json FROM stage_commitments WHERE id=1")).scalar(), '{"outcome":"原交付","tasks":[]}')
+            self.assertEqual(conn.execute(text("SELECT COUNT(*) FROM stage_commitment_drafts")).scalar(), 0)
+        engine.dispose()
+
     def test_practice_upgrade_keeps_work_checklist_and_unknown_history(self):
         engine = create_engine("sqlite:///:memory:")
         database.Base.metadata.create_all(engine)

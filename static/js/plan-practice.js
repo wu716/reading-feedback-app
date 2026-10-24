@@ -10,7 +10,7 @@
   const $ = selector => dialog.querySelector(selector);
   const select = (name, values, value, empty = '未标记') => `<select name="${name}">${empty === null ? '' : `<option value="">${empty}</option>`}${Object.entries(values).map(([k,v])=>`<option value="${k}" ${String(value)===k?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
   const input = (name, label, value='', type='text', attrs='') => `<label>${label}<input name="${name}" type="${type}" value="${esc(value)}" ${attrs}></label>`;
-  const area = (name,label,value='', attrs='') => `<label>${label}<textarea name="${name}" rows="2" maxlength="4000" ${attrs}>${esc(value)}</textarea></label>`;
+  const area = (name,label,value='', attrs='') => `<label>${label}<textarea name="${name}" rows="2" maxlength="${name==='statement'?2000:4000}" ${attrs}>${esc(value)}</textarea></label>`;
   const note = text => `<p class="practice-note">${esc(text)}</p>`;
   const decisionLabel = value => ({keep:'维持跨度',shorten:'缩短跨度',extend:'延长跨度',stop:'停止此目标'})[value]||value;
   const button = (action,text,attrs='') => `<button type="button" data-practice="${action}" ${attrs}>${text}</button>`;
@@ -209,14 +209,16 @@
       const current=projectData.stages.find(s=>s.state==='current');
       const tasks=projectData.tasks.filter(t=>t.stage_id===current?.id&&!['completed','cancelled'].includes(t.state));
       content.innerHTML=`<blockquote>${esc(commitmentData.notice)}</blockquote>`+
-        note(commitmentData.commitment?`已正式确认当前范围，保留 ${commitmentData.history.length} 个承诺版本。`:'当前范围尚未正式确认；草稿可编辑。正式开始项目时也会记录承诺。')+
-        (!commitmentData.commitment?button('commit','确认当前列表承诺'):'')+
+        '<div data-commitment-editor></div>'+
         (commitmentData.pending?button('resume-adjustment','恢复上次调整与等待',`data-id="${commitmentData.pending.id}"`):'')+
         `<h3>调整当前承诺</h3>${note('正常轮转、暂停和休息直接在执行区操作。改变未完成承诺时，先逐项选择去向，再展示具体后果和30秒暂停。先明确暂停或结束正在运行的工作片。')}`+
         form('adjustment-plan',`<label>交接目标${select('target_stage_id',Object.fromEntries(projectData.stages.filter(s=>s.state==='next').map(s=>[s.id,s.title])),context.targetStageId||'','保持当前阶段，只调整范围')}</label>`+
+          area('statement','调整后的承诺文字（可随本次调整另存新版本）',context.targetStageId?'':commitmentData.commitment?.snapshot.statement||'')+note('交接到下一阶段时，承诺文字留空表示稍后重新填写确认；不会把本阶段原文自动套用到新阶段。')+
           `<div class="practice-review-list">${tasks.map(t=>`<div data-disposition="${t.id}"><strong>${esc(t.title)}</strong>${select('task-'+t.id,{retain:'保留推进（切换时随交接）',defer:'延期到独立下一阶段',cancel:'明确取消，保留投入'},'retain',null)}</div>`).join('')||note('当前未完成项为零，可正常交接，不强制等待。')}</div>`+
           `<details><summary>修改交付范围或条件</summary><label class="practice-inline"><input name="change_outcome" type="checkbox">本次修改项目交付结果</label>${area('outcome','新的交付结果',projectData.outcome)}${tasks.map(t=>`<label class="practice-inline"><input type="checkbox" name="change_criteria" value="${t.id}">修改《${esc(t.title)}》完成标准</label>${area('criteria-'+t.id,'新的完成标准',t.acceptance_criteria)}`).join('')}<div data-adjustment-conditions></div></details>`,'展示本次后果')+
-        `<details><summary>承诺与调整历史</summary>${commitmentData.history.map(c=>`<details><summary>承诺版本 ${c.id} · ${esc(localStamp(c.at))}</summary><p>当时交付：${esc(c.snapshot.outcome||'未填写')}</p>${c.snapshot.tasks.map(t=>`<p>${esc(t.title)} · 预计 ${t.estimate??'未填'} 分 · 验收：${esc(t.criteria||'未填')}</p>`).join('')}</details>`).join('')}${commitmentData.adjustments.filter(a=>a.confirmed).map(a=>`<details><summary>调整 #${a.id} · ${esc(a.reason)}</summary><p>${a.impact.requires_wait?'前台累计等待 '+a.elapsed_ms/1000+' 秒':'草稿或正常交接，无强制等待'}</p>${a.impact.unfinished.map(t=>`<p>${esc(t.title)}：${({retain:'保留推进',defer:'延期',cancel:'取消而未完成'})[t.action]} · 已投入 ${t.recorded_minutes} 分</p>`).join('')}</details>`).join('')||note('尚无已确认调整')}</details>`;
+        `<details><summary>承诺与调整历史</summary>${commitmentData.history.map(c=>`<details><summary>承诺版本 ${c.version} · ${esc(localStamp(c.at))}</summary><p class="commitment-statement">${esc(c.snapshot.statement||'未填写承诺文字（历史版本）')}</p><p>当时交付：${esc(c.snapshot.outcome||'未填写')}</p>${c.snapshot.tasks.map(t=>`<p>${esc(t.title)} · 预计 ${t.estimate??'未填'} 分 · 验收：${esc(t.criteria||'未填')}</p>`).join('')}</details>`).join('')}${commitmentData.adjustments.filter(a=>a.confirmed).map(a=>`<details><summary>调整 #${a.id} · ${esc(a.reason)}</summary><p>${a.impact.requires_wait?'前台累计等待 '+a.elapsed_ms/1000+' 秒':'草稿或正常交接，无强制等待'}</p>${a.impact.unfinished.map(t=>`<p>${esc(t.title)}：${({retain:'保留推进',defer:'延期',cancel:'取消而未完成'})[t.action]} · 已投入 ${t.recorded_minutes} 分</p>`).join('')}</details>`).join('')||note('尚无已确认调整')}</details>`;
+      globalThis.ShuranCommitments?.mount($('[data-commitment-editor]'),context.id,{history:false,onChanged:async()=>{dirty=false;await load();changed();},onAdjust:()=>{$('[data-practice-form=adjustment-plan]').scrollIntoView({behavior:'smooth',block:'start'});$('[data-practice-form=adjustment-plan] [name=statement]').focus();}});
+      $('[name=target_stage_id]').addEventListener('change',event=>{const field=$('[data-practice-form=adjustment-plan] [name=statement]');field.value=event.target.value?'':commitmentData.commitment?.snapshot.statement||'';});
       loadAdjustableConditions(tasks).catch(e=>message(e.message,true));
     } else if(tab==='cycles') {
       content.innerHTML=note('建议先尝试一周，再按事实选择两周、一个月、季度或年度。可以维持、缩短或延长，无需打卡解锁。简单事项和陌生事项的探索行动仍可直接开始。')+button('new-cycle','制定一轮计划')+
@@ -264,6 +266,9 @@
     else if(name==='adjustment-plan') {
       const dispositions=[...f.querySelectorAll('[data-disposition]')].map(row=>({task_id:Number(row.dataset.disposition),action:row.querySelector('select').value}));
       const changes=[];
+      const statement=(b.statement||'').trim(),oldStatement=commitmentData.commitment?.snapshot.statement||'';
+      if(statement&&(b.target_stage_id||statement!==oldStatement))changes.push({kind:'commitment_statement',value:statement});
+      if(!statement&&oldStatement&&!b.target_stage_id)throw new Error('已确认的承诺文字不能清空，请填写调整后的承诺。');
       if(f.elements.change_outcome?.checked)changes.push({kind:'project_outcome',value:b.outcome});
       f.querySelectorAll('[name=change_criteria]:checked').forEach(el=>changes.push({kind:'task_criteria',id:Number(el.value),value:b['criteria-'+el.value]}));
       f.querySelectorAll('[name=remove_condition]:checked').forEach(el=>changes.push({kind:'condition_remove',id:Number(el.value)}));
@@ -280,13 +285,13 @@
     header('调整前的具体后果',[]);
     const keep=$('[data-practice=close]');keep.textContent='继续当前列表';keep.classList.add('practice-primary');keep.setAttribute('aria-label','继续当前列表，保留任务与当前阶段');
     $('.practice-header h2').insertAdjacentHTML('afterend','<p data-wait role="status" class="practice-wait-status"></p>');
-    $('.practice-content').innerHTML=`<section class="practice-impact"><blockquote>${esc(i.notice)}</blockquote><p><strong>${esc(i.question)}</strong></p><h3>未完成事项与去向</h3>${i.unfinished.map(t=>`<article><strong>${esc(t.title)}</strong><p>${({retain:'保留推进',defer:'延期至下一阶段',cancel:'取消，仍未完成'})[t.action]} · 已投入 ${t.recorded_minutes} 分 · 原预计 ${t.estimate??'未填'} 分</p><p>验收：${esc(t.criteria||'未填写')}</p><p>已安排日期：${esc((t.scheduled_dates||[]).join('、')||'尚未安排')}</p></article>`).join('')||note('没有未完成项')}<h3>依赖影响</h3>${i.affected.map(t=>`<p>${esc(t.title)}：${esc(t.reason)}</p>`).join('')||note('没有登记受影响的其他依赖；未配置的现实影响仍需你核对。')}<h3>交付与时间预算</h3><p>${esc(i.delivery||'未填写交付结果')}</p><p>${esc(i.delivery_impact)}</p><p>既定目标期限：${esc(i.goal_deadline||'未记录')}</p><p>${esc(i.budget)}</p>${Object.entries(i.day_plans||{}).map(([day,record])=>`<p>${esc(day)} 当天安排 ${record.data.planned_minutes==null?'未明确':record.data.planned_minutes+' 分'} / 可用 ${record.data.available_minutes==null?'未知':record.data.available_minutes+' 分'}，调整后请重新分配。</p>`).join('')}<p>${esc(i.history)}</p>${i.changes.length?`<h3>本次范围与条件变更</h3>${i.changes.map(c=>`<p>${esc(({project_outcome:'项目交付结果',task_criteria:'任务完成标准',condition_remove:'移除必要条件',dependency_remove:'移除前置任务'})[c.kind])}${c.id?' #'+c.id:''}：${esc(c.value||'按本次方案处理')}</p>`).join('')}`:''}</section>`+
+    $('.practice-content').innerHTML=`<section class="practice-impact"><blockquote>${esc(i.notice)}</blockquote><p><strong>${esc(i.question)}</strong></p><h3>未完成事项与去向</h3>${i.unfinished.map(t=>`<article><strong>${esc(t.title)}</strong><p>${({retain:'保留推进',defer:'延期至下一阶段',cancel:'取消，仍未完成'})[t.action]} · 已投入 ${t.recorded_minutes} 分 · 原预计 ${t.estimate??'未填'} 分</p><p>验收：${esc(t.criteria||'未填写')}</p><p>已安排日期：${esc((t.scheduled_dates||[]).join('、')||'尚未安排')}</p></article>`).join('')||note('没有未完成项')}<h3>依赖影响</h3>${i.affected.map(t=>`<p>${esc(t.title)}：${esc(t.reason)}</p>`).join('')||note('没有登记受影响的其他依赖；未配置的现实影响仍需你核对。')}<h3>交付与时间预算</h3><p>${esc(i.delivery||'未填写交付结果')}</p><p>${esc(i.delivery_impact)}</p><p>既定目标期限：${esc(i.goal_deadline||'未记录')}</p><p>${esc(i.budget)}</p>${Object.entries(i.day_plans||{}).map(([day,record])=>`<p>${esc(day)} 当天安排 ${record.data.planned_minutes==null?'未明确':record.data.planned_minutes+' 分'} / 可用 ${record.data.available_minutes==null?'未知':record.data.available_minutes+' 分'}，调整后请重新分配。</p>`).join('')}<p>${esc(i.history)}</p>${i.changes.length?`<h3>本次范围与条件变更</h3>${i.changes.map(c=>`<p>${esc(({project_outcome:'项目交付结果',task_criteria:'任务完成标准',condition_remove:'移除必要条件',dependency_remove:'移除前置任务',commitment_statement:'承诺文字'})[c.kind])}${c.id?' #'+c.id:''}：${esc(c.value||'按本次方案处理')}</p>`).join('')}`:''}</section>`+
       `<div class="practice-wait">${form('confirm-adjustment',area('reason','调整原因（等待时可以填写）','','required'),'确认调整')}<small>只有后果面板在可见前台时累计。刷新可恢复；可见信号不证明注意力。等待不会计入工作实耗。</small>${button('repreview','方案或依赖变化后重新预览','class="practice-secondary"')}</div>`;
     const u=new URL(location.href);u.searchParams.set('adjustment',String(a.id));history.replaceState(null,'',u);updateWait();
     if(a.confirmed){message('此调整已经确认，重复提交不会再次切换');return;}
     timer=setInterval(()=>beat(),1000);beat();
   }
-  function updateWait(){if(!adjustment)return;const text=$('[data-wait]'),confirmBtn=$('[data-practice-form=confirm-adjustment] button[type=submit]');if(text)text.textContent=adjustment.impact.requires_wait===false?'尚未开始的草稿无需强制等待；核对方案与原因后可以确认。':adjustment.remaining_seconds>0?`暂停思考：还需 ${adjustment.remaining_seconds} 秒`:'30秒已满，请核对原因后主动确认；也可以继续当前列表';if(confirmBtn)confirmBtn.disabled=adjustment.remaining_seconds>0||!$('[name=reason]')?.value.trim();}
+  function updateWait(){if(!adjustment)return;const text=$('[data-wait]'),confirmBtn=$('[data-practice-form=confirm-adjustment] button[type=submit]');if(text)text.textContent=adjustment.impact.requires_wait===false?'本次无需强制等待；核对方案与原因后可以确认。':adjustment.remaining_seconds>0?`暂停思考：还需 ${adjustment.remaining_seconds} 秒`:'30秒已满，请核对原因后主动确认；也可以继续当前列表';if(confirmBtn)confirmBtn.disabled=adjustment.remaining_seconds>0||!$('[name=reason]')?.value.trim();}
   async function beat(force){
     if(!adjustment||!dialog.open||beating)return;
     const panel=$('.practice-impact'),rect=panel?.getBoundingClientRect();

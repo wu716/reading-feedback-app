@@ -56,4 +56,30 @@
 .practice-execution { margin:14px 0; padding:12px 15px; border:1px solid #d9ded7; border-radius:9px; background:#f5f5ed; }
 .practice-execution p { margin:6px 0; font-size:14px; overflow-wrap:anywhere; }
 .practice-execution button { margin:5px 6px 0 0; }
+body.workspace-layout[data-workspace-view="projects"] { min-width:0; }
+.commitment-panel { min-width:0; margin:18px 0 22px; padding:20px 22px; border:1px solid #d8ddd8; border-top:3px solid #405f70; border-radius:9px; background:#fffdf8; color:#303b40; font:16px/1.7 Georgia,"Noto Serif SC","Songti SC",SimSun,serif; }
+.commitment-panel * { box-sizing:border-box; }
+.commitment-heading { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px 16px; }
+.commitment-panel .commitment-heading h3 { margin:0; font:500 22px/1.4 Georgia,"Noto Serif SC","Songti SC",SimSun,serif; }
+.commitment-heading>span { padding:3px 9px; background:#edf1f1; border-radius:5px; color:#405f70; font:13px/1.5 system-ui,sans-serif; }
+.commitment-panel .commitment-hint { margin:9px 0; color:#69756f; font:13px/1.65 system-ui,sans-serif; }
+.commitment-panel label { display:grid; gap:8px; margin:17px 0 8px; color:#405f70; }
+.commitment-panel textarea { width:100%; min-width:0; padding:12px 14px; border:1px solid #ccd5d2; border-radius:6px; resize:vertical; background:#faf8f2; color:#303b40; font:16px/1.7 Georgia,"Noto Serif SC","Songti SC",SimSun,serif; }
+.commitment-actions { display:flex; flex-wrap:wrap; gap:10px; margin:17px 0 0; }
+.commitment-panel button { width:auto; min-height:42px; padding:8px 14px; border:1px solid #cdd5d1; border-radius:7px; background:#f9f8f4; color:#405f70; font:15px/1.5 system-ui,sans-serif; cursor:pointer; white-space:normal; }
+.commitment-panel button:hover { background:#e9efef; }
+.commitment-panel button.commitment-primary { background:#405f70; border-color:#405f70; color:#fff; }
+.commitment-panel button.commitment-primary:hover { background:#314e60; }
+.commitment-panel button:disabled { opacity:.55; cursor:default; }
+.commitment-panel button:focus-visible,.commitment-panel textarea:focus-visible { outline:2px solid #405f70; outline-offset:3px; }
+.commitment-message { min-height:1.5em; margin:10px 0 0; color:#405f70; font:13px/1.6 system-ui,sans-serif; overflow-wrap:anywhere; }
+.commitment-message.is-error { color:#8a493e; }
+.commitment-statement { white-space:pre-wrap; overflow-wrap:anywhere; margin:16px 0; padding-left:14px; border-left:2px solid #cdd5d1; font:16px/1.8 Georgia,"Noto Serif SC","Songti SC",SimSun,serif; }
+.commitment-scope,.commitment-history { min-width:0; padding:14px 0; border-bottom:1px solid #deded3; font:14px/1.7 system-ui,sans-serif; }
+.commitment-scope summary,.commitment-history summary { color:#405f70; cursor:pointer; }
+.commitment-scope p { margin:9px 0; overflow-wrap:anywhere; }
+.commitment-scope p span { display:block; margin-top:3px; color:#69756f; }
+.commitment-history details { margin-top:10px; padding:10px 0; border-top:1px solid #e2dfd6; }
+.commitment-history p { overflow-wrap:anywhere; }
+@media(max-width:620px) { .commitment-panel{padding:17px 15px;} .commitment-panel .commitment-heading h3{font-size:20px;} .commitment-actions button{min-height:44px;} }
 @media(max-width:620px) { .practice-dialog{width:calc(100vw - 16px);max-height:94dvh;border-radius:12px;} .practice-header{padding:18px 16px 10px;} .practice-tabs{padding:0 16px 10px;} .practice-content{padding:0 16px 20px;} .practice-message{margin:8px 16px;} .practice-grid{grid-template-columns:1fr;} .practice-review-list>div{flex-wrap:wrap;} .practice-review-list>div>div,.practice-review-list strong{flex-basis:100%;} .practice-comparison{gap:7px;} .practice-comparison>div{padding:9px;} .practice-comparison strong{font-size:16px;} .practice-report{padding:13px;} }

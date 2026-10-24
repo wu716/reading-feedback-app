@@ -226,6 +226,7 @@
       const open = !s.unassigned && (s.state === 'current' || s.state === 'next');
       const stageLabel = stageName(s);
       return `<article class="stage ${esc(s.state)}"><div class="stage-header"><h3>${esc(s.title)}</h3><span class="state-tag">${stageName(s)}</span></div>
+        ${s.state === 'current' && !s.unassigned ? '<div data-stage-commitment></div>' : ''}
         ${tasks.length ? tasks.map(t => `<div class="task-row ${!t.can_start ? 'blocked' : ''} ${t.state === 'completed' ? 'done' : ''}"><button type="button" data-act="select-task" data-id="${t.id}">${esc(t.title)}<small>${t.execution_role === 'preparation' ? '筹备任务 · ' : ''}${t.state === 'completed' ? '已完成' : esc(t.readiness?.summary || (t.blocked_by.length ? '等待前置任务' : '可以推进'))} · ${{simple:'简单',difficult:'困难'}[t.practice?.difficulty]||'难度未标'} · ${{unimportant:'不重要',ordinary:'一般',important:'重要'}[t.practice?.importance]||'重要性未标'}${t.practice?.reviewed_at?'':' · 待审视'} · 原估计 ${t.original_estimate_minutes ?? '未填'} 分 · 实耗 ${t.actual_minutes} 分</small></button></div>`).join('') : `<p class="stage-empty">这里还没有任务${open ? '，可以在下方写入第一项。' : '。'}</p>`}
         ${open ? `<form class="stage-task-form" data-stage="${s.id}">
           <label>${stageLabel}的新任务 <input name="title" maxlength="500" required placeholder="写下一件能开始、能核对的事"></label>
@@ -242,6 +243,7 @@
         </form>` : ''}
         ${s.state === 'next' ? `<div class="stage-transition"><button type="button" class="secondary" data-act="stage-handover" data-id="${s.id}">核对结果并交接到此阶段</button></div>` : ''}</article>`;
     }).join('') : '<p class="empty">建立项目后，这里会出现当前阶段和下一阶段。</p>';
+    if(project)globalThis.ShuranCommitments?.mount($('#stageBoard').querySelector('[data-stage-commitment]'),project.id,{onChanged:()=>afterChange()});
   }
   function renderTaskDetail() {
     const root = $('#taskDetail'), task = currentTask(), project = currentProject();

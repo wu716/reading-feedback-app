@@ -254,6 +254,17 @@ class PlanningCycle(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
+class StageCommitmentDraft(Base):
+    """Server-saved, unconfirmed writing; never implicitly promoted by starting work."""
+    __tablename__ = "stage_commitment_drafts"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    stage_id = Column(Integer, ForeignKey("project_stages.id"), nullable=False, unique=True)
+    statement = Column(Text, nullable=False, default="")
+    revision = Column(Integer, nullable=False, default=1)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
 class StageCommitment(Base):
     __tablename__ = "stage_commitments"
     id = Column(Integer, primary_key=True)
