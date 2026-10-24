@@ -167,9 +167,9 @@
     return shifted.toISOString().slice(0,16);
   }
   function dtLabel(iso) { return iso ? new Date(iso).toLocaleString('zh-CN', {hour12:false}) : '进行中'; }
-  function stageName(stage) { return stage.state === 'current' ? '当前阶段' : stage.state === 'next' ? '下一阶段' : '已结束'; }
+  function stageName(stage) { return stage.unassigned ? '不分阶段' : stage.state === 'current' ? '当前阶段' : stage.state === 'next' ? '下一阶段' : '已结束'; }
   function goalOptions(selected) { return '<option value="">暂不关联</option>' + state.overview.goals.map(g => `<option value="${g.id}" ${g.id === selected ? 'selected' : ''}>${esc(g.title)}</option>`).join(''); }
-  function stageOptions(project, selected) { return (project?.stages || []).filter(s => s.state !== 'closed').map(s => `<option value="${s.id}" ${s.id === selected ? 'selected' : ''}>${esc(s.title)} · ${stageName(s)}</option>`).join(''); }
+  function stageOptions(project, selected) { return '<option value="" '+(selected==null?'selected':'')+'>不分阶段</option>'+(project?.stages || []).filter(s => s.state !== 'closed').map(s => `<option value="${s.id}" ${s.id === selected ? 'selected' : ''}>${esc(s.title)} · ${stageName(s)}</option>`).join(''); }
 
   async function refresh() {
     state.plan = await request('/execution');
@@ -180,6 +180,8 @@
     state.active = state.sessions.find(s => !s.ended_at) || null;
     syncFocusAlarm(); notificationSettings();
     if (!hydrated) {
+      const selected=overview.projects.find(p=>p.id===Number(params.get('project')));
+      if(selected)state.projectId=selected.id;
       $('#workMinutes').value = state.plan.work_minutes; $('#breakMinutes').value = state.plan.break_minutes;
       const task = allTasks().find(t => t.id === Number(params.get('task')));
       if (task) { state.projectId = task.project_id; state.taskId = task.id; state.detailMode = params.get('finish') ? 'completion' : 'attributes'; }
@@ -217,9 +219,11 @@
       <details><summary>变更项目状态</summary><p>当前列表是本阶段的执行承诺。严格执行有助于集中投入、完成关键工作，并检验原先的计划是否合理。后续想法先放入下一阶段，避免不断打断当前任务。</p><form id="projectStateForm"><label>操作 <select name="state"><option value="started">检查条件并正式开始／重新开始</option><option value="delivered">确认已经交付</option><option value="accepted">确认已经验收</option><option value="preparation">交付后重新筹备（保留历史）</option></select></label><label>判断依据或原因 <input name="reason" required maxlength="4000"></label><button type="submit">确认项目状态</button></form></details>` : '';
     if (project) globalThis.ShuranConditions?.mount($('#projectConditions'), 'project', project.id, () => afterChange());
     else $('#projectConditions').innerHTML = '';
-    $('#stageBoard').innerHTML = project ? project.stages.map(s => {
+    const stages=project?[...project.stages]:[];
+    if(project?.tasks.some(t=>t.stage_id==null))stages.push({id:null,title:'项目任务（未分阶段）',state:'current',unassigned:true});
+    $('#stageBoard').innerHTML = project ? stages.map(s => {
       const tasks = project.tasks.filter(t => t.stage_id === s.id);
-      const open = s.state === 'current' || s.state === 'next';
+      const open = !s.unassigned && (s.state === 'current' || s.state === 'next');
       const stageLabel = stageName(s);
       return `<article class="stage ${esc(s.state)}"><div class="stage-header"><h3>${esc(s.title)}</h3><span class="state-tag">${stageName(s)}</span></div>
         ${tasks.length ? tasks.map(t => `<div class="task-row ${!t.can_start ? 'blocked' : ''} ${t.state === 'completed' ? 'done' : ''}"><button type="button" data-act="select-task" data-id="${t.id}">${esc(t.title)}<small>${t.execution_role === 'preparation' ? '筹备任务 · ' : ''}${t.state === 'completed' ? '已完成' : esc(t.readiness?.summary || (t.blocked_by.length ? '等待前置任务' : '可以推进'))} · ${{simple:'简单',difficult:'困难'}[t.practice?.difficulty]||'难度未标'} · ${{unimportant:'不重要',ordinary:'一般',important:'重要'}[t.practice?.importance]||'重要性未标'}${t.practice?.reviewed_at?'':' · 待审视'} · 原估计 ${t.original_estimate_minutes ?? '未填'} 分 · 实耗 ${t.actual_minutes} 分</small></button></div>`).join('') : `<p class="stage-empty">这里还没有任务${open ? '，可以在下方写入第一项。' : '。'}</p>`}
@@ -378,8 +382,8 @@
       if (form.id === 'goalForm') {
         const goal=await post('/goals', {title:body.title, horizon_end:body.horizon_end || null}); form.reset(); await afterChange('目标已保存'); await globalThis.ShuranPractice?.openGoal(goal.id);
       } else if (form.id === 'projectForm') {
-        const result = await post('', {title:body.title, outcome:body.outcome || null, goal_id:nullableNumber(body.goal_id)});
-        state.projectId = result.id; form.reset(); await afterChange('项目已建立'); await globalThis.ShuranPractice?.openProject(result.id,'feasibility');
+        const result = await post('', {title:body.title, outcome:body.outcome || null, goal_id:nullableNumber(body.goal_id),tasks:ShuranFeedback.composer.read(form)});
+        state.projectId = result.id; form.reset(); ShuranFeedback.composer.reset(form); await afterChange('项目与阶段任务已保存'); await globalThis.ShuranPractice?.openProject(result.id,'feasibility');
       } else if (form.id === 'projectStateForm') {
         const acknowledge = body.state === 'started' ? await confirmReadiness('project', state.projectId) : false;
         await post(`/${state.projectId}/execution-state`, {state:body.state, reason:body.reason, acknowledge_reminders:acknowledge});

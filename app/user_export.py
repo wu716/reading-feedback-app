@@ -29,6 +29,9 @@ USER_TABLES = (
     project_models.StartCondition, project_models.ExecutionConditionEvent,
     project_models.TaskPractice, project_models.PracticeEvent, project_models.PlanningCycle,
     project_models.StageCommitment, project_models.CommitmentAdjustment,
+    project_models.FeedbackOccurrence, project_models.FeedbackSubmission, project_models.FeedbackAttachment,
+    project_models.FeedbackReport, project_models.FeedbackDelivery,
+    project_models.ReaderBinding, project_models.ReaderReadingDay, project_models.ReaderReceiverAccount,
 )
 
 
@@ -40,7 +43,7 @@ def _rows(db: Session, model, user_id: int, *, query=None) -> list[dict]:
     query = query if query is not None else db.query(model).filter(model.user_id == user_id)
     columns = [column.name for column in model.__table__.columns]
     # Server-local storage paths are not portable account data.
-    excluded = {"storage_path", "audio_path"}
+    excluded = {"storage_path", "audio_path", "storage_key", "token_hash", "code_hash", "credential_cipher", "nonce_cipher", "cursor"}
     if model in (models.PaymentTransaction, models.RefundTransaction, models.GrantEvent):
         excluded |= {"actor_user_id", "idempotency_key", "note"}
     columns = [name for name in columns if name not in excluded]
@@ -76,6 +79,6 @@ def build_user_export_zip(db: Session, user: models.User) -> bytes:
         archive.writestr("README.txt", (
             "书然个人数据导出，含本账户业务表和已删除的历史行；JSON 数值以数据库原单位保存。\n"
             "不含密码、登录验证码、管理员资料或其他账户记录。\n"
-            "原始 EPUB 和音频文件不在本包中；其正文、笔记、转写及元数据已导出。\n"
+            "原始 EPUB、音频和成果附件不在本包中；正文、笔记、转写、反馈版本和文件元数据已导出。成果原文件可在对应反馈中下载。\n"
         ).encode("utf-8"))
     return output.getvalue()

@@ -1,8 +1,7 @@
 name: Deploy to Google Cloud Run
 
 on:
-  push:
-    branches: [ main ]
+  # 生产部署由用户执行；推送源码不得自动更新云服务。
   workflow_dispatch:
 
 # 注意：此工作流需要以下secrets在GitHub仓库中配置：

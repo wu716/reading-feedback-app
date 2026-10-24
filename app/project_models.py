@@ -280,3 +280,135 @@ class CommitmentAdjustment(Base):
     reason = Column(Text, nullable=True)
     result_json = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class FeedbackOccurrence(Base):
+    """A dated delivery obligation. Its requirement is an immutable plan snapshot."""
+    __tablename__ = "feedback_occurrences"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    cycle_id = Column(Integer, ForeignKey("planning_cycles.id"), nullable=False)
+    due_date = Column(Date, nullable=False, index=True)
+    deadline = Column(String(5), nullable=False, default="21:00")
+    remind_at = Column(String(5), nullable=False, default="20:00")
+    reminders_enabled = Column(Boolean, nullable=False, default=False)
+    requirement_json = Column(Text, nullable=False)
+    skipped_reason = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("cycle_id", "due_date", name="uq_feedback_cycle_date"),)
+
+
+class FeedbackSubmission(Base):
+    __tablename__ = "feedback_submissions"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    occurrence_id = Column(Integer, ForeignKey("feedback_occurrences.id"), nullable=False, index=True)
+    version = Column(Integer, nullable=False)
+    content_json = Column(Text, nullable=False)
+    status = Column(String(20), nullable=False, default="submitted")
+    review_note = Column(Text, nullable=True)
+    submitted_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
+    __table_args__ = (UniqueConstraint("occurrence_id", "version", name="uq_feedback_submission_version"),)
+
+
+class FeedbackAttachment(Base):
+    __tablename__ = "feedback_attachments"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    filename = Column(String(250), nullable=False)
+    storage_key = Column(String(80), nullable=False, unique=True)
+    size = Column(Integer, nullable=False)
+    content_type = Column(String(120), nullable=False)
+    submission_id = Column(Integer, ForeignKey("feedback_submissions.id"), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class FeedbackReport(Base):
+    __tablename__ = "feedback_reports"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    period = Column(String(10), nullable=False)
+    anchor = Column(Date, nullable=False)
+    revision = Column(Integer, nullable=False, default=1)
+    digest = Column(String(64), nullable=False)
+    payload_json = Column(Text, nullable=False)
+    generated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("user_id", "period", "anchor", "revision", name="uq_feedback_report_revision"),)
+
+
+class FeedbackDelivery(Base):
+    """Durable email outbox; in-app / native delivery uses the existing reminder log."""
+    __tablename__ = "feedback_deliveries"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    event_key = Column(String(160), nullable=False, unique=True)
+    occurrence_id = Column(Integer, ForeignKey("feedback_occurrences.id"), nullable=True)
+    log_id = Column(Integer, ForeignKey("self_talk_reminder_logs.id"), nullable=True)
+    title = Column(String(250), nullable=False)
+    message = Column(Text, nullable=False)
+    email_status = Column(String(20), nullable=False, default="pending")
+    attempts = Column(Integer, nullable=False, default=0)
+    next_attempt_at = Column(DateTime, nullable=True)
+    sent_at = Column(DateTime, nullable=True)
+    last_error = Column(String(300), nullable=True)
+
+
+class ReaderPairing(Base):
+    __tablename__ = "reader_pairings"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    code_hash = Column(String(64), nullable=False, unique=True)
+    expires_at = Column(DateTime, nullable=False)
+    claimed_at = Column(DateTime, nullable=True)
+    remote_request_id = Column(String(100), nullable=False)
+    receiver_subject = Column(String(100), nullable=False)
+    nonce_cipher = Column(Text, nullable=True)
+    source_instance_id = Column(String(100), nullable=False)
+    preview_json = Column(Text, nullable=True)
+
+
+class ReaderReceiverAccount(Base):
+    __tablename__ = "reader_receiver_accounts"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
+    subject = Column(String(100), nullable=False, unique=True)
+
+
+class ReaderBinding(Base):
+    __tablename__ = "reader_bindings"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    source_instance_id = Column(String(100), nullable=False)
+    source_user_id = Column(String(200), nullable=False)
+    source_label = Column(String(200), nullable=False)
+    token_hash = Column(String(64), nullable=False, unique=True)
+    active = Column(Boolean, nullable=False, default=True)
+    detail_started_on = Column(Date, nullable=True)
+    baseline_json = Column(Text, nullable=True)
+    last_sync_at = Column(DateTime, nullable=True)
+    credential_cipher = Column(Text, nullable=True)
+    remote_grant_id = Column(String(100), nullable=True)
+    receiver_subject = Column(String(100), nullable=True)
+    authorized_from = Column(Date, nullable=True)
+    cursor = Column(Text, nullable=True)
+    high_watermark = Column(Integer, nullable=False, default=0)
+    sync_status = Column(String(30), nullable=False, default="pending")
+    sync_error = Column(String(300), nullable=True)
+    next_retry_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("source_instance_id", "source_user_id", name="uq_reader_source_account"),)
+
+
+class ReaderReadingDay(Base):
+    __tablename__ = "reader_reading_days"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    binding_id = Column(Integer, ForeignKey("reader_bindings.id"), nullable=False)
+    record_date = Column(Date, nullable=False)
+    revision = Column(Integer, nullable=False)
+    digest = Column(String(64), nullable=False)
+    books_json = Column(Text, nullable=False)
+    synced_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("binding_id", "record_date", name="uq_reader_binding_date"),)

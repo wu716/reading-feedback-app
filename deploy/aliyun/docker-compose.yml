@@ -42,9 +42,15 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      READER_API_URL: ${READER_API_URL:-}
+      READER_CLIENT_ID: ${READER_CLIENT_ID:-}
+      READER_CLIENT_SECRET: ${READER_CLIENT_SECRET:-}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://43.161.238.165:8000}
+      FEEDBACK_STORAGE_DIR: /app/private-feedback
     volumes:
       - uploads_data:/app/uploads
       - backups_data:/app/backups
+      - feedback_data:/app/private-feedback
       - ../../releases:/app/releases
     command: ["python", "start_aliyun.py"]
     healthcheck:
@@ -58,3 +64,4 @@ volumes:
   pg_data:
   uploads_data:
   backups_data:
+  feedback_data:

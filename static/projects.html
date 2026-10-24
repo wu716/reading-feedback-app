@@ -11,9 +11,11 @@
   <link rel="stylesheet" href="/static/css/workspace.css?v=20261022hierarchy1">
   <script defer src="/static/js/workspace-shell.js?v=20261022hierarchy1"></script>
   <script defer src="/static/js/start-conditions.js?v=20261022hierarchy1"></script>
-  <script defer src="/static/js/projects.js?v=20261022hierarchy1"></script>
+  <link rel="stylesheet" href="/static/css/feedback.css?v=20261023feedback1">
+  <script defer src="/static/js/feedback-ui.js?v=20261023feedback1"></script>
+  <script defer src="/static/js/projects.js?v=20261023feedback1"></script>
   <link rel="stylesheet" href="/static/css/plan-practice.css?v=20261022hierarchy1">
-  <script defer src="/static/js/plan-practice.js?v=20261022hierarchy1"></script>
+  <script defer src="/static/js/plan-practice.js?v=20261023feedback1"></script>
   <script defer src="/static/js/app-tabbar.js?v=20261022hierarchy1"></script>
 </head>
 <body>
@@ -38,8 +40,9 @@
         <summary>＋ 新建项目</summary>
         <form id="projectForm" class="project-form">
           <label>项目名称 <input name="title" maxlength="200" required placeholder="例如：论文第一版"></label>
-          <label>要交付的结果 <input name="outcome" maxlength="4000" placeholder="例如：一份可打开、含目录和三节正文的 PDF"></label>
+          <label>预期结果 <input name="outcome" maxlength="4000" placeholder="可以写具体成果，也可以写想探索的问题"></label>
           <label>关联目标 <select name="goal_id" id="projectGoal"><option value="">暂不关联</option></select></label>
+          <div data-project-tasks class="fb-full"></div>
           <button type="submit">保存项目</button>
         </form>
       </details>

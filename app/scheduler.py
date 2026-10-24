@@ -37,6 +37,12 @@ def create_scheduler() -> BackgroundScheduler:
         replace_existing=True,
     )
     from app.backup import run_daily_backup
+    from app.feedback_service import check_feedback_reminders, deliver_email_outbox, generate_closed_reports
+    scheduler.add_job(lambda: _run_with_db(check_feedback_reminders), IntervalTrigger(minutes=1), id="project_feedback_reminders", replace_existing=True)
+    scheduler.add_job(lambda: _run_with_db(deliver_email_outbox), IntervalTrigger(minutes=1), id="feedback_email_outbox", replace_existing=True)
+    scheduler.add_job(lambda: _run_with_db(generate_closed_reports), IntervalTrigger(hours=1), id="feedback_period_reports", replace_existing=True)
+    from app.reader_client import sync_reader_accounts
+    scheduler.add_job(lambda: _run_with_db(sync_reader_accounts), IntervalTrigger(minutes=5), id="reader_reading_sync", replace_existing=True)
 
     scheduler.add_job(
         run_daily_backup,

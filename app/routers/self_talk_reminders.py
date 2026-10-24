@@ -2,6 +2,7 @@
 """待办与每日记录提醒；保留既有通知偏好和历史日志。"""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 import logging
 
 from app.database import get_db
@@ -193,6 +194,10 @@ async def get_pending_reminders(
 
         check_todo_reminders(db, user_id=current_user.id)
         check_record_reminders(db, user_id=current_user.id)
+        from app.feedback_service import check_feedback_reminders, latest
+        from app.project_models import FeedbackOccurrence, FeedbackDelivery
+        import json
+        check_feedback_reminders(db, user_id=current_user.id)
         setting = ReminderService.get_or_create_setting(db, current_user.id)
         status = record_status(db, current_user.id)
         
@@ -202,7 +207,8 @@ async def get_pending_reminders(
             db.query(SelfTalkReminderLog)
             .filter(
                 SelfTalkReminderLog.user_id == current_user.id,
-                SelfTalkReminderLog.triggered_at >= recent_time,
+                or_(SelfTalkReminderLog.triggered_at >= recent_time,
+                    SelfTalkReminderLog.reminder_type.in_(("project_feedback", "feedback_report"))),
                 SelfTalkReminderLog.dismissed_at.is_(None),
                 SelfTalkReminderLog.action_taken == False,
                 SelfTalkReminderLog.reminder_type.in_(REMINDER_TYPES)
@@ -215,6 +221,15 @@ async def get_pending_reminders(
         notifications = []
         for log in pending_logs:
             is_record = log.reminder_type == "daily_record"
+            feedback = json.loads(log.detail or "{}") if log.reminder_type in ("project_feedback", "feedback_report") else None
+            if feedback:
+                if not setting.is_enabled:
+                    continue
+                if feedback.get("occurrence_id"):
+                    occurrence = db.query(FeedbackOccurrence).filter_by(id=feedback["occurrence_id"], user_id=current_user.id).first()
+                    submission = latest(db, occurrence.id) if occurrence else None
+                    if not occurrence or occurrence.skipped_reason or submission and submission.status != "needs_changes":
+                        continue
             if is_record and (not setting.is_enabled or not setting.record_reminder_enabled
                               or status["record_complete"] or log.detail != status["record_date"].isoformat()):
                 continue
@@ -229,9 +244,9 @@ async def get_pending_reminders(
                 "message": message,
                 "reminder_type": log.reminder_type,
                 "triggered_at": log.triggered_at.isoformat(),
-                "action_url": "/static/index.html?record=today#long-term" if is_record else "/static/index.html#overview",
-                "action_label": "记录今天" if is_record else "查看今日",
-                "system_notification": setting.browser_notification,
+                "action_url": feedback.get("action_url") if feedback else "/static/index.html?record=today#long-term" if is_record else "/static/index.html#overview",
+                "action_label": "查看报告" if log.reminder_type == "feedback_report" else "提交反馈" if feedback else "记录今天" if is_record else "查看今日",
+                "system_notification": bool(setting.browser_notification and log.notification_method != "in_app"),
                 "record_date": log.detail if is_record else None,
             })
         

@@ -1,0 +1,76 @@
+/* Paper, slate and ink: shared project planning, daily evidence and reports. */
+.fb-plan,.fb-daily,.fb-report,.fb-composer{--fb-ink:#344a56;--fb-blue:#405f72;--fb-soft:#edf1f2;--fb-line:#d9dedc;--fb-muted:#6e7e83;color:var(--fb-ink);font:inherit;line-height:1.65;min-width:0}
+.fb-plan *,.fb-daily *,.fb-report *,.fb-composer *{box-sizing:border-box}
+.fb-plan [hidden],.fb-daily [hidden],.fb-report [hidden]{display:none!important}
+.fb-heading{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 12px}
+.fb-heading h2,.fb-heading h3,.fb-heading h4{margin:0!important;color:var(--fb-ink);font-weight:650}
+.fb-heading>span,.fb-hint,.fb-empty,.fb-eyebrow{font-size:.85rem;color:var(--fb-muted);font-weight:400}
+.fb-hint{margin:10px 0;line-height:1.75}.fb-full{grid-column:1/-1!important;width:100%}
+.fb-plan label,.fb-composer label,.fb-node-body label{display:flex;flex-direction:column;gap:6px;font-size:.88rem;color:#536e7e;font-weight:600;min-width:0}
+.fb-plan input:not([type=checkbox]),.fb-plan textarea,.fb-plan select,.fb-composer input,.fb-composer select,.fb-node-body input,.fb-node-body textarea{width:100%;min-width:0;max-width:100%;background:#fffefa;border:1px solid var(--fb-line);border-radius:9px;padding:10px 12px;font:inherit;color:#34464d;box-shadow:none}
+.fb-plan textarea,.fb-node-body textarea{resize:vertical;min-height:76px;line-height:1.65}
+.fb-plan input:focus,.fb-plan select:focus,.fb-plan textarea:focus,.fb-composer input:focus,.fb-composer select:focus,.fb-node-body textarea:focus{outline:2px solid #7895a6;outline-offset:2px}
+.fb-plan button,.fb-composer button,.fb-daily button,.fb-report button{font:inherit;cursor:pointer;touch-action:manipulation}
+.fb-plan button:focus-visible,.fb-composer button:focus-visible,.fb-daily button:focus-visible,.fb-report button:focus-visible{outline:3px solid #7895a6;outline-offset:3px}
+.fb-primary,.fb-secondary,.fb-plan>button{padding:10px 16px;border:1px solid #b7c5ca;border-radius:9px;background:#edf2f3;color:#37586b;font-weight:600}
+.fb-primary{background:#405f72;color:white;border-color:#405f72}.fb-secondary:hover{background:#e0e8eb}.fb-primary:hover{background:#314f63}
+.fb-text{border:0!important;background:transparent!important;color:#4b7189!important;padding:5px 2px!important;text-align:left;font-size:.85rem!important}
+.fb-plan button:disabled,.fb-daily button:disabled{cursor:default;opacity:.48}
+.fb-composer{margin:18px 0}.fb-task-draft{padding:16px;border:1px solid var(--fb-line);border-radius:12px;background:#f8f9f6;margin-bottom:12px;display:grid;gap:12px}
+.fb-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.fb-plan .fb-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+.fb-task-draft .fb-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
+.fb-task-draft .fb-text{justify-self:end}.fb-task-draft input::placeholder,.fb-plan textarea::placeholder{color:#8a9698;font-size:.83rem;font-weight:400}
+.fb-plan{display:grid;gap:20px}.fb-plan h3{margin:0 0 12px}.fb-plan fieldset{min-width:0;padding:16px;border:1px solid var(--fb-line);border-radius:12px;margin:0;background:transparent}
+.fb-plan legend{font-weight:650;color:#456273;padding:0 6px}
+.fb-range{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:center}
+.fb-range button{border:1px solid #c7d4da;background:#f2f5f5;color:#38596c;padding:13px;border-radius:10px;text-align:left;font-weight:650;letter-spacing:.04em}
+.fb-range button[aria-pressed=true]{outline:2px solid #4f7289;background:#e6edef}
+.fb-plan .fb-check{display:flex;flex-direction:row;align-items:center;gap:8px;color:#3f545f;font-weight:450;margin:6px 0}
+.fb-plan input[type=checkbox]{accent-color:#405f72;width:17px;height:17px;flex:none}
+.fb-rule{display:grid;gap:16px}.fb-weekdays{display:flex;gap:6px;flex-wrap:wrap}.fb-weekdays label{position:relative;cursor:pointer}
+.fb-weekdays input{position:absolute;inset:0;opacity:0}.fb-weekdays span{border:1px solid #c2cfd3;border-radius:8px;padding:7px 12px;background:#f5f7f6}
+.fb-weekdays input:checked+span{background:#405f72;color:white;border-color:#405f72}.fb-weekdays input:focus-visible+span{outline:3px solid #7895a6;outline-offset:2px}
+.fb-calendar{max-width:540px;width:100%;margin:auto;border:1px solid #d9e0df;background:#fffefa;border-radius:16px;padding:16px}
+.fb-calendar-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;color:#365569}
+.fb-calendar-head button{border:1px solid #cfdbde;background:#eef3f4;border-radius:8px;width:36px;height:36px;color:#456b81;font-size:23px}
+.fb-week-head,.fb-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}.fb-week-head span{text-align:center;font-size:.8rem;color:#79888b;padding:5px}
+.fb-calendar-grid button{border:0;background:#f6f7f4;border-radius:8px;min-width:0;aspect-ratio:1.13;color:#4d5c62;position:relative}
+.fb-calendar-grid button.in-range{background:#eaf0f2}.fb-calendar-grid button.other-month{color:#96a1a4}.fb-calendar-grid button.is-selected{background:#405f72;color:#fff}
+.fb-calendar-grid button:hover:not(:disabled){box-shadow:inset 0 0 0 2px #6c8da0}.fb-calendar-grid button i{position:absolute;width:4px;height:4px;background:currentColor;border-radius:50%;bottom:6px;left:calc(50% - 2px)}
+.fb-calendar-grid button:disabled{opacity:.42}.fb-formats{display:flex;flex-wrap:wrap;gap:6px 18px}
+.fb-dates>div{font-size:.82rem;line-height:2.1;overflow-wrap:anywhere;padding:10px;background:#f0f3f1;border-radius:8px}.fb-dates summary{color:#557384;cursor:pointer}
+.fb-daily-projects,.fb-reader{background:#fafaf6;border:1px solid #dce1dd;border-radius:16px;padding:22px;margin:0 0 22px}
+.fb-daily .fb-heading a,.fb-report a{color:#40677e;text-decoration:none}.fb-daily a:hover,.fb-report a:hover{text-decoration:underline}
+.fb-node{border:1px solid #d6dfdf;border-radius:12px;margin:12px 0;background:#fffefa;overflow:hidden}
+.fb-node>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;padding:16px}
+.fb-node>summary::-webkit-details-marker{display:none}.fb-node>summary::after{content:'＋';color:#5e7e91;margin-left:auto}.fb-node[open]>summary::after{content:'−'}
+.fb-node>summary>span:first-child{flex:1}.fb-node small,.fb-version small,.fb-book small,.fb-project-report small{display:block;color:#7a888b;font-size:.78rem;font-weight:400;margin-top:3px}
+.fb-badge{display:inline-block;font-size:.75rem;color:#496b7f;background:#eaf0f2;padding:4px 9px;border-radius:20px;white-space:normal}
+.fb-badge.overdue,.fb-badge.needs_changes{color:#966037;background:#f6ece2}.fb-badge.accepted{color:#526f57;background:#e9efe5}.fb-badge.skipped{color:#7c8280;background:#eeefeb}
+.fb-node-body{border-top:1px solid #e3e6df;padding:18px;display:grid;gap:16px}.fb-node-body form{display:grid;gap:14px}.fb-node-body .fb-primary{justify-self:start}
+.fb-deliverable{font-weight:650;font-size:1rem;white-space:pre-wrap;margin:0;color:#3d5868}
+.fb-content{white-space:pre-wrap;max-height:320px;overflow:auto;font-size:.9rem}.fb-version{border-top:1px solid #e2e6e3;padding:14px 0}.fb-version a{display:block;overflow-wrap:anywhere}
+.fb-review{padding:16px;background:#f0f4f2;border-radius:10px}.fb-review h4{margin:0}.fb-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.fb-status,.fb-card-status{font-size:.85rem;color:#546f63;margin:0;white-space:pre-wrap}.fb-error{color:#9b523f!important}
+.fb-reader{background:#f1f4f3;padding:18px}.fb-reader p{font-size:.85rem}.fb-pair-code{font:650 1.4rem monospace;letter-spacing:.14em;overflow-wrap:anywhere;color:#375b70}
+.fb-project-effort{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;border-bottom:1px solid #e1e5e0;padding:10px 0;font-size:.88rem}
+.fb-node-body [data-file-list]{font-size:.8rem;overflow-wrap:anywhere}.fb-node-body [data-file-list] span{display:block}
+.fb-daily details>summary,.fb-report details>summary{cursor:pointer}.fb-upcoming>summary,.fb-past>summary{padding:12px 0;color:#56788c}
+.fb-report-intro{padding:24px;border-radius:15px;background:#eaf0f2;margin:20px 0 28px}.fb-report-intro h2{font-size:1.25rem;margin:4px 0 10px}.fb-report-intro p{font-size:.85rem;margin:6px 0}
+.fb-report-section{padding:24px 0;border-bottom:1px solid #dce1dc}.fb-report-section h3{font-size:1.1rem;margin:0 0 15px}.fb-report-section .fb-heading>span{font-size:.8rem}
+.fb-trends{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}
+.fb-trend-card{border:1px solid #dde3df;background:#fbfcf8;border-radius:12px;padding:15px;min-width:0}.fb-trend-card h4{font-size:.9rem}.fb-trend-card strong{font-size:.85rem}.fb-trend-card svg{display:block;width:100%;height:auto}
+.fb-compare-row{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:8px;font-size:.75rem;margin:7px 0;color:#69808b}.fb-compare-row i{display:block;background:var(--fb-series);height:7px;min-width:0;border-radius:4px;max-width:100%}.fb-compare-row.previous i{opacity:.3}
+.fb-trend-axis{font-size:.78rem;color:#7b898c;text-align:right}.fb-segment{display:flex;gap:4px;background:#e7edef;border-radius:9px;padding:3px}
+.fb-segment button{border:0;border-radius:7px;padding:6px 11px;background:transparent;color:#577082;font-size:.8rem}.fb-segment button[aria-pressed=true]{background:#fffefa;box-shadow:0 1px 4px #26435916;color:#314e62}
+.fb-book{padding:12px 0;border-bottom:1px solid #e0e6e1}.fb-book>summary{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(30px,1fr) auto;align-items:center;gap:14px;list-style:none;font-size:.9rem}.fb-book-track{background:#e9eeeb;height:8px;border-radius:10px}.fb-book-track i{display:block;background:#617e92;height:100%;border-radius:inherit}.fb-book strong{font-size:.82rem}.fb-date-links{display:flex;flex-wrap:wrap;gap:7px}
+.fb-date-links button{background:#eaf0f2;border:0;border-radius:6px;color:#4e6a7b;padding:4px 7px;font-size:.78rem}
+.fb-project-report{border:1px solid #dce3df;border-radius:12px;padding:18px;margin:15px 0;background:#fcfcf8}.fb-project-report p{font-size:.88rem}
+.fb-node-chips{display:flex;flex-wrap:wrap;gap:8px}.fb-node-chip{padding:7px 10px;border:1px solid #cddbe0;border-radius:8px;background:#eaf0f3;font-size:.76rem}.fb-node-chip span{display:block}.fb-node-chip.accepted{background:#eaf0e5;border-color:#ccd9c4;color:#5c7558}.fb-node-chip.overdue,.fb-node-chip.needs_changes{background:#f6ece2;border-color:#e3cbb7;color:#8f694c}.fb-node-chip.skipped{background:#efefeb;color:#7b8484}
+.fb-milestones{list-style:none;padding:0 0 0 14px;border-left:2px solid #c6d5dc;margin:20px 0}.fb-milestones li{padding:0 0 16px 12px;position:relative}.fb-milestones li:before{content:'';position:absolute;width:8px;height:8px;border-radius:50%;background:#668499;left:-19px;top:8px}.fb-milestones time{font-size:.76rem;color:#7b8c94;display:block}
+.fb-coverage-grid{max-width:680px;margin:18px auto}.fb-coverage-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.fb-coverage-days button{min-width:0;background:#eeefeb;border:1px solid #e0e2dc;border-radius:8px;padding:8px 2px;color:#7c8888;font-size:.8rem}.fb-coverage-days button span,.fb-coverage-days button small{display:block}.fb-coverage-days small{font-size:.65rem}.fb-coverage-days button.partial{background:#e6edef;color:#5d7989;border-color:#d0dde1}.fb-coverage-days button.confirmed{background:#4c6c7f;color:white;border-color:#4c6c7f}
+.fb-report-details{margin:30px 0;padding:16px;border:1px solid #dce2dd;border-radius:10px}.fb-report-details>summary{color:#526e7f;font-weight:600;cursor:pointer}.fb-table-wrap{overflow-x:auto}.fb-table-wrap table{width:100%;border-collapse:collapse;font-size:.8rem}.fb-table-wrap th,.fb-table-wrap td{text-align:left;padding:9px;border-bottom:1px solid #e1e5df;white-space:nowrap}
+@media(min-width:1200px){.fb-trends{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:700px){.fb-fields,.fb-task-draft .fb-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.fb-daily-projects{padding:16px}.fb-trends{gap:10px}.fb-trend-card{padding:12px}.fb-node>summary{padding:12px;gap:8px;flex-wrap:wrap}.fb-node-body{padding:14px}.fb-report-intro{padding:18px}.fb-heading{align-items:flex-start}.fb-book>summary{grid-template-columns:minmax(0,1fr) auto}.fb-book-track{grid-row:2;grid-column:1/-1}.fb-book strong{grid-column:2;grid-row:1}}
+@media(max-width:420px){.fb-task-draft{padding:12px}.fb-task-draft .fb-fields{grid-template-columns:minmax(0,1fr)}.fb-plan .fb-fields{grid-template-columns:minmax(0,1fr)}.fb-range{gap:6px}.fb-range button{padding:9px 6px;font-size:.8rem;letter-spacing:0}.fb-calendar{padding:10px}.fb-weekdays span{padding:6px 8px}.fb-trends{grid-template-columns:minmax(0,1fr)}.fb-coverage-days{gap:3px}.fb-coverage-days button{font-size:.68rem;padding:7px 1px}.fb-coverage-days small{font-size:.55rem}.fb-badge{font-size:.67rem}.fb-daily-projects{padding:12px}}
+.fb-compare-row{grid-template-columns:30px minmax(0,1fr) 76px}.fb-compare-row>span:last-child{text-align:right;overflow-wrap:anywhere}.fb-book,.fb-node,.fb-project-report{overflow-wrap:anywhere}

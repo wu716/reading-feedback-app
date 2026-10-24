@@ -16,7 +16,7 @@ from app.models import DailyTodo, SelfTalkReminderLog, SelfTalkReminderSetting, 
 
 logger = logging.getLogger(__name__)
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
-REMINDER_TYPES = ("todo", "daily_record")
+REMINDER_TYPES = ("todo", "daily_record", "project_feedback", "feedback_report")
 
 
 class ReminderService:
@@ -71,14 +71,20 @@ class ReminderService:
             msg["From"] = settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME
             msg["To"] = user.email
             msg["Subject"] = subject
+            paragraphs = []
+            for line in content.splitlines():
+                safe = escape(line)
+                paragraphs.append(f'<p><a href="{safe}">打开书然查看</a></p>' if line.startswith(("https://", "http://")) else f"<p>{safe}</p>")
             body = (
                 '<html><body style="font-family:Arial,sans-serif;padding:20px">'
-                f'<h2>{escape(subject)}</h2><p>{escape(content)}</p>'
+                f'<h2>{escape(subject)}</h2>' + "".join(paragraphs) +
                 '</body></html>'
             )
             msg.attach(MIMEText(body, "html"))
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
-                if settings.SMTP_USE_TLS:
+            implicit_tls = settings.SMTP_USE_TLS and settings.SMTP_PORT == 465
+            smtp = smtplib.SMTP_SSL if implicit_tls else smtplib.SMTP
+            with smtp(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
+                if settings.SMTP_USE_TLS and not implicit_tls:
                     server.starttls()
                 if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
                     server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
@@ -101,9 +107,14 @@ class ReminderService:
             method = "email"
         else:
             method = "in_app"
-        ReminderService.log_reminder(db, user_id, reminder_type, method, detail)
+        log = ReminderService.log_reminder(db, user_id, reminder_type, method, detail)
         if setting.email_notification:
-            ReminderService.send_email_notification(db, user_id, title, message)
+            sent = ReminderService.send_email_notification(db, user_id, title, message)
+            if not sent:
+                from app.project_models import FeedbackDelivery
+                db.add(FeedbackDelivery(user_id=user_id, event_key=f"legacy-reminder:{log.id}", log_id=log.id,
+                    title=title, message=message, email_status="retry", attempts=1))
+                db.commit()
 
     @staticmethod
     def get_reminder_message(
@@ -111,6 +122,10 @@ class ReminderService:
     ) -> tuple[str, str]:
         if reminder_type == "daily_record":
             return "记录这一天", "留一点时间回看今天，补充长期目标里的活动、注意力与开销记录。"
+        if reminder_type in ("project_feedback", "feedback_report"):
+            import json
+            payload = json.loads(detail or "{}")
+            return payload.get("title", "反馈提醒"), payload.get("message", "打开书然查看")
         if reminder_type != "todo":
             raise ValueError("Unsupported reminder type")
         return "待办提醒", detail or f"{user_name}，你有一条待办到点了。"

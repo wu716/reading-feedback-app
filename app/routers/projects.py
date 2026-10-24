@@ -25,6 +25,7 @@ from app.routers.practice import router as practice_router
 from app.routers.commitments import router as commitments_router
 from app import practice_service
 from app.commitment_service import guard_scope, record_scope_addition
+from app.project_composition import TaskDraft, add_drafts
 
 router = APIRouter(prefix="/projects", tags=["个人项目"])
 router.include_router(conditions_router)
@@ -74,6 +75,7 @@ class ProjectInput(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     outcome: str | None = Field(default=None, max_length=4000)
     goal_id: int | None = None
+    tasks: list[TaskDraft] = Field(default_factory=list, max_length=100)
 
 
 class StageInput(BaseModel):
@@ -227,6 +229,8 @@ def create_project(body: ProjectInput, user: User = Depends(get_current_active_u
         ProjectStage(user_id=user.id, project_id=row.id, title="当前阶段", position=0, state="current"),
         ProjectStage(user_id=user.id, project_id=row.id, title="下一阶段", position=1, state="next"),
     ])
+    db.flush()
+    add_drafts(db, user.id, row, body.tasks, initial=True)
     db.commit(); db.refresh(row)
     return {"id": row.id, "title": row.title}
 

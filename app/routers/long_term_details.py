@@ -13,6 +13,7 @@ from app.database import get_db
 from app.models import LongTermDailyRecord, LongTermLedgerDay, LongTermNodeCategory, LongTermPreferences, TimeLogNode, User
 from app.plans import PAID_PLANS, effective_plan_key
 from app.routers.time_log import beijing_today
+from app.reader_projection import source_days, merge as merge_reading
 
 router = APIRouter(prefix="/long-term/details", tags=["长期目标明细"])
 CATEGORIES = ("reading", "fitness", "friends", "family", "investment", "writing", "work", "relaxation")
@@ -41,6 +42,8 @@ class Activity(StrictModel):
     title: str = Field(default="", max_length=200)
     seconds: int = Field(default=0, ge=0, le=86400, strict=True)
     source_node_id: int | None = Field(default=None, gt=0, strict=True)
+    reader_book_key: str | None = Field(default=None, max_length=100, pattern=r"^reader_[a-zA-Z0-9_]+$")
+    reader_duplicate_of: str | None = Field(default=None, max_length=100, pattern=r"^reader_[a-zA-Z0-9_]+$")
     reading_kind: Literal["fiction", "nonfiction", "unclassified"] = "unclassified"
     primary_topic: str = "unclassified"
     topics: list[str] = Field(default_factory=list, max_length=5)
@@ -51,6 +54,10 @@ class Activity(StrictModel):
 
     @model_validator(mode="after")
     def semantics(self):
+        if self.reader_book_key and (self.category != "reading" or self.source_node_id or self.id != self.reader_book_key):
+            raise ValueError("同步阅读只引用一个阅读来源，不能同时关联其他计时")
+        if self.reader_duplicate_of and (self.category != "reading" or self.reader_book_key):
+            raise ValueError("只将手动阅读或关联日志与知间来源核对去重")
         if self.primary_topic not in TOPICS or any(t not in TOPICS for t in self.topics):
             raise ValueError("请选择已有阅读主题")
         if len(set(self.topics)) != len(self.topics):
@@ -86,10 +93,11 @@ class LegacyAttention(StrictModel):
 
 class LedgerInput(StrictModel):
     revision: int = Field(ge=0, strict=True)
-    activities: list[Activity] = Field(default_factory=list, max_length=300)
+    activities: list[Activity] = Field(default_factory=list, max_length=2000)
     expenses: list[Expense] = Field(default_factory=list, max_length=300)
     expense_confirmed: bool = False
     day_confirmed: bool = False
+    category_confirmed: list[Category] = Field(default_factory=list, max_length=8)
     attention_items: list[LegacyAttention] = Field(default_factory=list, max_length=30)
     attention_confirmed: bool = False
     # Read compatibility for clients that still send the old field name.
@@ -107,6 +115,8 @@ class LedgerInput(StrictModel):
 
     @model_validator(mode="after")
     def references(self):
+        if len(set(self.category_confirmed)) != len(self.category_confirmed):
+            raise ValueError("方向核对状态不能重复")
         ids = [a.id for a in self.activities]
         expense_ids = [e.id for e in self.expenses]
         nodes = [a.source_node_id for a in self.activities if a.source_node_id]
@@ -219,6 +229,7 @@ def read_range(db, user_id, start, end):
     assignments = {a.node_id: a.category for a in db.query(LongTermNodeCategory).filter(
         LongTermNodeCategory.user_id == user_id, LongTermNodeCategory.node_id.in_([n.id for n in nodes])).all()} if nodes else {}
     by_day = {}
+    imported = source_days(db, user_id, start, end)
     for node in nodes:
         by_day.setdefault(node.log_date, []).append(node)
     result = []
@@ -264,15 +275,18 @@ def read_range(db, user_id, start, end):
         if "attention_confirmed" not in data:
             data["attention_confirmed"] = bool(data["attention_items"]) or bool(legacy)
         data.setdefault("legacy_attention", [])
+        data.setdefault("category_confirmed", list(CATEGORIES) if data.get("day_confirmed") else [])
+        merge_reading(data, imported.get(day, []), Activity)
         for activity in data["activities"]:
-            activity["source_missing"] = False
+            if not activity.get("reader_book_key"):
+                activity["source_missing"] = False
             if activity.get("source_node_id"):
                 node = available.get(activity["source_node_id"])
                 activity["seconds"] = max(0, node.duration_seconds or 0) if node else 0
                 activity["source_missing"] = node is None
         result.append({
             **data, "date": day.isoformat(), "revision": row.revision if row else 0,
-            "recorded": bool(row or legacy), "legacy_investment_seconds": legacy_investment_seconds,
+            "recorded": bool(row or legacy or imported.get(day)), "legacy_investment_seconds": legacy_investment_seconds,
             "nodes": [{"id": n.id, "title": n.label or "关联行动", "seconds": max(0, n.duration_seconds or 0)} for n in source],
         })
         day += timedelta(days=1)
@@ -283,9 +297,9 @@ def aggregate(days):
     totals = {k: 0 for k in CATEGORIES}
     counts = {k: 0 for k in CATEGORIES}
     reading = {k: {"seconds": 0, "count": 0} for k in ("fiction", "nonfiction", "unclassified")}
-    topics, secondary, expenses, investments, projects, attention = {}, {}, {}, {}, {}, {}
+    topics, secondary, expenses, investments, projects, attention, books = {}, {}, {}, {}, {}, {}, {}
     activities, transactions = [], []
-    words = unplanned = old_attention = missing = 0
+    words = unplanned = old_attention = missing = duplicates = 0
     for day in days:
         for a in day["activities"]:
             item = {**a, "date": day["date"]}
@@ -294,6 +308,9 @@ def aggregate(days):
             # A removed source retains its description but contributes neither time nor a session.
             if a.get("source_missing"):
                 missing += 1
+                continue
+            if a.get("reader_duplicate_of"):
+                duplicates += 1
                 continue
             counts[key] += 1
             seconds = a["seconds"] if key != "investment" else 0
@@ -308,6 +325,13 @@ def aggregate(days):
             if a.get("unplanned"):
                 unplanned += seconds
             if key == "reading":
+                book_key = a.get("reader_book_key") or "manual:" + (a["title"] or "未填写书名")
+                book = books.setdefault(book_key, {"key": book_key, "title": a.get("reader_source", {}).get("title") or a["title"] or "未填写书名",
+                    "seconds": 0, "count": 0, "source": a.get("reader_source"), "dates": []})
+                book["seconds"] += seconds
+                book["count"] += 1
+                if day["date"] not in book["dates"]:
+                    book["dates"].append(day["date"])
                 reading[a["reading_kind"]]["seconds"] += seconds
                 reading[a["reading_kind"]]["count"] += 1
                 topic = topics.setdefault(a["primary_topic"], {"seconds": 0, "count": 0})
@@ -331,7 +355,7 @@ def aggregate(days):
     refunds = sum(e["refund_cents"] for e in expenses.values())
     return {
         "total_seconds": totals, "counts": counts, "words": words,
-        "reading": reading, "topics": topics, "secondary_topics": secondary,
+        "reading": reading, "books": list(books.values()), "topics": topics, "secondary_topics": secondary,
         "expense_categories": expenses, "expense_cents": spend, "refund_cents": refunds,
         "money_cents": spend - refunds, "investment_cents": sum(investments.values()),
         "investments": investments, "activity_groups": projects,
@@ -339,11 +363,12 @@ def aggregate(days):
         "attention_minutes": sum(attention.values()), "attention_waste_minutes": sum(attention.values()),
         "attention_by_name": attention,
         "attention_confirmed_days": sum(d["attention_confirmed"] for d in days),
-        "source_missing_count": missing, "activities": activities, "expenses": transactions,
+        "source_missing_count": missing, "source_duplicate_count": duplicates, "activities": activities, "expenses": transactions,
         "activity_record_count": len(activities), "expense_record_count": len(transactions),
         "recorded_days": sum(d["recorded"] for d in days),
         "expense_confirmed_days": sum(d["expense_confirmed"] for d in days),
         "day_confirmed_days": sum(d["day_confirmed"] for d in days),
+        "category_confirmed_days": {k: sum(k in d.get("category_confirmed", CATEGORIES if d.get("day_confirmed") else []) for d in days) for k in CATEGORIES},
     }
 
 
@@ -366,7 +391,22 @@ def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get
     nodes = {n["id"]: n for n in previous["nodes"]}
     existing = {a["id"]: a for a in previous["activities"]}
     data = body.model_dump(exclude={"revision", "legacy_attention"})
+    if "category_confirmed" not in body.model_fields_set:
+        data["category_confirmed"] = [] if previous["day_confirmed"] and not body.day_confirmed else previous["category_confirmed"]
+    if body.day_confirmed:
+        data["category_confirmed"] = list(CATEGORIES)
+    data["day_confirmed"] = len(data["category_confirmed"]) == len(CATEGORIES)
     for activity in data["activities"]:
+        duplicate = activity.get("reader_duplicate_of")
+        if duplicate and not any(a.get("reader_book_key") == duplicate for a in previous["activities"]):
+            raise HTTPException(400, "请引用当前账号当天的知间阅读记录")
+        if activity.get("reader_book_key"):
+            old = existing.get(activity["id"])
+            if not old or old.get("reader_book_key") != activity["reader_book_key"]:
+                raise HTTPException(400, "不能新增或修改阅读来源身份")
+            activity["seconds"], activity["title"] = old["seconds"], old["title"]
+        elif activity["id"].startswith("reader_"):
+            raise HTTPException(400, "同步阅读不能改成另一条手动记录")
         source_id = activity["source_node_id"]
         if source_id:
             if source_id not in nodes:
@@ -376,8 +416,8 @@ def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get
                 activity["seconds"] = 0
             else:
                 activity["seconds"] = nodes[source_id]["seconds"]
-    old_total = sum(a["seconds"] for a in previous["activities"])
-    new_total = sum(a["seconds"] for a in data["activities"])
+    old_total = sum(a["seconds"] for a in previous["activities"] if not a.get("reader_duplicate_of"))
+    new_total = sum(a["seconds"] for a in data["activities"] if not a.get("reader_duplicate_of"))
     if new_total > 86400 and new_total > old_total:
         raise HTTPException(400, "当天累计超过 24 小时，请检查重复录入")
     valid_categories = {c["id"]: c for c in prefs(db, user.id)["expense_categories"]}
@@ -393,6 +433,12 @@ def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get
     if any((a.name, a.minutes) not in old_attention for a in body.legacy_attention):
         raise HTTPException(400, "旧版注意力记录不能新增，请使用新的注意力开销字段")
     try:
+        before_links = {a["id"]: a["reader_duplicate_of"] for a in previous["activities"] if a.get("reader_duplicate_of")}
+        after_links = {a["id"]: a["reader_duplicate_of"] for a in data["activities"] if a.get("reader_duplicate_of")}
+        if before_links != after_links:
+            from app.practice_service import event
+            event(db, user.id, "reading_day", day.toordinal(), "reader_reconciliation",
+                {"before": before_links, "after": after_links}, day=day)
         if body.revision:
             changed = db.query(LongTermLedgerDay).filter_by(user_id=user.id, record_date=day, revision=body.revision).update({
                 "payload_json": dumps(data), "revision": body.revision + 1}, synchronize_session=False)
@@ -405,6 +451,8 @@ def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get
     except IntegrityError:
         db.rollback()
         conflict()
+    from app.feedback_service import refresh_reports
+    refresh_reports(db, user, day, notify=data["day_confirmed"])
     return get_day(day=day, user=user, db=db)
 
 
@@ -464,7 +512,7 @@ def target_progress(goal, days):
         return sum(e["amount_cents"] * (-1 if e["kind"] == "refund" else 1)
                    for d in days for e in d["expenses"]
                    if not goal.get("expense_category") or goal["expense_category"] == e["category"])
-    items = [a for d in days for a in d["activities"] if a["category"] == category and not a.get("source_missing")
+    items = [a for d in days for a in d["activities"] if a["category"] == category and not a.get("source_missing") and not a.get("reader_duplicate_of")
              and (not goal.get("reading_kind") or a["reading_kind"] == goal["reading_kind"])
              and (not goal.get("topic") or a["primary_topic"] == goal["topic"])]
     if metric == "count":
@@ -509,7 +557,7 @@ def report_payload(db, user_id, period, anchor, now=None):
         return {k: data[k] for k in ("total_seconds", "counts", "words", "money_cents", "expense_cents", "refund_cents",
                                      "investment_cents", "recorded_days", "expense_confirmed_days", "day_confirmed_days", "topics",
                                      "activity_record_count", "expense_record_count", "attention_waste_minutes",
-                                     "attention_confirmed_days")}
+                                     "attention_confirmed_days", "category_confirmed_days")}
     buckets = {}
     for d in days:
         key = d["date"][:7] if period in ("quarter", "year") else d["date"]
@@ -541,22 +589,40 @@ def get_report(period: Period = "day", anchor: date = Query(default=None), user:
     return report_for_user(db, user, period, anchor or beijing_today())
 
 
-def report_for_user(db: Session, user: User, period: Period, anchor: date) -> dict:
+def report_for_user(db: Session, user: User, period: Period, anchor: date, notify=False) -> dict:
     """Enforce the same report boundary for the current and legacy API routes."""
+    db.query(User).filter(User.id == user.id).with_for_update().first()
     paid = effective_plan_key(user) in PAID_PLANS
     if period in ("month", "quarter", "year") and not paid:
         raise HTTPException(403, "月报、季报和年报需要有效月卡或学期卡")
     result = report_payload(db, user.id, period, anchor)
     from app.practice_service import training_report
     result["practice"] = training_report(db, user.id, result["start"], result["end"])
+    from app.feedback_service import project_progress, snapshot_report
+    result["projects"] = project_progress(db, user.id, result["start"], result["effective_end"]) if result["effective_end"] else []
+    result["evolution"] = {"trend": [{k: t[k] for k in ("label", "total_seconds", "counts", "category_confirmed_days", "investment_cents", "day_confirmed_days", "activity_record_count", "recorded_days")} for t in result["trend"]],
+        "comparison": {k: result["comparison"][k] for k in ("days", "start", "end", "previous_start", "previous_end")},
+        "current": {k: result["comparison"]["current"][k] for k in ("total_seconds", "counts", "category_confirmed_days", "investment_cents", "recorded_days", "day_confirmed_days", "activity_record_count")},
+        "previous": {k: result["comparison"]["previous"][k] for k in ("total_seconds", "counts", "category_confirmed_days", "investment_cents", "recorded_days", "day_confirmed_days", "activity_record_count")}}
+    bounds = [calendar_bounds(period, anchor)]
+    for _ in range(5):
+        bounds.insert(0, calendar_bounds(period, bounds[0][0] - timedelta(days=1)))
+    history_days = read_range(db, user.id, bounds[0][0], min(beijing_today(), bounds[-1][1]))
+    result["evolution"]["history"] = []
+    for lo, hi in bounds:
+        rows = [d for d in history_days if lo.isoformat() <= d["date"] <= hi.isoformat()]
+        summary = aggregate(rows)
+        result["evolution"]["history"].append({"label": lo.isoformat(), "end": hi.isoformat(), "elapsed_days": len(rows),
+            **{k: summary[k] for k in ("total_seconds", "counts", "category_confirmed_days", "investment_cents", "day_confirmed_days", "recorded_days", "activity_record_count")}})
+    apply_report_visibility(result, paid)
+    result["snapshot"] = snapshot_report(db, user, result, notify=notify)
+    return result
+
+
+def apply_report_visibility(result, paid):
+    """Use the current entitlement for live reports and stored historical copies."""
     result["premium_locked"] = not paid
     if not paid:
-        # Daily and weekly totals stay free. Full records are available from /day
-        # and the account export; app-generated deep analysis requires a paid plan.
-        result.update({
-            "topics": {}, "secondary_topics": {}, "investments": {},
-            "activity_groups": {}, "activities": [], "expenses": [],
-            "goals": [], "trend": [], "comparison": None,
-        })
-    return result
+        result.update({"topics": {}, "secondary_topics": {}, "investments": {},
+            "activity_groups": {}, "activities": [], "expenses": [], "goals": [], "trend": [], "comparison": None, "evolution": None})
 

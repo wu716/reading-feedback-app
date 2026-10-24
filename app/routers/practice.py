@@ -446,14 +446,20 @@ def checklist(kind: str, row_id: int, body: Checklist, user: User = Depends(get_
     db.commit(); return svc.task_payload(db, user.id, kind, row)
 
 
+from app.project_composition import TaskDraft, add_drafts
+from app.feedback_schema import FeedbackRule
+
+
 class CycleInput(Strict):
     start_date: date
     end_date: date
     horizon: Literal["week", "fortnight", "month", "quarter", "year", "custom"] = "week"
-    expected_result: str = Field(min_length=1, max_length=4000)
+    expected_result: str = Field(default="", max_length=4000)
     available_minutes: int | None = Field(default=None, ge=0, le=1000000)
-    task_ids: list[int] = Field(max_length=300)
+    task_ids: list[int] = Field(default_factory=list, max_length=300)
     previous_cycle_id: int | None = None
+    new_tasks: list[TaskDraft] = Field(default_factory=list, max_length=100)
+    feedback: FeedbackRule = Field(default_factory=FeedbackRule)
 
 
 class CycleReview(Strict):
@@ -470,6 +476,9 @@ def cycle_data(db, user_id, cycle):
     plan = json.loads(cycle.plan_json)
     report = svc.training_report(db, user_id, cycle.start_date, cycle.end_date)
     ids = {t["id"] for t in plan["tasks"]}
+    planned_ids = set(ids)
+    if plan.get("scope") == "project":
+        ids = {t.id for t in db.query(ProjectTask).filter_by(user_id=user_id, project_id=cycle.project_id)}
     from sqlalchemy import or_, and_
     daily_ids = db.query(DailyTask.id).filter(DailyTask.user_id == user_id, DailyTask.project_task_id.in_(ids))
     session_ids = {s.id for s in db.query(WorkSession).filter(WorkSession.user_id == user_id,
@@ -478,22 +487,25 @@ def cycle_data(db, user_id, cycle):
     seconds = sum(w["seconds"] for w in included)
     current = db.query(ProjectTask).filter(ProjectTask.user_id == user_id, ProjectTask.id.in_(ids)).all()
     total_estimate = sum(t["estimate"] or 0 for t in plan["tasks"])
-    evidence = {"planned_task_count": len(ids), "completed_count": sum(t.state == "completed" and not t.deleted_at for t in current),
+    evidence = {"planned_task_count": len(planned_ids), "completed_count": sum(t.state == "completed" and not t.deleted_at for t in current),
         "planned_minutes": total_estimate, "missing_estimates": sum(t["estimate"] is None for t in plan["tasks"]),
         "actual_interval_minutes": round(seconds / 60, 2), "interval_count": len(included), "available_minutes": cycle.available_minutes}
     suggestions = ["先核对漏记、实际结果、困难和条件变化，再决定维持、缩短或延长跨度。"]
     if cycle.available_minutes is not None and total_estimate > cycle.available_minutes:
         suggestions.append(f"原估计 {total_estimate} 分钟超过可用 {cycle.available_minutes} 分钟，下轮可减少负荷或增加真实可用时间。")
-    if seconds / 60 > total_estimate and not evidence["missing_estimates"]:
+    if plan["tasks"] and seconds / 60 > total_estimate and not evidence["missing_estimates"]:
         suggestions.append("已记录投入超过原估计，查看漏算步骤、返工和范围变化，再决定余量。")
     if evidence["missing_estimates"]: suggestions.append("有任务未估时，当前数据不足以判断估时偏差。")
     review = json.loads(cycle.review_json) if cycle.review_json else None
+    from app.project_models import FeedbackOccurrence
+    feedback_nodes = [{"id": n.id, "date": str(n.due_date), "skipped_reason": n.skipped_reason}
+        for n in db.query(FeedbackOccurrence).filter_by(user_id=user_id, cycle_id=cycle.id).order_by(FeedbackOccurrence.due_date)]
     if review and review.get("conditions"):
         suggestions.append("你记录的条件问题是“%s”。下一轮先落实对应条件，再判断是否适合扩大范围和跨度。" % review["conditions"])
     return {"id": cycle.id, "project_id": cycle.project_id, "start_date": cycle.start_date, "end_date": cycle.end_date,
         "horizon": cycle.horizon, "expected_result": cycle.expected_result, "plan": plan, "evidence": evidence,
         "review": review, "suggestions": suggestions,
-        "previous_cycle_id": cycle.previous_cycle_id}
+        "previous_cycle_id": cycle.previous_cycle_id, "feedback_nodes": feedback_nodes}
 
 
 @router.get("/projects/{project_id}/cycles")
@@ -508,8 +520,12 @@ def create_cycle(project_id: int, body: CycleInput, user: User = Depends(get_cur
     _, project = svc.owner(db, user.id, "project", project_id)
     if body.end_date < body.start_date or (body.end_date - body.start_date).days > 731:
         raise HTTPException(400, "请设置两年以内、先后正确的周期日期")
-    if not body.expected_result.strip() or not body.task_ids or len(set(body.task_ids)) != len(body.task_ids):
-        raise HTTPException(400, "请明确结果并选择本轮任务")
+    if len(set(body.task_ids)) != len(body.task_ids):
+        raise HTTPException(400, "本轮任务不能重复")
+    try:
+        dates = body.feedback.materialize(body.start_date, body.end_date)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
     if body.previous_cycle_id:
         prior = db.get(PlanningCycle, body.previous_cycle_id)
         if not prior or prior.user_id != user.id or prior.project_id != project_id: raise HTTPException(404, "上一轮不存在")
@@ -517,14 +533,27 @@ def create_cycle(project_id: int, body: CycleInput, user: User = Depends(get_cur
         if db.query(PlanningCycle).filter_by(previous_cycle_id=prior.id, user_id=user.id).first():
             raise HTTPException(409, "本轮已有下一轮，请打开已有周期")
     tasks = []
-    for task_id in body.task_ids:
+    new_tasks = add_drafts(db, user.id, project, body.new_tasks)
+    for task_id in body.task_ids + [t.id for t in new_tasks]:
         _, t = task_owner(db, user.id, "task", task_id)
         if t.project_id != project_id: raise HTTPException(400, "任务不属于此项目")
         tasks.append({"id": t.id, "title": t.title, "estimate": t.estimated_minutes, "stage_id": t.stage_id,
                       "criteria": t.acceptance_criteria})
-    row = PlanningCycle(user_id=user.id, project_id=project_id, **body.model_dump(exclude={"task_ids"}),
-        plan_json=svc.dumps({"goal": svc.goal_text(db, t), "project_outcome": project.outcome, "tasks": tasks}))
-    db.add(row); db.commit(); return cycle_data(db, user.id, row)
+    fields = body.model_dump(exclude={"task_ids", "new_tasks", "feedback"})
+    fields["expected_result"] = body.expected_result.strip() or project.outcome or project.title
+    from app.project_models import Goal
+    goal = db.query(Goal).filter_by(id=project.goal_id, user_id=user.id).first() if project.goal_id else None
+    row = PlanningCycle(user_id=user.id, project_id=project_id, **fields,
+        plan_json=svc.dumps({"goal": goal.title if goal else project.outcome or project.title, "project_outcome": project.outcome,
+            "tasks": tasks, "scope": "tasks" if tasks else "project", "feedback": body.feedback.model_dump(mode="json")}))
+    db.add(row); db.flush()
+    from app.project_models import FeedbackOccurrence
+    for day in dates:
+        db.add(FeedbackOccurrence(user_id=user.id, project_id=project_id, cycle_id=row.id, due_date=day,
+            deadline=body.feedback.deadline, remind_at=body.feedback.remind_at,
+            reminders_enabled=body.feedback.reminders,
+            requirement_json=svc.dumps(body.feedback.model_dump(mode="json", exclude={"dates", "add_dates", "skip_dates", "weekdays"}))))
+    db.commit(); return cycle_data(db, user.id, row)
 
 
 @router.post("/cycles/{cycle_id}/review")

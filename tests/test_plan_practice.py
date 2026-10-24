@@ -31,7 +31,7 @@ class PlanningPracticeTests(unittest.TestCase):
 
     def feedback(self, kind, task_id, **changes):
         body = {"result": "completed", "actual_minutes": 45, "basis": "self_report",
-                "reason": "漏算检查", "next_estimate": "下次加15分钟核对", **changes}
+                "reason": "漏算检查", "next_estimate": "下次加15分钟核对", "feedback_date": "2026-10-22", **changes}
         return self.req('POST', f'/practice/tasks/{kind}/{task_id}/feedback', body)
 
     def manual(self, task_id=None, daily_id=None, start="2026-10-21T15:50:00Z", end="2026-10-21T16:10:00Z"):

@@ -109,7 +109,7 @@ def test_only_all_confirmed_sections_suppress_the_reminder_and_accounts_are_isol
     confirm(db, user, now.date())
     confirm(db, other, now.date(), expense_confirmed=False)
     assert service.check_record_reminders(db, now=now) == 1
-    assert db.query(SelfTalkReminderLog).one().user_id == other.id
+    assert db.query(SelfTalkReminderLog).filter_by(reminder_type="daily_record").one().user_id == other.id
 
 
 @pytest.mark.parametrize("field", ["is_enabled", "is_active"])
@@ -135,6 +135,10 @@ def test_pending_opens_today_hides_completed_and_stale_records_and_scopes_dismis
     assert not client.get("/api/reminders/pending").json()["notifications"]
     identity["user"] = user
     confirm(db, user, now.date())
+    reports = client.get("/api/reminders/pending").json()["notifications"]
+    assert {n["reminder_type"] for n in reports} == {"feedback_report"}
+    for report in reports:
+        assert client.post(f'/api/reminders/dismiss/{report["log_id"]}').status_code == 200
     assert not client.get("/api/reminders/pending").json()["notifications"]
     assert client.get("/api/reminders/settings").json()["record_complete"] is True
     confirm(db, user, now.date(), expense_confirmed=False)

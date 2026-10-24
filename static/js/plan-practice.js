@@ -71,7 +71,7 @@
     });
     dialog.addEventListener('change', event=>{
       if(event.target.name==='support') updateSupport();
-      if(event.target.name==='horizon') {
+      if(event.target.name==='horizon'&&!event.target.form?.querySelector('.fb-plan')) {
         const f=event.target.form, days={week:7,fortnight:14,month:30,quarter:90,year:365}[event.target.value];
         if(f?.elements.start_date?.value&&days){ const d=new Date(f.elements.start_date.value+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+days-1);f.elements.end_date.value=d.toISOString().slice(0,10);}
       }
@@ -221,12 +221,16 @@
     } else if(tab==='cycles') {
       content.innerHTML=note('建议先尝试一周，再按事实选择两周、一个月、季度或年度。可以维持、缩短或延长，无需打卡解锁。简单事项和陌生事项的探索行动仍可直接开始。')+button('new-cycle','制定一轮计划')+
         (cycles.items.map(c=>`<article class="practice-cycle"><h3>${esc(c.expected_result)}</h3><p>${c.start_date} — ${c.end_date}</p><p>计划 ${c.evidence.planned_task_count} 项 / ${c.evidence.planned_minutes} 分 · 已记录区间 ${c.evidence.interval_count?c.evidence.actual_interval_minutes+' 分':'未记录'} · ${c.evidence.missing_estimates} 项未估时</p>${note(c.suggestions.join(' '))}${c.review?`<p>实际结果：${esc(c.review.actual_result)}</p><p>下一轮：${esc(c.review.next_changes)} · 理由：${esc(c.review.reason)}</p>${c.review.horizon_decision==='stop'?note('本轮选择停止；保留依据与结果。'):button('next-cycle','根据复盘制定下一轮',`data-id="${c.id}"`)}`:button('review-cycle','对照结果并复盘',`data-id="${c.id}"`)}</article>`).join('')||note('还没有计划周期'));
+      content.querySelectorAll('.practice-cycle').forEach((card,i)=>{
+        const c=cycles.items[i],rule=c.plan.feedback;
+        if(c.plan.scope==='project')card.querySelectorAll('p')[1].textContent='本轮直接推进整个项目；已记录投入 '+(c.evidence.interval_count?c.evidence.actual_interval_minutes+' 分':'待核对');
+        if(c.feedback_nodes?.length)card.insertAdjacentHTML('beforeend',`<section class="fb-daily"><p>每次交付：${esc(rule.deliverable)} · ${esc(rule.deadline)} 截止</p><details><summary>${c.feedback_nodes.length} 个具体反馈日期 · 打开提交入口</summary><div class="fb-node-chips">${c.feedback_nodes.map(n=>`<a class="fb-node-chip" href="/static/index.html?feedback=${n.id}&record=${n.date}#long-term">${n.date}${n.skipped_reason?' · 已跳过':''}</a>`).join('')}</div></details></section>`);
+      });
     } else if(tab==='new-cycle') {
       const previous=cycles.items.find(c=>c.id===context.previousCycleId);
       content.innerHTML=(previous?note(`依据上一轮：${previous.review.next_changes}；跨度决定：${decisionLabel(previous.review.horizon_decision)}。`):'')+
-        form('cycle',`<label>本轮跨度${select('horizon',{week:'一周',fortnight:'两周',month:'一个月',quarter:'一个季度',year:'一年',custom:'自定'},'week',null)}</label><div class="practice-grid">${input('start_date','开始日期',dayISO(),'date','required')}${input('end_date','结束日期',new Date(Date.now()+6*86400000).toISOString().slice(0,10),'date','required')}</div>`+
-          area('expected_result','本轮预期可检验结果',previous?.review.next_changes||'','required')+input('available_minutes','本轮可用分钟（未知留空）','','number','min="0" max="1000000"')+
-          `<fieldset><legend>本轮任务范围（与阶段承诺分别记录）</legend>${projectData.tasks.filter(t=>!['completed','cancelled'].includes(t.state)).map(t=>`<label class="practice-inline"><input type="checkbox" name="task_ids" value="${t.id}">${esc(t.title)} · ${t.estimated_minutes??'未估计'} 分</label>`).join('')}</fieldset>`,'保存本轮计划');
+        form('cycle',ShuranFeedback.plan.html(projectData,previous?.review.next_changes||''),'保存本轮计划');
+      ShuranFeedback.plan.mount(content.querySelector('form'),projectData);
     } else {
       const c=cycles.items.find(c=>c.id===context.cycleId);
       content.innerHTML=note(`预期：${c.expected_result}；原计划 ${c.evidence.planned_minutes} 分／${c.evidence.planned_task_count} 项；已记录投入 ${c.evidence.interval_count?c.evidence.actual_interval_minutes+' 分':'未记录'}。未记录不视为没做，任务自报累计总量不冒充本周期区间。`)+
@@ -255,7 +259,7 @@
     } else if(name==='reflection')await api(`/practice/day/${context.day}/reflection`,{...b,minutes:b.minutes===''?null:Number(b.minutes),session_ids:[...f.querySelectorAll('[name=session_ids]:checked')].map(el=>Number(el.value))});
     else if(name==='feasibility')await api(`/practice/feasibility/${context.type==='goal'?'goal':'project'}/${context.id}`,{...b,someone_did_it:b.someone_did_it===''?null:b.someone_did_it==='yes',small_gap:b.small_gap===''?null:b.small_gap==='yes'});
     else if(name==='goal-revision')await api(`/practice/goals/${context.id}/revise`,{...b,horizon_end:b.horizon_end||null});
-    else if(name==='cycle')await api(`/practice/projects/${context.id}/cycles`,{...b,available_minutes:b.available_minutes===''?null:Number(b.available_minutes),task_ids:[...f.querySelectorAll('[name=task_ids]:checked')].map(el=>Number(el.value)),previous_cycle_id:context.previousCycleId||null});
+    else if(name==='cycle')await api(`/practice/projects/${context.id}/cycles`,{...ShuranFeedback.plan.read(f),previous_cycle_id:context.previousCycleId||null});
     else if(name==='cycle-review')await api(`/practice/cycles/${context.cycleId}/review`,b);
     else if(name==='adjustment-plan') {
       const dispositions=[...f.querySelectorAll('[data-disposition]')].map(row=>({task_id:Number(row.dataset.disposition),action:row.querySelector('select').value}));

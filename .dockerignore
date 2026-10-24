@@ -34,6 +34,7 @@ ENV/
 docs/
 
 # 测试
+tests/
 test_*.py
 check_*.py
 verify_*.py
@@ -52,6 +53,7 @@ encrypted_api_key.txt
 
 # 上传文件（可选）
 uploads/
+private-feedback/
 
 # Windows
 Thumbs.db

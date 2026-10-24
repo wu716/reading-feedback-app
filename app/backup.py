@@ -35,6 +35,8 @@ from app.project_models import (
     TaskChecklistItem, WorkSession, TimeActivityAssessment, ProcessTemplate,
     StartCondition, ExecutionConditionEvent,
     TaskPractice, PracticeEvent, PlanningCycle, StageCommitment, CommitmentAdjustment,
+    FeedbackOccurrence, FeedbackSubmission, FeedbackAttachment, FeedbackReport, FeedbackDelivery,
+    ReaderBinding, ReaderPairing, ReaderReadingDay, ReaderReceiverAccount,
 )
 
 logger = logging.getLogger(__name__)
@@ -151,6 +153,15 @@ def build_backup_zip(db: Session) -> bytes:
         "planning_cycles.csv": PlanningCycle,
         "stage_commitments.csv": StageCommitment,
         "commitment_adjustments.csv": CommitmentAdjustment,
+        "feedback_occurrences.csv": FeedbackOccurrence,
+        "feedback_submissions.csv": FeedbackSubmission,
+        "feedback_attachments.csv": FeedbackAttachment,
+        "feedback_reports.csv": FeedbackReport,
+        "feedback_deliveries.csv": FeedbackDelivery,
+        "reader_bindings.csv": ReaderBinding,
+        "reader_pairings.csv": ReaderPairing,
+        "reader_receiver_accounts.csv": ReaderReceiverAccount,
+        "reader_reading_days.csv": ReaderReadingDay,
         "project_stages.csv": ProjectStage,
         "project_tasks.csv": ProjectTask,
         "task_dependencies.csv": TaskDependency,
@@ -170,7 +181,7 @@ def build_backup_zip(db: Session) -> bytes:
     with zipfile.ZipFile(raw, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for name, content in files.items():
             zf.writestr(name, content)
-        zf.writestr("README.txt", "书然 CSV 逻辑备份，不含密码哈希和上传原文件。完整恢复请另用 pg_dump -Fc 和 uploads 卷备份。\n")
+        zf.writestr("README.txt", "书然 CSV 逻辑备份，不含密码哈希和上传原文件。完整恢复请另用 pg_dump -Fc，并备份 uploads_data 与 feedback_data 两个文件卷。\n")
     return raw.getvalue()
 
 

@@ -3466,7 +3466,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261017paper1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.25';
+            window.SHURAN_VERSION = '2.0.26';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -4160,10 +4160,11 @@
                     <button type="button" data-lt-view="settings" aria-pressed="false">目标与分类</button>
                 </div>
                 <div id="ltDailyPanel">
+                    <div id="feedbackDaily" class="fb-daily"></div>
                     <p class="lt-note">每天留一点时间回看自己。<button type="button" class="lt-text-button" id="ltReminderSettings">设置每日记录提醒 →</button></p>
                     <fieldset id="ltDayFields" class="lt-workspace" disabled>
                         <div class="lt-time-column">
-                            <div class="lt-panel-heading"><h2>今天做了什么</h2><span>每个方向可以记录多次</span></div>
+                            <div class="lt-panel-heading"><h2>长期方向 · 活动明细</h2><span>八个方向，每个方向可以记录多次</span></div>
                             <div id="ltManual" class="lt-activity-list"></div>
                             <details class="lt-log-review"><summary><span>从时间日志归类</span><span id="ltNodeCount">查看</span></summary><p class="lt-note">选择一个主要方向，补充细节。日志时长自动关联，只计入一次；非计划占用在活动详情中标记。</p><div id="ltNodes"></div></details>
                             <div id="ltLegacy"></div>
@@ -6851,11 +6852,15 @@
     <script src="/static/js/workspace-shell.js?v=20261022hierarchy1"></script>
     <link rel="stylesheet" href="/static/css/start-conditions.css?v=20261022hierarchy1">
     <link rel="stylesheet" href="/static/css/plan-practice.css?v=20261022hierarchy1">
-    <script src="/static/js/plan-practice.js?v=20261022hierarchy1"></script>
+    <link rel="stylesheet" href="/static/css/feedback.css?v=20261023feedback1">
+    <script src="/static/js/feedback-ui.js?v=20261023feedback1"></script>
+    <script src="/static/js/feedback-daily.js?v=20261023feedback1"></script>
+    <script src="/static/js/feedback-reports.js?v=20261023feedback1"></script>
+    <script src="/static/js/plan-practice.js?v=20261023feedback1"></script>
     <script src="/static/js/start-conditions.js?v=20261022hierarchy1"></script>
     <script src="/static/js/daily-schedule.js?v=20261022hierarchy1"></script>
     <script src="/static/js/time-log.js?v=20261022account1"></script>
-    <script src="/static/js/long-term.js?v=20261022hierarchy1"></script>
+    <script src="/static/js/long-term.js?v=20261023feedback1"></script>
     <script src="/static/js/activity-review.js?v=20261017paper1"></script>
     <script src="/static/js/ideas.js?v=20261018momenttask1"></script>
     <script src="/static/js/desktop-shell.js?v=20261022account1"></script>

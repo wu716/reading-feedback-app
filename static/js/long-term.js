@@ -48,20 +48,25 @@
         return '<input data-a="' + esc(a.id) + '" data-field="' + key + '" type="' + type + '" value="' + esc(value) + '" ' + more + '>';
     }
     function activityCaption(a) {
+        if(a.reader_duplicate_of)return '已核对为同一段阅读 · 不重复计时';
         return a.category === 'investment' ? '¥ ' + yuan(a.amount_cents) : time(a.seconds) + (a.category === 'writing' && a.words != null ? ' · ' + a.words + ' 字' : '');
     }
     function activityEditor(a) {
         const name = {reading:'书名（选填）',fitness:'运动项目',friends:'帮朋友做了什么',family:'陪家人做了什么',investment:'投资标的',writing:'写作主题／正在修改什么',work:'工作内容',relaxation:'放松活动'}[a.category];
 
-        let basic = field(name, input(a,'title','text','maxlength="200" ' + (a.category === 'reading' ? '' : 'required ') + 'list="ltRecent-' + a.category + '"'));
+        let basic = field(name, input(a,'title','text','maxlength="200" ' + (a.reader_book_key ? 'readonly ' : '') + (a.category === 'reading' ? '' : 'required ') + 'list="ltRecent-' + a.category + '"'));
         if (a.category === 'reading') {
             basic += field('阅读类型', '<select data-a="' + a.id + '" data-field="reading_kind" required>' + options(kinds,a.reading_kind,'请选择') + '</select>');
             basic += field('主主题 · 用于时长统计', '<select data-a="' + a.id + '" data-field="primary_topic" required>' + options(preferences.topics,a.primary_topic,'请选择') + '</select>');
         }
         basic += a.category === 'investment'
             ? field('投入金额（元）', input(a,'amount','number','min="0.01" max="1000000000" step="0.01" inputmode="decimal" required'))
-            : field('时长（分钟）', input(a,'minutes','number',a.source_node_id ? 'disabled step="any"' : 'min="1" max="1440" step="1" inputmode="numeric" required'));
+            : field('时长（分钟）', input(a,'minutes','number',a.source_node_id || a.reader_book_key ? 'disabled step="any"' : 'min="1" max="1440" step="1" inputmode="numeric" required'));
         if (a.category === 'writing') basic += field('新增字数（选填，构思／修改可填 0）',input(a,'words','number','min="0" max="10000000" step="1" inputmode="numeric"'));
+        if(a.category==='reading'&&!a.reader_book_key) {
+            const sources=Object.fromEntries(day.activities.filter(x=>x.reader_book_key).map(x=>[x.reader_book_key,x.title+' · '+time(x.seconds)]));
+            if(Object.keys(sources).length)basic+=field('与知间记录核对','<select data-a="'+a.id+'" data-field="reader_duplicate_of">'+options(sources,a.reader_duplicate_of,'独立补记，另外计时')+'</select>');
+        }
         let extra = field(a.category === 'fitness' ? '运动感受（选填）' : a.category === 'reading' ? '想法／收获（选填）' : '感受／补充记录（选填）',
             '<textarea data-a="' + a.id + '" data-field="note" rows="2" maxlength="3000">' + esc(a.note) + '</textarea>', 'lt-full');
         if (a.category === 'reading') {
@@ -74,12 +79,13 @@
             '<div class="lt-entry-body"><div class="lt-form-grid">' + basic + '</div>' +
             (a.source_node_id ? '<p class="lt-note">' + (a.source_missing ? '原时间日志已移除或日期已更改，本条描述保留，当前不计时。可转为手动记录后填写。' : '已关联时间日志；时长随源日志更新，无需重复补录。') + '<button type="button" class="lt-text-button" data-detach="' + a.id + '">转为手动记录</button></p>' : '') +
             '<details class="lt-extra"' + (a.note || a.unplanned || a.topics.length ? ' open' : '') + '><summary>补充细节与感受</summary><div class="lt-form-grid">' + extra + '</div></details>' +
-            '<div class="lt-entry-actions"><button type="button" class="lt-text-button" data-remove-a="' + a.id + '">移除这条活动</button></div></div></details>';
+            (a.reader_book_key ? '<p class="lt-note">知间逐书来源：' + esc(a.reader_source?.label || '已同步记录') + '。书名与时长随来源更新；分类和收获可补充。' + (a.source_missing ? '来源已修订移除，保留补充说明，当前不计时。' : '') + '</p>' : '<div class="lt-entry-actions"><button type="button" class="lt-text-button" data-remove-a="' + a.id + '">移除这条活动</button></div>') + '</div></details>';
     }
     function renderActivities() {
         el('ltManual').innerHTML = keys.map((key,i) => '<details class="lt-activity" data-panel="' + key + '"' + (openPanels.has(key) ? ' open' : '') + ' style="--activity-color:' + colors[i] + '"><summary><span class="lt-activity-number">' + String(i+1).padStart(2,'0') + '</span><span class="lt-activity-name">' + labels[key] + '</span><span class="lt-activity-track"><span data-bar="' + key + '"></span></span><output data-total="' + key + '"></output><span class="lt-activity-action">展开</span></summary><div class="lt-activity-editor">' +
             day.activities.filter(a => a.category === key).map(activityEditor).join('') +
             '<button type="button" class="lt-text-button" data-add-a="' + key + '">＋ 添加' + labels[key] + '记录</button>' +
+            '<label class="lt-check"><input type="checkbox" data-confirm-category="'+key+'"'+(day.category_confirmed?.includes(key)?' checked':'')+'>此方向已核对（没有记录表示本日没有）</label>'+
             '<datalist id="ltRecent-' + key + '">' + recent.filter(r => r.category === key).map(r => '<option value="' + esc(r.title) + '"></option>').join('') + '</datalist></div></details>').join('');
         el('ltManual').querySelectorAll('[data-panel]').forEach(d => d.addEventListener('toggle', () => { d.open ? openPanels.add(d.dataset.panel) : openPanels.delete(d.dataset.panel); }));
         el('ltManual').querySelectorAll('[data-entry]').forEach(d => d.addEventListener('toggle', () => { d.open ? openEntries.add(d.dataset.entry) : openEntries.delete(d.dataset.entry); }));
@@ -128,16 +134,16 @@
     }
     function updateTotals() {
         if (!day) return;
-        const totals = keys.map(k => day.activities.filter(a => a.category === k).reduce((n,a) => n + (k === 'investment' ? 0 : Number(a.seconds) || 0),0));
+        const totals = keys.map(k => day.activities.filter(a => a.category === k && !a.reader_duplicate_of && !a.source_missing).reduce((n,a) => n + (k === 'investment' ? 0 : Number(a.seconds) || 0),0));
         const sum = totals.reduce((a,b) => a+b,0), max = Math.max(1,...totals);
         keys.forEach((key,i) => {
             const out = el('ltManual').querySelector('[data-total="' + key + '"]'), bar = el('ltManual').querySelector('[data-bar="' + key + '"]');
-            if (out) out.textContent = key === 'investment' ? '¥ ' + yuan(day.activities.filter(a => a.category === key).reduce((n,a) => n + (Number(a.amount_cents) || 0),0)) : time(totals[i]);
+            if (out) out.textContent = !day.activities.some(a=>a.category===key&&!a.source_missing&&!a.reader_duplicate_of)&&!day.category_confirmed?.includes(key)?'待记录':key === 'investment' ? '¥ ' + yuan(day.activities.filter(a => a.category === key).reduce((n,a) => n + (Number(a.amount_cents) || 0),0)) : time(totals[i]);
             if (bar) bar.style.width = totals[i] / max * 100 + '%';
         });
         el('ltTotalTime').textContent = time(sum);
         el('ltDistribution').innerHTML = totals.map((n,i) => '<span style="width:' + (sum ? n / sum * 100 : 0) + '%;background:' + colors[i] + '"></span>').join('');
-        const unplanned = day.activities.filter(a => a.unplanned).reduce((n,a) => n + (Number(a.seconds) || 0),0);
+        const unplanned = day.activities.filter(a => a.unplanned && !a.reader_duplicate_of && !a.source_missing).reduce((n,a) => n + (Number(a.seconds) || 0),0);
         el('ltOverviewHint').textContent = day.activities.length + ' 条活动 · 其中非计划占用 ' + time(unplanned) + (dirty ? ' · 当前草稿' : '');
         const spending = day.expenses.filter(e => e.kind === 'expense').reduce((n,e) => n + (Number(e.amount_cents) || 0),0);
         const refunds = day.expenses.filter(e => e.kind === 'refund').reduce((n,e) => n + (Number(e.amount_cents) || 0),0);
@@ -145,6 +151,7 @@
         if (el('ltAttentionTotal')) el('ltAttentionTotal').textContent = time((day.attention_items || []).reduce((n,item) => n + (Number(item.minutes) || 0),0) * 60);
     }
     function renderDay() {
+        day.category_confirmed ||= day.day_confirmed?[...keys]:[];
         renderActivities(); renderAttention(); renderExpenses();
         el('ltDayConfirmed').checked = day.day_confirmed;
         el('ltExpenseConfirmed').checked = day.expense_confirmed;
@@ -181,13 +188,13 @@
         return {
             revision:day.revision,
             activities:day.activities.map(a => {
-                const {source_missing,_minutes,_amount,...data} = a;
+                const {source_missing,reader_source,_minutes,_amount,...data} = a;
                 if (data.category === 'investment') data.amount_cents = moneyCents(_amount ?? yuan(data.amount_cents));
-                else if (!data.source_node_id) data.seconds = Number(_minutes ?? data.seconds/60) * 60;
+                else if (!data.source_node_id && !data.reader_book_key) data.seconds = Number(_minutes ?? data.seconds/60) * 60;
                 return data;
             }),
             expenses:day.expenses.map(e => { const {_amount,...data} = e; data.amount_cents = moneyCents(_amount ?? yuan(e.amount_cents)); return data; }),
-            expense_confirmed:day.expense_confirmed,day_confirmed:day.day_confirmed,
+            expense_confirmed:day.expense_confirmed,day_confirmed:day.day_confirmed,category_confirmed:day.category_confirmed,
             attention_items:attention,attention_confirmed:Boolean(day.attention_confirmed || attention.length),
         };
     }
@@ -202,6 +209,7 @@
             day = !force && drafts.has(date) ? clone(drafts.get(date)) : data;
             dirty = !force && drafts.has(date);
             renderDay(); el('ltDayFields').disabled = false;
+            window.ShuranFeedbackDaily?.load(day.date);
             el('ltSaveHint').textContent = dirty ? '已恢复本次会话草稿，保存前请核对。' : '修改后保存；活动、注意力和消费可以分别核对。';
         } catch(e) { if (request === dayRequest && sameSession(epoch)) status(e.message || '读取失败，请重试','is-error'); }
         if (view === 'report') loadReport();
@@ -228,7 +236,11 @@
         }
     }
     function updateInput(target) {
-        if (target.dataset.a) {
+        if(target.dataset.confirmCategory) {
+            const key=target.dataset.confirmCategory;
+            day.category_confirmed=target.checked?[...new Set([...day.category_confirmed,key])]:day.category_confirmed.filter(k=>k!==key);
+            day.day_confirmed=day.category_confirmed.length===keys.length;el('ltDayConfirmed').checked=day.day_confirmed;
+        } else if (target.dataset.a) {
             const a = day.activities.find(x => x.id === target.dataset.a);
             if (target.dataset.topic) {
                 a.topics = target.checked ? [...new Set([...a.topics,target.dataset.topic])] : a.topics.filter(x => x !== target.dataset.topic);
@@ -238,6 +250,7 @@
                 if (f === 'minutes') { a._minutes = target.value; a.seconds = Number(target.value) * 60; }
                 else if (f === 'amount') { a._amount = target.value; try { a.amount_cents = moneyCents(target.value); } catch { a.amount_cents = 0; } }
                 else if (f === 'words') a.words = target.value === '' ? null : Number(target.value);
+                else if (f === 'reader_duplicate_of') a.reader_duplicate_of=target.value||null;
                 else a[f] = target.type === 'checkbox' ? target.checked : target.value;
                 if (f === 'primary_topic') a.topics = a.topics.filter(x => x !== a.primary_topic);
                 if (f === 'title' && a.category === 'reading') {
@@ -264,7 +277,7 @@
         } else if (target.dataset.attentionIndex !== undefined) {
             const item = day.attention_items[Number(target.dataset.attentionIndex)];
             item[target.dataset.attentionField] = target.value;
-        } else if (target.id === 'ltDayConfirmed') day.day_confirmed = target.checked;
+        } else if (target.id === 'ltDayConfirmed') {day.day_confirmed = target.checked;day.category_confirmed=target.checked?[...keys]:[];el('ltManual').querySelectorAll('[data-confirm-category]').forEach(c=>c.checked=target.checked);}
         else if (target.id === 'ltExpenseConfirmed') day.expense_confirmed = target.checked;
         else return;
         touch();
@@ -405,6 +418,7 @@
         if (r.premium_locked) {
             renderFreeReport(r);
             el('ltReport').insertAdjacentHTML('beforeend',globalThis.ShuranPractice?.reportHTML(r.practice)||'');
+            enhanceReport(r);
             return;
         }
         const total = Object.values(r.total_seconds).reduce((a,b) => a+b,0);
@@ -457,6 +471,13 @@
             '<details class="lt-report-detail"><summary><span>周期内趋势</span><small>' + (['year','quarter'].includes(r.period) ? '按月' : '按日') + '</small></summary><div class="lt-table-wrap"><table class="lt-table"><thead><tr><th>日期</th><th>时间投入</th><th>注意力浪费</th><th>写作字数</th><th>消费净支出</th><th>消费核对天数</th></tr></thead><tbody>' + trend + '</tbody></table></div></details>' +
             '<section class="lt-report-section"><h2>消费记录足迹</h2><div class="lt-report-calendar">' + r.days.map(d => '<button type="button" data-day="' + d.date + '" class="' + (d.expense_confirmed ? 'is-recorded' : d.recorded ? 'is-partial' : '') + '" title="' + d.date + (d.expense_confirmed ? ' 消费已核对' : d.recorded ? '有记录，消费待核对' : '未记录') + '">' + d.date.slice(5).replace('-','/') + '</button>').join('') + '</div><p class="lt-note">深绿：消费已核对；浅褐：有记录待核对；浅灰：未记录。未来日期不计入已过天数。点击日期可补记。</p></section>';
         el('ltReport').insertAdjacentHTML('beforeend',globalThis.ShuranPractice?.reportHTML(r.practice)||'');
+        enhanceReport(r);
+    }
+    function enhanceReport(r) {
+        const root=el('ltReport'),details=document.createElement('details'),summary=document.createElement('summary');
+        details.className='fb-report-details';summary.textContent='查看方向、消费、目标与训练明细';details.append(summary);
+        while(root.firstChild)details.append(root.firstChild);
+        root.append(details);window.ShuranFeedbackReports?.render(r,root);
     }
     function renderFreeReport(r) {
         const total = Object.values(r.total_seconds || {}).reduce((a,b) => a + b, 0);
@@ -508,6 +529,7 @@
         if (!el('ltDate')) return;
         const token = localStorage.getItem('authToken');
         if (sessionToken !== token) {
+            window.ShuranFeedbackDaily?.clear();
             sessionToken = token; sessionEpoch++; dayRequest++; reportRequest++;
             drafts.clear(); day=null; preferences=null; settingsDraft=null; recent=[]; displayedReport=null; dirty=false; settingsDirty=false;
             busy=false; settingsBusy=false; splitId=null; setBusy(false);
@@ -526,6 +548,12 @@
             switchView('daily');
             url.searchParams.delete('record');
             window.history.replaceState(null, '', url);
+        }
+        else if (/^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('record')||'')) {
+            el('ltDate').value=url.searchParams.get('record');url.searchParams.delete('record');
+            if (periods[url.searchParams.get('report')]) {period=url.searchParams.get('report');url.searchParams.delete('report');document.querySelectorAll('[data-period]').forEach(b=>{b.classList.toggle('active',b.dataset.period===period);b.setAttribute('aria-pressed',String(b.dataset.period===period));});switchView('report');}
+            else switchView('daily');
+            window.history.replaceState(null,'',url);
         }
         const epoch=sessionEpoch; el('ltDate').value ||= today();
         try {
