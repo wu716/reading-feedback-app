@@ -8,6 +8,13 @@ sealed class MainForm : Form
     const string WebView2RuntimeUrl = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
     const int HotkeyIdCapture = 1;
     readonly string _startUrl;
+    readonly string? _userDataFolder;
+    readonly ConnectionRecoveryView _connectionView = new() { Visible = false };
+    readonly NavigationRecovery _recovery = new();
+    CancellationTokenSource? _retryCancellation;
+    CancellationTokenSource? _navigationCancellation;
+    ulong? _navigationId;
+    string _lastDiagnostic = "";
     readonly WebView2 _webView = new()
     {
         Dock = DockStyle.Fill,
@@ -16,9 +23,10 @@ sealed class MainForm : Form
     bool _hotkeyRegistered;
     bool _webReady;
 
-    public MainForm(string startUrl)
+    public MainForm(string startUrl, string? userDataFolder = null)
     {
         _startUrl = startUrl;
+        _userDataFolder = userDataFolder;
         Text = "书然";
         try
         {
@@ -36,8 +44,16 @@ sealed class MainForm : Form
         AutoScaleMode = AutoScaleMode.Dpi;
         KeyPreview = true;
         Controls.Add(_webView);
+        Controls.Add(_connectionView);
+        _connectionView.RetryRequested += () => Connect(reset: true);
+        _connectionView.StopRequested += StopRecovery;
         Load += async (_, _) => await StartBrowserAsync();
-        FormClosed += (_, _) => UnregisterCaptureHotkey();
+        FormClosed += (_, _) =>
+        {
+            CancelRetry();
+            CancelNavigation();
+            UnregisterCaptureHotkey();
+        };
     }
 
     protected override void WndProc(ref Message m)
@@ -66,7 +82,7 @@ sealed class MainForm : Form
     {
         try
         {
-            var userData = Path.Combine(
+            var userData = _userDataFolder ?? Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Shuran",
                 "WebView2");
@@ -105,13 +121,8 @@ sealed class MainForm : Form
             e.Handled = true;
             _webView.CoreWebView2.Navigate(e.Uri);
         };
-        _webView.CoreWebView2.NavigationCompleted += (_, e) =>
-        {
-            if (e.IsSuccess)
-            {
-                _webReady = true;
-            }
-        };
+        _webView.CoreWebView2.NavigationStarting += OnNavigationStarting;
+        _webView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
         try
         {
             await _webView.CoreWebView2.Profile.ClearBrowsingDataAsync(
@@ -122,8 +133,130 @@ sealed class MainForm : Form
             /* older runtimes may not expose disk-cache-only clearing */
         }
         RegisterCaptureHotkey();
-        _webView.CoreWebView2.Navigate(_startUrl);
+        Connect(reset: true);
         _ = CheckDesktopUpdateAsync();
+    }
+
+    void CancelRetry()
+    {
+        _retryCancellation?.Cancel();
+        _retryCancellation?.Dispose();
+        _retryCancellation = null;
+    }
+
+    void CancelNavigation()
+    {
+        _navigationCancellation?.Cancel();
+        _navigationCancellation?.Dispose();
+        _navigationCancellation = null;
+    }
+
+    void Connect(bool reset)
+    {
+        if (IsDisposed || _webView.CoreWebView2 is null) return;
+        CancelRetry();
+        CancelNavigation();
+        _navigationId = null;
+        if (reset) _recovery.Reset();
+        else _recovery.BeginConnection();
+        _webReady = false;
+        _webView.Visible = false;
+        _connectionView.ShowState("正在连接书然", "正在打开页面，请稍候。",
+            _recovery.RetryCount == 0 ? "首次连接" : $"正在重试 {_recovery.RetryCount}/{NavigationRecovery.MaximumRetries}",
+            _lastDiagnostic, true);
+        // Navigate issues a new GET to the configured homepage, never a POST replay.
+        _webView.CoreWebView2.Navigate(_startUrl);
+    }
+
+    void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
+    {
+        CancelRetry();
+        _webReady = false;
+        _recovery.ObserveNavigation(e.NavigationId);
+        if (_navigationId == e.NavigationId) return;
+        CancelNavigation();
+        _navigationId = e.NavigationId;
+        if (!_recovery.CanRetryNavigation) return;
+        _navigationCancellation = new CancellationTokenSource();
+        _ = WatchNavigationAsync(e.NavigationId, _navigationCancellation.Token);
+    }
+
+    async Task WatchNavigationAsync(ulong navigationId, CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(15), token);
+            if (token.IsCancellationRequested || IsDisposed || _navigationId != navigationId) return;
+            _navigationId = null;
+            _webView.CoreWebView2.Stop();
+            HandleFailure(0, CoreWebView2WebErrorStatus.Timeout);
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+    {
+        if (_navigationId != e.NavigationId || IsDisposed) return;
+        CancelNavigation();
+        if (e.IsSuccess && e.HttpStatusCode is >= 200 and < 400)
+        {
+            CancelRetry();
+            _recovery.MarkLoaded();
+            _webReady = true;
+            _connectionView.Visible = false;
+            _webView.Visible = true;
+            _webView.Focus();
+            return;
+        }
+        HandleFailure(e.HttpStatusCode, e.WebErrorStatus);
+    }
+
+    void HandleFailure(int httpStatus, CoreWebView2WebErrorStatus error)
+    {
+        var failure = NavigationFailure.From(httpStatus, error);
+        if (failure.IsCanceled && _recovery.PageLoaded) return;
+        var delay = _recovery.NextDelay(failure);
+        _lastDiagnostic = $"Windows {Application.ProductVersion.Split('+')[0]}\n"
+            + $"时间：{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}\n"
+            + $"HTTP：{httpStatus}\n连接状态：{error}\n自动重试：{_recovery.RetryCount}/{NavigationRecovery.MaximumRetries}";
+        var status = delay.HasValue ? $"将在 {delay.Value} 秒后重试（{_recovery.RetryCount}/{NavigationRecovery.MaximumRetries}）"
+            : _recovery.RetryCount >= NavigationRecovery.MaximumRetries
+                ? "自动重试已结束，可以稍后重新连接。"
+                : "未进行自动重试，可以处理连接问题后重新连接。";
+        var message = delay.HasValue || !failure.CanRetry ? failure.Message
+            : "连接尚未恢复。请检查网络或代理；持续发生时可查看诊断并联系支持。";
+        _webView.Visible = false;
+        _connectionView.ShowState(failure.Title, message, status, _lastDiagnostic, delay.HasValue);
+        if (delay.HasValue)
+        {
+            _retryCancellation = new CancellationTokenSource();
+            _ = RetryAfterAsync(delay.Value, _retryCancellation.Token);
+        }
+    }
+
+    async Task RetryAfterAsync(int seconds, CancellationToken token)
+    {
+        try
+        {
+            for (var remaining = seconds; remaining > 0; remaining--)
+            {
+                if (IsDisposed || token.IsCancellationRequested) return;
+                _connectionView.SetStatus($"将在 {remaining} 秒后重试（{_recovery.RetryCount}/{NavigationRecovery.MaximumRetries}）");
+                await Task.Delay(1000, token);
+            }
+            if (!token.IsCancellationRequested && !IsDisposed) Connect(reset: false);
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    void StopRecovery()
+    {
+        CancelRetry();
+        CancelNavigation();
+        _navigationId = null;
+        _webView.CoreWebView2?.Stop();
+        _connectionView.ShowState("连接已暂停", "已停止自动重试，可以随时重新连接。",
+            $"已自动重试 {_recovery.RetryCount} 次", _lastDiagnostic, false);
     }
 
     async Task CheckDesktopUpdateAsync()

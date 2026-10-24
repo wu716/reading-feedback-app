@@ -6,6 +6,11 @@ services:
   db:
     image: postgres:15-alpine
     restart: unless-stopped
+    logging:
+      driver: local
+      options:
+        max-size: "5m"
+        max-file: "3"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-reading_app}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请设置 POSTGRES_PASSWORD}
@@ -13,7 +18,7 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-reading_app}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-reading_app} -d ${POSTGRES_DB:-reading_feedback}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,6 +28,11 @@ services:
       context: ../..
       dockerfile: Dockerfile
     restart: unless-stopped
+    logging:
+      driver: local
+      options:
+        max-size: "5m"
+        max-file: "3"
     depends_on:
       db:
         condition: service_healthy
@@ -54,9 +64,9 @@ services:
       - ../../releases:/app/releases
     command: ["python", "start_aliyun.py"]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-fsS", "--max-time", "5", "http://localhost:8000/ready"]
       interval: 30s
-      timeout: 10s
+      timeout: 6s
       retries: 3
       start_period: 40s
 

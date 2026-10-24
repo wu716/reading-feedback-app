@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Android 安装包下载与版本检查：覆盖更新，不必卸载重装。"""
 import json
+import hashlib
+from functools import lru_cache
 import logging
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -39,11 +41,43 @@ WINDOWS_CANDIDATES = [
     RELEASE_DIR / "Shuran.exe",
 ]
 WINDOWS_PROJECT = REPO_ROOT / "desktop" / "windows" / "Shuran.Desktop" / "Shuran.Desktop.csproj"
+WINDOWS_META = RELEASE_DIR / "windows-latest.json"
+
+
+@lru_cache(maxsize=8)
+def _windows_hash_matches(path: str, modified_ns: int, size: int, expected: str) -> bool:
+    # Stat values invalidate the cache when an operator installs a different EXE.
+    try:
+        digest = hashlib.sha256()
+        with open(path, "rb") as source:
+            for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest() == expected
+    except OSError:
+        return False
+
+
+def _windows_package_ready(path: Path) -> bool:
+    if not WINDOWS_META.is_file():
+        return True  # Older deployments have no paired Windows metadata.
+    try:
+        meta = json.loads(WINDOWS_META.read_text(encoding="utf-8"))
+        stat = path.stat()
+        expected = str(meta.get("sha256") or "")
+        return bool(
+            meta.get("filename") == path.name
+            and meta.get("versionName") == windows_version_name()
+            and int(meta.get("size_bytes") or 0) == stat.st_size
+            and len(expected) == 64
+            and _windows_hash_matches(str(path), stat.st_mtime_ns, stat.st_size, expected)
+        )
+    except (OSError, ValueError, TypeError, AttributeError):
+        return False
 
 
 def find_windows_exe() -> Path | None:
     for path in WINDOWS_CANDIDATES:
-        if path.is_file():
+        if path.is_file() and _windows_package_ready(path):
             return path
     if RELEASE_DIR.is_dir():
         exes = sorted(
@@ -51,8 +85,9 @@ def find_windows_exe() -> Path | None:
             key=lambda item: item.stat().st_mtime,
             reverse=True,
         )
-        if exes:
-            return exes[0]
+        for path in exes:
+            if _windows_package_ready(path):
+                return path
     return None
 
 

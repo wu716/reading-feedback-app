@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Shuran.Desktop;
 
@@ -14,11 +15,11 @@ static class DesktopUpdater
         Timeout = TimeSpan.FromMinutes(3)
     };
 
-    sealed record UpdateInfo(
-        string? WindowsVersion,
-        bool WindowsAvailable,
-        string? WindowsDownloadUrl,
-        long WindowsSizeBytes);
+    internal sealed record UpdateInfo(
+        [property: JsonPropertyName("windows_version")] string? WindowsVersion,
+        [property: JsonPropertyName("windows_available")] bool WindowsAvailable,
+        [property: JsonPropertyName("windows_download_url")] string? WindowsDownloadUrl,
+        [property: JsonPropertyName("windows_size_bytes")] long WindowsSizeBytes);
 
     public static bool TryApplyPendingUpdate(string[] args)
     {

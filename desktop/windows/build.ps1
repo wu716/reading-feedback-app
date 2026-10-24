@@ -1,11 +1,13 @@
 # 当前目录可在仓库根或本目录执行。
 # 目的：编出 Windows 桌面壳 exe（不提交 git）。
+param([string]$OutputDirectory = "")
+
 $ErrorActionPreference = "Stop"
 $here = $PSScriptRoot
 $project = Join-Path $here "Shuran.Desktop\Shuran.Desktop.csproj"
 $repoRoot = (Resolve-Path (Join-Path $here "..\..")).Path
-$outDir = Join-Path $here "Shuran.Desktop\publish"
-$releaseDir = Join-Path $repoRoot "releases"
+$releaseDir = if ($OutputDirectory) { [IO.Path]::GetFullPath($OutputDirectory) } else { Join-Path $repoRoot "releases" }
+$outDir = if ($OutputDirectory) { Join-Path $releaseDir "publish" } else { Join-Path $here "Shuran.Desktop\publish" }
 $projectXml = [xml](Get-Content -LiteralPath $project -Raw)
 $version = [string]$projectXml.Project.PropertyGroup.Version
 
@@ -19,6 +21,8 @@ $zipDest = Join-Path $releaseDir "shuran-windows-$version.zip"
 Copy-Item $exe $dest -Force
 $sizeMb = [Math]::Round((Get-Item $dest).Length / 1MB, 1)
 $sha256 = (Get-FileHash -Algorithm SHA256 $dest).Hash.ToLowerInvariant()
+$manifest = @{ versionName = $version; filename = "shuran-windows.exe"; size_bytes = (Get-Item $dest).Length; sha256 = $sha256 } | ConvertTo-Json
+[IO.File]::WriteAllText((Join-Path $releaseDir "windows-latest.json"), $manifest, [Text.UTF8Encoding]::new($false))
 if (Test-Path -LiteralPath $zipDest) {
     Remove-Item -LiteralPath $zipDest -Force
 }

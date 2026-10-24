@@ -12,6 +12,7 @@ import uvicorn
 
 from app.config import settings
 from app.database import ensure_schema, get_db
+from app.health import router as health_router
 from app.legacy_origin import canonical_url, is_legacy_singapore, keep_on_legacy_origin
 from app.scheduler import start_scheduler
 from app.routers import auth, today, app_download, owner, schedule, time_log, capture, projects, long_term, long_term_details, project_feedback, reader_sync
@@ -72,7 +73,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20261024commitment2"
+STATIC_UI_VERSION = "20261024recovery1"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
@@ -127,6 +128,7 @@ async def disable_page_cache(request: Request, call_next):
     return response
 
 # 注册路由
+app.include_router(health_router)
 app.include_router(auth.router)
 app.include_router(owner.router)
 app.include_router(reminders_router)
@@ -188,7 +190,6 @@ async def root(request: Request):
 
 @app.get("/health")
 async def health_check():
-    logger.info("健康检查被调用")
     return {"status": "healthy", "message": "服务就绪", "version": app.version, "ui_version": STATIC_UI_VERSION}
 
 
