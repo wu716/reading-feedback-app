@@ -33,12 +33,29 @@ fi
 cp "$apk_new" releases/shuran.apk.new
 mv releases/shuran.apk.new releases/shuran.apk
 printf '%s\n' "$version_code" > releases/shuran.apk.versioncode
-curl --retry 10 --retry-delay 3 --retry-connrefused -fsS \
-  http://127.0.0.1:8000/download/info | python3 -c '
-import json, sys
-info = json.load(sys.stdin)
+health_json="$work_dir/health.json"
+info_json="$work_dir/download-info.json"
+if ! curl --retry 12 --retry-delay 3 --retry-all-errors \
+  --retry-max-time 90 --connect-timeout 5 --max-time 10 -fsS \
+  http://127.0.0.1:8000/health -o "$health_json"; then
+  echo "APK installed, but the application did not become ready. Check: cd /opt/shuran-app/deploy/aliyun && docker compose logs --tail=100 app" >&2
+  exit 1
+fi
+if ! curl --retry 12 --retry-delay 3 --retry-all-errors \
+  --retry-max-time 90 --connect-timeout 5 --max-time 10 -fsS \
+  http://127.0.0.1:8000/download/info -o "$info_json"; then
+  echo "APK installed, but download endpoint verification failed. Check application logs before retrying." >&2
+  exit 1
+fi
+python3 - "$health_json" "$info_json" <<'PY'
+import json
+import sys
+from pathlib import Path
+health = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert health.get("status") == "healthy" and health.get("version") == "2.0.26", "Application version is not ready"
+info = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
 print(json.dumps(info, ensure_ascii=False, indent=2))
 assert info.get("available") is True, "APK is unavailable"
 assert (info.get("versionCode"), info.get("versionName")) == (68, "2.0.26"), "Download version mismatch"
-'
+PY
 printf '\nAPK installed. Previous package and verification files: %s\n' "$work_dir"
