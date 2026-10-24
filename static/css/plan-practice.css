@@ -68,6 +68,8 @@ body.workspace-layout[data-workspace-view="projects"] { min-width:0; }
 .commitment-actions { display:flex; flex-wrap:wrap; gap:10px; margin:17px 0 0; }
 .commitment-panel button { width:auto; min-height:42px; padding:8px 14px; border:1px solid #cdd5d1; border-radius:7px; background:#f9f8f4; color:#405f70; font:15px/1.5 system-ui,sans-serif; cursor:pointer; white-space:normal; }
 .commitment-panel button:hover { background:#e9efef; }
+.commitment-panel [data-commitment-form] button[value="draft"] { background:#f9f8f4; border-color:#cdd5d1; color:#405f70; }
+.commitment-panel [data-commitment-form] button[value="draft"]:hover { background:#e9efef; }
 .commitment-panel button.commitment-primary { background:#405f70; border-color:#405f70; color:#fff; }
 .commitment-panel button.commitment-primary:hover { background:#314e60; }
 .commitment-panel button:disabled { opacity:.55; cursor:default; }
