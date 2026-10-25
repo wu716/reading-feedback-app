@@ -22,7 +22,7 @@
 .practice-form label,.practice-support>label { display:grid; gap:5px; font-size:14px; }
 .practice-dialog input:not([type=checkbox]),.practice-dialog textarea,.practice-dialog select { width:100%; min-width:0; padding:9px 10px; border:1px solid #d5d7d2; background:#fffefa; border-radius:7px; color:#353d42; font:inherit; }
 .practice-dialog textarea { resize:vertical; }
-.practice-dialog input[type=checkbox] { accent-color:#526a76; flex:none; }
+.practice-dialog input[type=checkbox] { width:16px; height:16px; min-height:0; margin:0; padding:0; accent-color:#526a76; flex:0 0 16px; }
 .practice-dialog .practice-inline { display:flex; gap:8px; align-items:center; }
 .practice-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 .practice-note { color:#717974; font-size:13px; }
@@ -56,6 +56,51 @@
 .practice-execution { margin:14px 0; padding:12px 15px; border:1px solid #d9ded7; border-radius:9px; background:#f5f5ed; }
 .practice-execution p { margin:6px 0; font-size:14px; overflow-wrap:anywhere; }
 .practice-execution button { margin:5px 6px 0 0; }
+.practice-dialog .practice-scope { min-width:0; margin:8px 0 0; border:1px solid #dcded8; border-radius:10px; padding:0 24px; background:#f8f6f0; color:#273f50; }
+.practice-scope-heading { padding:22px 0 18px; border-bottom:1px solid #dcded8; }
+.practice-dialog .practice-scope-heading h3 { margin:0 0 7px; font:500 21px/1.5 Georgia,"Noto Serif SC",SimSun,serif; letter-spacing:.03em; }
+.practice-scope-heading p,.practice-scope-hint { color:#65767e; font:13px/1.8 system-ui,sans-serif; margin:0; }
+.practice-scope-section { min-width:0; padding:22px 0; border-bottom:1px solid #dcded8; }
+.practice-scope-section:last-child { border-bottom:0; }
+.practice-scope-section-head { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:7px 16px; margin-bottom:14px; }
+.practice-scope-section-head h4 { margin:0; font:600 15px/1.6 system-ui,sans-serif; }
+.practice-scope-section-head>span,.practice-scope-field-state { font:12px/1.7 system-ui,sans-serif; color:#65767e; }
+.practice-scope-original { border-left:2px solid #dcded8; padding-left:12px; margin-bottom:18px; }
+.practice-scope-original>span { color:#65767e; font-size:12px; }
+.practice-scope-original p { font:13px/1.85 system-ui,sans-serif; color:#65767e; white-space:pre-wrap; overflow-wrap:anywhere; margin:5px 0 0; }
+.practice-dialog .practice-scope-label { display:block; color:#273f50; font:13px/1.7 system-ui,sans-serif; margin:0 0 8px; }
+.practice-dialog .practice-scope textarea { min-height:98px; padding:12px 14px; background:#fffefa; border-color:#bcc8cc; color:#273f50; font:14px/1.9 "Microsoft YaHei",system-ui,sans-serif; }
+.practice-scope textarea:focus { border-color:#385d75; }
+.practice-scope-edit-actions { display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:8px 16px; margin-top:10px; }
+.practice-scope-edit-actions>span { margin-right:auto; font:12px/1.7 system-ui,sans-serif; color:#65767e; }
+.practice-dialog .practice-scope [data-practice=scope-edit],.practice-dialog .practice-scope [data-practice=scope-restore] { min-height:32px; width:auto; padding:4px 7px; border:0; background:transparent; color:#385d75; font-size:13px; }
+.practice-dialog .practice-scope button:hover { background:#ebeff0; }
+.practice-dialog .practice-scope button:focus-visible { outline:2px solid #385d75; outline-offset:3px; }
+.practice-scope-task { min-width:0; padding:16px 0; border-bottom:1px solid #dcded8; }
+.practice-scope-task:first-of-type { padding-top:0; }
+.practice-scope-task:last-child { padding-bottom:0; border-bottom:0; }
+.practice-scope-task-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
+.practice-scope-task-head>div { min-width:0; }
+.practice-scope-task h5 { font:500 14px/1.7 system-ui,sans-serif; margin:0; overflow-wrap:anywhere; }
+.practice-scope-field-state { margin:5px 0 0; }
+.practice-scope-task-value { margin:7px 0 0; font:13px/1.85 system-ui,sans-serif; color:#65767e; white-space:pre-wrap; overflow-wrap:anywhere; }
+.practice-scope-task-editor { padding-top:14px; }
+.practice-scope-rule { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:13px 0; }
+.practice-scope-rule+.practice-scope-rule { border-top:1px dashed #dcded8; }
+.practice-scope-rule>div { min-width:0; }
+.practice-scope-rule p { font:13px/1.8 system-ui,sans-serif; margin:0; overflow-wrap:anywhere; }
+.practice-scope-rule .practice-scope-rule-meta { color:#65767e; font-size:12px; margin-top:4px; }
+.practice-dialog .practice-scope-rule button { width:auto; flex:none; min-height:36px; padding:5px 8px; border:0; color:#8b6340; background:transparent; font-size:13px; white-space:nowrap; }
+.practice-scope-rule.is-removed [data-scope-rule-title] { text-decoration:line-through; color:#65767e; }
+.practice-scope-rule.is-removed .practice-scope-rule-meta { color:#8b6340; }
+.practice-scope .is-changed>[data-scope-field-state],.practice-scope .is-changed [data-scope-field-state],.practice-scope-section.is-changed .practice-scope-section-head>span { color:#385d75; }
+.practice-scope-hint { margin-top:12px; }
+.practice-form[data-practice-form=adjustment-plan]>.practice-form-actions { flex-wrap:wrap; justify-content:flex-end; gap:10px; }
+.practice-scope-count { flex:1 1 190px; margin-right:auto; color:#65767e; font:12px/1.7 system-ui,sans-serif; }
+.practice-dialog .practice-scope-secondary { background:transparent; color:#385d75; }
+.practice-form[data-practice-form=adjustment-plan]>.practice-form-actions>.practice-status:empty { display:none; }
+@media(max-width:620px) { .practice-dialog .practice-scope{padding:0 16px;} .practice-scope-section{padding:19px 0;} .practice-dialog .practice-scope textarea{font-size:16px;} .practice-scope-edit-actions>span{flex-basis:100%;} .practice-form[data-practice-form=adjustment-plan]>.practice-form-actions>.practice-scope-count{flex-basis:100%;} .practice-form[data-practice-form=adjustment-plan]>.practice-form-actions>button{flex:1;white-space:normal;} .practice-scope-task-head>button{flex:none;} }
+@media(pointer:coarse) { .practice-dialog .practice-scope button { min-height:44px; } }
 body.workspace-layout[data-workspace-view="projects"] { min-width:0; }
 .commitment-panel { min-width:0; margin:18px 0 22px; padding:20px 22px; border:1px solid #d8ddd8; border-top:3px solid #405f70; border-radius:9px; background:#fffdf8; color:#303b40; font:16px/1.7 Georgia,"Noto Serif SC","Songti SC",SimSun,serif; }
 .commitment-panel * { box-sizing:border-box; }

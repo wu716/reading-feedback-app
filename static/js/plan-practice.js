@@ -14,7 +14,7 @@
   const note = text => `<p class="practice-note">${esc(text)}</p>`;
   const decisionLabel = value => ({keep:'维持跨度',shorten:'缩短跨度',extend:'延长跨度',stop:'停止此目标'})[value]||value;
   const button = (action,text,attrs='') => `<button type="button" data-practice="${action}" ${attrs}>${text}</button>`;
-  const form = (name, content, submit='保存') => `<form data-practice-form="${name}" class="practice-form">${content}<div class="practice-form-actions"><button type="submit">${submit}</button><span class="practice-status" role="status"></span></div></form>`;
+  const form = (name, content, submit='保存', actions='') => `<form data-practice-form="${name}" class="practice-form">${content}<div class="practice-form-actions">${actions}<button type="submit">${submit}</button><span class="practice-status" role="status"></span></div></form>`;
   async function api(path, body, method=body===undefined?'GET':'POST') {
     const response = await fetch('/api/projects' + path, {method, headers:{Authorization:'Bearer '+localStorage.getItem('authToken'),'Content-Type':'application/json'}, body:body===undefined?undefined:JSON.stringify(body)});
     const result = await response.json().catch(()=>({}));
@@ -27,12 +27,31 @@
     dialog = document.createElement('dialog'); dialog.className = 'practice-dialog'; dialog.setAttribute('aria-labelledby','practiceTitle');
     document.body.append(dialog);
     dialog.addEventListener('cancel', event => {event.preventDefault(); close();});
-    dialog.addEventListener('input', () => {dirty=true; updateWait();});
+    dialog.addEventListener('input', event => {dirty=true; updateWait(); updateScopeDraft(event.target.form);});
     dialog.addEventListener('click', event => {
       const el=event.target.closest('[data-practice]'); if (!el) return;
       const action=el.dataset.practice;
       run(async()=>{
         if (action==='close') close();
+        else if (action==='scope-edit') {
+          const field=el.closest('[data-scope-field]'),editor=field.querySelector('[data-scope-editor]');
+          editor.hidden=!editor.hidden;el.setAttribute('aria-expanded',String(!editor.hidden));el.textContent=editor.hidden?'修改':'收起';
+          el.setAttribute('aria-label',(editor.hidden?'修改':'收起')+'《'+field.querySelector('h5').textContent+'》完成标准');
+          if(!editor.hidden)editor.querySelector('textarea').focus();
+        } else if (action==='scope-restore') {
+          const field=el.closest('[data-scope-field]'),input=field.querySelector('textarea');
+          input.value=input.defaultValue;dirty=true;updateScopeDraft(input.form);input.focus();
+        } else if (action==='scope-remove') {
+          const row=el.closest('[data-scope-rule]'),removed=row.dataset.removed!=='true';
+          row.dataset.removed=String(removed);row.classList.toggle('is-removed',removed);el.setAttribute('aria-pressed',String(removed));
+          el.textContent=removed?'撤销移除':'移除';
+          el.setAttribute('aria-label',(removed?'撤销移除':'移除')+'《'+row.querySelector('[data-scope-rule-title]').textContent+'》');
+          row.querySelector('[data-scope-rule-meta]').textContent=removed?'本次拟移除 · 尚未生效':row.dataset.meta;
+          dirty=true;updateScopeDraft(el.form);
+        } else if (action==='scope-retry') {
+          const stage=projectData.stages.find(s=>s.state==='current');
+          if(await loadAdjustableConditions(projectData.tasks.filter(t=>t.stage_id===stage?.id&&!['completed','cancelled'].includes(t.state))))message('必要条件与前置任务已重新读取');
+        }
         else if (action==='tab') { if (dirty && !confirm('本页有未保存内容，仍要切换？')) return; tab=el.dataset.tab; dirty=false; await load(); }
         else if (action==='task') await openTask(el.dataset.kind,Number(el.dataset.id),el.dataset.tab||'attributes');
         else if (action==='start-small') {
@@ -70,6 +89,7 @@
       });
     });
     dialog.addEventListener('change', event=>{
+      updateScopeDraft(event.target.form);
       if(event.target.name==='support') updateSupport();
       if(event.target.name==='horizon'&&!event.target.form?.querySelector('.fb-plan')) {
         const f=event.target.form, days={week:7,fortnight:14,month:30,quarter:90,year:365}[event.target.value];
@@ -80,7 +100,7 @@
       const f=event.target; if(!f.dataset.practiceForm)return;event.preventDefault();event.stopPropagation();
       if(saving)return;saving=true;
       const submitButton=f.querySelector('button[type=submit]');if(submitButton)submitButton.disabled=true;
-      run(async()=>{await submit(f);dirty=false;}).finally(()=>{saving=false;if(submitButton?.isConnected)submitButton.disabled=false;updateWait();});
+      run(async()=>{await submit(f);dirty=false;}).finally(()=>{saving=false;if(submitButton?.isConnected)submitButton.disabled=false;updateWait();if(f.isConnected)updateScopeDraft(f);});
     });
     document.addEventListener('visibilitychange',()=>{if(adjustment&&dialog.open) beat();});
     window.addEventListener('blur',()=>{if(adjustment&&dialog.open) beat(false);});
@@ -215,11 +235,12 @@
         form('adjustment-plan',`<label>交接目标${select('target_stage_id',Object.fromEntries(projectData.stages.filter(s=>s.state==='next').map(s=>[s.id,s.title])),context.targetStageId||'','保持当前阶段，只调整范围')}</label>`+
           area('statement','调整后的承诺文字（可随本次调整另存新版本）',context.targetStageId?'':commitmentData.commitment?.snapshot.statement||'')+note('交接到下一阶段时，承诺文字留空表示稍后重新填写确认；不会把本阶段原文自动套用到新阶段。')+
           `<div class="practice-review-list">${tasks.map(t=>`<div data-disposition="${t.id}"><strong>${esc(t.title)}</strong>${select('task-'+t.id,{retain:'保留推进（切换时随交接）',defer:'延期到独立下一阶段',cancel:'明确取消，保留投入'},'retain',null)}</div>`).join('')||note('当前未完成项为零，可正常交接，不强制等待。')}</div>`+
-          `<details><summary>修改交付范围或条件</summary><label class="practice-inline"><input name="change_outcome" type="checkbox">本次修改项目交付结果</label>${area('outcome','新的交付结果',projectData.outcome)}${tasks.map(t=>`<label class="practice-inline"><input type="checkbox" name="change_criteria" value="${t.id}">修改《${esc(t.title)}》完成标准</label>${area('criteria-'+t.id,'新的完成标准',t.acceptance_criteria)}`).join('')}<div data-adjustment-conditions></div></details>`,'展示本次后果')+
+          scopeEditor(tasks),'查看调整后果',`<span class="practice-scope-count" data-scope-count role="status"></span>${button('close','继续当前列表','class="practice-scope-secondary"')}`)+
         `<details><summary>承诺与调整历史</summary>${commitmentData.history.map(c=>`<details><summary>承诺版本 ${c.version} · ${esc(localStamp(c.at))}</summary><p class="commitment-statement">${esc(c.snapshot.statement||'未填写承诺文字（历史版本）')}</p><p>当时交付：${esc(c.snapshot.outcome||'未填写')}</p>${c.snapshot.tasks.map(t=>`<p>${esc(t.title)} · 预计 ${t.estimate??'未填'} 分 · 验收：${esc(t.criteria||'未填')}</p>`).join('')}</details>`).join('')}${commitmentData.adjustments.filter(a=>a.confirmed).map(a=>`<details><summary>调整 #${a.id} · ${esc(a.reason)}</summary><p>${a.impact.requires_wait?'前台累计等待 '+a.elapsed_ms/1000+' 秒':'草稿或正常交接，无强制等待'}</p>${a.impact.unfinished.map(t=>`<p>${esc(t.title)}：${({retain:'保留推进',defer:'延期',cancel:'取消而未完成'})[t.action]} · 已投入 ${t.recorded_minutes} 分</p>`).join('')}</details>`).join('')||note('尚无已确认调整')}</details>`;
       globalThis.ShuranCommitments?.mount($('[data-commitment-editor]'),context.id,{history:false,onChanged:async()=>{dirty=false;await load();changed();},onAdjust:()=>{$('[data-practice-form=adjustment-plan]').scrollIntoView({behavior:'smooth',block:'start'});$('[data-practice-form=adjustment-plan] [name=statement]').focus();}});
-      $('[name=target_stage_id]').addEventListener('change',event=>{const field=$('[data-practice-form=adjustment-plan] [name=statement]');field.value=event.target.value?'':commitmentData.commitment?.snapshot.statement||'';});
-      loadAdjustableConditions(tasks).catch(e=>message(e.message,true));
+      $('[name=target_stage_id]').addEventListener('change',event=>{const field=$('[data-practice-form=adjustment-plan] [name=statement]');field.value=event.target.value?'':commitmentData.commitment?.snapshot.statement||'';updateScopeDraft(field.form);});
+      updateScopeDraft($('[data-practice-form=adjustment-plan]'));
+      loadAdjustableConditions(tasks);
     } else if(tab==='cycles') {
       content.innerHTML=note('建议先尝试一周，再按事实选择两周、一个月、季度或年度。可以维持、缩短或延长，无需打卡解锁。简单事项和陌生事项的探索行动仍可直接开始。')+button('new-cycle','制定一轮计划')+
         (cycles.items.map(c=>`<article class="practice-cycle"><h3>${esc(c.expected_result)}</h3><p>${c.start_date} — ${c.end_date}</p><p>计划 ${c.evidence.planned_task_count} 项 / ${c.evidence.planned_minutes} 分 · 已记录区间 ${c.evidence.interval_count?c.evidence.actual_interval_minutes+' 分':'未记录'} · ${c.evidence.missing_estimates} 项未估时</p>${note(c.suggestions.join(' '))}${c.review?`<p>实际结果：${esc(c.review.actual_result)}</p><p>下一轮：${esc(c.review.next_changes)} · 理由：${esc(c.review.reason)}</p>${c.review.horizon_decision==='stop'?note('本轮选择停止；保留依据与结果。'):button('next-cycle','根据复盘制定下一轮',`data-id="${c.id}"`)}`:button('review-cycle','对照结果并复盘',`data-id="${c.id}"`)}</article>`).join('')||note('还没有计划周期'));
@@ -240,12 +261,64 @@
           `<label>下一轮跨度决定${select('horizon_decision',{keep:'维持',shorten:'缩短',extend:'延长',stop:'理性停止此目标'},'keep',null)}</label>`+area('reason','选择依据（不能只看完成率）','','required'),'保存复盘与下一轮决定');
     }
   }
+  function scopeEditor(tasks){
+    return `<section class="practice-scope" aria-labelledby="practiceScopeTitle">
+      <header class="practice-scope-heading"><h3 id="practiceScopeTitle">修改交付范围或条件</h3><p>先写清楚要改什么，再查看对当前承诺的影响。</p></header>
+      <section class="practice-scope-section" data-scope-field data-scope-kind="project_outcome">
+        <div class="practice-scope-section-head"><h4>项目交付结果</h4><span data-scope-field-state>未修改</span></div>
+        <div class="practice-scope-original"><span>当前约定</span><p>${esc(projectData.outcome||'尚未填写交付结果')}</p></div>
+        <label class="practice-scope-label" for="practiceScopeOutcome">调整后的交付结果</label><textarea id="practiceScopeOutcome" name="outcome" rows="3" maxlength="4000">${esc(projectData.outcome)}</textarea>
+        <div class="practice-scope-edit-actions"><span>修改会随本次调整一并确认</span>${button('scope-restore','恢复原文')}</div>
+      </section>
+      <section class="practice-scope-section">
+        <div class="practice-scope-section-head"><h4>任务完成标准</h4><span>${tasks.length} 项任务</span></div>
+        ${tasks.map(t=>`<article class="practice-scope-task" data-scope-field data-scope-kind="task_criteria" data-scope-id="${t.id}">
+          <div class="practice-scope-task-head"><div><h5>${esc(t.title)}</h5><p class="practice-scope-field-state" data-scope-field-state>当前标准</p></div>${button('scope-edit','修改',`aria-expanded="false" aria-controls="practiceScopeCriteria${t.id}" aria-label="修改《${esc(t.title)}》完成标准"`)}</div>
+          <p class="practice-scope-task-value" data-scope-task-value>${esc(t.acceptance_criteria||'尚未填写完成标准')}</p>
+          <div id="practiceScopeCriteria${t.id}" class="practice-scope-task-editor" data-scope-editor hidden><label class="practice-scope-label" for="practiceScopeCriteriaInput${t.id}">调整后的完成标准</label><textarea id="practiceScopeCriteriaInput${t.id}" name="criteria-${t.id}" rows="3" maxlength="4000">${esc(t.acceptance_criteria)}</textarea><div class="practice-scope-edit-actions">${button('scope-restore','恢复原文')}</div></div>
+        </article>`).join('')||note('当前没有需要调整完成标准的未完成任务。')}
+      </section>
+      <section class="practice-scope-section"><div class="practice-scope-section-head"><h4>必要条件与前置任务</h4></div><div data-adjustment-conditions aria-busy="true">${note('正在读取必要条件与前置任务…')}</div><p class="practice-scope-hint">移除不代表已经满足，原记录和投入仍然保留。</p></section>
+    </section>`;
+  }
+  function scopeChanges(f){
+    const changes=[...f.querySelectorAll('[data-scope-field]')].flatMap(field=>{
+      const input=field.querySelector('textarea');
+      return input.value.trim()===input.defaultValue.trim()?[]:[{kind:field.dataset.scopeKind,...(field.dataset.scopeId?{id:Number(field.dataset.scopeId)}:{}),value:input.value}];
+    });
+    return changes.concat([...f.querySelectorAll('[data-scope-rule][data-removed="true"]')].map(row=>({kind:row.dataset.scopeKind,id:Number(row.dataset.scopeId)})));
+  }
+  function updateScopeDraft(f){
+    if(f?.dataset.practiceForm!=='adjustment-plan')return;
+    for(const field of f.querySelectorAll('[data-scope-field]')){
+      const input=field.querySelector('textarea'),changed=input.value.trim()!==input.defaultValue.trim();
+      field.classList.toggle('is-changed',changed);
+      field.querySelector('[data-scope-field-state]').textContent=changed?'已修改 · 待确认':field.dataset.scopeKind==='project_outcome'?'未修改':'当前标准';
+      const summary=field.querySelector('[data-scope-task-value]');
+      if(summary)summary.textContent=(changed?input.value:input.defaultValue)||'尚未填写完成标准';
+    }
+    const count=scopeChanges(f).length,summary=f.querySelector('[data-scope-count]'),text=count?`${count} 项范围或条件待调整`:'尚无范围或条件变更';
+    if(summary&&summary.textContent!==text)summary.textContent=text;
+    const statement=(f.elements.statement.value||'').trim(),old=(commitmentData.commitment?.snapshot.statement||'').trim();
+    const altered=count||f.elements.target_stage_id.value||statement!==old||[...f.querySelectorAll('[data-disposition] select')].some(el=>el.value!=='retain');
+    f.querySelector('button[type=submit]').disabled=saving||!altered;
+  }
   async function loadAdjustableConditions(tasks){
-    const readings=await Promise.all([api(`/readiness/project/${context.id}`),...tasks.map(t=>api(`/readiness/task/${t.id}`))]);
-    const map=new Map();readings.flatMap(r=>r.conditions).filter(c=>c.strength==='required').forEach(c=>map.set(c.id,c));
-    const el=$('[data-adjustment-conditions]');if(!el)return;
-    el.innerHTML='<p>明确移除必要条件（仍保留原因与历史）</p>'+[...map.values()].map(c=>`<label class="practice-inline"><input type="checkbox" name="remove_condition" value="${c.id}">${esc(c.title)}</label>`).join('')+
-      '<p>原有任务依赖可在完成当前阶段后调整；若需本轮移除，请选择：</p>'+tasks.flatMap(t=>(t.dependencies||[]).map(d=>`<label class="practice-inline"><input type="checkbox" name="remove_dependency" value="${d.id}">${esc(t.title)} 等待任务 #${d.prerequisite_id}</label>`)).join('');
+    const el=$('[data-adjustment-conditions]'),epoch=loadEpoch,project=projectData;if(!el)return;
+    el.setAttribute('aria-busy','true');
+    try{
+      const readings=await Promise.all([api(`/readiness/project/${project.id}`),...tasks.map(t=>api(`/readiness/task/${t.id}`))]);
+      if(epoch!==loadEpoch||!el.isConnected)return;
+      const map=new Map();readings.flatMap(r=>r.conditions||[]).filter(c=>c.strength==='required').forEach(c=>map.set(c.id,c));
+      const rule=(kind,id,title,meta)=>`<div class="practice-scope-rule" data-scope-rule data-scope-kind="${kind}" data-scope-id="${id}" data-removed="false" data-meta="${esc(meta)}"><div><p data-scope-rule-title>${esc(title)}</p><p class="practice-scope-rule-meta" data-scope-rule-meta>${esc(meta)}</p></div>${button('scope-remove','移除',`aria-pressed="false" aria-label="移除《${esc(title)}》"`)}</div>`;
+      const conditions=[...map.values()].map(c=>rule('condition_remove',c.id,c.title,`必要条件 · ${c.owner_kind==='project'?'项目':c.owner_kind==='task'?project.tasks.find(t=>t.id===c.owner_id)?.title||'关联任务':'关联日程'} · ${{start:'开始前',throughout:'执行期间',delivery:'交付前'}[c.check_at]||'开始前'}`));
+      const dependencies=tasks.flatMap(t=>(t.dependencies||[]).map(d=>rule('dependency_remove',d.id,project.tasks.find(prior=>prior.id===d.prerequisite_id)?.title||`任务 #${d.prerequisite_id}`,`前置任务 · ${t.title}`)));
+      el.innerHTML=conditions.join('')+dependencies.join('')||note('尚未登记必要条件或前置任务；未登记不代表现实中没有条件。');
+      return true;
+    }catch(e){
+      if(epoch!==loadEpoch||!el.isConnected)return;
+      el.innerHTML=note('条件读取失败，尚未核对必要条件与前置任务。')+button('scope-retry','重新读取');message(e.message,true);
+    }finally{if(el.isConnected)el.setAttribute('aria-busy','false');}
   }
   async function submit(f){
     const b=Object.fromEntries(new FormData(f)),name=f.dataset.practiceForm;
@@ -269,10 +342,7 @@
       const statement=(b.statement||'').trim(),oldStatement=commitmentData.commitment?.snapshot.statement||'';
       if(statement&&(b.target_stage_id||statement!==oldStatement))changes.push({kind:'commitment_statement',value:statement});
       if(!statement&&oldStatement&&!b.target_stage_id)throw new Error('已确认的承诺文字不能清空，请填写调整后的承诺。');
-      if(f.elements.change_outcome?.checked)changes.push({kind:'project_outcome',value:b.outcome});
-      f.querySelectorAll('[name=change_criteria]:checked').forEach(el=>changes.push({kind:'task_criteria',id:Number(el.value),value:b['criteria-'+el.value]}));
-      f.querySelectorAll('[name=remove_condition]:checked').forEach(el=>changes.push({kind:'condition_remove',id:Number(el.value)}));
-      f.querySelectorAll('[name=remove_dependency]:checked').forEach(el=>changes.push({kind:'dependency_remove',id:Number(el.value)}));
+      changes.push(...scopeChanges(f));
       if(!dispositions.length&&b.target_stage_id&&!changes.length){await api(`/stages/${b.target_stage_id}/activate`,{decision:'close',reason:'当前列表全部完成后的正常交接'});changed();await load();message('已完成正常交接，无需30秒等待');return;}
       adjustment=await api(`/commitments/projects/${context.id}/preview`,{target_stage_id:b.target_stage_id?Number(b.target_stage_id):null,dispositions,changes});showImpact();return;
     } else if(name==='confirm-adjustment') {
