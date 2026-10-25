@@ -373,6 +373,7 @@ textarea:focus-visible, select:focus-visible, [role="button"]:focus-visible {
 }
 
 #capture .capture-entry-grid > .card {
+    min-width: 0;
     background: transparent;
     border: 0;
     border-radius: 0;
@@ -401,7 +402,7 @@ textarea:focus-visible, select:focus-visible, [role="button"]:focus-visible {
     margin: 0 0 16px;
 }
 
-#capture .capture-entry-grid p {
+#capture .capture-entry-grid > .card > p {
     min-height: 3.4em;
     color: var(--shuran-muted);
     font-size: .93rem;
@@ -468,6 +469,40 @@ textarea:focus-visible, select:focus-visible, [role="button"]:focus-visible {
 
 #capture .schedule-later-hint {
     color: var(--shuran-muted);
+}
+
+#capture .capture-later-count { margin-left: 8px; font-size: .8rem; font-variant-numeric: tabular-nums; }
+#capture .capture-later-composer { margin-top: 16px; }
+#capture .capture-later-composer[hidden], #capture .capture-later-text[hidden] { display: none; }
+#capture .capture-later-composer label, #capture .capture-later-editor label, #capture .capture-later-date label { display: block; margin-bottom: 7px; color: var(--shuran-ink); }
+#capture .capture-later-composer textarea, #capture .capture-later-editor textarea, #capture .capture-later-date input {
+    display: block; box-sizing: border-box; width: 100%; min-width: 0; padding: 10px 12px;
+    border: 1px solid #cdd8df; border-radius: 5px; color: var(--shuran-ink); background: #fffdf8;
+    font: 1rem/1.7 Georgia, "Noto Serif SC", "SimSun", serif;
+}
+#capture .capture-later-composer textarea, #capture .capture-later-editor textarea { resize: vertical; min-height: 88px; }
+#capture .capture-later-composer textarea::placeholder { color: #71818b; }
+#capture .capture-later-actions { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; margin-top: 10px; }
+#capture .capture-later-save { border: 1px solid var(--shuran-blue); background: var(--shuran-blue); color: #fff; padding: 8px 16px; border-radius: 5px; min-height: 40px; cursor: pointer; }
+#capture .capture-later-save:hover { background: #274b69; }
+#capture .capture-later-text { border: 0; background: transparent; color: var(--shuran-blue); padding: 7px 0; min-height: 38px; cursor: pointer; }
+#capture .capture-later-text:hover { text-decoration: underline; text-underline-offset: 4px; }
+#capture .capture-later-text.is-secondary { color: #62717a; }
+#capture .capture-later-actions button:disabled, #capture .capture-later-save:disabled, #capture .capture-later-text:disabled { cursor: wait; opacity: .6; }
+#capture .capture-later-keyboard { display: block; color: #62717a; font-size: .78rem; margin-top: 8px; }
+#capture .capture-later-feedback { display: flex; gap: 8px 12px; flex-wrap: wrap; align-items: baseline; color: var(--shuran-blue); font-size: .85rem; }
+#capture .capture-later-feedback:has(#scheduleLaterStatus:not(:empty)) { margin-top: 9px; }
+#capture #scheduleLaterStatus[data-error="true"] { color: #93463c; }
+#capture .capture-later-list-heading { color: #62717a; font-size: .85rem; border-bottom: 1px solid #dce1e1; padding-bottom: 8px; }
+#capture .schedule-later-item { min-width: 0; }
+#capture .capture-later-title { display: block; max-width: 100%; border: 0; background: transparent; padding: 3px 0; color: var(--shuran-ink); font: 1rem/1.7 Georgia, "Noto Serif SC", "SimSun", serif; white-space: pre-wrap; overflow-wrap: anywhere; text-align: left; cursor: pointer; }
+#capture .capture-later-title:hover { color: var(--shuran-blue); text-decoration: underline dotted; text-underline-offset: 4px; }
+#capture .capture-later-item-actions { display: flex; flex-wrap: wrap; gap: 0 13px; margin-top: 4px; }
+#capture .capture-later-item-actions button { font-size: .82rem; }
+#capture .capture-later-date { margin-top: 10px; }
+#capture .schedule-later-empty, #capture .schedule-later-hint { color: #62717a; font-size: .83rem; line-height: 1.7; margin-top: 14px; }
+@media (pointer: coarse) {
+    #capture .capture-later-actions button, #capture .capture-later-item-actions button { min-height: 44px; }
 }
 
 /* 个人页仍保持表单可辨识，但不再浮出一张深色卡片。 */

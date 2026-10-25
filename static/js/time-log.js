@@ -471,9 +471,12 @@
             if (captureKind === 'idea' && typeof window.loadIdeas === 'function') {
                 window.loadIdeas();
             }
-            if (captureKind === 'todo' && typeof window.loadDailySchedule === 'function') {
-                await window.loadDailySchedule();
-                if (captureTodoWhen === 'today') window.reminderNotificationService?.syncNativeTodos();
+            if (captureKind === 'todo') {
+                if (captureTodoWhen === 'later') await window.loadFutureActions?.();
+                else {
+                    await window.loadDailySchedule?.();
+                    window.reminderNotificationService?.syncNativeTodos();
+                }
             }
             if (typeof showMessage === 'function') {
                 const done = captureKind === 'idea'

@@ -3454,7 +3454,7 @@
         }
     </style>
     <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261017paper1">
-    <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261017paper1">
+    <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261025someday2">
     <link rel="stylesheet" href="/static/css/workspace.css?v=20261022hierarchy1">
     <link rel="stylesheet" href="/static/css/account.css?v=20261022account1">
     <link rel="stylesheet" href="/static/css/long-term.css?v=20261021download1">
@@ -3466,7 +3466,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261017paper1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.35';
+            window.SHURAN_VERSION = '2.0.37';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -4127,16 +4127,19 @@
                 <div class="card"><h2>时刻</h2><p>记下现在，稍后补全上一段做了什么。</p><button type="button" class="btn" onclick="punchTimeLog(false, 'moment')">记下此刻</button><button type="button" class="btn btn-secondary" onclick="navigateTo('time-log')">回看时刻</button></div>
                 <div class="card"><h2>idea</h2><p>先留下一个念头，不进入待办。</p><button type="button" class="btn" onclick="punchTimeLog(false, 'idea')">记下 idea</button><button type="button" class="btn btn-secondary" onclick="navigateTo('ideas')">查看 idea</button></div>
                 <div class="card"><h2>以后想做</h2><p>宽松收集，还未放入项目阶段。</p><div class="schedule-later is-collapsed" id="scheduleLater">
-                    <button type="button" class="schedule-later-toggle" id="scheduleLaterToggle" aria-expanded="false" aria-controls="scheduleLaterBody">
-                        <span class="schedule-later-kicker" data-i18n="schedule.later.title">以后想做</span>
-                        <span class="schedule-later-summary" id="scheduleLaterSummary">展开</span>
-                    </button>
+                    <button type="button" class="btn" id="scheduleLaterWrite" aria-expanded="false" aria-controls="scheduleLaterComposer" data-i18n="schedule.later.write">记下想做的事</button>
+                    <button type="button" class="btn btn-secondary" id="scheduleLaterToggle" aria-expanded="false" aria-controls="scheduleLaterBody"><span id="scheduleLaterToggleLabel" data-i18n="schedule.later.view">查看想做的事</span><span class="capture-later-count" id="scheduleLaterSummary">—</span></button>
+                    <form class="capture-later-composer" id="scheduleLaterComposer" hidden novalidate>
+                        <label for="scheduleLaterInput" data-i18n="schedule.later.prompt">想以后做什么？</label>
+                        <textarea id="scheduleLaterInput" rows="3" maxlength="500" placeholder="想做，但还没具体规划" data-i18n-placeholder="schedule.later.placeholder" aria-describedby="scheduleLaterKeyboard scheduleLaterStatus" enterkeyhint="done"></textarea>
+                        <div class="capture-later-actions"><button type="submit" class="capture-later-save" id="scheduleLaterAddBtn" data-i18n="schedule.later.add">记下</button><button type="button" class="capture-later-text" id="scheduleLaterCancel" data-i18n="common.cancel">取消</button></div>
+                        <span class="capture-later-keyboard" id="scheduleLaterKeyboard" data-i18n="schedule.later.keyboard">Enter 记下 · Shift+Enter 换行</span>
+                    </form>
+                    <div class="capture-later-feedback"><span id="scheduleLaterStatus" role="status" aria-live="polite" aria-atomic="true"></span><button type="button" class="capture-later-text" id="scheduleLaterUndo" hidden data-i18n="schedule.later.undo">撤销删除</button></div>
                     <div class="schedule-later-body" id="scheduleLaterBody" hidden>
-                        <p class="schedule-later-hint" data-i18n="schedule.later.hint">还没规划也可以先记下来，不进今天、不提醒</p>
-                        <div class="flow-add-row" id="scheduleLaterAddRow">
-                            <input type="text" id="scheduleLaterInput" maxlength="500" placeholder="想做，但还没具体规划" data-i18n-placeholder="schedule.later.placeholder">
-                        </div>
+                        <div class="capture-later-list-heading" data-i18n="schedule.later.collection">收集箱</div>
                         <div id="scheduleLaterList" class="schedule-later-list"></div>
+                        <p class="schedule-later-hint" data-i18n="schedule.later.hint">还没规划也可以先记下来，不进今天、不提醒</p>
                     </div>
                 </div>
                 </div>
@@ -4485,7 +4488,7 @@
     </div>
 
 
-    <script src="/static/js/i18n.js?v=20261022account1"></script>
+    <script src="/static/js/i18n.js?v=20261025someday2"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -4612,6 +4615,7 @@
                 if (sectionId === 'schedule' && typeof loadDailySchedule === 'function') {
                     loadDailySchedule();
                 }
+                if (sectionId === 'capture') window.loadFutureActions?.();
                 if (sectionId === 'time-log' && typeof loadTimeLog === 'function') {
                     loadTimeLog();
                     window.loadActivityReview?.();
@@ -5399,6 +5403,7 @@
             const tasks = [];
             if (typeof loadTodayDashboard === 'function') tasks.push(loadTodayDashboard());
             if (typeof loadDailySchedule === 'function') tasks.push(loadDailySchedule());
+            if (typeof loadFutureActions === 'function') tasks.push(loadFutureActions());
             if (typeof syncTimeLogChrome === 'function') syncTimeLogChrome();
             await Promise.allSettled(tasks);
             if (window.reminderNotificationService) {
@@ -6863,10 +6868,11 @@
     <script src="/static/js/start-conditions.js?v=20261025calendar1"></script>
     <link rel="stylesheet" href="/static/css/schedule-projects.css?v=20261025stageday1">
     <script src="/static/js/schedule-projects.js?v=20261025stageday1"></script>
-    <script src="/static/js/daily-schedule.js?v=20261025stageday1"></script>
+    <script src="/static/js/daily-schedule.js?v=20261025someday2"></script>
+    <script src="/static/js/future-actions.js?v=20261025someday2"></script>
     <link rel="stylesheet" href="/static/css/work-links.css?v=20261025worklink1">
     <script src="/static/js/work-links.js?v=20261025worklink1"></script>
-    <script src="/static/js/time-log.js?v=20261025worklink1"></script>
+    <script src="/static/js/time-log.js?v=20261025someday2"></script>
     <script src="/static/js/long-term.js?v=20261025worklink1"></script>
     <script src="/static/js/activity-review.js?v=20261017paper1"></script>
     <script src="/static/js/ideas.js?v=20261018momenttask1"></script>

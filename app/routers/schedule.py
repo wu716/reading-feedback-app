@@ -2,6 +2,8 @@
 """每日日程：安排日期、任务属性与顺序。"""
 from collections import defaultdict
 import json
+import hashlib
+import hmac
 from datetime import date, datetime, time, timedelta, timezone
 from typing import List, Literal, Optional
 from zoneinfo import ZoneInfo
@@ -12,6 +14,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user
+from app.config import settings
 from app.database import get_db
 from app.models import DailySchedule, DailyTask, DailyTodo, FutureAction, User
 from app.schedule_todos import import_day_todos, sync_task_reminder
@@ -199,6 +202,16 @@ class FutureOut(BaseModel):
 
 class FutureListOut(BaseModel):
     items: List[FutureOut]
+    undo_token: Optional[str] = None
+
+
+class FutureRestoreBody(BaseModel):
+    undo_token: str = Field(..., min_length=1, max_length=200)
+
+
+def future_delete_signature(user_id: int, item_id: int, timestamp: str) -> str:
+    message = f"future-delete:{user_id}:{item_id}:{timestamp}".encode()
+    return hmac.new(settings.secret_key.encode(), message, hashlib.sha256).hexdigest()
 
 
 def visible_tasks(db: Session, user_id: int, day: date) -> List[DailyTask]:
@@ -690,6 +703,36 @@ async def delete_future_action(
 ):
     item = get_future_or_404(db, current_user.id, item_id)
     item.deleted_at = beijing_now()
+    db.commit()
+    db.refresh(item)
+    stamp = item.deleted_at.isoformat()
+    result = future_payload(db, current_user.id)
+    result.undo_token = stamp + "|" + future_delete_signature(current_user.id, item_id, stamp)
+    return result
+
+
+@router.post("/future/{item_id}/restore", response_model=FutureListOut)
+async def restore_future_action(
+    item_id: int,
+    body: FutureRestoreBody,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    item = db.query(FutureAction).filter(FutureAction.id == item_id, FutureAction.user_id == current_user.id).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="这条以后想做不存在")
+    stamp, separator, signature = body.undo_token.rpartition("|")
+    expected = future_delete_signature(current_user.id, item_id, stamp)
+    if not separator or not hmac.compare_digest(signature.encode(), expected.encode()):
+        raise HTTPException(status_code=400, detail="撤销凭据无效")
+    if item.deleted_at is None or item.deleted_at.isoformat() != stamp:
+        raise HTTPException(status_code=409, detail="记录已变化，请刷新列表")
+    deleted_at = item.deleted_at
+    if deleted_at.tzinfo is None:
+        deleted_at = deleted_at.replace(tzinfo=BEIJING_TZ)
+    if (beijing_now() - deleted_at).total_seconds() > 600:
+        raise HTTPException(status_code=410, detail="撤销已超过十分钟")
+    item.deleted_at = None
     db.commit()
     return future_payload(db, current_user.id)
 

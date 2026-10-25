@@ -18,8 +18,6 @@
     let newTaskDuration = '';
     let splitFor = null;
     let editingId = null;
-    let laterItems = [];
-    let editingLaterId = null;
     let dragTaskId = null;
     let dragPressTimer = null;
     let dragActive = false;
@@ -29,8 +27,6 @@
     let dragStartY = 0;
     let dragPointerId = null;
     let dragScrollTimer = null;
-    const laterOpenKey = 'shuran.scheduleLaterOpen';
-    let laterOpen = readLaterOpen();
 
     function t(key, fallback) {
         if (window.shuranI18n && typeof window.shuranI18n.t === 'function') {
@@ -47,22 +43,6 @@
 
     function withCount(template, count) {
         return format(template, { count });
-    }
-
-    function readLaterOpen() {
-        try {
-            return localStorage.getItem(laterOpenKey) === '1';
-        } catch (err) {
-            return false;
-        }
-    }
-
-    function rememberLaterOpen() {
-        try {
-            localStorage.setItem(laterOpenKey, laterOpen ? '1' : '0');
-        } catch (err) {
-            /* 忽略无痕模式或存储不可用的情况。 */
-        }
     }
 
     function todayISO() {
@@ -249,8 +229,6 @@
         }
         if (flowBtn) flowBtn.textContent = mode === 'flow' ? '回到清单' : '查看流程';
         if (addRow) addRow.hidden = false;
-        const later = document.getElementById('scheduleLater');
-        if (later) later.hidden = mode !== 'list';
         updateAddComposer();
     }
 
@@ -501,67 +479,6 @@
         }
     }
 
-    function laterIntoLabel() {
-        return currentDay() === todayISO()
-            ? t('schedule.later.intoToday', '写进今天')
-            : t('schedule.later.intoDay', '写进这一天');
-    }
-
-    function renderLaterShell() {
-        const root = document.getElementById('scheduleLater');
-        const toggle = document.getElementById('scheduleLaterToggle');
-        const body = document.getElementById('scheduleLaterBody');
-        const summary = document.getElementById('scheduleLaterSummary');
-        const count = laterItems.length;
-        if (root) root.classList.toggle('is-collapsed', !laterOpen);
-        if (toggle) toggle.setAttribute('aria-expanded', laterOpen ? 'true' : 'false');
-        if (body) body.hidden = !laterOpen;
-        if (summary) {
-            const countLabel = count
-                ? withCount(t('schedule.later.count', '{count} 个'), count)
-                : t('schedule.later.emptySummary', '空');
-            summary.textContent = laterOpen
-                ? `${countLabel} · ${t('schedule.later.collapseList', '收起列表')}`
-                : `${countLabel} · ${t('schedule.later.expandList', '展开列表')}`;
-        }
-    }
-
-    function renderLater() {
-        renderLaterShell();
-        const box = document.getElementById('scheduleLaterList');
-        if (!box) return;
-        if (!laterOpen) {
-            box.innerHTML = '';
-            return;
-        }
-        if (!laterItems.length) {
-            box.innerHTML = `<p class="schedule-later-empty">${escapeHtml(t('schedule.later.empty', '先记下来，准备好了再写进这一天'))}</p>`;
-            return;
-        }
-        box.innerHTML = laterItems.map((item) => {
-            const title = editingLaterId === item.id
-                ? `<input type="text" class="flow-task-text-input" maxlength="500" value="${escapeHtml(item.text)}" data-later-act="text" aria-label="${escapeHtml(t('schedule.later.editAria', '修改以后想做'))}">`
-                : `<div class="flow-task-text" data-later-act="edit" title="${escapeHtml(t('schedule.editTitle', '点此修改'))}">${escapeHtml(item.text)}</div>`;
-            return `
-                <article class="schedule-later-item" data-later-id="${item.id}">
-                    <div class="flow-task-main">
-                        ${title}
-                    </div>
-                    <div class="flow-task-actions">
-                        <button type="button" data-later-act="into">${laterIntoLabel()}</button>
-                        <button type="button" class="flow-mini-btn flow-danger" data-later-act="delete" aria-label="${escapeHtml(t('schedule.delete', '删除'))}">${escapeHtml(t('schedule.delete', '删除'))}</button>
-                    </div>
-                </article>`;
-        }).join('');
-        if (editingLaterId) {
-            const input = box.querySelector(`[data-later-id="${editingLaterId}"] [data-later-act="text"]`);
-            if (input) {
-                input.focus();
-                input.select();
-            }
-        }
-    }
-
     function render() {
         const list = document.getElementById('scheduleList');
         if (!list) return;
@@ -580,7 +497,6 @@
         }
         window.ShuranScheduleProjects?.sync(currentDay(), data.tasks, mode);
         setHint();
-        renderLater();
         if (!(data.tasks || []).length) {
             list.innerHTML = `<p class="flow-empty">${escapeHtml(t('schedule.emptyTasks', '还没有行动'))}</p>`;
             return;
@@ -600,37 +516,20 @@
         }
     }
 
-    async function loadLater() {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-            laterItems = [];
-            return;
-        }
-        try {
-            const result = await api('/future');
-            laterItems = result.items || [];
-        } catch (err) {
-            laterItems = [];
-        }
-    }
-
     async function load(nextDay) {
         const serial = ++loadSerial;
         const token = localStorage.getItem('authToken');
         if (!token) {
             data = { date: currentDay(), designed_at: null, tasks: [] };
-            laterItems = [];
             render();
             return;
         }
         day = nextDay || currentDay();
         window.ShuranScheduleProjects?.sync(day, data.tasks, mode);
         editingId = null;
-        editingLaterId = null;
         const result = await api(`?task_date=${encodeURIComponent(day)}`);
         if (serial !== loadSerial || token !== localStorage.getItem('authToken')) return;
         data = result;
-        await loadLater();
         render();
     }
 
@@ -659,63 +558,6 @@
             mode = 'list';
             editingId = newest ? newest.id : null;
         }
-        render();
-    }
-
-    async function addLater(text) {
-        const value = (text || '').trim();
-        if (!value) return;
-        const result = await api('/future', {
-            method: 'POST',
-            body: JSON.stringify({ text: value }),
-        });
-        laterItems = result.items || [];
-        editingLaterId = null;
-        renderLater();
-    }
-
-    async function saveLaterText(id, value) {
-        const item = laterItems.find((row) => row.id === id);
-        const next = (value || '').trim();
-        const prev = item ? String(item.text || '').trim() : '';
-        if (editingLaterId === id) editingLaterId = null;
-        if (!item || !next || next === prev) {
-            renderLater();
-            return;
-        }
-        const result = await api(`/future/${id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ text: next }),
-        });
-        laterItems = result.items || [];
-        renderLater();
-    }
-
-    async function beginLaterEdit(id) {
-        if (editingLaterId === id) return;
-        if (editingLaterId) {
-            const input = document.querySelector(`#scheduleLaterList [data-later-id="${editingLaterId}"] [data-later-act="text"]`);
-            if (input) await saveLaterText(editingLaterId, input.value);
-        }
-        editingLaterId = id;
-        renderLater();
-    }
-
-    async function deleteLater(id) {
-        const result = await api(`/future/${id}`, { method: 'DELETE' });
-        laterItems = result.items || [];
-        if (editingLaterId === id) editingLaterId = null;
-        renderLater();
-    }
-
-    async function scheduleLater(id) {
-        data = await api(`/future/${id}/schedule`, {
-            method: 'POST',
-            body: JSON.stringify({ task_date: currentDay() }),
-        });
-        laterItems = laterItems.filter((row) => row.id !== id);
-        if (editingLaterId === id) editingLaterId = null;
-        await loadLater();
         render();
     }
 
@@ -1104,31 +946,6 @@
         document.getElementById('scheduleAddDuration')?.addEventListener('input', (e) => {
             newTaskDuration = e.target.value;
         });
-        document.getElementById('scheduleLaterAddBtn')?.addEventListener('click', () => {
-            const input = document.getElementById('scheduleLaterInput');
-            addLater(input?.value).then(() => {
-                if (input) input.value = '';
-            }).catch((e) => {
-                if (typeof showMessage === 'function') showMessage(e.message, 'error');
-            });
-        });
-        document.getElementById('scheduleLaterInput')?.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const input = e.target;
-                addLater(input.value).then(() => {
-                    input.value = '';
-                }).catch((err) => {
-                    if (typeof showMessage === 'function') showMessage(err.message, 'error');
-                });
-            }
-        });
-        document.getElementById('scheduleLaterToggle')?.addEventListener('click', () => {
-            laterOpen = !laterOpen;
-            if (!laterOpen) editingLaterId = null;
-            rememberLaterOpen();
-            renderLater();
-        });
         window.addEventListener('shuran-language-change', () => render());
         window.addEventListener('shuran-practice-change', () => load(currentDay()));
         document.getElementById('schedulePractice')?.addEventListener('click', () => globalThis.ShuranPractice?.openDay(currentDay()));
@@ -1142,69 +959,6 @@
             editingId = null;
             render();
         });
-        const laterList = document.getElementById('scheduleLaterList');
-
-        laterList?.addEventListener('mousedown', (e) => {
-            const actEl = e.target.closest('[data-later-act]');
-            if (!actEl || !editingLaterId) return;
-            const act = actEl.dataset.laterAct;
-            if (act === 'delete' || act === 'edit' || act === 'into') {
-                e.preventDefault();
-            }
-        });
-
-        laterList?.addEventListener('click', async (e) => {
-            const actEl = e.target.closest('[data-later-act]');
-            const article = e.target.closest('[data-later-id]');
-            if (!actEl || !article) return;
-            const act = actEl.dataset.laterAct;
-            if (act === 'text') return;
-            const id = parseInt(article.dataset.laterId, 10);
-            try {
-                if (act === 'edit') {
-                    await beginLaterEdit(id);
-                } else if (act === 'delete') {
-                    await deleteLater(id);
-                } else if (act === 'into') {
-                    await scheduleLater(id);
-                }
-            } catch (err) {
-                if (typeof showMessage === 'function') showMessage(err.message, 'error');
-            }
-        });
-
-        laterList?.addEventListener('keydown', async (e) => {
-            const article = e.target.closest('[data-later-id]');
-            if (!article || e.target.dataset.laterAct !== 'text') return;
-            const id = parseInt(article.dataset.laterId, 10);
-            if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
-                e.preventDefault();
-                try {
-                    await saveLaterText(id, e.target.value);
-                } catch (err) {
-                    if (typeof showMessage === 'function') showMessage(err.message, 'error');
-                }
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                editingLaterId = null;
-                renderLater();
-            }
-        });
-
-        laterList?.addEventListener('focusout', (e) => {
-            if (e.target.dataset.laterAct !== 'text') return;
-            const article = e.target.closest('[data-later-id]');
-            if (!article) return;
-            const id = parseInt(article.dataset.laterId, 10);
-            const value = e.target.value;
-            setTimeout(() => {
-                if (editingLaterId !== id) return;
-                saveLaterText(id, value).catch((err) => {
-                    if (typeof showMessage === 'function') showMessage(err.message, 'error');
-                });
-            }, 120);
-        });
-
         list?.addEventListener('mousedown', (e) => {
             const hit = actionFromEvent(e);
             if (!hit || !editingId) return;
