@@ -59,6 +59,12 @@ body.workspace-layout {background:var(--workspace-paper);background-image:radial
 .workspace-layout .rotation-item {background:none;border:0;border-bottom:1px solid var(--workspace-line);border-radius:0;padding:15px 0;}
 .workspace-layout .queue-add {margin-top:18px;}
 .workspace-layout .focus-finished,.workspace-layout .time-decision {text-align:left;}
+.workspace-layout .focus-finished {position:fixed;right:20px;bottom:24px;z-index:1200;width:378px;max-width:calc(100vw - 32px);padding:18px 20px;background:#fbfcfd;color:#304f65;border:1px solid #c9d5df;border-radius:15px;box-shadow:0 12px 34px #233e5526;}
+.workspace-layout .focus-finished strong {display:block;font-size:18px;margin:8px 0;}
+.workspace-layout .focus-finished p {line-height:1.85;font-size:14px;}
+.focus-toast-sender,.focus-toast-footer {display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;}
+.focus-toast-footer {border-top:1px solid #e1e7ec;padding-top:10px;}
+@media(max-width:640px){.workspace-layout .focus-finished{bottom:calc(80px + env(safe-area-inset-bottom));right:16px;}}
 .workspace-layout .reflection-panel {background:none;border:0;padding:0;margin:18px 0 28px;border-radius:0;}
 .workspace-layout .record-editor {max-width:650px;}
 .workspace-layout .record-editor summary {padding:12px 0;color:var(--workspace-blue);cursor:pointer;}

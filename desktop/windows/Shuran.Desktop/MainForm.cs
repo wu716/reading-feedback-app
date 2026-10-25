@@ -22,6 +22,7 @@ sealed class MainForm : Form
     };
     bool _hotkeyRegistered;
     bool _webReady;
+    FocusReminders? _focusReminders;
 
     public MainForm(string startUrl, string? userDataFolder = null)
     {
@@ -53,6 +54,7 @@ sealed class MainForm : Form
             CancelRetry();
             CancelNavigation();
             UnregisterCaptureHotkey();
+            _focusReminders?.Dispose();
         };
     }
 
@@ -116,6 +118,24 @@ sealed class MainForm : Form
         settings.IsStatusBarEnabled = false;
         var appVersion = Application.ProductVersion.Split('+')[0];
         _webView.CoreWebView2.Settings.UserAgent += $" ShuranDesktop/{appVersion}";
+        _focusReminders = new FocusReminders(() => BeginInvoke((Action)(() =>
+        {
+            BringToFrontSafe();
+            _webView.CoreWebView2.Navigate(new Uri(new Uri(_startUrl), "/static/projects.html#execution").AbsoluteUri);
+        })));
+        _webView.CoreWebView2.WebMessageReceived += (_, e) =>
+        {
+            // Only the configured app origin may schedule local notifications.
+            if (!Uri.TryCreate(e.Source, UriKind.Absolute, out var source)
+                || source.GetLeftPart(UriPartial.Authority) != new Uri(_startUrl).GetLeftPart(UriPartial.Authority)) return;
+            try
+            {
+                using var message = System.Text.Json.JsonDocument.Parse(e.WebMessageAsJson);
+                if (message.RootElement.GetProperty("type").GetString() == "focusTimer")
+                    _focusReminders.Sync(message.RootElement.GetProperty("data"));
+            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("Focus bridge: " + ex.Message); }
+        };
         _webView.CoreWebView2.NewWindowRequested += (_, e) =>
         {
             e.Handled = true;

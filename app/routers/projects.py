@@ -756,6 +756,9 @@ def switch_session(body: SwitchSessionInput, user: User = Depends(get_current_ac
 def stop_session(session_id: int, body: StopSessionInput, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     db.query(User).filter(User.id == user.id).with_for_update().first()
     row = owned(db, WorkSession, session_id, user.id)
+    if not body.ended_at and row.source == "timer":
+        settle_expired(db, user.id)
+        db.commit()
     if row.ended_at is not None: return session_payload(row)
     end = utc_naive(body.ended_at) if body.ended_at else datetime.utcnow()
     now = datetime.utcnow()

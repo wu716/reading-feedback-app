@@ -23,6 +23,7 @@ public final class ReminderNotifications {
 
     /** 用户可见到点提醒。新 id：旧渠道 importance 一旦建成就改不了。 */
     public static final String CHANNEL_ID = "shuran_alarms_v2";
+    public static final String FOCUS_CHANNEL_ID = "shuran_focus_falling_pluck_v1";
     public static final String LEGACY_CHANNEL_ID = "shuran_system_reminders";
     /** 仅给投递用的前台服务，绝不能和用户通知共用，否则国产 ROM 停服务时会把通知一起撤掉。 */
     public static final String DELIVERY_CHANNEL_ID = "shuran_delivery_silent";
@@ -53,6 +54,14 @@ public final class ReminderNotifications {
             return;
         }
         NotificationChannel existing = manager.getNotificationChannel(CHANNEL_ID);
+        if (manager.getNotificationChannel(FOCUS_CHANNEL_ID) == null) {
+            NotificationChannel focus = new NotificationChannel(FOCUS_CHANNEL_ID, "工作片与休息到时", NotificationManager.IMPORTANCE_HIGH);
+            focus.setDescription("工作片结束自动休息，使用回落拨弦提醒");
+            focus.enableVibration(true);
+            focus.setSound(focusSound(context), new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
+            manager.createNotificationChannel(focus);
+        }
         if (existing == null) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
@@ -179,6 +188,18 @@ public final class ReminderNotifications {
     }
 
     public static Notification build(Context context, String title, String body, String actionPath) {
+        return build(context, title, body, actionPath, false);
+    }
+
+    private static Uri focusSound(Context context) {
+        return Uri.parse("android.resource://" + context.getPackageName() + "/raw/focus_falling_pluck");
+    }
+
+    public static Notification buildFocus(Context context, String title, String body) {
+        return build(context, title, body, "/static/projects.html#execution", true);
+    }
+
+    private static Notification build(Context context, String title, String body, String actionPath, boolean focus) {
         ensureChannel(context);
 
         String safeTitle = title == null || title.trim().isEmpty()
@@ -212,7 +233,7 @@ public final class ReminderNotifications {
             sound = Settings.System.DEFAULT_NOTIFICATION_URI;
         }
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, focus ? FOCUS_CHANNEL_ID : CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_notify)
                 .setContentTitle(safeTitle)
                 .setContentText(safeBody)
@@ -220,12 +241,12 @@ public final class ReminderNotifications {
                 .setAutoCancel(true)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
-                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setDefaults(focus ? NotificationCompat.DEFAULT_VIBRATE : NotificationCompat.DEFAULT_ALL)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setColor(ContextCompat.getColor(context, R.color.primary))
                 .setContentIntent(contentIntent)
                 .setTicker(safeTitle)
-                .setSound(sound)
+                .setSound(focus ? focusSound(context) : sound)
                 .setVibrate(new long[]{0, 400, 200, 400})
                 .setOnlyAlertOnce(false);
 

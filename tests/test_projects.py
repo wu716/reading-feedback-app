@@ -130,13 +130,44 @@ class ProjectFlowTests(unittest.TestCase):
         with self.Session() as db:
             db.get(WorkSession, session["id"]).started_at = datetime.utcnow() - timedelta(hours=3)
             db.commit()
-        result = self.req("GET", "/sessions").json()["items"][0]
+        result = next(s for s in self.req("GET", "/sessions").json()["items"] if s["id"] == session["id"])
         self.assertEqual(result["duration_minutes"], 20)
         self.assertIsNotNone(result["ended_at"])
         self.assertEqual(self.req("GET", "/overview").json()["projects"][0]["tasks"][0]["actual_minutes"], 20)
         # The next task starts only after a deliberate action, and idle hours are uncounted.
-        self.assertEqual(len(self.req("GET", "/sessions").json()["items"]), 1)
+        items = self.req("GET", "/sessions").json()["items"]
+        self.assertEqual(len(items), 2)
+        rest = next(s for s in items if s["kind"] == "break")
+        self.assertEqual(rest["started_at"], result["ended_at"])
+        self.assertEqual(rest["duration_minutes"], 5)
         self.assertEqual(self.req("POST", "/sessions/start", {"daily_task_id": daily["id"]}).status_code, 200)
+
+    def test_automatic_break_is_anchored_idempotent_and_can_end_early(self):
+        _, project, stage = self.project()
+        task = self.task(project, stage, "A")
+        self.req("PUT", "/execution", {"queue": [], "work_minutes": 20, "break_minutes": 7})
+        work = self.req("POST", "/sessions/start", {"project_task_id": task["id"], "planned_minutes": 20}).json()
+        with self.Session() as db:
+            db.get(WorkSession, work["id"]).started_at = datetime.utcnow() - timedelta(minutes=22)
+            db.commit()
+        first = self.req("GET", "/sessions").json()["items"]
+        second = self.req("GET", "/sessions").json()["items"]
+        self.assertEqual(len(first), 2)
+        self.assertEqual([s["id"] for s in first], [s["id"] for s in second])
+        rest = next(s for s in second if s["kind"] == "break")
+        ended = next(s for s in second if s["kind"] == "work")
+        self.assertEqual(rest["started_at"], ended["ended_at"])
+        self.assertEqual(rest["planned_minutes"], 7)
+        self.assertIsNone(rest["ended_at"])
+        self.assertEqual(self.req("POST", f"/sessions/{rest['id']}/stop", {}).status_code, 200)
+        self.assertFalse(any(s["ended_at"] is None for s in self.req("GET", "/sessions").json()["items"]))
+
+    def test_manual_early_stop_does_not_create_a_break(self):
+        _, project, stage = self.project()
+        task = self.task(project, stage, "A")
+        work = self.req("POST", "/sessions/start", {"project_task_id": task["id"], "planned_minutes": 20}).json()
+        self.assertEqual(self.req("POST", f"/sessions/{work['id']}/stop", {}).status_code, 200)
+        self.assertEqual(len(self.req("GET", "/sessions").json()["items"]), 1)
 
     def test_pause_resume_preserves_remaining_budget_and_excludes_gap(self):
         _, project, stage = self.project()

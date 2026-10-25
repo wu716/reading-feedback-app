@@ -8,13 +8,13 @@
   <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20261020slice1">
   <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261020slice1">
   <link rel="stylesheet" href="/static/css/start-conditions.css?v=20261022hierarchy1">
-  <link rel="stylesheet" href="/static/css/workspace.css?v=20261022hierarchy1">
+  <link rel="stylesheet" href="/static/css/workspace.css?v=20261024focus1">
   <script defer src="/static/js/workspace-shell.js?v=20261022hierarchy1"></script>
   <script defer src="/static/js/start-conditions.js?v=20261022hierarchy1"></script>
   <link rel="stylesheet" href="/static/css/feedback.css?v=20261023feedback1">
   <script defer src="/static/js/feedback-ui.js?v=20261023feedback1"></script>
   <script defer src="/static/js/commitments.js?v=20261024commitment2"></script>
-  <script defer src="/static/js/projects.js?v=20261024commitment2"></script>
+  <script defer src="/static/js/projects.js?v=20261024focus1"></script>
   <link rel="stylesheet" href="/static/css/plan-practice.css?v=20261024commitment2">
   <script defer src="/static/js/plan-practice.js?v=20261024commitment2"></script>
   <script defer src="/static/js/app-tabbar.js?v=20261022hierarchy1"></script>
@@ -59,7 +59,7 @@
           <div id="executionPractice" class="practice-execution" hidden></div>
           <div id="timerDisplay" class="timer-display">20:00</div>
           <div id="timerCaption" class="timer-caption">准备开始工作片</div>
-          <div id="focusFinished" class="focus-finished" role="alert" hidden><strong id="focusFinishedTitle"></strong><p id="focusFinishedText"></p><button type="button" id="focusAcknowledge" class="secondary">知道了</button></div>
+          <div id="focusFinished" class="focus-finished" role="status" hidden><div class="focus-toast-sender"><span>书然 · 到时提醒</span><button type="button" id="focusAcknowledge" class="plain-action" aria-label="收起到时提醒">×</button></div><strong id="focusFinishedTitle"></strong><p id="focusFinishedText"></p><div class="focus-toast-footer"><span id="focusRestRemaining"></span><a href="#execution">查看休息 →</a></div></div>
           <progress id="sliceProgress" value="0" max="1200" aria-label="当前时间片进度"></progress>
           <div class="duration-row"><label>工作 <input id="workMinutes" type="number" min="1" max="180" value="20"> 分</label><label>休息 <input id="breakMinutes" type="number" min="1" max="180" value="5"> 分</label></div>
           <div class="control-row" id="timerControls">

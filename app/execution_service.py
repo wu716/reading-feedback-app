@@ -10,7 +10,7 @@ def budget_seconds(row):
 
 
 def settle_expired(db, user_id, now=None):
-    """Cap timer intervals even when every browser is closed; never start unattended work."""
+    """Settle at server deadlines, automatically resting but never starting unattended work."""
     db.query(User).filter(User.id == user_id).with_for_update().first()
     now = now or datetime.utcnow()
     for row in db.query(WorkSession).filter(
@@ -19,6 +19,16 @@ def settle_expired(db, user_id, now=None):
         deadline = row.started_at + timedelta(seconds=budget_seconds(row))
         if now >= deadline:
             row.ended_at = deadline
+            if row.kind == "work":
+                plan = execution_plan(db, user_id)
+                rest_end = deadline + timedelta(minutes=plan.break_minutes)
+                db.add(WorkSession(
+                    user_id=user_id, kind="break", source="timer", label="自动休息",
+                    started_at=deadline, ended_at=rest_end if now >= rest_end else None,
+                    planned_minutes=plan.break_minutes, planned_seconds=plan.break_minutes * 60,
+                ))
+                plan.paused_session_id = None
+                plan.remaining_seconds = None
     db.flush()
 
 

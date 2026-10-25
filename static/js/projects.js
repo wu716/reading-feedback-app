@@ -6,9 +6,13 @@
   const params = new URLSearchParams(location.search);
   state.plan = {queue:[], daily_tasks:[], work_minutes:20, break_minutes:5};
   let noticeTimer, actionBusy = false, expiring = false, hydrated = false;
-  let finishedId = null, soundContext = null;
+  let finishedId = null, soundContext = null, finishedTimer;
 
-  function nativeBridge() { return globalThis.ShuranNative || null; }
+  const desktopNative = /ShuranDesktop\//.test(globalThis.navigator?.userAgent || '') && globalThis.chrome?.webview;
+  function nativeBridge() { return globalThis.ShuranNative || (desktopNative ? {
+    hasPermission: () => true,
+    setFocusTimer: json => desktopNative.postMessage({type:'focusTimer', data:JSON.parse(json)}),
+  } : null); }
   function syncFocusAlarm() {
     const native = nativeBridge();
     if (!native || !native.setFocusTimer) return;
@@ -20,7 +24,9 @@
     try {
       native.setFocusTimer(JSON.stringify(active && active.source === 'timer' ? {
         id:active.id, kind:active.kind,
-        deadline_ms:Date.parse(active.deadline_at) - (state.clockOffset || 0)
+        deadline_ms:Date.parse(active.deadline_at) - (state.clockOffset || 0),
+        server_deadline_ms:Date.parse(active.deadline_at),
+        break_minutes:state.plan.break_minutes
       } : completed ? {id:latest.id, completed:true} : {}));
     } catch (_) { /* The persistent in-page alert remains available. */ }
   }
@@ -32,6 +38,7 @@
     $('#focusReminderSettings').hidden = !supported || granted;
   }
   function acknowledgeFinished() {
+    clearTimeout(finishedTimer);
     if (finishedId != null) localStorage.setItem('focusFinishedSession', String(finishedId));
     finishedId = null;
     $('#focusFinished').hidden = true;
@@ -45,26 +52,25 @@
     if (!soundContext) return;
     try {
       soundContext.resume();
-      const oscillator = soundContext.createOscillator(), gain = soundContext.createGain();
-      oscillator.type = 'sine'; oscillator.frequency.value = 660;
-      gain.gain.setValueAtTime(0.001, soundContext.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.11, soundContext.currentTime + 0.025);
-      gain.gain.exponentialRampToValueAtTime(0.001, soundContext.currentTime + 0.32);
-      oscillator.connect(gain).connect(soundContext.destination);
-      oscillator.start(); oscillator.stop(soundContext.currentTime + 0.33);
+      const audio = new globalThis.Audio('/static/audio/focus-falling-pluck.wav');
+      audio.play().catch(() => {});
     } catch (_) { /* The visible reminder still works without audio. */ }
   }
   function showFinished(session, live = false) {
     if (!session || localStorage.getItem('focusFinishedSession') === String(session.id)) return;
     const isNew = finishedId !== session.id;
     finishedId = session.id;
-    $('#focusFinishedTitle').textContent = session.kind === 'break' ? '休息到时' : '工作片到时';
+    $('#focusFinishedTitle').textContent = session.kind === 'break' ? '休息结束，准备好再开始' : `工作片结束，休息 ${state.plan.break_minutes} 分钟`;
     $('#focusFinishedText').textContent = session.kind === 'break'
       ? '这段休息结束了。准备好后开始下一项。'
-      : '这段工作已到点并挂起。可以休息，或选择下一项。';
+      : '休息已自动开始。先不看手机，也不查看消息。站起来走走，让眼睛离开屏幕。';
     $('#focusFinished').hidden = false;
+    if (isNew) {
+      clearTimeout(finishedTimer);
+      finishedTimer = setTimeout(acknowledgeFinished, 8000);
+    }
     if (!isNew || !live) return;
-    soundFinished();
+    if (!nativeBridge()) soundFinished();
     if (!nativeBridge() && document.hidden && globalThis.Notification?.permission === 'granted') {
       try { new globalThis.Notification('书然 · ' + $('#focusFinishedTitle').textContent, {
         body:$('#focusFinishedText').textContent, tag:'shuran-focus-' + session.id
@@ -73,6 +79,11 @@
   }
   function restoreFinished() {
     const active = state.active;
+    if (active?.kind === 'break') {
+      const previous = state.sessions.find(s => s.kind === 'work' && s.ended_at === active.started_at);
+      if (previous) showFinished(previous);
+      return;
+    }
     if (active && Date.parse(active.deadline_at) > Date.now() + (state.clockOffset || 0)) {
       if (finishedId && finishedId !== active.id) acknowledgeFinished();
       return;
@@ -327,6 +338,7 @@
     $('#startWork').disabled = !!active || (!paused && !nextTask());
     $('#pauseWork').disabled = !active;
     $('#endWork').disabled = !active && !paused;
+    $('#endWork').textContent = active?.kind === 'break' ? '提前结束休息' : '结束片段';
     $('#switchWork').disabled = !nextTask();
     $('#actualStopWrap').hidden = !active;
     const decision = !active && !paused && !!lastWork();
@@ -348,12 +360,13 @@
     const budget = active?.planned_seconds || state.plan.remaining_seconds || state.plan.work_minutes * 60;
     const remaining = active ? Math.max(0, Math.ceil((Date.parse(active.deadline_at) - Date.now() - (state.clockOffset || 0)) / 1000)) : state.plan.paused ? state.plan.remaining_seconds : budget;
     $('#timerDisplay').textContent = `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
-    $('#timerCaption').textContent = active ? `${active.kind === 'break' ? '休息中' : '工作中'} · 到点自动挂起` : state.plan.paused ? '已暂停 · 恢复后接着剩余时间' : lastWork() ? '等待下一步 · 当前不计时' : '准备开始工作片';
+    $('#focusRestRemaining').textContent = active?.kind === 'break' ? `休息中 ${$('#timerDisplay').textContent}` : '当前未计工作时间';
+    $('#timerCaption').textContent = active ? active.kind === 'break' ? '休息中 · 结束后提醒你主动开始下一片' : '工作中 · 到时自动进入休息' : state.plan.paused ? '已暂停 · 恢复后接着剩余时间' : lastWork() ? '等待下一步 · 当前不计时' : '准备开始工作片';
     $('#sliceProgress').max = budget; $('#sliceProgress').value = active ? budget - remaining : 0;
     if (active && remaining === 0 && !expiring && !actionBusy) {
       showFinished(active, true);
       expiring = true;
-      refreshExecution().then(() => notice(active.kind === 'break' ? '休息到时，准备好后开始下一项' : '工作片到时，已挂起。选择休息或轮转到下一项')).catch(error => notice(error.message, true)).finally(() => { expiring = false; });
+      refreshExecution().then(() => notice(active.kind === 'break' ? '休息到时，准备好后开始下一项' : '休息已自动开始。先不看手机，也不查看消息。站起来走走，让眼睛离开屏幕。')).catch(error => notice(error.message, true)).finally(() => { expiring = false; });
     }
   }
   function renderSessions() {

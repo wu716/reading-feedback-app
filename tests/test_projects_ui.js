@@ -72,7 +72,14 @@ const context = {
     else if(url.includes('/overview'))data=overview;
     else if(url.includes('/templates'))data={items:[]};
     else if(url.includes('/sessions')){
-      sessions.forEach(s=>{if(!s.ended_at && (simulatedNow ?? Date.now())>=Date.parse(s.deadline_at))s.ended_at=s.deadline_at;});
+      [...sessions].forEach(s=>{
+        if(!s.ended_at && (simulatedNow ?? Date.now())>=Date.parse(s.deadline_at)) {
+          s.ended_at=s.deadline_at;
+          if(s.kind==='work') sessions.unshift({id:sessions.length+1,kind:'break',source:'timer',label:'自动休息',
+            started_at:s.deadline_at,ended_at:null,planned_minutes:plan.break_minutes,planned_seconds:plan.break_minutes*60,
+            deadline_at:new Date(Date.parse(s.deadline_at)+plan.break_minutes*60000).toISOString()});
+        }
+      });
       data={items:sessions};
     }
     else if(url.includes('/api/schedule?'))data=schedule;
@@ -134,12 +141,16 @@ async function addStageTask(stage, title) {
  assert.equal(alarms.at(-1).id,undefined,'pausing cancels the native alarm');
  assert.equal(element('#focusFinished').hidden,true,'pausing does not show a completion reminder');
  await click('#startWork');
+ const expiredWork=sessions[0];
  simulatedNow=Date.parse(sessions[0].deadline_at)+1000;
  ticker(); await flush();
  assert.equal(element('#focusFinished').hidden,false,'expiry keeps a visible reminder');
- assert.equal(element('#focusFinishedTitle').textContent,'工作片到时');
- assert.equal(sessions[0].ended_at,sessions[0].deadline_at,'server settles the slice at the deadline');
- assert.equal(alarms.at(-1).completed,true,'natural expiry preserves the pending native reminder');
+ assert.match(element('#focusFinishedTitle').textContent,/工作片结束，休息/);
+ assert.equal(expiredWork.ended_at,expiredWork.deadline_at,'server settles the slice at the deadline');
+ assert.equal(sessions[0].kind,'break','work automatically enters a break');
+ assert.equal(sessions[0].started_at,expiredWork.deadline_at,'break starts at work deadline');
+ assert.equal(alarms.at(-1).kind,'break','native alarm continues with automatic break');
+ assert.match(element('#timerCaption').textContent,/休息中/);
  await click('#focusAcknowledge');
  assert.equal(element('#focusFinished').hidden,true);
  ticker(); await flush();

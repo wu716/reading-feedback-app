@@ -1,10 +1,12 @@
 {
-  "versionCode": 68,
-  "versionName": "2.0.26",
+  "versionCode": 70,
+  "versionName": "2.0.28",
   "filename": "shuran.apk",
-  "notes": "书然 2.0.26：创建项目和计划时可直接写阶段任务，任务拆分可选；自选反馈日期，提交文字、链接及附件；补充长期方向每日明细、项目推进和日周月季年报，支持逐书阅读联动。阅读联动需两端部署配置并确认账号。",
+  "notes": "书然 2.0.28：工作片到时自动进入休息，提醒先不看手机、不查看消息，起身走动；休息结束等待主动开始下一片。到时通知采用回落拨弦铃声，补齐后台提醒与重复通知保护。",
   "require_shell": true,
   "force": true,
   "minVersionCode": 20,
-  "minVersionName": "1.5.4"
+  "minVersionName": "1.5.4",
+  "sha256": "f17213346b464ab06419ad430dd4d45136bcc2bf491e35c9e7cd64bdb7663cf5",
+  "size_bytes": 1987255
 }

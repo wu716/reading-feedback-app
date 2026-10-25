@@ -49,6 +49,7 @@ public final class ReminderScheduler {
     private static final String KEY_FOCUS_DEADLINE = "focus_deadline";
     private static final String KEY_FOCUS_KIND = "focus_kind";
     private static final String KEY_FOCUS_FIRED = "focus_fired_id";
+    private static final String KEY_FOCUS_REST = "focus_rest_minutes";
     private static final String KEY_RECORD_ENABLED = "record_enabled";
     private static final String KEY_RECORD_TIME = "record_time";
     private static final String KEY_RECORD_COMPLETE = "record_complete_date";
@@ -264,7 +265,7 @@ public final class ReminderScheduler {
             } else if (ACTION_TEST.equals(action)) {
                 fillTest(context, delivery);
             } else if (ACTION_FOCUS.equals(action)) {
-                fillFocus(context, intent, delivery);
+                synchronized (LOCK) { fillFocus(context, intent, delivery); }
             } else if (ACTION_POLL.equals(action)) {
                 delivery.poll = true;
                 schedulePoll(context);
@@ -324,29 +325,49 @@ public final class ReminderScheduler {
                 || id == p.getInt(KEY_FOCUS_FIRED, 0)
                 || !p.getBoolean(KEY_SYSTEM, true)) return;
         String kind = p.getString(KEY_FOCUS_KIND, "work");
-        String title = "break".equals(kind) ? "书然 · 休息到时" : "书然 · 工作片到时";
-        String message = "break".equals(kind) ? "休息结束了，准备好后开始下一项。" : "工作片结束了。休息，或选择下一项。";
+        if (intent != null && !kind.equals(intent.getStringExtra(KEY_FOCUS_KIND))) return;
+        long at = p.getLong(KEY_FOCUS_DEADLINE, 0L);
+        if (System.currentTimeMillis() < at) return;
+        int minutes = p.getInt(KEY_FOCUS_REST, 5);
+        long restEnd = at + minutes * 60_000L;
+        boolean rest = "break".equals(kind) || System.currentTimeMillis() >= restEnd;
+        String title = rest ? "书然 · 休息结束，准备好再开始" : "书然 · 工作片结束，休息 " + minutes + " 分钟";
+        String message = rest ? "休息结束了，准备好后开始下一项。" : "休息已自动开始。先不看手机，也不查看消息。站起来走走，让眼睛离开屏幕。";
         delivery.userVisible = true;
         delivery.notificationId = 9004;
-        delivery.notification = ReminderNotifications.build(context, title, message, "/static/projects.html#execution");
+        delivery.notification = ReminderNotifications.buildFocus(context, title, message);
         ReminderNotifications.showPrepared(context, delivery.notificationId, delivery.notification);
         p.edit().putInt(KEY_FOCUS_FIRED, id).commit();
+        if ("work".equals(kind) && !rest) {
+            p.edit().putString(KEY_FOCUS_KIND, "break").putLong(KEY_FOCUS_DEADLINE, restEnd)
+                    .putInt(KEY_FOCUS_FIRED, 0).commit();
+            scheduleFocusAlarms(context, id, restEnd);
+        }
     }
 
     /** The server session id and deadline are authoritative; only one local slice can run. */
     public static void setFocusTimer(Context context, JSONObject data) {
+        synchronized (LOCK) { syncFocusTimer(context, data); }
+    }
+
+    private static void syncFocusTimer(Context context, JSONObject data) {
         int id = data.optInt("id", 0);
         long at = data.optLong("deadline_ms", 0L);
         String kind = data.optString("kind", "");
         SharedPreferences p = prefs(context);
+        if (p.getInt(KEY_FOCUS_ID, 0) > 0 && p.getLong(KEY_FOCUS_DEADLINE, Long.MAX_VALUE) <= System.currentTimeMillis()) {
+            Intent elapsed = new Intent().putExtra(KEY_FOCUS_ID, p.getInt(KEY_FOCUS_ID, 0))
+                    .putExtra(KEY_FOCUS_KIND, p.getString(KEY_FOCUS_KIND, "work"));
+            fillFocus(context, elapsed, new Delivery());
+        }
         if (data.optBoolean("completed", false) && id > 0
                 && id == p.getInt(KEY_FOCUS_ID, 0)) {
             // Keep the natural-expiry alarm until it has been delivered.
             return;
         }
-        if (id > 0 && id == p.getInt(KEY_FOCUS_ID, 0)
-                && at == p.getLong(KEY_FOCUS_DEADLINE, 0L)
-                && id != p.getInt(KEY_FOCUS_FIRED, 0)) return;
+        if (id > 0 && kind.equals(p.getString(KEY_FOCUS_KIND, ""))
+                && Math.abs(at - p.getLong(KEY_FOCUS_DEADLINE, 0L)) < 1000
+                ) return; // Adopt server's automatic break without a second alarm.
         cancelFocusAlarms(context);
         if (id <= 0 || at <= System.currentTimeMillis()
                 || at > System.currentTimeMillis() + 181L * 60 * 1000
@@ -356,7 +377,8 @@ public final class ReminderScheduler {
             return;
         }
         prefs(context).edit().putInt(KEY_FOCUS_ID, id).putLong(KEY_FOCUS_DEADLINE, at)
-                .putString(KEY_FOCUS_KIND, kind).commit();
+                .putString(KEY_FOCUS_KIND, kind).putInt(KEY_FOCUS_FIRED, 0)
+                .putInt(KEY_FOCUS_REST, Math.max(1, Math.min(180, data.optInt("break_minutes", 5)))).commit();
         scheduleFocusAlarms(context, id, at);
     }
 
@@ -382,6 +404,7 @@ public final class ReminderScheduler {
         intent.setAction(ACTION_FOCUS);
         intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         intent.putExtra(KEY_FOCUS_ID, id);
+        intent.putExtra(KEY_FOCUS_KIND, prefs(context).getString(KEY_FOCUS_KIND, "work"));
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
         return PendingIntent.getBroadcast(context, code, intent, flags);

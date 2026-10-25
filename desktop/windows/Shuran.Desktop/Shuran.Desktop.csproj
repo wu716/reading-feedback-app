@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.17763.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWindowsForms>true</UseWindowsForms>
@@ -12,11 +12,13 @@
     <Product>书然</Product>
     <AssemblyTitle>书然</AssemblyTitle>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <Version>1.6.4</Version>
+    <Version>1.6.5</Version>
     <NeutralLanguage>zh-CN</NeutralLanguage>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
+    <EmbeddedResource Include="../../../static/audio/focus-falling-pluck.wav" LogicalName="FocusChime.wav" />
   </ItemGroup>
 </Project>
