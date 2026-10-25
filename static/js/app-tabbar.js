@@ -23,7 +23,7 @@
         }
         const hash = (location.hash || '').replace('#', '');
         if (hash === '' || hash === 'overview') return 'schedule';
-        if (hash === 'capture' || hash === 'time-log' || hash === 'ideas') return 'capture';
+        if (hash === 'capture' || hash === 'time-log' || hash === 'ideas' || hash === 'future-actions') return 'capture';
         if (hash === 'schedule') return 'schedule';
         if (hash === 'long-term') return 'long-term';
         return 'user-center';

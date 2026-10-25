@@ -22,7 +22,7 @@
   function activeRoute() {
     if (projectPage) return view;
     const hash = location.hash.slice(1) || 'schedule';
-    return ['time-log','ideas'].includes(hash) ? 'capture' : ['guide','owner'].includes(hash) ? 'user-center' : hash;
+    return ['time-log','ideas','future-actions'].includes(hash) ? 'capture' : ['guide','owner'].includes(hash) ? 'user-center' : hash;
   }
   function sync() {
     window.syncAppTabbar?.();

@@ -3454,7 +3454,7 @@
         }
     </style>
     <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261017paper1">
-    <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261025someday2">
+    <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261025someday3">
     <link rel="stylesheet" href="/static/css/workspace.css?v=20261022hierarchy1">
     <link rel="stylesheet" href="/static/css/account.css?v=20261022account1">
     <link rel="stylesheet" href="/static/css/long-term.css?v=20261021download1">
@@ -3466,7 +3466,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261017paper1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.37';
+            window.SHURAN_VERSION = '2.0.39';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -4126,25 +4126,35 @@
             <div class="capture-entry-grid">
                 <div class="card"><h2>时刻</h2><p>记下现在，稍后补全上一段做了什么。</p><button type="button" class="btn" onclick="punchTimeLog(false, 'moment')">记下此刻</button><button type="button" class="btn btn-secondary" onclick="navigateTo('time-log')">回看时刻</button></div>
                 <div class="card"><h2>idea</h2><p>先留下一个念头，不进入待办。</p><button type="button" class="btn" onclick="punchTimeLog(false, 'idea')">记下 idea</button><button type="button" class="btn btn-secondary" onclick="navigateTo('ideas')">查看 idea</button></div>
-                <div class="card"><h2>以后想做</h2><p>宽松收集，还未放入项目阶段。</p><div class="schedule-later is-collapsed" id="scheduleLater">
-                    <button type="button" class="btn" id="scheduleLaterWrite" aria-expanded="false" aria-controls="scheduleLaterComposer" data-i18n="schedule.later.write">记下想做的事</button>
-                    <button type="button" class="btn btn-secondary" id="scheduleLaterToggle" aria-expanded="false" aria-controls="scheduleLaterBody"><span id="scheduleLaterToggleLabel" data-i18n="schedule.later.view">查看想做的事</span><span class="capture-later-count" id="scheduleLaterSummary">—</span></button>
-                    <form class="capture-later-composer" id="scheduleLaterComposer" hidden novalidate>
-                        <label for="scheduleLaterInput" data-i18n="schedule.later.prompt">想以后做什么？</label>
-                        <textarea id="scheduleLaterInput" rows="3" maxlength="500" placeholder="想做，但还没具体规划" data-i18n-placeholder="schedule.later.placeholder" aria-describedby="scheduleLaterKeyboard scheduleLaterStatus" enterkeyhint="done"></textarea>
-                        <div class="capture-later-actions"><button type="submit" class="capture-later-save" id="scheduleLaterAddBtn" data-i18n="schedule.later.add">记下</button><button type="button" class="capture-later-text" id="scheduleLaterCancel" data-i18n="common.cancel">取消</button></div>
-                        <span class="capture-later-keyboard" id="scheduleLaterKeyboard" data-i18n="schedule.later.keyboard">Enter 记下 · Shift+Enter 换行</span>
-                    </form>
-                    <div class="capture-later-feedback"><span id="scheduleLaterStatus" role="status" aria-live="polite" aria-atomic="true"></span><button type="button" class="capture-later-text" id="scheduleLaterUndo" hidden data-i18n="schedule.later.undo">撤销删除</button></div>
-                    <div class="schedule-later-body" id="scheduleLaterBody" hidden>
-                        <div class="capture-later-list-heading" data-i18n="schedule.later.collection">收集箱</div>
-                        <div id="scheduleLaterList" class="schedule-later-list"></div>
-                        <p class="schedule-later-hint" data-i18n="schedule.later.hint">还没规划也可以先记下来，不进今天、不提醒</p>
-                    </div>
-                </div>
+                <div class="card"><h2 data-i18n="schedule.later.title">以后想做</h2><p data-i18n="schedule.later.entryHint">先收下想做的事，准备好再安排。</p><button type="button" class="btn" id="scheduleLaterWrite" aria-haspopup="dialog" aria-controls="scheduleLaterDialog" data-i18n="schedule.later.write">记下想做的事</button><button type="button" class="btn btn-secondary" id="scheduleLaterToggle" onclick="navigateTo('future-actions')" data-i18n="schedule.later.view">查看想做的事</button></div>
+            </div>
+            <div class="capture-entry-feedback" id="captureFutureStatus" role="status" aria-live="polite" aria-atomic="true"></div>
+        </section>
+
+        <section id="future-actions" class="content-section">
+            <div class="capture-future-page" id="scheduleLater">
+                <button type="button" class="capture-later-text is-secondary" id="scheduleLaterBack" onclick="navigateTo('capture')" data-i18n="schedule.later.back">← 返回「记」</button>
+                <div class="section-header"><h1 data-i18n="schedule.later.title">以后想做</h1><p data-i18n="schedule.later.entryHint">先收下想做的事，准备好再安排。</p></div>
+                <div class="capture-future-heading"><span class="capture-later-count" id="scheduleLaterSummary">—</span><button type="button" class="capture-later-save" id="scheduleLaterWriteFromList" aria-haspopup="dialog" aria-controls="scheduleLaterDialog" data-i18n="schedule.later.write">记下想做的事</button></div>
+                <div class="capture-later-feedback"><span id="scheduleLaterStatus" role="status" aria-live="polite" aria-atomic="true"></span><button type="button" class="capture-later-text" id="scheduleLaterUndo" hidden data-i18n="schedule.later.undo">撤销删除</button><button type="button" class="capture-later-text" id="scheduleLaterRetry" hidden data-i18n="schedule.later.retry">重新读取</button></div>
+                <div class="schedule-later-body" id="scheduleLaterBody">
+                    <div id="scheduleLaterList" class="schedule-later-list"></div>
+                    <p class="schedule-later-hint" data-i18n="schedule.later.hint">还没规划也可以先记下来，不进今天、不提醒</p>
                 </div>
             </div>
         </section>
+
+        <dialog id="scheduleLaterDialog" class="capture-later-dialog" aria-labelledby="scheduleLaterDialogTitle">
+            <form class="capture-later-composer" id="scheduleLaterComposer" novalidate>
+                <h2 id="scheduleLaterDialogTitle" data-i18n="schedule.later.write">记下想做的事</h2>
+                <label for="scheduleLaterInput" data-i18n="schedule.later.prompt">想以后做什么？</label>
+                <textarea id="scheduleLaterInput" rows="3" maxlength="500" placeholder="想做，但还没具体规划" data-i18n-placeholder="schedule.later.placeholder" aria-describedby="scheduleLaterHint scheduleLaterKeyboard scheduleLaterComposerStatus" enterkeyhint="done"></textarea>
+                <p id="scheduleLaterHint" class="schedule-later-hint" data-i18n="schedule.later.captureHint">先放在以后想做里，不安排到今天，也不提醒。</p>
+                <span class="capture-later-keyboard" id="scheduleLaterKeyboard" data-i18n="schedule.later.keyboard">Enter 记下 · Shift+Enter 换行</span>
+                <div id="scheduleLaterComposerStatus" class="capture-later-feedback" role="status" aria-live="polite" aria-atomic="true"></div>
+                <div class="capture-later-actions"><button type="button" class="capture-later-text" id="scheduleLaterCancel" data-i18n="common.cancel">取消</button><button type="submit" class="capture-later-save" id="scheduleLaterAddBtn" data-i18n="schedule.later.add">记下</button></div>
+            </form>
+        </dialog>
 
         <section id="long-term" class="content-section">
             <div class="lt-page">
@@ -4488,7 +4498,7 @@
     </div>
 
 
-    <script src="/static/js/i18n.js?v=20261025someday2"></script>
+    <script src="/static/js/i18n.js?v=20261025someday3"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -4530,7 +4540,7 @@
 
         const PRIMARY_TABS_DESKTOP = new Set(['schedule', 'capture', 'long-term', 'user-center']);
         const PRIMARY_TABS_PHONE = new Set(['schedule', 'capture', 'long-term', 'user-center']);
-        const SECTION_PARENT_SHARED = { guide: 'user-center', owner: 'user-center', 'time-log': 'capture', ideas: 'capture' };
+        const SECTION_PARENT_SHARED = { guide: 'user-center', owner: 'user-center', 'time-log': 'capture', ideas: 'capture', 'future-actions': 'capture' };
 
         function primaryTabs() {
             return isMobileNav() ? PRIMARY_TABS_PHONE : PRIMARY_TABS_DESKTOP;
@@ -4575,6 +4585,7 @@
         }
 
         window.handleAppBack = function () {
+            if (window.closeFutureActionComposer?.()) return 'consumed';
             const sidebar = document.querySelector('.app-sidebar');
             if (sidebar && sidebar.classList.contains('mobile-open')) {
                 closeMobileSidebar();
@@ -4615,7 +4626,7 @@
                 if (sectionId === 'schedule' && typeof loadDailySchedule === 'function') {
                     loadDailySchedule();
                 }
-                if (sectionId === 'capture') window.loadFutureActions?.();
+                if (sectionId === 'capture' || sectionId === 'future-actions') window.loadFutureActions?.();
                 if (sectionId === 'time-log' && typeof loadTimeLog === 'function') {
                     loadTimeLog();
                     window.loadActivityReview?.();
@@ -6853,8 +6864,8 @@
     <!-- 待办提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
     <script src="/static/reminder_notification.js?v=20261022record1"></script>
-    <script src="/static/js/app-tabbar.js?v=20261022hierarchy1"></script>
-    <script src="/static/js/workspace-shell.js?v=20261022hierarchy1"></script>
+    <script src="/static/js/app-tabbar.js?v=20261025someday3"></script>
+    <script src="/static/js/workspace-shell.js?v=20261025someday3"></script>
     <link rel="stylesheet" href="/static/css/start-conditions.css?v=20261022hierarchy1">
     <link rel="stylesheet" href="/static/css/plan-practice.css?v=20261025scope1">
     <link rel="stylesheet" href="/static/css/feedback.css?v=20261023feedback1">
@@ -6869,7 +6880,7 @@
     <link rel="stylesheet" href="/static/css/schedule-projects.css?v=20261025stageday1">
     <script src="/static/js/schedule-projects.js?v=20261025stageday1"></script>
     <script src="/static/js/daily-schedule.js?v=20261025someday2"></script>
-    <script src="/static/js/future-actions.js?v=20261025someday2"></script>
+    <script src="/static/js/future-actions.js?v=20261025someday3"></script>
     <link rel="stylesheet" href="/static/css/work-links.css?v=20261025worklink1">
     <script src="/static/js/work-links.js?v=20261025worklink1"></script>
     <script src="/static/js/time-log.js?v=20261025someday2"></script>

@@ -10,9 +10,7 @@
     let undo = null;
     const drafts = new Map();
     const dates = new Map();
-    const openKey = 'shuran.scheduleLaterOpen';
-    let open = false;
-    try { open = localStorage.getItem(openKey) === '1'; } catch (_) { /* storage is optional */ }
+    let composerTrigger = null;
 
     const byId = id => document.getElementById(id);
     const text = (key, fallback) => window.shuranI18n?.t('schedule.later.' + key, fallback) ?? fallback;
@@ -26,9 +24,31 @@
     }
 
     function status(message, error = false) {
-        const label = byId('scheduleLaterStatus');
-        if (label) { label.textContent = message; label.dataset.error = String(error); }
+        const target = byId('scheduleLaterDialog')?.open ? 'scheduleLaterComposerStatus'
+            : byId('future-actions')?.classList.contains('active') ? 'scheduleLaterStatus' : 'captureFutureStatus';
+        for (const id of ['scheduleLaterStatus', 'captureFutureStatus', 'scheduleLaterComposerStatus']) {
+            const label = byId(id);
+            if (label) { label.textContent = id === target ? message : ''; label.dataset.error = String(id === target && error); }
+        }
     }
+
+    function openComposer(event) {
+        composerTrigger = event.currentTarget;
+        status('');
+        byId('scheduleLaterDialog').showModal();
+        byId('scheduleLaterInput').focus({preventScroll:true});
+    }
+
+    function closeComposer() {
+        byId('scheduleLaterDialog').close();
+        return composerTrigger;
+    }
+
+    window.closeFutureActionComposer = () => {
+        if (!byId('scheduleLaterDialog')?.open) return false;
+        if (!busy) closeComposer()?.focus({preventScroll:true});
+        return true;
+    };
 
     function focusEdit() {
         byId('scheduleLaterList')?.querySelector(`[data-later-id="${editing}"] textarea`)?.focus({preventScroll:true});
@@ -40,13 +60,9 @@
         const focused = document.activeElement;
         const focusedId = focused?.matches('[data-later-act="text"]') ? focused.closest('[data-later-id]').dataset.laterId : null;
         const selection = focusedId ? [focused.selectionStart, focused.selectionEnd] : null;
-        byId('scheduleLater').classList.toggle('is-collapsed', !open);
-        byId('scheduleLaterBody').hidden = !open;
-        byId('scheduleLaterToggle').setAttribute('aria-expanded', String(open));
-        byId('scheduleLaterToggleLabel').textContent = open ? text('collapseList', '收起列表') : text('view', '查看想做的事');
         byId('scheduleLaterSummary').textContent = loaded ? text('count', '{count} 个').replace('{count}', items.length) : '—';
         byId('scheduleLaterUndo').hidden = !undo;
-        if (!open) { list.innerHTML = ''; return; }
+        byId('scheduleLaterRetry').hidden = !loadFailed;
         if (!loaded) { list.innerHTML = `<p class="schedule-later-empty">${escape(loadFailed ? text('loadFailed', '读取失败，请重试') : text('loading', '正在读取…'))}</p>`; return; }
         if (!items.length) { list.innerHTML = `<p class="schedule-later-empty">${escape(text('empty', '先记下来，准备好了再安排到日程'))}</p>`; return; }
         list.innerHTML = items.map(item => {
@@ -81,8 +97,9 @@
         if (busy) return;
         busy = true;
         ++epoch; // Discard reads started before this mutation.
-        const buttons = [...byId('scheduleLater').querySelectorAll('button')];
+        const buttons = [...document.querySelectorAll('#scheduleLater button, #scheduleLaterDialog button, #scheduleLaterWrite, #scheduleLaterToggle')];
         buttons.forEach(button => { button.disabled = true; });
+        byId('scheduleLaterInput').readOnly = true;
         byId('scheduleLater').setAttribute('aria-busy', 'true');
         let focusTarget;
         try { focusTarget = await action(); }
@@ -90,6 +107,7 @@
         finally {
             busy = false;
             buttons.forEach(button => { button.disabled = false; });
+            byId('scheduleLaterInput').readOnly = false;
             byId('scheduleLater').removeAttribute('aria-busy');
             focusTarget?.focus({preventScroll:true});
         }
@@ -102,17 +120,25 @@
         const input = byId('scheduleLaterInput');
         const composer = byId('scheduleLaterComposer');
         const list = byId('scheduleLaterList');
-        byId('scheduleLaterWrite').addEventListener('click', () => {
-            composer.hidden = false;
-            byId('scheduleLaterWrite').setAttribute('aria-expanded', 'true');
-            input.focus({preventScroll:true});
+        byId('scheduleLaterWrite').addEventListener('click', openComposer);
+        byId('scheduleLaterWriteFromList').addEventListener('click', openComposer);
+        byId('scheduleLaterDialog').addEventListener('cancel', event => {
+            event.preventDefault();
+            if (!busy) closeComposer()?.focus({preventScroll:true});
+        });
+        byId('scheduleLaterDialog').addEventListener('keydown', event => {
+            if (event.key !== 'Tab') return;
+            const fields = [...byId('scheduleLaterDialog').querySelectorAll('textarea, button')].filter(field => !field.disabled);
+            if (!fields.length) { event.preventDefault(); return; }
+            const first = fields[0], last = fields[fields.length - 1];
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
         });
         byId('scheduleLaterCancel').addEventListener('click', () => {
             if (busy) return;
-            composer.hidden = true;
-            byId('scheduleLaterWrite').setAttribute('aria-expanded', 'false');
+            const trigger = closeComposer();
             status('');
-            byId('scheduleLaterWrite').focus({preventScroll:true});
+            trigger?.focus({preventScroll:true});
         });
         composer.addEventListener('submit', event => {
             event.preventDefault();
@@ -122,23 +148,19 @@
                 const result = await request('', {method:'POST', body:JSON.stringify({text:submitted.trim()})});
                 items = result.items || [];
                 loaded = true;
+                loadFailed = false;
                 if (input.value === submitted) input.value = '';
                 render();
+                const trigger = closeComposer();
                 status(text('saved', '已记下'));
-                input.focus({preventScroll:true});
+                return trigger;
             });
         });
         input.addEventListener('keydown', event => {
             if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229) { event.preventDefault(); composer.requestSubmit(); }
         });
-        input.addEventListener('input', () => { if (byId('scheduleLaterStatus').dataset.error === 'true') status(''); });
-        byId('scheduleLaterToggle').addEventListener('click', () => {
-            if (editing !== null && open) { status(text('finishEdit', '请先保存或取消正在修改的内容。'), true); focusEdit(); return; }
-            open = !open;
-            try { localStorage.setItem(openKey, open ? '1' : '0'); } catch (_) { /* optional */ }
-            render();
-            if (open) load();
-        });
+        input.addEventListener('input', () => { if (byId('scheduleLaterComposerStatus').dataset.error === 'true') status(''); });
+        byId('scheduleLaterRetry').addEventListener('click', () => { status(''); load(); });
         list.addEventListener('input', event => {
             const row = event.target.closest('[data-later-id]');
             if (!row) return;
@@ -190,7 +212,7 @@
                     render();
                     status(text('scheduled', '已安排到 {date} 的日程').replace('{date}', selectedDate));
                     window.loadDailySchedule?.();
-                    return byId('scheduleLaterToggle');
+                    return byId('scheduleLaterWriteFromList');
                 });
             }
         });
@@ -209,7 +231,7 @@
                 undo = null;
                 render();
                 status(text('restored', '已恢复'));
-                return byId('scheduleLaterToggle');
+                return byId('scheduleLaterWriteFromList');
             });
         });
         window.addEventListener('shuran-language-change', render);
