@@ -23,7 +23,7 @@ class TaskDraft(BaseModel):
 def add_drafts(db, user_id, project, drafts, initial=False):
     if drafts and project.execution_state in ("delivered", "accepted"):
         raise HTTPException(409, "项目已交付，请先说明原因并重新开始项目")
-    stages = db.query(ProjectStage).filter_by(user_id=user_id, project_id=project.id).all()
+    stages = db.query(ProjectStage).filter_by(user_id=user_id, project_id=project.id).filter(ProjectStage.deleted_at.is_(None)).all()
     rows = []
     for draft in drafts:
         stage = None

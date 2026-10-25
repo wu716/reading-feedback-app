@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_active_user
 from app.database import get_db
 from app.models import User
-from app.project_models import FeedbackOccurrence, FeedbackSubmission, FeedbackAttachment, FeedbackReport, FeedbackDelivery
+from app.project_models import FeedbackOccurrence, FeedbackSubmission, FeedbackAttachment, FeedbackReport, FeedbackDelivery, Project
 from app import feedback_service as svc
 
 router = APIRouter(prefix="/feedback", tags=["项目反馈"])
@@ -86,7 +86,7 @@ def backlog(before: date, offset: int = Query(0, ge=0), limit: int = Query(100, 
             user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     last_id = db.query(func.max(FeedbackSubmission.id)).filter(FeedbackSubmission.occurrence_id == FeedbackOccurrence.id).correlate(FeedbackOccurrence).scalar_subquery()
     needs_changes = exists().where(FeedbackSubmission.id == last_id, FeedbackSubmission.status == "needs_changes")
-    q = db.query(FeedbackOccurrence).filter(FeedbackOccurrence.user_id == user.id, FeedbackOccurrence.due_date < before,
+    q = db.query(FeedbackOccurrence).join(Project, Project.id == FeedbackOccurrence.project_id).filter(Project.deleted_at.is_(None), FeedbackOccurrence.user_id == user.id, FeedbackOccurrence.due_date < before,
         FeedbackOccurrence.skipped_reason.is_(None), or_(last_id.is_(None), needs_changes))
     return {"total": q.count(), "items": [svc.occurrence_payload(db, row) for row in q.order_by(FeedbackOccurrence.due_date, FeedbackOccurrence.id).offset(offset).limit(limit)]}
 

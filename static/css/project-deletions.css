@@ -1,0 +1,48 @@
+/* Local destructive actions retain the project's paper and ink language. */
+.project-overview .section-head {flex-wrap:wrap;}
+.project-delete-button,.project-page button.project-delete-button:not(.secondary):not(.plain-action) {
+  flex:0 0 auto;min-height:36px;padding:6px 11px;background:transparent;color:#995246;
+  border:1px solid #c8aaa0;border-radius:5px;font:inherit;font-size:12px;font-weight:500;
+}
+.project-delete-button:hover,.project-page button.project-delete-button:not(.secondary):not(.plain-action):hover {background:#f1e5dd;color:#7b3e34;}
+.task-row .project-delete-button {align-self:center;margin-left:8px;}
+.stage-delete-actions {display:flex;align-items:center;gap:16px;flex-shrink:0;}
+.project-select-row #deleteProject {margin-left:auto;}
+.project-page .project-trash-entry {background:transparent!important;color:var(--blue)!important;border:1px solid var(--hairline)!important;font-weight:500!important;}
+.project-delete-dialog {width:min(590px,calc(100% - 24px));max-height:calc(100dvh - 32px);padding:24px;border:1px solid #cdd4d5;border-radius:10px;background:var(--shuran-paper,#f7f5ef);color:var(--shuran-ink,#21364a);font:14px/1.7 "Microsoft YaHei",system-ui,sans-serif;overflow:auto;overflow-wrap:anywhere;}
+.project-delete-dialog::backdrop {background:rgba(28,44,57,.45);}
+.project-delete-dialog * {box-sizing:border-box;}
+.project-delete-dialog [hidden] {display:none!important;}
+.project-delete-dialog h2 {font-size:20px;font-weight:500;margin:0;}
+.project-delete-dialog h3 {font-size:14px;margin:0;}
+.project-delete-dialog p {margin:8px 0 12px;}
+.project-delete-dialog .delete-heading {display:flex;align-items:start;justify-content:space-between;gap:16px;}
+.project-delete-dialog button,.project-delete-dialog input {font:inherit;}
+.project-delete-dialog button {background:transparent;border:1px solid #bdc9ce;border-radius:5px;color:#315a7e;padding:7px 12px;min-height:38px;cursor:pointer;}
+.project-delete-dialog button:hover {background:#e1e8eb;}
+.project-delete-dialog button:disabled {opacity:.5;cursor:not-allowed;}
+.project-delete-dialog :is(button,input,a):focus-visible {outline:2px solid #6b99b5;outline-offset:3px;}
+.project-delete-dialog .delete-close {flex-shrink:0;min-width:38px;padding:4px;}
+.project-delete-dialog .delete-confirm {color:#fffdf8;background:#995246;border-color:#995246;}
+.project-delete-dialog .delete-confirm:hover {background:#7b3e34;}
+.project-delete-dialog .delete-note {font-size:12px;color:#637583;}
+.project-delete-dialog .delete-impact {display:grid;grid-template-columns:90px minmax(0,1fr);gap:10px 14px;padding:15px 0;border-block:1px solid #d7dddb;}
+.project-delete-dialog .delete-impact dt {color:#637583;}
+.project-delete-dialog .delete-impact dd {margin:0;}
+.project-delete-dialog .delete-warning {padding:14px;background:#f0e4dc;border-radius:5px;margin:16px 0;}
+.project-delete-dialog .delete-actions {display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:22px;}
+.project-delete-dialog .delete-reason {display:block;margin-top:15px;}
+.project-delete-dialog input[type=text],.project-delete-dialog input[type=date] {display:block;width:100%;min-width:0;margin-top:6px;padding:9px;background:#fffdf8;color:#21364a;border:1px solid #bdc9ce;border-radius:5px;}
+.project-delete-dialog .delete-check {display:flex;align-items:start;gap:8px;margin-top:13px;}
+.project-delete-dialog .delete-check input {margin-top:6px;accent-color:#315a7e;}
+.project-delete-dialog .delete-message {color:#995246;white-space:pre-line;}
+.project-delete-dialog .delete-tabs {display:flex;gap:20px;border-bottom:1px solid #d7dddb;margin:18px 0;}
+.project-delete-dialog .delete-tabs button {border:0;border-bottom:2px solid transparent;border-radius:0;padding:8px 0;}
+.project-delete-dialog .delete-tabs button[aria-pressed=true] {border-bottom-color:#315a7e;font-weight:600;}
+.project-delete-dialog .delete-item {padding:14px 0;border-bottom:1px solid #d7dddb;}
+.project-delete-dialog .delete-item-head {display:flex;align-items:center;justify-content:space-between;gap:14px;}
+.project-delete-dialog .delete-item-head h3 {min-width:0;}
+.project-delete-dialog .delete-item-head button {flex-shrink:0;}
+.project-delete-dialog .delete-wait {font-variant-numeric:tabular-nums;color:#315a7e;margin-top:12px;}
+@media(max-width:600px){.project-select-row {flex-wrap:wrap;}.project-select-row #projectOutcome {flex:1 1 100%;}.project-delete-dialog {padding:18px;}.project-delete-dialog .delete-impact {grid-template-columns:74px minmax(0,1fr);gap:8px;}.stage-delete-actions {gap:8px;}}
+@media(pointer:coarse){.project-delete-button,.project-delete-dialog button {min-height:44px;}.project-delete-dialog input {font-size:16px;}}

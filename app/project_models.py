@@ -45,6 +45,28 @@ class ProjectStage(Base):
     closed_reason = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     closed_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class ProjectDeletion(Base):
+    """A reviewed deletion batch; recovery only touches rows marked by this batch."""
+    __tablename__ = "project_deletions"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    kind = Column(String(10), nullable=False)
+    target_id = Column(Integer, nullable=False)
+    title = Column(String(500), nullable=False)
+    scope_json = Column(Text, nullable=False)
+    impact_json = Column(Text, nullable=False)
+    fingerprint = Column(String(64), nullable=False)
+    elapsed_ms = Column(Integer, nullable=False, default=0)
+    lease_token = Column(String(100), nullable=True)
+    last_visible_at = Column(DateTime, nullable=True)
+    reason = Column(Text, nullable=True)
+    confirmed_at = Column(DateTime, nullable=True)
+    restored_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
 class ProjectTask(Base):

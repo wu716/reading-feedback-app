@@ -31,6 +31,7 @@ USER_TABLES = (
     project_models.StartCondition, project_models.ExecutionConditionEvent,
     project_models.TaskPractice, project_models.PracticeEvent, project_models.PlanningCycle,
     project_models.StageCommitment, project_models.StageCommitmentDraft, project_models.CommitmentAdjustment,
+    project_models.ProjectDeletion,
     project_models.FeedbackOccurrence, project_models.FeedbackSubmission, project_models.FeedbackAttachment,
     project_models.FeedbackReport, project_models.FeedbackDelivery,
     project_models.ReaderBinding, project_models.ReaderReadingDay, project_models.ReaderReceiverAccount,

@@ -229,6 +229,9 @@
     const projects = state.overview.projects;
     $('#projectSelect').innerHTML = projects.length ? projects.map(p => `<option value="${p.id}" ${p.id === state.projectId ? 'selected' : ''}>${esc(p.title)}</option>`).join('') : '<option value="">还没有项目</option>';
     const project = currentProject(); $('#projectOutcome').textContent = project?.outcome || '';
+    const deleteButton = $('#deleteProject');
+    if (deleteButton) { deleteButton.disabled = !project; deleteButton.setAttribute?.('data-project-delete', `project:${project?.id || ''}`); }
+    globalThis.ShuranDeletion?.refreshCount();
     $('#projectLifecycle').innerHTML = project ? `<h3>项目执行状态</h3>
       <p>${esc(({preparation:'筹备中：正式任务需先检查条件并开始项目',started:'已正式开始',delivered:'已交付，待验收',accepted:'已验收'})[project.execution_state] || '历史项目：未记录正式启动，保留原有可用性')}${project.started_at ? ` · 首次正式开始 ${dtLabel(project.started_at)}` : ''}</p>
       <details><summary>变更项目状态</summary><p>当前列表是本阶段的执行承诺。严格执行有助于集中投入、完成关键工作，并检验原先的计划是否合理。后续想法先放入下一阶段，避免不断打断当前任务。</p><form id="projectStateForm"><label>操作 <select name="state"><option value="started">检查条件并正式开始／重新开始</option><option value="delivered">确认已经交付</option><option value="accepted">确认已经验收</option><option value="preparation">交付后重新筹备（保留历史）</option></select></label><label>判断依据或原因 <input name="reason" required maxlength="4000"></label><button type="submit">确认项目状态</button></form></details>` : '';
@@ -240,9 +243,9 @@
       const tasks = project.tasks.filter(t => t.stage_id === s.id);
       const open = !s.unassigned && (s.state === 'current' || s.state === 'next');
       const stageLabel = stageName(s);
-      return `<article class="stage ${esc(s.state)}"><div class="stage-header"><h3>${esc(s.title)}</h3><span class="state-tag">${stageName(s)}</span></div>
+      return `<article class="stage ${esc(s.state)}"><div class="stage-header"><h3>${esc(s.title)}</h3><div class="stage-delete-actions"><span class="state-tag">${stageName(s)}</span>${s.unassigned ? '' : `<button type="button" class="project-delete-button" data-project-delete="stage:${s.id}">删除阶段</button>`}</div></div>
         ${s.state === 'current' && !s.unassigned ? '<div data-stage-commitment></div>' : ''}
-        ${tasks.length ? tasks.map(t => `<div class="task-row ${!t.can_start ? 'blocked' : ''} ${t.state === 'completed' ? 'done' : ''}"><button type="button" data-act="select-task" data-id="${t.id}">${esc(t.title)}<small>${t.execution_role === 'preparation' ? '筹备任务 · ' : ''}${t.state === 'completed' ? '已完成' : esc(t.readiness?.summary || (t.blocked_by.length ? '等待前置任务' : '可以推进'))} · ${{simple:'简单',difficult:'困难'}[t.practice?.difficulty]||'难度未标'} · ${{unimportant:'不重要',ordinary:'一般',important:'重要'}[t.practice?.importance]||'重要性未标'}${t.practice?.reviewed_at?'':' · 待审视'} · 原估计 ${t.original_estimate_minutes ?? '未填'} 分 · 实耗 ${t.actual_minutes} 分</small></button></div>`).join('') : `<p class="stage-empty">这里还没有任务${open ? '，可以在下方写入第一项。' : '。'}</p>`}
+        ${tasks.length ? tasks.map(t => `<div class="task-row ${!t.can_start ? 'blocked' : ''} ${t.state === 'completed' ? 'done' : ''}"><button type="button" data-act="select-task" data-id="${t.id}">${esc(t.title)}<small>${t.execution_role === 'preparation' ? '筹备任务 · ' : ''}${t.state === 'completed' ? '已完成' : esc(t.readiness?.summary || (t.blocked_by.length ? '等待前置任务' : '可以推进'))} · ${{simple:'简单',difficult:'困难'}[t.practice?.difficulty]||'难度未标'} · ${{unimportant:'不重要',ordinary:'一般',important:'重要'}[t.practice?.importance]||'重要性未标'}${t.practice?.reviewed_at?'':' · 待审视'} · 原估计 ${t.original_estimate_minutes ?? '未填'} 分 · 实耗 ${t.actual_minutes} 分</small></button><button type="button" class="project-delete-button" data-project-delete="task:${t.id}" aria-label="删除任务：${esc(t.title)}">删除</button></div>`).join('') : `<p class="stage-empty">这里还没有任务${open ? '，可以在下方写入第一项。' : '。'}</p>`}
         ${open ? `<form class="stage-task-form" data-stage="${s.id}">
           <label>${stageLabel}的新任务 <input name="title" maxlength="500" required placeholder="写下一件能开始、能核对的事"></label>
           <button type="submit">加入${stageLabel}</button>
@@ -258,6 +261,7 @@
         </form>` : ''}
         ${s.state === 'next' ? `<div class="stage-transition"><button type="button" class="secondary" data-act="stage-handover" data-id="${s.id}">核对结果并交接到此阶段</button></div>` : ''}</article>`;
     }).join('') : '<p class="empty">建立项目后，这里会出现当前阶段和下一阶段。</p>';
+    if(project && !project.stages.some(s => s.state === 'current')) $('#stageBoard').insertAdjacentHTML?.('afterbegin', '<p class="stage-empty">项目暂时没有当前阶段。可以在“已删除”中恢复，或切换到“下一阶段”主动交接。</p>');
     if(project)globalThis.ShuranCommitments?.mount($('#stageBoard').querySelector('[data-stage-commitment]'),project.id,{onChanged:()=>afterChange()});
   }
   function renderTaskDetail() {
@@ -272,7 +276,7 @@
       ${dailyProgress(task)}
       <p class="scheduled-dates">已安排：${(task.scheduled_dates || []).map(day => `<a href="/static/index.html?schedule_date=${day}#schedule">${day}</a>`).join(' · ') || '尚未安排到日程'}</p><div class="detail-actions"><button type="button" data-act="queue-task" ${task.can_start ? '' : 'disabled'}>加入时间片轮转</button><a href="/static/index.html#schedule">查看日程</a></div><form id="scheduleTaskForm"><label>安排到哪天 <input name="task_date" type="date" required></label><button type="submit">写入日程</button></form><div class="detail-actions" role="tablist" aria-label="任务操作分区"><button type="button" class="${state.detailMode === 'attributes' ? '' : 'secondary'}" data-act="detail-mode" data-mode="attributes">内容与估时</button><button type="button" class="${state.detailMode === 'conditions' ? '' : 'secondary'}" data-act="detail-mode" data-mode="conditions">开始条件与约束</button><button type="button" class="${state.detailMode === 'dependencies' ? '' : 'secondary'}" data-act="detail-mode" data-mode="dependencies">完成检查</button><button type="button" class="${state.detailMode === 'completion' ? '' : 'secondary'}" data-act="detail-mode" data-mode="completion">安排与验收</button></div>
       <div class="detail-zone" ${state.detailMode === 'conditions' ? '' : 'hidden'}><div id="taskConditions" class="condition-workspace"></div>
-        <h4>原有任务前置关系</h4><p>${prereq.length ? prereq.map(t => `${esc(t.title)} <button type="button" class="secondary" data-act="remove-dep" data-id="${t.id}">说明原因并移除</button>`).join(' · ') : '未配置原有任务前置。其他条件见上方。'}</p>
+        <h4>原有任务前置关系</h4><p>${prereq.length ? prereq.map(t => `${esc(t.title)} <button type="button" class="secondary" data-act="remove-dep" data-id="${t.id}">说明原因并移除</button>`).join(' · ') : '未配置原有任务前置。其他条件见上方。'}</p>${prereq.length ? '<label>移除前置关系的原因<input id="dependencyRemovalReason" maxlength="4000" placeholder="说明为什么该前置不再适用"></label>' : ''}
         <form id="dependencyForm"><label>必须先完成 <select name="prerequisite_id">${choices}</select></label><button type="submit" ${choices ? '' : 'disabled'}>添加前置</button></form></div>
       <div class="detail-zone" ${state.detailMode === 'attributes' ? '' : 'hidden'}><h4>内容与估时</h4><p><button type="button" class="secondary" data-act="practice-task">标记难度、目标重要性与估时经验</button></p><form id="detailForm" class="detail-grid">
         <label>任务 <input name="title" maxlength="500" required value="${esc(task.title)}"></label><label>阶段 <select name="stage_id">${stageOptions(project, task.stage_id)}</select></label>
@@ -393,7 +397,7 @@
     const dailyNames = new Map(state.todayTasks.map(t => [t.id, t.text]));
     $('#sessionList').innerHTML = state.sessions.length ? state.sessions.slice(0,40).map(s => {
       const assessment = s.assessment || {};
-      return `<article class="session-card ${s.kind}"><div><strong>${s.kind === 'break' ? '休息' : esc(names.get(s.project_task_id) || dailyNames.get(s.daily_task_id) || s.label || '工作片')}</strong><div class="session-meta">${dtLabel(s.started_at)} → ${dtLabel(s.ended_at)} · ${s.duration_minutes ?? '进行中'} 分 · ${s.source === 'timer' ? '计时' : s.source === 'moment' ? '确认时刻' : '补记'}</div></div>
+      return `<article class="session-card ${s.kind}"><div><strong>${s.kind === 'break' ? '休息' : esc(names.get(s.project_task_id) || dailyNames.get(s.daily_task_id) || s.label || '工作片')}</strong>${s.source_deleted ? '<small> · 来源已删除，历史投入保留</small>' : ''}<div class="session-meta">${dtLabel(s.started_at)} → ${dtLabel(s.ended_at)} · ${s.duration_minutes ?? '进行中'} 分 · ${s.source === 'timer' ? '计时' : s.source === 'moment' ? '确认时刻' : '补记'}</div></div>
         ${s.ended_at ? `<details><summary>更正时间</summary><form class="correct-form" data-id="${s.id}"><label>开始 <input name="started_at" type="datetime-local" required value="${localInput(s.started_at)}"></label><label>结束 <input name="ended_at" type="datetime-local" required value="${localInput(s.ended_at)}"></label><label>更正原因 <input name="correction_note" maxlength="2000" required></label><button type="submit">保存更正</button></form></details>
         <p><a href="/static/index.html#time-log">在「记」中回看目标相关的重要性</a></p>` : ''}</article>`;
     }).join('') : '<p class="empty">还没有实际时间片。开始计时，或事后补记。</p>';
@@ -483,7 +487,10 @@
     run(async () => {
       const id = Number(button.dataset.id), action = button.dataset.act;
       if (action === 'select-task') { state.taskId = id; state.detailMode = 'attributes'; renderTaskDetail(); $('#taskDetail').scrollIntoView({behavior:'smooth',block:'start'}); }
-      else if (action === 'stage-handover') await globalThis.ShuranPractice?.openProject(state.projectId,'commitment',id);
+      else if (action === 'stage-handover') {
+        if (!currentProject()?.stages.some(s => s.state === 'current')) globalThis.ShuranDeletion?.activateStage(id, currentProject()?.stages.find(s => s.id === id)?.title || '下一阶段');
+        else await globalThis.ShuranPractice?.openProject(state.projectId,'commitment',id);
+      }
       else if (action === 'practice-task') await globalThis.ShuranPractice?.openTask('task',state.taskId,'attributes');
       else if (action === 'practice-rehearsal') await globalThis.ShuranPractice?.openTask('task',state.taskId,'rehearsal');
       else if (action === 'practice-feedback') await globalThis.ShuranPractice?.openTask('task',state.taskId,'feedback');
@@ -492,8 +499,9 @@
       else if (action === 'close-detail') { state.taskId = null; renderTaskDetail(); }
       else if (action === 'detail-mode') { state.detailMode = button.dataset.mode; renderTaskDetail(); }
       else if (action === 'remove-dep') {
-        const reason = window.prompt('移除前置会改变可执行状态，历史与实际投入仍保留。请说明原因：');
-        if (reason?.trim()) { await request(`/tasks/${state.taskId}/dependencies/${id}?reason=${encodeURIComponent(reason.trim())}`, {method:'DELETE'}); await afterChange('前置关系已移除并留存原因'); }
+        const input = $('#dependencyRemovalReason'), reason = input?.value.trim();
+        if (!reason) {input?.focus();throw new Error('请先填写移除前置关系的原因；历史与实际投入仍保留');}
+        await request(`/tasks/${state.taskId}/dependencies/${id}?reason=${encodeURIComponent(reason)}`, {method:'DELETE'}); await afterChange('前置关系已移除并留存原因');
       }
       else if (action === 'goal-feasibility') await globalThis.ShuranPractice?.openGoal(id);
       else if (action === 'edit-goal') await globalThis.ShuranPractice?.openGoal(id,'goal-settings');
@@ -641,6 +649,7 @@
   });
 
 
+  globalThis.ShuranDeletion?.configure({onChanged: message => {state.taskId = null;return afterChange(message);}});
   setInterval(tick, 1000);
   refresh().then(async () => {
     const key = params.get('execute');

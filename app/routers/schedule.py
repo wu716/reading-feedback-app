@@ -349,7 +349,10 @@ def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id
             project_day_plan=plan,
         )
 
-    return [node(task) for task in by_parent.get(None, [])]
+    # Completed children remain visible when their unfinished container is deleted.
+    # Keep the stored parent identity intact so recovery can rebuild the same tree.
+    visible_ids = {task.id for task in tasks}
+    return [node(task) for task in tasks if task.parent_id is None or task.parent_id not in visible_ids]
 
 
 def visible_future_actions(db: Session, user_id: int) -> List[FutureAction]:

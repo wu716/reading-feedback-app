@@ -23,6 +23,7 @@ from app.start_conditions import readiness, record_event, require_ready, validat
 from app.routers.start_conditions import router as conditions_router
 from app.routers.practice import router as practice_router
 from app.routers.commitments import router as commitments_router
+from app.routers.project_deletions import router as deletions_router
 from app import practice_service
 from app.commitment_service import guard_scope, record_scope_addition
 from app.project_composition import TaskDraft, add_drafts
@@ -31,6 +32,7 @@ router = APIRouter(prefix="/projects", tags=["个人项目"])
 router.include_router(conditions_router)
 router.include_router(practice_router)
 router.include_router(commitments_router)
+router.include_router(deletions_router)
 
 
 def fail(message: str, code: int = 400):
@@ -190,7 +192,7 @@ def overview(user: User = Depends(get_current_active_user), db: Session = Depend
     projects = db.query(Project).filter(Project.user_id == user.id, Project.deleted_at.is_(None)).order_by(Project.id.desc()).all()
     result = []
     for p in projects:
-        stages = db.query(ProjectStage).filter(ProjectStage.project_id == p.id).order_by(ProjectStage.position, ProjectStage.id).all()
+        stages = db.query(ProjectStage).filter(ProjectStage.project_id == p.id, ProjectStage.deleted_at.is_(None)).order_by(ProjectStage.position, ProjectStage.id).all()
         tasks = db.query(ProjectTask).filter(ProjectTask.project_id == p.id, ProjectTask.deleted_at.is_(None)).order_by(ProjectTask.id).all()
         result.append({
             "id": p.id, "title": p.title, "outcome": p.outcome, "goal_id": p.goal_id, "status": p.status,
@@ -243,6 +245,7 @@ def create_project(body: ProjectInput, user: User = Depends(get_current_active_u
 
 @router.post("/{project_id}/stages")
 def add_stage(project_id: int, body: StageInput, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    practice_service.lock_user(db, user.id)
     owned(db, Project, project_id, user.id)
     stages = db.query(ProjectStage).filter(ProjectStage.project_id == project_id).all()
     row = ProjectStage(user_id=user.id, project_id=project_id, title=required_text(body.title), position=max((s.position for s in stages), default=-1) + 1)
@@ -255,7 +258,7 @@ def activate_stage(stage_id: int, body: StageChangeInput, user: User = Depends(g
     practice_service.lock_user(db, user.id)
     target = owned(db, ProjectStage, stage_id, user.id)
     project = owned(db, Project, target.project_id, user.id)
-    current = db.query(ProjectStage).filter(ProjectStage.project_id == project.id, ProjectStage.state == "current").first()
+    current = db.query(ProjectStage).filter(ProjectStage.project_id == project.id, ProjectStage.state == "current", ProjectStage.deleted_at.is_(None)).first()
     if body.decision == "continue":
         return {"id": current.id if current else target.id, "state": "current" if current else target.state}
     # Internal sequential prerequisites are checked when each task starts; they
@@ -275,7 +278,7 @@ def activate_stage(stage_id: int, body: StageChangeInput, user: User = Depends(g
     target.state = "current"
     commit_stage(db, user.id, target)
     db.flush()
-    if not db.query(ProjectStage).filter_by(project_id=project.id, state="next").first():
+    if not db.query(ProjectStage).filter_by(project_id=project.id, state="next").filter(ProjectStage.deleted_at.is_(None)).first():
         db.add(ProjectStage(user_id=user.id, project_id=project.id, title="下一阶段", state="next", position=target.position + 1))
     db.commit()
     return {"id": target.id, "state": target.state}
@@ -582,7 +585,7 @@ def promote_daily(daily_id: int, body: DailyProjectInput, user: User = Depends(g
     require_open_project(project)
     if db.query(DailyTask).filter(DailyTask.parent_id == daily.id, DailyTask.deleted_at.is_(None)).first():
         fail("请将可以直接执行的子任务纳入项目")
-    stage = db.query(ProjectStage).filter(ProjectStage.project_id == project.id, ProjectStage.state == "current").first()
+    stage = db.query(ProjectStage).filter(ProjectStage.project_id == project.id, ProjectStage.state == "current", ProjectStage.deleted_at.is_(None)).first()
     task = ProjectTask(user_id=user.id, project_id=project.id, stage_id=stage.id if stage else None,
                        title=daily.text, estimated_minutes=daily.estimated_minutes,
                        original_estimate_minutes=daily.estimated_minutes, familiarity=daily.familiarity,
@@ -696,7 +699,16 @@ def list_sessions(start_date: date | None = None, end_date: date | None = None,
     assessments = db.query(TimeActivityAssessment).filter(TimeActivityAssessment.user_id == user.id,
                                                            TimeActivityAssessment.work_session_id.in_([s.id for s in sessions])).all() if sessions else []
     by_session = {a.work_session_id: a for a in assessments}
-    return {"items": [session_payload(s, by_session.get(s.id)) for s in sessions]}
+    task_ids = {s.project_task_id for s in sessions if s.project_task_id}
+    daily_ids = {s.daily_task_id for s in sessions if s.daily_task_id}
+    task_rows = db.query(ProjectTask).filter(ProjectTask.user_id == user.id, ProjectTask.id.in_(task_ids)).all()
+    daily_rows = db.query(DailyTask).filter(DailyTask.user_id == user.id, DailyTask.id.in_(daily_ids)).all()
+    removed_tasks = {t.id for t in task_rows if t.deleted_at is not None}
+    removed_daily = {d.id for d in daily_rows if d.deleted_at is not None}
+    names = {("task", t.id): t.title for t in task_rows} | {("daily", d.id): d.text for d in daily_rows}
+    return {"items": [session_payload(s, by_session.get(s.id)) | {
+        "label": s.label or names.get(("task", s.project_task_id)) or names.get(("daily", s.daily_task_id)),
+        "source_deleted": s.project_task_id in removed_tasks or s.daily_task_id in removed_daily} for s in sessions]}
 
 
 @router.post("/sessions/start")

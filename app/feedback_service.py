@@ -39,7 +39,7 @@ def occurrence_payload(db, row, now=None, history=False, brief=False):
             "review_note": s.review_note, "submitted_at": s.submitted_at.isoformat() + "Z",
             "reviewed_at": s.reviewed_at.isoformat() + "Z" if s.reviewed_at else None}
     project = db.get(Project, row.project_id)
-    data = {"id": row.id, "project_id": row.project_id, "project_title": project.title,
+    data = {"id": row.id, "project_id": row.project_id, "project_title": project.title, "source_deleted": project.deleted_at is not None,
         "cycle_id": row.cycle_id, "due_date": str(row.due_date), "deadline": row.deadline,
         "requirement": json.loads(row.requirement_json), "status": status, "late": late,
         "skipped_reason": row.skipped_reason, "first_submitted_at": first[0].isoformat()+"Z" if first else None,
@@ -182,7 +182,8 @@ def deliver_email_outbox(db, user_id=None):
         if row.occurrence_id:
             occurrence = db.get(FeedbackOccurrence, row.occurrence_id)
             submission = latest(db, row.occurrence_id)
-            complete = occurrence.skipped_reason is not None or bool(submission and submission.status != "needs_changes")
+            project = db.get(Project, occurrence.project_id) if occurrence else None
+            complete = not occurrence or not project or project.deleted_at is not None or not occurrence.reminders_enabled or occurrence.skipped_reason is not None or bool(submission and submission.status != "needs_changes")
         if log and log.reminder_type == "daily_record":
             status = record_status(db, row.user_id)
             complete = not setting.record_reminder_enabled or status["record_complete"] or str(status["record_date"]) != log.detail

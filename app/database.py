@@ -86,6 +86,7 @@ def ensure_schema():
         add_column("task_checklist_items", "not_applicable_reason", "not_applicable_reason TEXT")
         add_column("projects", "execution_state", "execution_state VARCHAR(20)")
         add_column("projects", "started_at", "started_at TIMESTAMP")
+        add_column("project_stages", "deleted_at", "deleted_at TIMESTAMP")
         add_column("project_tasks", "execution_role", "execution_role VARCHAR(20) NOT NULL DEFAULT 'formal'")
         if "daily_tasks" in existing_tables:
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_daily_tasks_project_task_id ON daily_tasks (project_task_id)"))

@@ -109,8 +109,13 @@
       root.onclick = event => {
         const button = event.target.closest('[data-remove-condition]');
         if (!button) return;
-        const reason = window.prompt('移除条件会改变可执行状态；已经发生的工作与历史仍会保留。请说明原因：');
-        if (reason?.trim()) perform(() => request(`/conditions/${button.dataset.removeCondition}/remove`, 'POST', {reason:reason.trim()}));
+        const input = button.closest('.condition-item')?.querySelector('[name=reason]');
+        const reason = input?.value.trim();
+        if (!reason) {
+          root.querySelector('.condition-message').textContent = '移除条件会改变可执行状态。请先填写本次更改原因；历史与投入仍保留。';
+          input?.focus(); return;
+        }
+        perform(() => request(`/conditions/${button.dataset.removeCondition}/remove`, 'POST', {reason}));
       };
     } catch (error) { root.textContent = error.message; }
   }

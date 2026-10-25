@@ -14,7 +14,7 @@ COMMITMENT_TEXT = "当前列表是本阶段的执行承诺。严格执行有助�
 
 
 def current_stage(db, project_id):
-    return db.query(ProjectStage).filter_by(project_id=project_id, state="current").first()
+    return db.query(ProjectStage).filter_by(project_id=project_id, state="current").filter(ProjectStage.deleted_at.is_(None)).first()
 
 
 def commitment(db, user_id, stage_id):
@@ -27,7 +27,7 @@ def task_scope(db, user_id, stage_id):
 
 def owned_current_stage(db, user_id, stage_id):
     stage = db.get(ProjectStage, stage_id)
-    if not stage or stage.user_id != user_id:
+    if not stage or stage.user_id != user_id or stage.deleted_at is not None:
         raise HTTPException(404, "阶段不存在")
     owner(db, user_id, "project", stage.project_id)
     if stage.state != "current":
@@ -86,6 +86,7 @@ def project_scope_snapshot(db, user_id, project):
         if p.goal_id: connect(("project", p.id), ("goal", p.goal_id))
     for d in daily:
         if d.project_task_id: connect(("daily", d.id), ("task", d.project_task_id))
+        if d.parent_id: connect(("daily", d.id), ("daily", d.parent_id))
     for d in dependencies: connect(("task", d.task_id), ("task", d.prerequisite_id))
     for c in conditions:
         if c.target_kind and c.removed_at is None: connect((c.owner_kind, c.owner_id), (c.target_kind, c.target_id))
@@ -105,14 +106,14 @@ def project_scope_snapshot(db, user_id, project):
             PracticeEvent.record_date.in_({d.task_date for d in daily})).order_by(PracticeEvent.id.desc()):
         day_plans.setdefault(str(e.record_date), {"id": e.id, "data": json.loads(e.payload_json)})
     return {"project": project.id, "outcome": project.outcome,
-        "stages": [{"id": s.id, "state": s.state, "commitment": (c.id if (c := commitment(db, user_id, s.id)) else None),
+        "stages": [{"id": s.id, "state": s.state, "deleted": s.deleted_at, "commitment": (c.id if (c := commitment(db, user_id, s.id)) else None),
                     "draft_revision": (d.revision if (d := draft(db, user_id, s.id)) else 0)}
                    for s in db.query(ProjectStage).filter_by(project_id=project.id).order_by(ProjectStage.id)],
         "tasks": [{"id": t.id, "stage": t.stage_id, "state": t.state, "deleted": t.deleted_at,
             "title": t.title, "estimate": t.estimated_minutes, "criteria": t.acceptance_criteria} for t in tasks],
         "projects": [{"id": p.id, "state": p.execution_state, "outcome": p.outcome, "goal_id": p.goal_id, "deleted": p.deleted_at} for p in projects],
         "goals": [{"id": g.id, "title": g.title, "deadline": g.horizon_end, "status": g.status} for g in goals if ("goal", g.id) in related],
-        "daily": [{"id": d.id, "date": d.task_date, "title": d.text, "completed": d.completed, "deleted": d.deleted_at} for d in daily],
+        "daily": [{"id": d.id, "parent": d.parent_id, "task": d.project_task_id, "date": d.task_date, "title": d.text, "completed": d.completed, "deleted": d.deleted_at} for d in daily],
         "sessions": [{"id": s.id, "start": s.started_at, "end": s.ended_at, "kind": s.kind} for s in sessions],
         "day_plans": day_plans,
         "conditions": [{c.name: getattr(row, c.name) for c in StartCondition.__table__.columns} for row in conditions],
@@ -280,6 +281,7 @@ def confirm(db, row, reason):
     had_commitment = commitment(db, row.user_id, current.id) is not None
     target = db.get(ProjectStage, plan["target_stage_id"]) if plan.get("target_stage_id") else None
     following = db.query(ProjectStage).filter(ProjectStage.project_id == project.id, ProjectStage.state == "next",
+        ProjectStage.deleted_at.is_(None),
         ProjectStage.id != (target.id if target else -1)).order_by(ProjectStage.position).first()
     if following is None and (target or any(d["action"] == "defer" for d in plan["dispositions"])):
         following = ProjectStage(user_id=row.user_id, project_id=project.id, title="下一阶段", state="next",

@@ -35,7 +35,7 @@ from app.project_models import (
     ExecutionPlan, Goal, Project, ProjectStage, ProjectTask, TaskDependency,
     TaskChecklistItem, WorkSession, TimeActivityAssessment, ProcessTemplate,
     StartCondition, ExecutionConditionEvent,
-    TaskPractice, PracticeEvent, PlanningCycle, StageCommitment, StageCommitmentDraft, CommitmentAdjustment,
+    TaskPractice, PracticeEvent, PlanningCycle, StageCommitment, StageCommitmentDraft, CommitmentAdjustment, ProjectDeletion,
     FeedbackOccurrence, FeedbackSubmission, FeedbackAttachment, FeedbackReport, FeedbackDelivery,
     ReaderBinding, ReaderPairing, ReaderReadingDay, ReaderReceiverAccount,
 )
@@ -158,6 +158,7 @@ def build_backup_zip(db: Session) -> bytes:
         "stage_commitments.csv": StageCommitment,
         "stage_commitment_drafts.csv": StageCommitmentDraft,
         "commitment_adjustments.csv": CommitmentAdjustment,
+        "project_deletions.csv": ProjectDeletion,
         "feedback_occurrences.csv": FeedbackOccurrence,
         "feedback_submissions.csv": FeedbackSubmission,
         "feedback_attachments.csv": FeedbackAttachment,
