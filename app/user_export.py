@@ -11,6 +11,7 @@ from app import models, project_models
 # Deliberate allowlist: adding a table to the application must not silently put
 # credentials, other accounts, or internal administration data into this ZIP.
 USER_TABLES = (
+    project_models.WorkLinkSetting, project_models.WorkMomentLink,
     models.MethodCard, models.MethodUse, models.MethodVisit, models.ProductFeedback,
     models.Ebook, models.EbookProgress, models.EbookNote,
     models.Action, models.PracticeLog, models.HabitProgram, models.HabitEvent,

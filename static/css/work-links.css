@@ -1,0 +1,12 @@
+#workLinkDialog { width: min(620px, calc(100% - 24px)); max-height: 85vh; overflow: auto; padding: 24px; border: 1px solid #bdcbd2; border-radius: 16px; background: #f8f6f0; color: #294858; }
+#workLinkDialog::backdrop { background: rgb(25 44 57 / 35%); }
+#workLinkDialog input, #workLinkDialog select, #workLinkDialog textarea { max-width: 100%; min-width: 0; font: inherit; }
+#workLinkDialog h2 { font-size: 20px; }
+#workLinkDialog .work-link-error { color: #9e3935; }
+#workLinkHistory { padding: 12px; margin: 12px 0; }
+.tl-node-actions { flex-wrap: wrap; }
+#workCapturePreview { margin-top: 12px; }
+.work-capture-entry { padding: 10px 0; border-top: 1px solid #bdcbd2; overflow-wrap: anywhere; }
+.work-capture-entry p { margin: 4px 0; }
+#workCapturePreview .flow-mini-btn { color: #34576c; background: #eef2f3; border: 1px solid #bdcbd2; border-radius: 7px; padding: 6px 10px; margin-left: 6px; font: inherit; }
+@media (max-width: 600px) { #workLinkDialog { padding: 16px; } #workLinkDialog .lt-form-grid { grid-template-columns: minmax(0, 1fr); } }

@@ -14,8 +14,11 @@ from app.models import LongTermDailyRecord, LongTermLedgerDay, LongTermNodeCateg
 from app.plans import PAID_PLANS, effective_plan_key
 from app.routers.time_log import beijing_today
 from app.reader_projection import source_days, merge as merge_reading
+from app.work_link_service import sources as work_sources, merge as merge_work, counted
+from app.routers.work_links import router as work_links_router
 
 router = APIRouter(prefix="/long-term/details", tags=["长期目标明细"])
+router.include_router(work_links_router)
 CATEGORIES = ("reading", "fitness", "friends", "family", "investment", "writing", "work", "relaxation")
 Category = Literal["reading", "fitness", "friends", "family", "investment", "writing", "work", "relaxation"]
 Period = Literal["day", "week", "month", "quarter", "year"]
@@ -42,6 +45,12 @@ class Activity(StrictModel):
     title: str = Field(default="", max_length=200)
     seconds: int = Field(default=0, ge=0, le=86400, strict=True)
     source_node_id: int | None = Field(default=None, gt=0, strict=True)
+    work_session_id: int | None = Field(default=None, gt=0, strict=True)
+    work_override_seconds: int | None = Field(default=None, ge=0, le=86400, strict=True)
+    work_basis_seconds: int | None = Field(default=None, ge=0, le=86400, strict=True)
+    work_title_override: bool = False
+    work_excluded: bool = False
+    work_duplicate_of: int | None = Field(default=None, gt=0, strict=True)
     reader_book_key: str | None = Field(default=None, max_length=100, pattern=r"^reader_[a-zA-Z0-9_]+$")
     reader_duplicate_of: str | None = Field(default=None, max_length=100, pattern=r"^reader_[a-zA-Z0-9_]+$")
     reading_kind: Literal["fiction", "nonfiction", "unclassified"] = "unclassified"
@@ -54,6 +63,10 @@ class Activity(StrictModel):
 
     @model_validator(mode="after")
     def semantics(self):
+        if self.work_session_id and (self.source_node_id or self.reader_book_key or self.work_duplicate_of or self.category == "investment" or self.id != f"work_{self.work_session_id}"):
+            raise ValueError("工作片只能引用一个来源，不能重复计时或改成定投")
+        if not self.work_session_id and (self.work_override_seconds is not None or self.work_basis_seconds is not None or self.work_title_override or self.work_excluded):
+            raise ValueError("工作片调整必须关联原工作片")
         if self.reader_book_key and (self.category != "reading" or self.source_node_id or self.id != self.reader_book_key):
             raise ValueError("同步阅读只引用一个阅读来源，不能同时关联其他计时")
         if self.reader_duplicate_of and (self.category != "reading" or self.reader_book_key):
@@ -230,6 +243,7 @@ def read_range(db, user_id, start, end):
         LongTermNodeCategory.user_id == user_id, LongTermNodeCategory.node_id.in_([n.id for n in nodes])).all()} if nodes else {}
     by_day = {}
     imported = source_days(db, user_id, start, end)
+    work = work_sources(db, user_id, start, end)
     for node in nodes:
         by_day.setdefault(node.log_date, []).append(node)
     result = []
@@ -277,8 +291,9 @@ def read_range(db, user_id, start, end):
         data.setdefault("legacy_attention", [])
         data.setdefault("category_confirmed", list(CATEGORIES) if data.get("day_confirmed") else [])
         merge_reading(data, imported.get(day, []), Activity)
+        merge_work(data, work.get(day, []), Activity)
         for activity in data["activities"]:
-            if not activity.get("reader_book_key"):
+            if not activity.get("reader_book_key") and not activity.get("work_session_id"):
                 activity["source_missing"] = False
             if activity.get("source_node_id"):
                 node = available.get(activity["source_node_id"])
@@ -286,7 +301,7 @@ def read_range(db, user_id, start, end):
                 activity["source_missing"] = node is None
         result.append({
             **data, "date": day.isoformat(), "revision": row.revision if row else 0,
-            "recorded": bool(row or legacy or imported.get(day)), "legacy_investment_seconds": legacy_investment_seconds,
+            "recorded": bool(row or legacy or imported.get(day) or work.get(day)), "legacy_investment_seconds": legacy_investment_seconds,
             "nodes": [{"id": n.id, "title": n.label or "关联行动", "seconds": max(0, n.duration_seconds or 0)} for n in source],
         })
         day += timedelta(days=1)
@@ -309,7 +324,7 @@ def aggregate(days):
             if a.get("source_missing"):
                 missing += 1
                 continue
-            if a.get("reader_duplicate_of"):
+            if a.get("reader_duplicate_of") or a.get("work_duplicate_of") or a.get("work_excluded"):
                 duplicates += 1
                 continue
             counts[key] += 1
@@ -380,11 +395,13 @@ def conflict():
 def get_day(day: date = Query(default=None), user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     day = day or beijing_today()
     payload = read_range(db, user.id, day, day)[0]
+    db.commit()
     return {**payload, "summary": aggregate([payload])}
 
 
 @router.put("/day")
 def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    db.query(User).filter_by(id=user.id).with_for_update().first()
     previous = read_range(db, user.id, day, day)[0]
     if previous["revision"] != body.revision:
         conflict()
@@ -397,6 +414,27 @@ def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get
         data["category_confirmed"] = list(CATEGORIES)
     data["day_confirmed"] = len(data["category_confirmed"]) == len(CATEGORIES)
     for activity in data["activities"]:
+        sid = activity.get("work_session_id")
+        if sid:
+            old = existing.get(activity["id"])
+            if not old or old.get("work_session_id") != sid:
+                raise HTTPException(400, "只能引用当前账号当天已联动的工作片")
+            if activity.get("work_override_seconds") is not None:
+                if activity.get("work_basis_seconds") != old.get("work_basis_seconds"):
+                    activity["work_basis_seconds"] = (old.get("work_source") or {}).get("seconds")
+                activity["seconds"] = activity["work_override_seconds"]
+            else:
+                activity["seconds"] = old.get("work_source", {}).get("seconds", 0) if old.get("work_source") else 0
+                activity["work_basis_seconds"] = None
+            if not activity.get("work_title_override"):
+                activity["title"] = old["title"]
+            if old.get("source_missing"):
+                activity["seconds"] = 0
+        elif activity["id"].startswith("work_"):
+            raise HTTPException(400, "不能修改工作片来源身份")
+        duplicate_work = activity.get("work_duplicate_of")
+        if duplicate_work and not any(a.get("work_session_id") == duplicate_work for a in previous["activities"]):
+            raise HTTPException(400, "请引用当前账号当天的工作片进行核对")
         duplicate = activity.get("reader_duplicate_of")
         if duplicate and not any(a.get("reader_book_key") == duplicate for a in previous["activities"]):
             raise HTTPException(400, "请引用当前账号当天的知间阅读记录")
@@ -416,8 +454,13 @@ def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get
                 activity["seconds"] = 0
             else:
                 activity["seconds"] = nodes[source_id]["seconds"]
-    old_total = sum(a["seconds"] for a in previous["activities"] if not a.get("reader_duplicate_of"))
-    new_total = sum(a["seconds"] for a in data["activities"] if not a.get("reader_duplicate_of"))
+    # A newly settled source absent from a stale client must not be lost on save.
+    sent_ids = {a["id"] for a in data["activities"]}
+    for old in previous["activities"]:
+        if old.get("work_session_id") and old["id"] not in sent_ids:
+            data["activities"].append(Activity.model_validate({k: v for k, v in old.items() if k in Activity.model_fields}).model_dump())
+    old_total = sum(a["seconds"] for a in previous["activities"] if counted(a))
+    new_total = sum(a["seconds"] for a in data["activities"] if counted(a))
     if new_total > 86400 and new_total > old_total:
         raise HTTPException(400, "当天累计超过 24 小时，请检查重复录入")
     valid_categories = {c["id"]: c for c in prefs(db, user.id)["expense_categories"]}
@@ -512,7 +555,7 @@ def target_progress(goal, days):
         return sum(e["amount_cents"] * (-1 if e["kind"] == "refund" else 1)
                    for d in days for e in d["expenses"]
                    if not goal.get("expense_category") or goal["expense_category"] == e["category"])
-    items = [a for d in days for a in d["activities"] if a["category"] == category and not a.get("source_missing") and not a.get("reader_duplicate_of")
+    items = [a for d in days for a in d["activities"] if a["category"] == category and counted(a)
              and (not goal.get("reading_kind") or a["reading_kind"] == goal["reading_kind"])
              and (not goal.get("topic") or a["primary_topic"] == goal["topic"])]
     if metric == "count":

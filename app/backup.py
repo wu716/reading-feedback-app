@@ -31,6 +31,7 @@ from app.models import (
     User,
 )
 from app.project_models import (
+    WorkLinkSetting, WorkMomentLink,
     ExecutionPlan, Goal, Project, ProjectStage, ProjectTask, TaskDependency,
     TaskChecklistItem, WorkSession, TimeActivityAssessment, ProcessTemplate,
     StartCondition, ExecutionConditionEvent,
@@ -168,6 +169,8 @@ def build_backup_zip(db: Session) -> bytes:
         "task_dependencies.csv": TaskDependency,
         "task_checklist_items.csv": TaskChecklistItem,
         "work_sessions.csv": WorkSession,
+        "work_link_settings.csv": WorkLinkSetting,
+        "work_moment_links.csv": WorkMomentLink,
         "execution_plans.csv": ExecutionPlan,
         "time_activity_assessments.csv": TimeActivityAssessment,
         "process_templates.csv": ProcessTemplate,

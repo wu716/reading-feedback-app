@@ -93,14 +93,19 @@ def classified_nodes(db: Session, user_id: int, start: date, end: date):
 def daily_payload(db: Session, user_id: int, day: date):
     from app.models import LongTermLedgerDay
     from app.routers.long_term_details import read_range, aggregate
-    if db.query(LongTermLedgerDay).filter_by(user_id=user_id, record_date=day).first():
-        detail = read_range(db, user_id, day, day)[0]
+    detail = read_range(db, user_id, day, day)[0]
+    if db.query(LongTermLedgerDay).filter_by(user_id=user_id, record_date=day).first() or any(a.get("work_session_id") for a in detail["activities"]):
         summary = aggregate([detail])
         automatic = {key: 0 for key in CATEGORIES}
         manual = {key: 0 for key in CATEGORIES}
         by_node = {}
+        from app.work_link_service import counted
         for activity in detail["activities"]:
-            if activity.get("source_node_id"):
+            if not counted(activity):
+                continue
+            if activity.get("work_session_id"):
+                automatic[activity["category"]] += activity["seconds"]
+            elif activity.get("source_node_id"):
                 automatic[activity["category"]] += activity["seconds"]
                 by_node[activity["source_node_id"]] = activity["category"]
             else:
@@ -197,7 +202,8 @@ def set_node_category(node_id: int, body: ClassificationInput, user: User = Depe
 
 def reject_legacy_write(db, user_id, day):
     from app.models import LongTermLedgerDay
-    if db.query(LongTermLedgerDay).filter_by(user_id=user_id, record_date=day).first():
+    from app.work_link_service import sources
+    if db.query(LongTermLedgerDay).filter_by(user_id=user_id, record_date=day).first() or sources(db, user_id, day, day).get(day):
         raise HTTPException(409, "当天已使用明细记录，请刷新到新版页面后修改")
 
 

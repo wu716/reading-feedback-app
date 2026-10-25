@@ -58,6 +58,7 @@ class NodeUpdate(BaseModel):
 
 
 class NodeOut(BaseModel):
+    confirmed_session_id: int | None = None
     id: int
     log_date: date
     logged_at: datetime
@@ -69,6 +70,7 @@ class NodeOut(BaseModel):
 
 
 class DayLogOut(BaseModel):
+    work_links: list[dict] = Field(default_factory=list)
     date: date
     total_seconds: int
     nodes: List[NodeOut]
@@ -162,11 +164,19 @@ def resolve_task_id(db: Session, user_id: int, task_id: Optional[int], day: date
 
 
 def day_payload(db: Session, user: User, day: date) -> DayLogOut:
+    from app.work_link_service import sources
+    linked = sources(db, user.id, day, day).get(day, [])
     nodes = visible_nodes(db, user.id, day)
+    from app.project_models import WorkSession
+    confirmed = {s.time_log_node_id: s.id for s in db.query(WorkSession).filter(
+        WorkSession.user_id == user.id, WorkSession.kind == "work",
+        WorkSession.time_log_node_id.in_([n.id for n in nodes]))}
+    db.commit()
     return DayLogOut(
+        work_links=linked,
         date=day,
-        total_seconds=sum(n.duration_seconds or 0 for n in nodes),
-        nodes=nodes,
+        total_seconds=sum(n.duration_seconds or 0 for n in nodes if n.id not in confirmed),
+        nodes=[NodeOut.model_validate(n).model_copy(update={"confirmed_session_id": confirmed.get(n.id)}) for n in nodes],
     )
 
 

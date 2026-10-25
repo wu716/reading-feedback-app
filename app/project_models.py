@@ -423,3 +423,8 @@ class ReaderReadingDay(Base):
     books_json = Column(Text, nullable=False)
     synced_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     __table_args__ = (UniqueConstraint("binding_id", "record_date", name="uq_reader_binding_date"),)
+
+
+# Register additive work/moment linkage tables with existing schema creation.
+from app.work_link_models import WorkLinkSetting, WorkMomentLink, register_session_activation
+register_session_activation(WorkSession)

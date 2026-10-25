@@ -111,13 +111,14 @@
                 ? `已记录 ${formatDuration(data.total_seconds)}`
                 : (viewingToday ? '今天还没有写下任何一段' : `${currentDay()} 还没有写下任何一段`);
         }
+        if(total && data.work_links?.length)total.textContent='时刻间隔 '+formatDuration(data.total_seconds)+' · 工作片实际 '+formatDuration(data.work_links.reduce((n,r)=>n+r.seconds,0))+'（分别展示，不相加）';
         const hint = document.getElementById('timeLogRecentHint');
         if (hint && (data.nodes || []).length) {
             hint.hidden = true;
             hint.textContent = '';
         }
         if (!list) return;
-        if (!(data.nodes || []).length) {
+        if (!(data.nodes || []).length && !(data.work_links || []).length) {
             list.innerHTML = '<p class="flow-empty">写下后才会出现在日志里。</p>';
             return;
         }
@@ -128,19 +129,22 @@
                 <article class="tl-node" data-node-id="${node.id}">
                     <div>
                         <div class="tl-time">${escapeHtml(formatClock(node.logged_at))}</div>
-                        <div class="tl-duration">${index === 0 ? '起点' : escapeHtml(formatDuration(node.duration_seconds))}</div>
+                        <div class="tl-duration">${node.confirmed_session_id ? '已关联实际投入 · 不另计时' : index === 0 ? '起点' : escapeHtml(formatDuration(node.duration_seconds))}</div>
                     </div>
                     <div class="tl-label">
                         <div>${escapeHtml(title)}</div>
                         ${related ? `<div class="tl-duration">${escapeHtml(related)}</div>` : ''}
                     </div>
                     <div class="tl-node-actions">
+                        <button type="button" class="flow-mini-btn" data-act="confirm-work">确认活动区间</button>
+                        <button type="button" class="flow-mini-btn" data-act="link-work">关联工作片</button>
                         <button type="button" class="flow-mini-btn" data-act="edit">改</button>
                         <button type="button" class="flow-mini-btn" data-act="delete">删</button>
                     </div>
                 </article>
             `;
         }).join('');
+        list.innerHTML = (data.work_links || []).map(r=>`<article class="tl-node"><div><div class="tl-time">${escapeHtml(formatClock(r.work_source.started_at))}—${r.work_source.running?'进行中':escapeHtml(formatClock(r.work_source.ended_at))}</div><div class="tl-duration">${r.work_source.running?'计时中，结束后结算':formatDuration(r.seconds)}</div></div><div class="tl-label">${escapeHtml(r.title)}<div class="tl-duration">工作片关联 · 不重复计算相邻时刻间隔</div><p>${escapeHtml(r.work_source.note||'')}</p></div><div class="tl-node-actions"><button type="button" class="flow-mini-btn" data-work-note="${r.work_session_id}">补充记录</button><button type="button" class="flow-mini-btn" data-work-correct="${r.work_session_id}">更正区间</button></div></article>`).join('') + list.innerHTML;
     }
 
     async function loadTasks() {
@@ -1016,10 +1020,13 @@
             }
         });
         document.getElementById('timeLogList')?.addEventListener('click', (e) => {
+            if(e.target.dataset.workNote){const row=(data.work_links||[]).find(r=>r.work_session_id===Number(e.target.dataset.workNote));return window.ShuranWorkLinks?.note(row,()=>load(currentDay()));}
+            if(e.target.dataset.workCorrect)return window.ShuranWorkLinks?.correct(Number(e.target.dataset.workCorrect),()=>load(currentDay()));
             const act = e.target.dataset.act;
             const article = e.target.closest('[data-node-id]');
             if (!article || !act) return;
             const id = parseInt(article.dataset.nodeId, 10);
+            if(act==='confirm-work'||act==='link-work') {const node=data.nodes.find(n=>n.id===id);return window.ShuranWorkLinks?.confirm(node,currentDay(),tasks,act==='link-work',()=>load(currentDay()));}
             if (act === 'delete') {
                 removeNode(id);
                 return;

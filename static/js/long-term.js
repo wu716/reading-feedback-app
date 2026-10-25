@@ -48,6 +48,9 @@
         return '<input data-a="' + esc(a.id) + '" data-field="' + key + '" type="' + type + '" value="' + esc(value) + '" ' + more + '>';
     }
     function activityCaption(a) {
+        if(a.work_excluded)return '未计入 · 原工作片保留';
+        if(a.work_duplicate_of)return '已核对为同一段活动 · 不重复计时';
+        if(a.work_session_id)return time(a.seconds)+' · 工作片同步'+(a.work_override_seconds!=null?' · 已调整':'');
         if(a.reader_duplicate_of)return '已核对为同一段阅读 · 不重复计时';
         return a.category === 'investment' ? '¥ ' + yuan(a.amount_cents) : time(a.seconds) + (a.category === 'writing' && a.words != null ? ' · ' + a.words + ' 字' : '');
     }
@@ -55,17 +58,22 @@
         const name = {reading:'书名（选填）',fitness:'运动项目',friends:'帮朋友做了什么',family:'陪家人做了什么',investment:'投资标的',writing:'写作主题／正在修改什么',work:'工作内容',relaxation:'放松活动'}[a.category];
 
         let basic = field(name, input(a,'title','text','maxlength="200" ' + (a.reader_book_key ? 'readonly ' : '') + (a.category === 'reading' ? '' : 'required ') + 'list="ltRecent-' + a.category + '"'));
+        if(a.work_session_id) basic += field('计入方向','<select data-a="'+a.id+'" data-field="category">'+options(Object.fromEntries(Object.entries(labels).filter(([k])=>k!=='investment')),a.category)+'</select>');
         if (a.category === 'reading') {
             basic += field('阅读类型', '<select data-a="' + a.id + '" data-field="reading_kind" required>' + options(kinds,a.reading_kind,'请选择') + '</select>');
             basic += field('主主题 · 用于时长统计', '<select data-a="' + a.id + '" data-field="primary_topic" required>' + options(preferences.topics,a.primary_topic,'请选择') + '</select>');
         }
         basic += a.category === 'investment'
             ? field('投入金额（元）', input(a,'amount','number','min="0.01" max="1000000000" step="0.01" inputmode="decimal" required'))
-            : field('时长（分钟）', input(a,'minutes','number',a.source_node_id || a.reader_book_key ? 'disabled step="any"' : 'min="1" max="1440" step="1" inputmode="numeric" required'));
+            : field('时长（分钟）', input(a,'minutes','number',a.source_node_id || a.reader_book_key ? 'disabled step="any"' : 'min="0" max="1440" step="any" inputmode="decimal" required'));
         if (a.category === 'writing') basic += field('新增字数（选填，构思／修改可填 0）',input(a,'words','number','min="0" max="10000000" step="1" inputmode="numeric"'));
         if(a.category==='reading'&&!a.reader_book_key) {
             const sources=Object.fromEntries(day.activities.filter(x=>x.reader_book_key).map(x=>[x.reader_book_key,x.title+' · '+time(x.seconds)]));
             if(Object.keys(sources).length)basic+=field('与知间记录核对','<select data-a="'+a.id+'" data-field="reader_duplicate_of">'+options(sources,a.reader_duplicate_of,'独立补记，另外计时')+'</select>');
+        }
+        if(!a.work_session_id && !a.reader_book_key) {
+            const works=Object.fromEntries(day.activities.filter(x=>x.work_session_id).map(x=>[x.work_session_id,x.title+' · '+time(x.seconds)]));
+            if(Object.keys(works).length) basic+=field('与工作片核对','<select data-a="'+a.id+'" data-field="work_duplicate_of">'+options(works,a.work_duplicate_of,'独立记录，另外计时')+'</select>');
         }
         let extra = field(a.category === 'fitness' ? '运动感受（选填）' : a.category === 'reading' ? '想法／收获（选填）' : '感受／补充记录（选填）',
             '<textarea data-a="' + a.id + '" data-field="note" rows="2" maxlength="3000">' + esc(a.note) + '</textarea>', 'lt-full');
@@ -79,7 +87,7 @@
             '<div class="lt-entry-body"><div class="lt-form-grid">' + basic + '</div>' +
             (a.source_node_id ? '<p class="lt-note">' + (a.source_missing ? '原时间日志已移除或日期已更改，本条描述保留，当前不计时。可转为手动记录后填写。' : '已关联时间日志；时长随源日志更新，无需重复补录。') + '<button type="button" class="lt-text-button" data-detach="' + a.id + '">转为手动记录</button></p>' : '') +
             '<details class="lt-extra"' + (a.note || a.unplanned || a.topics.length ? ' open' : '') + '><summary>补充细节与感受</summary><div class="lt-form-grid">' + extra + '</div></details>' +
-            (a.reader_book_key ? '<p class="lt-note">知间逐书来源：' + esc(a.reader_source?.label || '已同步记录') + '。书名与时长随来源更新；分类和收获可补充。' + (a.source_missing ? '来源已修订移除，保留补充说明，当前不计时。' : '') + '</p>' : '<div class="lt-entry-actions"><button type="button" class="lt-text-button" data-remove-a="' + a.id + '">移除这条活动</button></div>') + '</div></details>';
+            (a.work_session_id ? '<p class="lt-note">工作片同步 · 原计时 '+time(a.work_source?.seconds || 0)+(a.source_changed?' · 来源已更新，请核对手动调整':'')+(a.source_missing?' · 此日来源已移出，保留说明，暂不计时':'')+'。本页修改仅影响长期目标。</p><div class="lt-entry-actions"><button type="button" class="lt-text-button" data-work-restore="'+a.id+'">恢复自动同步</button><button type="button" class="lt-text-button" data-work-exclude="'+a.id+'">'+(a.work_excluded?'恢复计入':'不计入本方向')+'</button><button type="button" class="lt-text-button" data-work-source="'+a.work_session_id+'">更正原工作片</button></div>' : a.reader_book_key ? '<p class="lt-note">知间逐书来源：' + esc(a.reader_source?.label || '已同步记录') + '。书名与时长随来源更新；分类和收获可补充。' + (a.source_missing ? '来源已修订移除，保留补充说明，当前不计时。' : '') + '</p>' : '<div class="lt-entry-actions"><button type="button" class="lt-text-button" data-remove-a="' + a.id + '">移除这条活动</button></div>') + '</div></details>';
     }
     function renderActivities() {
         el('ltManual').innerHTML = keys.map((key,i) => '<details class="lt-activity" data-panel="' + key + '"' + (openPanels.has(key) ? ' open' : '') + ' style="--activity-color:' + colors[i] + '"><summary><span class="lt-activity-number">' + String(i+1).padStart(2,'0') + '</span><span class="lt-activity-name">' + labels[key] + '</span><span class="lt-activity-track"><span data-bar="' + key + '"></span></span><output data-total="' + key + '"></output><span class="lt-activity-action">展开</span></summary><div class="lt-activity-editor">' +
@@ -134,16 +142,16 @@
     }
     function updateTotals() {
         if (!day) return;
-        const totals = keys.map(k => day.activities.filter(a => a.category === k && !a.reader_duplicate_of && !a.source_missing).reduce((n,a) => n + (k === 'investment' ? 0 : Number(a.seconds) || 0),0));
+        const totals = keys.map(k => day.activities.filter(a => a.category === k && !a.reader_duplicate_of && !a.source_missing && !a.work_duplicate_of && !a.work_excluded).reduce((n,a) => n + (k === 'investment' ? 0 : Number(a.seconds) || 0),0));
         const sum = totals.reduce((a,b) => a+b,0), max = Math.max(1,...totals);
         keys.forEach((key,i) => {
             const out = el('ltManual').querySelector('[data-total="' + key + '"]'), bar = el('ltManual').querySelector('[data-bar="' + key + '"]');
-            if (out) out.textContent = !day.activities.some(a=>a.category===key&&!a.source_missing&&!a.reader_duplicate_of)&&!day.category_confirmed?.includes(key)?'待记录':key === 'investment' ? '¥ ' + yuan(day.activities.filter(a => a.category === key).reduce((n,a) => n + (Number(a.amount_cents) || 0),0)) : time(totals[i]);
+            if (out) out.textContent = !day.activities.some(a=>a.category===key&&!a.source_missing&&!a.reader_duplicate_of&&!a.work_duplicate_of&&!a.work_excluded)&&!day.category_confirmed?.includes(key)?'待记录':key === 'investment' ? '¥ ' + yuan(day.activities.filter(a => a.category === key).reduce((n,a) => n + (Number(a.amount_cents) || 0),0)) : time(totals[i]);
             if (bar) bar.style.width = totals[i] / max * 100 + '%';
         });
         el('ltTotalTime').textContent = time(sum);
         el('ltDistribution').innerHTML = totals.map((n,i) => '<span style="width:' + (sum ? n / sum * 100 : 0) + '%;background:' + colors[i] + '"></span>').join('');
-        const unplanned = day.activities.filter(a => a.unplanned && !a.reader_duplicate_of && !a.source_missing).reduce((n,a) => n + (Number(a.seconds) || 0),0);
+        const unplanned = day.activities.filter(a => a.unplanned && !a.reader_duplicate_of && !a.source_missing && !a.work_duplicate_of && !a.work_excluded).reduce((n,a) => n + (Number(a.seconds) || 0),0);
         el('ltOverviewHint').textContent = day.activities.length + ' 条活动 · 其中非计划占用 ' + time(unplanned) + (dirty ? ' · 当前草稿' : '');
         const spending = day.expenses.filter(e => e.kind === 'expense').reduce((n,e) => n + (Number(e.amount_cents) || 0),0);
         const refunds = day.expenses.filter(e => e.kind === 'refund').reduce((n,e) => n + (Number(e.amount_cents) || 0),0);
@@ -188,9 +196,9 @@
         return {
             revision:day.revision,
             activities:day.activities.map(a => {
-                const {source_missing,reader_source,_minutes,_amount,...data} = a;
+                const {source_missing,source_changed,work_source,reader_source,_minutes,_amount,...data} = a;
                 if (data.category === 'investment') data.amount_cents = moneyCents(_amount ?? yuan(data.amount_cents));
-                else if (!data.source_node_id && !data.reader_book_key) data.seconds = Number(_minutes ?? data.seconds/60) * 60;
+                else if (!data.source_node_id && !data.reader_book_key) data.seconds = Math.round(Number(_minutes ?? data.seconds/60) * 60);
                 return data;
             }),
             expenses:day.expenses.map(e => { const {_amount,...data} = e; data.amount_cents = moneyCents(_amount ?? yuan(e.amount_cents)); return data; }),
@@ -210,6 +218,7 @@
             dirty = !force && drafts.has(date);
             renderDay(); el('ltDayFields').disabled = false;
             window.ShuranFeedbackDaily?.load(day.date);
+            window.ShuranWorkLinks?.history(day.date,async()=>{if(dirty){status('已导入。请保留草稿并重新读取核对，避免覆盖未保存修改。','is-dirty');return;}await loadDay(true);});
             el('ltSaveHint').textContent = dirty ? '已恢复本次会话草稿，保存前请核对。' : '修改后保存；活动、注意力和消费可以分别核对。';
         } catch(e) { if (request === dayRequest && sameSession(epoch)) status(e.message || '读取失败，请重试','is-error'); }
         if (view === 'report') loadReport();
@@ -247,11 +256,14 @@
                 if (a.topics.length > 5) { a.topics.pop(); target.checked = false; status('补充主题最多选择 5 个','is-error'); return; }
             } else {
                 const f = target.dataset.field;
-                if (f === 'minutes') { a._minutes = target.value; a.seconds = Number(target.value) * 60; }
+                if (f === 'minutes') { a._minutes = target.value; a.seconds = Math.round(Number(target.value) * 60); if(a.work_session_id){a.work_override_seconds=a.seconds;a.work_basis_seconds=a.work_source?.seconds??0;} }
                 else if (f === 'amount') { a._amount = target.value; try { a.amount_cents = moneyCents(target.value); } catch { a.amount_cents = 0; } }
                 else if (f === 'words') a.words = target.value === '' ? null : Number(target.value);
+                else if (f === 'work_duplicate_of') a.work_duplicate_of=target.value?Number(target.value):null;
                 else if (f === 'reader_duplicate_of') a.reader_duplicate_of=target.value||null;
                 else a[f] = target.type === 'checkbox' ? target.checked : target.value;
+                if(f==='title'&&a.work_session_id)a.work_title_override=true;
+                if(f==='category'&&a.work_session_id){touch();renderActivities();return;}
                 if (f === 'primary_topic') a.topics = a.topics.filter(x => x !== a.primary_topic);
                 if (f === 'title' && a.category === 'reading') {
                     const old = recent.find(x => x.category === 'reading' && x.title === a.title);
@@ -285,6 +297,16 @@
     function dayAction(target) {
         const b = target.closest('button');
         if (!b || !day || busy) return;
+        if(b.dataset.workSource) {
+            if(dirty){status('请先保存当前修改，再更正原工作片，避免丢失草稿。','is-dirty');return;}
+            return window.ShuranWorkLinks?.correct(Number(b.dataset.workSource),()=>loadDay(true));
+        }
+        if(b.dataset.workRestore || b.dataset.workExclude) {
+            const a=day.activities.find(x=>x.id===(b.dataset.workRestore||b.dataset.workExclude));
+            if(b.dataset.workRestore){a.work_override_seconds=null;a.work_basis_seconds=null;a.work_title_override=false;delete a._minutes;a.seconds=a.work_source?.seconds||0;}
+            else a.work_excluded=!a.work_excluded;
+            touch();renderActivities();return;
+        }
         if (b.dataset.addA) return newActivity(b.dataset.addA);
         if (b.dataset.removeA) {
             day.activities = day.activities.filter(a => a.id !== b.dataset.removeA);

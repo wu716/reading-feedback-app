@@ -298,8 +298,8 @@ def test_reports_have_project_progress_revisions_equal_comparison_and_gates(ctx)
         db.add(pm.WorkSession(user_id=1, project_task_id=task.id, kind="work", source="timer", started_at=datetime(2026, 10, 23, 1)))
         db.commit()
     first = c.get(f"/api/long-term/details/report?period=day&anchor={DAY}").json()
-    assert first["projects"][0]["actual_seconds"] == 600
-    assert first["total_seconds"]["work"] == 0  # References do not become duplicate ledger rows.
+    assert first["projects"][0]["actual_seconds"] == 1800  # Midnight slice plus a server-capped expired timer.
+    assert first["total_seconds"]["work"] == 1800  # Each source is projected once, not added again by project references.
     repeat = c.get(f"/api/long-term/details/report?period=day&anchor={DAY}").json()
     assert repeat["snapshot"]["revision"] == first["snapshot"]["revision"]
     saved = c.put(f"/api/long-term/details/day?day={DAY}", json={"revision": 0, "day_confirmed": True,
