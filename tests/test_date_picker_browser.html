@@ -1,0 +1,97 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>日期选择器回归检查 · 合成数据</title>
+<link rel="stylesheet" href="/static/css/projects.css"><link rel="stylesheet" href="/static/css/paper-shell.css"><link rel="stylesheet" href="/static/css/workspace.css"><link rel="stylesheet" href="/static/css/start-conditions.css"><link rel="stylesheet" href="/static/css/feedback.css"><link rel="stylesheet" href="/static/css/date-picker.css">
+<style>main{max-width:900px;margin:24px auto;padding:20px}.test-fields{display:grid;gap:16px;max-width:540px}.test-fields>label{display:grid;gap:6px}#results{white-space:pre-wrap;overflow-wrap:anywhere}#syntheticConditions{max-width:760px}.test-tools{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0}.test-tools button{padding:10px}body.narrow main{max-width:320px;padding:12px}.condition-form{min-width:0}h1{font-size:24px}</style>
+</head><body data-paper-dates><main>
+<h1>日期选择器回归检查</h1><p>独立合成数据，无业务数据库和网络请求。</p>
+<div class="test-tools"><button id="run" type="button">运行回归检查</button><button id="conditions" type="button">查看开始条件</button><button id="nested" type="button">在条件弹窗中检查</button></div>
+<output id="results" aria-live="polite"></output>
+<form id="fixture" class="test-fields" onsubmit="event.preventDefault()">
+<label>安排到哪天<input id="testDate" type="date" name="task_date" required value="2026-10-25"></label>
+<label>允许开始时间<input id="testTime" name="not_before" type="datetime-local"></label>
+<label>限定日期<input id="testBound" type="date" min="2028-02-01" max="2028-02-29" value="2028-02-28"></label>
+<label>限定时段<input id="testBoundTime" type="datetime-local" min="2026-10-25T09:30" max="2026-10-25T18:00" value="2026-10-25T10:00"></label>
+<button type="submit">验证必填</button><button type="reset">重置</button>
+</form>
+<section id="syntheticConditions" class="condition-workspace"></section>
+<script>
+window.syntheticRequests=[];
+window.fetch=async(path,options={})=>{
+  const body=options.body?JSON.parse(options.body):null;
+  if(body)syntheticRequests.push({path,body});
+  let data={};
+  if(path.includes('/readiness/'))data={conditions:[],summary:'未配置启动条件'};
+  else if(path.endsWith('/overview'))data={projects:[]};
+  else if(path.endsWith('/history'))data={items:[]};
+  return {ok:true,json:async()=>data};
+};
+</script>
+<script src="/static/js/date-picker.js"></script><script src="/static/js/start-conditions.js"></script>
+<script>
+const q=s=>document.querySelector(s), tick=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+const input=id=>document.getElementById(id), trigger=id=>input(id).parentElement.querySelector('.sdp-trigger');
+const dialog=()=>q('#paperDateDialog');
+const choose=day=>dialog().querySelector(`[data-date="${day}"]`).click();
+const action=name=>dialog().querySelector(`[data-${name}]`).click();
+async function showConditions(root=q('#syntheticConditions')) {
+  await ShuranConditions.mount(root,'task',1);
+  root.querySelector('.condition-create').open=true;
+  const form=root.querySelector('[data-create-condition]');form.elements.kind.value='time';form.elements.kind.dispatchEvent(new Event('change',{bubbles:true}));
+  await tick();return form;
+}
+q('#conditions').onclick=()=>showConditions();q('#nested').onclick=()=>ShuranConditions.open('task',1);
+if(new URLSearchParams(location.search).has('layout')) {
+ document.querySelector('h1').hidden=true;document.querySelector('main>p').hidden=true;
+ document.querySelector('.test-tools').hidden=true;input('fixture').hidden=true;
+ addEventListener('DOMContentLoaded',async()=>{
+  const form=await showConditions();form.elements.title.value='设备就绪后开始';form.elements.not_before.value='2026-10-25T09:30';
+  form.elements.not_before.parentElement.querySelector('button').click();await tick();
+  const box=dialog().getBoundingClientRect(),buttons=[...dialog().querySelectorAll('.sdp-footer button')];
+  const metrics={width:innerWidth,height:innerHeight,dialogLeft:box.left,dialogRight:box.right,dialogTop:box.top,dialogBottom:box.bottom,horizontalOverflow:document.documentElement.scrollWidth>innerWidth,dialogOverflow:dialog().scrollWidth>dialog().clientWidth,footerAvailable:buttons.every(b=>{const r=b.getBoundingClientRect();return !b.disabled&&r.width>0&&r.top>=box.top&&r.bottom<=box.bottom;})};
+  parent.postMessage({calendarLayout:metrics},location.origin);
+ });
+}
+q('#run').onclick=async()=>{
+ const checks=[];q('#run').disabled=true;
+ function ok(value,name){if(!value)throw new Error(name);checks.push(name);}
+ try {
+  await tick();
+  ok(document.querySelectorAll('.sdp-trigger').length===4,'初始日期与日期时间字段已接入');
+  input('testDate').value='2028-02-28';ok(trigger('testDate').textContent.includes('2028 / 02 / 28'),'程序赋值同步显示');
+  trigger('testDate').click();choose('2028-02-29');action('confirm');
+  ok(input('testDate').value==='2028-02-29','闰年二月29日与单日选择');
+  ok(new FormData(input('fixture')).get('task_date')==='2028-02-29','原表单字段与日期格式兼容');
+  trigger('testDate').click();dialog().querySelector('[data-month="1"]').click();choose('2028-03-15');action('cancel');
+  ok(input('testDate').value==='2028-02-29','跨月草稿取消保留原值');
+  input('testDate').value='2026-12-31';trigger('testDate').click();dialog().querySelector('[data-month="1"]').click();choose('2027-01-04');action('confirm');
+  ok(input('testDate').value==='2027-01-04','跨年选择');
+  trigger('testDate').click();const day=dialog().querySelector('[data-date="2027-01-04"]');day.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
+  ok(document.activeElement.dataset.date==='2027-01-05','键盘方向键移动焦点');
+  dialog().dispatchEvent(new Event('cancel',{cancelable:true}));
+  ok(input('testDate').value==='2027-01-04'&&document.activeElement===trigger('testDate'),'取消恢复焦点且不修改日期');
+  input('testTime').value='2026-10-25T09:18';trigger('testTime').click();choose('2026-10-26');dialog().querySelector('[data-hour]').value='13';dialog().querySelector('[data-minute]').value='45';action('confirm');
+  ok(input('testTime').value==='2026-10-26T13:45','日期与时分完整保存');
+  trigger('testTime').click();dialog().querySelector('[data-hour]').value='24';action('confirm');
+  ok(dialog().open&&input('testTime').value==='2026-10-26T13:45','无效小时不污染原值');action('cancel');
+  trigger('testTime').click();action('clear');ok(input('testTime').value==='','可选时间清空');
+  input('testTime').disabled=true;await tick();ok(trigger('testTime').disabled,'禁用字段不可打开');input('testTime').disabled=false;
+  trigger('testBound').click();ok(dialog().querySelector('[data-date="2028-03-01"]').disabled,'日期上下界生效');action('cancel');
+  trigger('testBoundTime').click();dialog().querySelector('[data-hour]').value='8';action('confirm');
+  ok(dialog().open&&input('testBoundTime').value==='2026-10-25T10:00'&&q('[data-error]').textContent,'同一天时分上下界校验');action('cancel');
+  input('fixture').reset();await tick();ok(input('testDate').value==='2026-10-25'&&trigger('testDate').textContent.includes('2026 / 10 / 25'),'重置表单同步显示');
+  input('testDate').value='';input('fixture').reportValidity();ok(dialog().open,'原必填校验可见且可操作');action('cancel');input('testDate').value='2026-10-25';
+  const dynamic=document.createElement('input');dynamic.type='date';dynamic.dataset.paperDate='';q('.test-fields').append(dynamic);await tick();ok(dynamic.parentElement.className==='sdp-field','异步插入字段自动接入');dynamic.parentElement.remove();
+  const form=await showConditions();const conditionTime=form.elements.not_before;
+  ok(conditionTime.parentElement.className==='sdp-field','实际开始条件表单已接入');
+  conditionTime.parentElement.querySelector('button').click();action('confirm');
+  ok(form.querySelector('[data-field="manual"]').hidden,'选择时间后保留自动判断规则');
+  conditionTime.parentElement.querySelector('button').click();action('clear');
+  ok(!form.querySelector('[data-field="manual"]').hidden,'清空时间恢复人工确认入口');
+  conditionTime.value='2026-10-26T13:45';conditionTime.dispatchEvent(new Event('change',{bubbles:true}));form.elements.title.value='合成时间条件';
+  form.requestSubmit();await tick();
+  const saved=syntheticRequests.findLast(r=>r.path.includes('/conditions/task/1'));
+  ok(saved?.body.not_before===new Date('2026-10-26T13:45').toISOString()&&saved.body.confirmation==='unknown','实际提交按本机时区转换UTC且保留自动判断');
+  q('#results').textContent=`通过 ${checks.length} 项\n`+checks.map((name,i)=>`${i+1}. ${name}`).join('\n');
+ }catch(error){q('#results').textContent=`失败：${error.message}\n已通过 ${checks.length} 项`;console.error(error);}
+ finally{q('#run').disabled=false;}
+};
+</script></main></body></html>

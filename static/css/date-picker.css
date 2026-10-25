@@ -1,0 +1,39 @@
+/* The existing feedback calendar supplies the shared month grid and paper palette. */
+.sdp-field{display:block;position:relative;width:100%;min-width:0}
+.sdp-field .sdp-native{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:0!important;border:0!important;opacity:0;pointer-events:none;overflow:hidden}
+.sdp-field .sdp-trigger{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:42px;padding:10px 12px;border:1px solid #c7d4da;border-radius:9px;background:#fffefa;color:#38596c;font:inherit;text-align:left;cursor:pointer;box-shadow:none;letter-spacing:normal;white-space:normal}
+.sdp-trigger>span{min-width:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.sdp-trigger>svg{width:17px;height:17px;flex:none;color:#55798c}
+.sdp-field .sdp-trigger.is-empty{color:#6e7e83}
+.sdp-field .sdp-trigger:hover:not(:disabled){background:#f2f5f5;border-color:#7895a6}
+.sdp-field .sdp-trigger:disabled{opacity:.48;cursor:default}
+.sdp-dialog{position:fixed;inset:auto;margin:0;width:380px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow:auto;overscroll-behavior:contain;padding:16px;background:#fffefa;color:#344a56;border:1px solid #d9e0df;border-radius:16px;box-shadow:0 12px 36px #283f4e26;font:400 15px/1.5 "Microsoft YaHei",system-ui,sans-serif;box-sizing:border-box}
+.sdp-dialog::backdrop{background:#283f4e26}
+.sdp-dialog [hidden]{display:none!important}
+.sdp-title{font-size:14px;color:#536e7e;margin-bottom:12px}
+.sdp-dialog .sdp-calendar{max-width:none;padding:0;border:0;border-radius:0;background:transparent;box-sizing:border-box}
+.sdp-dialog button{font:inherit;cursor:pointer;touch-action:manipulation}
+.sdp-dialog .fb-calendar-head{padding-bottom:10px}
+.sdp-dialog .fb-calendar-head button{font-size:23px}
+.sdp-dialog .fb-week-head,.sdp-dialog .fb-calendar-grid{gap:4px}
+.sdp-dialog .fb-calendar-grid button{min-height:36px;padding:0;aspect-ratio:1.13;font-size:14px}
+.sdp-dialog .fb-calendar-grid button.is-today:not(.is-selected){box-shadow:inset 0 0 0 1px #7895a6}
+.sdp-dialog .fb-calendar-grid button.is-selected{background:#405f72;color:#fffefa}
+.sdp-dialog button:disabled{opacity:.4;cursor:default}
+.sdp-dialog button:focus-visible,.sdp-dialog input:focus-visible,.sdp-field .sdp-trigger:focus-visible{outline:2px solid #7895a6;outline-offset:2px}
+.sdp-selected{font-size:12px;color:#6e7e83;margin-top:12px;font-variant-numeric:tabular-nums}
+.sdp-dialog .sdp-time{display:flex;align-items:end;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid #d9e0df}
+.sdp-time>span{align-self:center;color:#536e7e;font-size:14px}
+.sdp-dialog .sdp-time label{display:grid;gap:4px;min-width:0;font:400 12px/1.5 "Microsoft YaHei",system-ui,sans-serif;color:#6e7e83}
+.sdp-dialog .sdp-time input{box-sizing:border-box;width:78px;max-width:100%;min-height:40px;padding:7px 9px;border:1px solid #c7d4da;border-radius:8px;background:#f2f5f5;color:#344a56;font:400 16px/1.5 "Microsoft YaHei",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.sdp-error{margin:8px 0 0;font-size:12px;color:#895633;overflow-wrap:anywhere}
+.sdp-error:empty{display:none}
+.sdp-footer{display:flex;justify-content:space-between;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid #d9e0df}
+.sdp-footer>div{display:flex;gap:6px}
+.sdp-dialog .sdp-footer button{padding:8px 10px;border:1px solid #cfdbde;border-radius:8px;background:#eef3f4;color:#405f72;min-height:36px}
+.sdp-dialog .sdp-footer button[data-confirm]{background:#405f72;color:#fffefa;border-color:#405f72}
+.sdp-dialog .sdp-footer button:hover{filter:brightness(.96)}
+@media(max-width:420px){.sdp-dialog{padding:12px}.sdp-dialog .fb-week-head,.sdp-dialog .fb-calendar-grid{gap:3px}.sdp-dialog .fb-calendar-grid button{min-height:34px}.sdp-dialog .sdp-footer button{padding:8px}.sdp-dialog .sdp-time{gap:8px}}
+@media(pointer:coarse){.sdp-dialog .fb-calendar-grid button{min-height:42px}.sdp-dialog .fb-calendar-head button{width:44px;height:44px}.sdp-dialog .sdp-footer button,.sdp-field .sdp-trigger{min-height:44px}}
+@media(max-height:600px) and (pointer:fine){.sdp-dialog{padding:12px}.sdp-title{margin-bottom:6px}.sdp-dialog .fb-calendar-grid button{min-height:28px;height:28px;aspect-ratio:auto}.sdp-dialog .fb-calendar-head{padding-bottom:4px}.sdp-dialog .sdp-time{margin-top:8px;padding-top:8px}.sdp-footer{margin-top:10px;padding-top:8px}}
+@media(max-height:600px){.sdp-footer{position:sticky;bottom:-16px;z-index:1;background:#fffefa;padding-bottom:8px;box-shadow:0 -6px 12px #fffefa}}

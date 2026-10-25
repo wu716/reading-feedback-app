@@ -60,7 +60,7 @@
             <label data-field="task" hidden>先完成任务 <select name="task_id"><option value="">请选择</option>${tasks.map(t => `<option value="${t.id}">${esc(t.project_title)} → ${esc(t.title)}</option>`).join('')}</select></label>
             <label data-field="project" hidden>前置项目 <select name="project_id"><option value="">请选择</option>${overview.projects.map(p => `<option value="${p.id}">${esc(p.title)}</option>`).join('')}</select></label>
             <label data-field="project" hidden>所需交付状态 <select name="required_state"><option value="accepted">已验收</option><option value="delivered">已交付</option></select></label>
-            <label data-field="time" hidden>允许开始时间（本机时区 ${esc(Intl.DateTimeFormat().resolvedOptions().timeZone)}；可留空，改为人工核对连续时段等条件） <input type="datetime-local" name="not_before"></label>
+            <label data-field="time" hidden>允许开始时间（本机时区 ${esc(Intl.DateTimeFormat().resolvedOptions().timeZone)}；可留空，改为人工核对连续时段等条件） <input type="datetime-local" name="not_before" data-paper-date></label>
             <label data-field="manual">确认状态 <select name="confirmation">${options(confirmations, 'unknown')}</select></label>
             <label>依据或不适用说明 <textarea name="evidence" maxlength="4000" rows="2"></textarea></label>
             <button type="submit">保存条件</button>
