@@ -2,7 +2,7 @@
 """每日日程：安排日期、任务属性与顺序。"""
 from collections import defaultdict
 import json
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta, timezone
 from typing import List, Literal, Optional
 from zoneinfo import ZoneInfo
 
@@ -15,6 +15,7 @@ from app.auth import get_current_active_user
 from app.database import get_db
 from app.models import DailySchedule, DailyTask, DailyTodo, FutureAction, User
 from app.schedule_todos import import_day_todos, sync_task_reminder
+from app.stage_schedule_models import DailyProjectPlan, day_plan, legacy_daily_filter
 
 router = APIRouter(prefix="/schedule", tags=["日程安排"])
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
@@ -150,6 +151,7 @@ class TaskOut(BaseModel):
     common_problems: Optional[str] = None
     acceptance_criteria: Optional[str] = None
     practice: dict | None = None
+    project_day_plan: dict | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -282,7 +284,14 @@ def refresh_parent_completion(db: Session, user_id: int, task: DailyTask) -> Non
             from app.start_conditions import readiness
             # A container's delivery check must not block an independent child,
             # or be silently satisfied by completing its final child.
-            next_value = readiness(db, user_id, "daily", parent.id, purpose="delivery")["can_start"]
+            if day_plan(db, user_id, parent.id):
+                from app.stage_schedule_models import require_scope_completion_ready
+                try:
+                    require_scope_completion_ready(db, user_id, parent)
+                except HTTPException:
+                    next_value = False
+            else:
+                next_value = readiness(db, user_id, "daily", parent.id, purpose="delivery")["can_start"]
         if parent.completed == next_value:
             parent = parent.parent
             continue
@@ -290,21 +299,22 @@ def refresh_parent_completion(db: Session, user_id: int, task: DailyTask) -> Non
         parent = parent.parent
 
 
-def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id=None, reminders=None, practice_by_id=None) -> List[TaskOut]:
+def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id=None, reminders=None, practice_by_id=None, plans=None) -> List[TaskOut]:
     linked, actual = linked or {}, actual or {}
     by_parent = defaultdict(list)
     for task in tasks:
         by_parent[task.parent_id].append(task)
 
     def node(task: DailyTask) -> TaskOut:
+        plan = (plans or {}).get(task.id)
         return TaskOut(
             id=task.id,
             parent_id=task.parent_id,
             action_id=task.action_id,
             project_task_id=task.project_task_id,
-            project_id=linked[task.project_task_id][0] if task.project_task_id in linked else None,
-            project_title=linked[task.project_task_id][1] if task.project_task_id in linked else None,
-            actual_minutes=actual.get(("project", task.project_task_id) if task.project_task_id else ("daily", task.id), 0),
+            project_id=linked[task.project_task_id][0] if task.project_task_id in linked else (plan["project_id"] if plan else None),
+            project_title=linked[task.project_task_id][1] if task.project_task_id in linked else (plan["project_title"] if plan else None),
+            actual_minutes=plan["today_recorded_minutes"] if plan else actual.get(("project", task.project_task_id) if task.project_task_id else ("daily", task.id), 0),
             readiness=(readiness_by_id or {}).get(task.id),
             text=task.text,
             completed=bool(task.completed),
@@ -314,7 +324,7 @@ def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id
             flow_order=task.flow_order or task.sort_order or 0,
             familiarity=task.familiarity,
             estimated_minutes=(practice_by_id or {}).get(task.id, {}).get("estimated_minutes", task.estimated_minutes)
-                if task.project_task_id else task.estimated_minutes,
+                if task.project_task_id and not plan else task.estimated_minutes,
             parallel_group=task.parallel_group,
             children=[node(child) for child in by_parent.get(task.id, [])],
             remind_time=(reminders or {}).get(task.legacy_todo_id),
@@ -323,6 +333,7 @@ def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id
             common_problems=task.common_problems,
             acceptance_criteria=task.acceptance_criteria,
             practice=(practice_by_id or {}).get(task.id),
+            project_day_plan=plan,
         )
 
     return [node(task) for task in by_parent.get(None, [])]
@@ -372,6 +383,14 @@ def day_payload(db: Session, user: User, day: date) -> DayScheduleOut:
         Project, Project.id == ProjectTask.project_id).filter(ProjectTask.user_id == user.id, Project.user_id == user.id,
         ProjectTask.id.in_([t.project_task_id for t in tasks if t.project_task_id])).all()}
     actual = defaultdict(float)
+    plans = {p.daily_task_id: p for p in db.query(DailyProjectPlan).filter(
+        DailyProjectPlan.user_id == user.id, DailyProjectPlan.daily_task_id.in_([t.id for t in tasks])).all()}
+    source_tasks = {t.id: t for t in db.query(ProjectTask).filter(ProjectTask.user_id == user.id,
+        ProjectTask.id.in_([t.project_task_id for t in tasks if t.project_task_id])).all()}
+    today_actual = defaultdict(float)
+    daily_actual = defaultdict(float)
+    start = datetime.combine(day, time.min, BEIJING_TZ).astimezone(timezone.utc).replace(tzinfo=None)
+    end = start + timedelta(days=1)
     for session, daily_project_id in db.query(WorkSession, DailyTask.project_task_id).outerjoin(DailyTask,
         (DailyTask.id == WorkSession.daily_task_id) & (DailyTask.user_id == user.id)).filter(
         WorkSession.user_id == user.id, WorkSession.kind == "work", WorkSession.ended_at.isnot(None),
@@ -380,7 +399,19 @@ def day_payload(db: Session, user: User, day: date) -> DayScheduleOut:
         project_task_id = session.project_task_id or daily_project_id
         key = ("project", project_task_id) if project_task_id else ("daily", session.daily_task_id)
         actual[key] += (session.ended_at - session.started_at).total_seconds() / 60
+        today_actual[key] += max(0, (min(end, session.ended_at) - max(start, session.started_at)).total_seconds()) / 60
+        if session.daily_task_id:
+            daily_actual[session.daily_task_id] += max(0, (min(end, session.ended_at) - max(start, session.started_at)).total_seconds()) / 60
     actual = {key: round(value, 2) for key, value in actual.items()}
+    plan_payloads = {daily.id: {
+        "project_id": plans[daily.id].project_id, "project_title": plans[daily.id].project_title,
+        "stage_id": plans[daily.id].stage_id, "stage_title": plans[daily.id].stage_title,
+        "task_title": plans[daily.id].task_title, "source_estimated_minutes": plans[daily.id].source_estimate_minutes,
+        "project_actual_minutes": actual.get(("project", daily.project_task_id), 0),
+        "source_completed": source_tasks.get(daily.project_task_id) is not None and source_tasks[daily.project_task_id].state == "completed",
+        "source_missing": daily.project_task_id not in source_tasks or source_tasks[daily.project_task_id].deleted_at is not None,
+        "today_recorded_minutes": round(daily_actual[daily.id] if daily.parent_id is not None else today_actual.get(("project", daily.project_task_id), 0), 2),
+    } for daily in tasks if daily.id in plans}
     schedule = (
         db.query(DailySchedule)
         .filter(DailySchedule.user_id == user.id, DailySchedule.schedule_date == day)
@@ -392,10 +423,10 @@ def day_payload(db: Session, user: User, day: date) -> DayScheduleOut:
         tasks=build_tree(tasks, linked, actual, {t.id: readiness(db, user.id, "daily", t.id) for t in tasks},
             dict(db.query(DailyTodo.id, DailyTodo.remind_time).filter(DailyTodo.user_id == user.id,
                  DailyTodo.id.in_([t.legacy_todo_id for t in tasks if t.legacy_todo_id])).all()),
-            {t.id: practice.day_task_payload(db, user.id, "task" if t.project_task_id else "daily",
-                db.get(ProjectTask, t.project_task_id) if t.project_task_id else t, day)
+            {t.id: practice.day_task_payload(db, user.id, "task" if t.project_task_id and t.id not in plans else "daily",
+                db.get(ProjectTask, t.project_task_id) if t.project_task_id and t.id not in plans else t, day)
                 for t in tasks if not t.project_task_id or (db.get(ProjectTask, t.project_task_id) is not None
-                    and db.get(ProjectTask, t.project_task_id).user_id == user.id)}),
+                    and db.get(ProjectTask, t.project_task_id).user_id == user.id)}, plan_payloads),
     )
 
 
@@ -435,6 +466,13 @@ async def create_task(
     )
     db.add(task)
     db.flush()
+    if parent_id is not None:
+        parent_plan = day_plan(db, current_user.id, parent_id)
+        if parent_plan:
+            task.project_task_id = parent.project_task_id
+            db.add(DailyProjectPlan(**{c.name: getattr(parent_plan, c.name) for c in DailyProjectPlan.__table__.columns
+                if c.name not in ("daily_task_id", "item_key", "created_at")}, daily_task_id=task.id, item_key=f"split-{task.id}"))
+            db.flush()
     from app import practice_service as practice
     practice.note_estimate(db, current_user.id, "daily", task, body.estimated_minutes, created=True)
     if body.difficulty is not None or body.importance is not None:
@@ -461,25 +499,32 @@ async def update_task(
 ):
     db.query(User).filter(User.id == current_user.id).with_for_update().first()
     task = get_task_or_404(db, current_user.id, task_id)
+    scoped = day_plan(db, current_user.id, task.id)
     from app import practice_service as practice
     if body.text is not None:
         task.text = body.text
-        if task.project_task_id:
+        if task.project_task_id and not scoped:
             from app.project_models import ProjectTask
             project_task = db.query(ProjectTask).filter(ProjectTask.id == task.project_task_id,
                 ProjectTask.user_id == current_user.id, ProjectTask.deleted_at.is_(None)).first()
             if project_task:
                 project_task.title = body.text
                 db.query(DailyTask).filter(DailyTask.user_id == current_user.id,
-                    DailyTask.project_task_id == project_task.id, DailyTask.deleted_at.is_(None)).update({"text": body.text})
+                    DailyTask.project_task_id == project_task.id, DailyTask.deleted_at.is_(None), legacy_daily_filter(current_user.id)).update({"text": body.text}, synchronize_session=False)
     if body.completed is not None:
-        if task.project_task_id is not None:
+        if scoped and body.completed and task.task_date > beijing_today():
+            raise HTTPException(409, "未来日期的安排请到当天再记录完成")
+        if task.project_task_id is not None and not scoped:
             raise HTTPException(status_code=409, detail="请到关联项目核对完成标准并验收；验收结果会同步到日程")
         if body.completed:
             from app.start_conditions import require_ready
             targets = [task] + collect_descendants(visible_tasks(db, current_user.id, task.task_date), task.id)
             for target in targets:
-                require_ready(db, current_user.id, "daily", target.id, purpose="delivery")
+                if day_plan(db, current_user.id, target.id):
+                    from app.stage_schedule_models import require_scope_completion_ready
+                    require_scope_completion_ready(db, current_user.id, target)
+                else:
+                    require_ready(db, current_user.id, "daily", target.id, purpose="delivery")
                 practice.require_checklist(db, current_user.id, "daily", target, body.checklist_exception)
         task.completed = body.completed
         if task.completed:
@@ -538,7 +583,7 @@ async def update_task(
         sync_task_reminder(db, task)
     for related in visible_tasks(db, current_user.id, task.task_date):
         sync_task_reminder(db, related)
-    if body.text is not None and task.project_task_id:
+    if body.text is not None and task.project_task_id and not scoped:
         for related in db.query(DailyTask).filter(DailyTask.user_id == current_user.id,
                 DailyTask.project_task_id == task.project_task_id, DailyTask.deleted_at.is_(None)).all():
             sync_task_reminder(db, related)
@@ -670,3 +715,7 @@ async def schedule_future_action(
     item.deleted_at = beijing_now()
     db.commit()
     return day_payload(db, current_user, day)
+
+
+from app.routers.stage_schedule import router as stage_schedule_router
+router.include_router(stage_schedule_router)

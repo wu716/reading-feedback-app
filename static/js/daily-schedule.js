@@ -3,6 +3,7 @@
  */
 (function () {
     let day = null;
+    let loadSerial = 0;
     let data = { date: null, designed_at: null, tasks: [] };
     let mode = 'list';
     const expandedTasks = new Set();
@@ -198,12 +199,12 @@
     }
 
     function renderDoneBtn(task) {
-        if (task.project_task_id && task.project_id) {
+        if (task.project_task_id && task.project_id && !task.project_day_plan) {
             return `<a class="flow-project-finish" href="/static/projects.html?task=${task.project_task_id}&finish=1#taskDetail">${task.completed ? '已验收' : '验收'}</a>`;
         }
-        const doneLabel = escapeHtml(t('schedule.done', '完成'));
+        const doneLabel = escapeHtml(task.project_day_plan ? '今日完成' : t('schedule.done', '完成'));
         if (task.completed) {
-            const undoLabel = escapeHtml(t('schedule.undoDone', '取消完成'));
+            const undoLabel = escapeHtml(task.project_day_plan ? '取消今日完成' : t('schedule.undoDone', '取消完成'));
             return `<button type="button" class="flow-done-btn is-on" data-act="toggle" aria-pressed="true" aria-label="${undoLabel}">${undoLabel}</button>`;
         }
         return `<button type="button" class="flow-done-btn" data-act="toggle" aria-pressed="false" aria-label="${doneLabel}">${doneLabel}</button>`;
@@ -282,8 +283,8 @@
         return `<button type="button" class="flow-task-text" data-act="edit" aria-label="编辑任务：${escapeHtml(task.text)}">${escapeHtml(task.text)}</button>`;
     }
 
-    function renderDeleteBtn() {
-        const label = escapeHtml(t('schedule.delete', '删除'));
+    function renderDeleteBtn(task) {
+        const label = escapeHtml(task?.project_day_plan ? '移出这一天' : t('schedule.delete', '删除'));
         return `<button type="button" class="flow-mini-btn flow-danger" data-act="delete" aria-label="${label}">${label}</button>`;
     }
 
@@ -296,11 +297,11 @@
             </div>`;
     }
 
-    function renderEditActions(showSplit) {
+    function renderEditActions(showSplit, task) {
         return `
             <div class="flow-task-actions">
                 ${showSplit ? `<button type="button" data-act="split">${escapeHtml(t('schedule.split', '拆开'))}</button>` : ''}
-                ${renderDeleteBtn()}
+                ${renderDeleteBtn(task)}
             </div>`;
     }
 
@@ -386,8 +387,12 @@
     }
 
     function renderTask(task, isChild) {
+        const plan = task.project_day_plan;
+        const source = plan ? `<div class="schedule-project-source">${escapeHtml(plan.project_title)} › ${escapeHtml(plan.stage_title)} › ${plan.source_missing ? `${escapeHtml(plan.task_title)} · 来源已移除，历史安排保留` : `<a href="/static/projects.html?task=${task.project_task_id}#taskDetail">${escapeHtml(plan.task_title)}</a> · ${plan.source_completed ? '项目任务已验收' : '修改或验收项目任务'}`}</div>` : '';
+        const recorded = plan ? `<p class="schedule-project-time">今日已记录 ${task.actual_minutes} 分 · 项目累计已记录 ${plan.project_actual_minutes} 分${plan.source_estimated_minutes != null ? ' · 调入时整项预计 ' + plan.source_estimated_minutes + ' 分' : ''}（未记录不代表未投入）</p>` : '';
         return `
             <article class="flow-task${isChild ? ' is-child' : ''}${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
+                ${source}
                 <div class="flow-task-summary">
                 <div class="flow-task-main">
                     ${renderTitle(task)}
@@ -395,6 +400,7 @@
                 </div>
                 ${renderQuickAttributes(task)}
                 ${renderTimeFeedback(task)}
+                ${recorded}
                 ${renderTaskLaunch(task)}
                 ${renderSplitRow(task)}
                 <div class="flow-task-detail" id="scheduleDetail-${task.id}" ${expandedTasks.has(task.id) ? '' : 'hidden'}>
@@ -402,7 +408,7 @@
                 ${renderTaskLinks(task)}
                 ${renderMethod(task)}
                 ${renderNote(task)}
-                ${renderEditActions(false)}
+                ${renderEditActions(false, task)}
                 </div>
             </article>
             ${(task.children || []).map((child) => renderTask(child, true)).join('')}
@@ -566,11 +572,13 @@
         renderToolbar();
         let projectEntry = document.getElementById('scheduleProjectEntry');
         if (!projectEntry) {
-            projectEntry = document.createElement('a'); projectEntry.id = 'scheduleProjectEntry';
+            projectEntry = document.createElement('button'); projectEntry.type = 'button'; projectEntry.id = 'scheduleProjectEntry';
             projectEntry.className = 'schedule-project-entry'; projectEntry.textContent = '从项目安排';
+            projectEntry.setAttribute('aria-expanded', 'false'); projectEntry.setAttribute('aria-controls', 'scheduleStagePanel');
+            projectEntry.addEventListener('click', () => window.ShuranScheduleProjects?.toggle());
             document.querySelector('.schedule-date-actions').appendChild(projectEntry);
         }
-        projectEntry.href = `/static/projects.html?date=${encodeURIComponent(currentDay())}#projectTitle`;
+        window.ShuranScheduleProjects?.sync(currentDay(), data.tasks, mode);
         setHint();
         renderLater();
         if (!(data.tasks || []).length) {
@@ -607,6 +615,7 @@
     }
 
     async function load(nextDay) {
+        const serial = ++loadSerial;
         const token = localStorage.getItem('authToken');
         if (!token) {
             data = { date: currentDay(), designed_at: null, tasks: [] };
@@ -615,9 +624,12 @@
             return;
         }
         day = nextDay || currentDay();
+        window.ShuranScheduleProjects?.sync(day, data.tasks, mode);
         editingId = null;
         editingLaterId = null;
-        data = await api(`?task_date=${encodeURIComponent(day)}`);
+        const result = await api(`?task_date=${encodeURIComponent(day)}`);
+        if (serial !== loadSerial || token !== localStorage.getItem('authToken')) return;
+        data = result;
         await loadLater();
         render();
     }

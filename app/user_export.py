@@ -5,12 +5,13 @@ import zipfile
 
 from sqlalchemy.orm import Session
 
-from app import models, project_models
+from app import models, project_models, stage_schedule_models
 
 
 # Deliberate allowlist: adding a table to the application must not silently put
 # credentials, other accounts, or internal administration data into this ZIP.
 USER_TABLES = (
+    stage_schedule_models.DailyProjectPlan,
     project_models.WorkLinkSetting, project_models.WorkMomentLink,
     models.MethodCard, models.MethodUse, models.MethodVisit, models.ProductFeedback,
     models.Ebook, models.EbookProgress, models.EbookNote,

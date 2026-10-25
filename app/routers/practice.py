@@ -236,7 +236,9 @@ def feedback(kind: str, row_id: int, body: Feedback, user: User = Depends(get_cu
     svc.lock_user(db, user.id)
     kind, row = task_owner(db, user.id, kind, row_id)
     prior = svc.events(db, user.id, kind, row.id, "feedback")
-    feedback_day = body.feedback_date or (prior[0].record_date if prior else svc.today())
+    from app.stage_schedule_models import day_plan
+    scoped = kind == "daily" and day_plan(db, user.id, row.id)
+    feedback_day = body.feedback_date or (row.task_date if scoped else (prior[0].record_date if prior else svc.today()))
     if feedback_day > svc.today(): raise HTTPException(400, "实际结果不能记为未来日期")
     # Use the same delivery checks and settlement as every other completion entry.
     if kind == "task":
@@ -248,7 +250,11 @@ def feedback(kind: str, row_id: int, body: Feedback, user: User = Depends(get_cu
         if body.result == "completed":
             if db.query(DailyTask).filter_by(parent_id=row.id).filter(DailyTask.deleted_at.is_(None)).count():
                 raise HTTPException(409, "请分别反馈子任务，容器不重复记录完成用时")
-            require_ready(db, user.id, kind, row.id, purpose="delivery")
+            from app.stage_schedule_models import day_plan, require_scope_completion_ready
+            if day_plan(db, user.id, row.id):
+                require_scope_completion_ready(db, user.id, row)
+            else:
+                require_ready(db, user.id, kind, row.id, purpose="delivery")
             svc.require_checklist(db, user.id, kind, row, body.checklist_exception)
         row.completed = body.result == "completed"
         from app.schedule_todos import sync_task_reminder

@@ -40,6 +40,8 @@ from app.project_models import (
     ReaderBinding, ReaderPairing, ReaderReadingDay, ReaderReceiverAccount,
 )
 
+from app.stage_schedule_models import DailyProjectPlan
+
 logger = logging.getLogger(__name__)
 BEIJING = ZoneInfo("Asia/Shanghai")
 BACKUP_DIR = Path("backups")
@@ -140,6 +142,7 @@ def build_backup_zip(db: Session) -> bytes:
 
     for name, model in {
         "daily_tasks.csv": DailyTask,
+        "daily_project_plans.csv": DailyProjectPlan,
         "daily_schedules.csv": DailySchedule,
         "daily_todos_history.csv": DailyTodo,
         "payment_transactions.csv": PaymentTransaction,

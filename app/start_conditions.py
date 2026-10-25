@@ -83,6 +83,11 @@ def evaluate_condition(db, condition, now=None):
 def readiness(db, user_id, kind, row_id, *, purpose="start", now=None):
     if kind == "daily":
         daily = db.get(DailyTask, row_id)
+        from app.stage_schedule_models import day_plan
+        if daily and daily.user_id == user_id and not daily.project_task_id and day_plan(db, user_id, daily.id):
+            return {"owner_kind": "daily", "owner_id": row_id, "can_start": False, "configured": False,
+                    "blockers": ["关联项目任务已移除，请处理原关联"], "reminders": [], "conditions": [],
+                    "summary": "关联项目任务已移除，请处理原关联"}
         if daily and daily.user_id == user_id and daily.deleted_at is None and daily.project_task_id:
             linked = db.get(ProjectTask, daily.project_task_id)
             if linked is None or linked.user_id != user_id or linked.deleted_at is not None:

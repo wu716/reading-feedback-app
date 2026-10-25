@@ -50,7 +50,7 @@ def create_tables():
 
 def ensure_schema():
     """幂等增量升级；本轮 DDL 在一个事务内完成，不重写旧业务行。"""
-    from app import models, project_models  # noqa: F401 - register every table
+    from app import models, project_models, stage_schedule_models  # noqa: F401 - register every table
 
     with engine.begin() as conn:
         Base.metadata.create_all(bind=conn)

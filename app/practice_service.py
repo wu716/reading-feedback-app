@@ -31,7 +31,9 @@ def owner(db, user_id, kind, row_id):
     if row is None or row.user_id != user_id or getattr(row, "deleted_at", None) is not None:
         raise HTTPException(404, "记录不存在")
     if kind == "daily" and row.project_task_id:
-        return owner(db, user_id, "task", row.project_task_id)
+        from app.stage_schedule_models import day_plan
+        if not day_plan(db, user_id, row.id):
+            return owner(db, user_id, "task", row.project_task_id)
     return kind, row
 
 
@@ -127,6 +129,10 @@ def snapshot_session(db, session):
         stage = db.get(ProjectStage, row.stage_id)
         if stage and stage.state == "current" and not commitment(db, session.user_id, stage.id):
             commit_stage(db, session.user_id, stage)
+    if session.daily_task_id:
+        from app.stage_schedule_models import day_plan
+        if day_plan(db, session.user_id, session.daily_task_id):
+            kind, row = owner(db, session.user_id, "daily", session.daily_task_id)
     state = practice(db, session.user_id, kind, row, create=False)
     session.practice_snapshot_json = dumps({"kind": kind, "id": row.id, "title": title(row),
         "difficulty": state.difficulty if state else None, "importance": state.importance if state else None,
@@ -187,6 +193,8 @@ def training_report(db, user_id, start, end):
     total, difficult, unknown = 0, 0, 0
     work = []
     assessments = {a.work_session_id: a for a in db.query(TimeActivityAssessment).filter_by(user_id=user_id)}
+    from app.stage_schedule_models import DailyProjectPlan
+    scoped_ids = {p[0] for p in db.query(DailyProjectPlan.daily_task_id).filter_by(user_id=user_id)}
     for s in sessions:
         seconds = max(0, (min(s.ended_at, hi) - max(s.started_at, lo)).total_seconds())
         snap = json.loads(s.practice_snapshot_json or "{}")
@@ -197,7 +205,8 @@ def training_report(db, user_id, start, end):
         linked_daily = db.get(DailyTask, s.daily_task_id) if s.daily_task_id else None
         project_task_id = s.project_task_id or (linked_daily.project_task_id if linked_daily else None)
         work.append({"session_id": s.id, "title": snap.get("title") or s.label or "历史工作片",
-            "kind": "task" if project_task_id else "daily", "task_id": project_task_id or s.daily_task_id,
+            "kind": "task" if project_task_id and s.daily_task_id not in scoped_ids else "daily",
+            "task_id": project_task_id if project_task_id and s.daily_task_id not in scoped_ids else s.daily_task_id,
             "seconds": seconds, "difficulty": snap.get("difficulty"), "planned_importance": snap.get("importance"),
             "planned_goal": snap.get("goal"),
             "actual_importance": a.importance if a else None, "interesting": a.interesting if a else None,
@@ -213,7 +222,7 @@ def training_report(db, user_id, start, end):
     awaiting = {(w["kind"], w["task_id"]): w["title"] for w in work if (w["kind"], w["task_id"]) not in latest}
     for daily in db.query(DailyTask).filter(DailyTask.user_id == user_id, DailyTask.task_date >= start,
             DailyTask.task_date <= end, DailyTask.completed.is_(True), DailyTask.deleted_at.is_(None)):
-        identity = ("task", daily.project_task_id) if daily.project_task_id else ("daily", daily.id)
+        identity = ("task", daily.project_task_id) if daily.project_task_id and daily.id not in scoped_ids else ("daily", daily.id)
         if identity not in latest and not db.query(DailyTask.id).filter(DailyTask.parent_id == daily.id, DailyTask.deleted_at.is_(None)).first():
             awaiting[identity] = daily.text
     reflections = {}

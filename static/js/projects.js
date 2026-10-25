@@ -149,7 +149,7 @@
     const today = [...merged.values()].map(task => {
       const linked = byId.get(task.project_task_id);
       return {key:`daily:${task.id}`, title:`${task.path ? task.path + ' / ' : ''}${task.text}`,
-        project_task_id:linked?.id || null, daily_task_id:task.id,
+        project_task_id:linked?.id || null, daily_task_id:task.id, project_day_plan:task.project_day_plan || null,
         disabled:task.completed || task.readiness?.can_start === false || (!!linked && !linked.can_start),
         reason:task.readiness?.summary || linked?.readiness?.summary || '', group:'今日任务'};
     });
@@ -179,6 +179,10 @@
   }
   function dtLabel(iso) { return iso ? new Date(iso).toLocaleString('zh-CN', {hour12:false}) : '进行中'; }
   function stageName(stage) { return stage.unassigned ? '不分阶段' : stage.state === 'current' ? '当前阶段' : stage.state === 'next' ? '下一阶段' : '已结束'; }
+  function dailyProgress(task) {
+    const rows = task.daily_progress || [];
+    return rows.length ? `<details class="project-daily-progress"><summary>每日推进 · ${rows.length} 项安排</summary>${rows.map(row => `<p><a href="/static/index.html?schedule_date=${encodeURIComponent(row.date)}#schedule">${esc(row.date)}</a> · ${esc(row.text)} · ${row.completed ? '当天已完成' : '继续推进'}${row.note ? `<br>${esc(row.note)}` : ''}</p>`).join('')}</details>` : '';
+  }
   function goalOptions(selected) { return '<option value="">暂不关联</option>' + state.overview.goals.map(g => `<option value="${g.id}" ${g.id === selected ? 'selected' : ''}>${esc(g.title)}</option>`).join(''); }
   function stageOptions(project, selected) { return '<option value="" '+(selected==null?'selected':'')+'>不分阶段</option>'+(project?.stages || []).filter(s => s.state !== 'closed').map(s => `<option value="${s.id}" ${s.id === selected ? 'selected' : ''}>${esc(s.title)} · ${stageName(s)}</option>`).join(''); }
 
@@ -265,6 +269,7 @@
     root.innerHTML = `<div class="detail-header"><h3>${esc(task.title)}</h3><button type="button" class="secondary" data-act="close-detail">收起</button></div>
       <p class="task-metrics">原估计 ${task.original_estimate_minutes ?? '未填'} 分 · 当前估计 ${task.estimated_minutes ?? '未填'} 分 · 实际投入 ${task.actual_minutes} 分${task.difference_minutes == null ? '' : ` · 差额 ${task.difference_minutes > 0 ? '+' : ''}${task.difference_minutes} 分`}</p>
       <p>${esc(task.readiness?.summary || '未配置启动条件')} · ${task.execution_role === 'preparation' ? '筹备任务：不继承项目条件' : '正式任务：继承项目条件'}</p>
+      ${dailyProgress(task)}
       <p class="scheduled-dates">已安排：${(task.scheduled_dates || []).map(day => `<a href="/static/index.html?schedule_date=${day}#schedule">${day}</a>`).join(' · ') || '尚未安排到日程'}</p><div class="detail-actions"><button type="button" data-act="queue-task" ${task.can_start ? '' : 'disabled'}>加入时间片轮转</button><a href="/static/index.html#schedule">查看日程</a></div><form id="scheduleTaskForm"><label>安排到哪天 <input name="task_date" type="date" required></label><button type="submit">写入日程</button></form><div class="detail-actions" role="tablist" aria-label="任务操作分区"><button type="button" class="${state.detailMode === 'attributes' ? '' : 'secondary'}" data-act="detail-mode" data-mode="attributes">内容与估时</button><button type="button" class="${state.detailMode === 'conditions' ? '' : 'secondary'}" data-act="detail-mode" data-mode="conditions">开始条件与约束</button><button type="button" class="${state.detailMode === 'dependencies' ? '' : 'secondary'}" data-act="detail-mode" data-mode="dependencies">完成检查</button><button type="button" class="${state.detailMode === 'completion' ? '' : 'secondary'}" data-act="detail-mode" data-mode="completion">安排与验收</button></div>
       <div class="detail-zone" ${state.detailMode === 'conditions' ? '' : 'hidden'}><div id="taskConditions" class="condition-workspace"></div>
         <h4>原有任务前置关系</h4><p>${prereq.length ? prereq.map(t => `${esc(t.title)} <button type="button" class="secondary" data-act="remove-dep" data-id="${t.id}">说明原因并移除</button>`).join(' · ') : '未配置原有任务前置。其他条件见上方。'}</p>
@@ -325,8 +330,9 @@
     const practice = $('#executionPractice');
     if (practice) {
       const target = current?.kind === 'work' ? current : nextTask();
-      const taskId = target?.project_task_id || target?.daily_task_id;
-      const kind = target?.project_task_id ? 'task' : 'daily';
+      const scoped = target?.project_day_plan || (target?.daily_task_id && sessionChoice(target)?.project_day_plan);
+      const taskId = scoped ? target.daily_task_id : target?.project_task_id || target?.daily_task_id;
+      const kind = target?.project_task_id && !scoped ? 'task' : 'daily';
       const r = current?.practice_snapshot?.rehearsal || {};
       practice.hidden = !taskId;
       practice.innerHTML = taskId ? `${kind==='task'&&!active?'<p class="practice-note">当前列表是本阶段的执行承诺；先集中完成关键工作，后续想法放入下一阶段。</p>':''}${r.first_step?`<p><strong>第一步</strong> ${esc(r.first_step)}</p>`:''}${r.preparation?`<p>关键准备：${esc(r.preparation)}</p>`:''}${r.response?`<p>卡住时：${esc(r.response)}</p>`:''}<button type="button" data-execution-practice="${kind}:${taskId}" data-section="rehearsal">预演与有点难开始</button><button type="button" data-execution-practice="${kind}:${taskId}" data-section="feedback">核对结果与用时</button>` : '';
@@ -340,6 +346,7 @@
     $('#endWork').disabled = !active && !paused;
     $('#endWork').textContent = active?.kind === 'break' ? '提前结束休息' : '结束片段';
     $('#completeCurrentTask').hidden = !active || active.kind !== 'work';
+    $('#completeCurrentTask').textContent = currentChoice?.project_day_plan ? '今日目标完成' : '完成当前任务';
     const handoff = state.plan.handoff;
     $('#timerControls').hidden = !!handoff;
     $('[data-next=break]').classList.toggle('secondary', !!handoff);

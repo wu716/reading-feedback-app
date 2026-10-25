@@ -1,0 +1,44 @@
+/* Stage drafts use the schedule's paper and grey-blue language. */
+.schedule-stage-panel{margin:24px 0;padding:20px 0;border-block:1px solid var(--workspace-line,#dddfd7);color:var(--workspace-ink,#21364a)}
+.schedule-stage-panel[hidden]{display:none!important}
+.schedule-stage-panel h2{font:500 20px/1.5 Georgia,SimSun,serif;margin:0}
+.schedule-stage-head,.schedule-stage-save,.schedule-stage-omitted{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.schedule-stage-panel button,.schedule-project-entry{font:inherit;color:var(--workspace-blue,#315a7e);border:1px solid #b9cbd7;background:var(--workspace-paper,#f7f5ef);border-radius:5px;padding:6px 10px;cursor:pointer}
+.schedule-stage-panel button:hover,.schedule-project-entry:hover{background:var(--workspace-selected,#e1e8eb)}
+.schedule-stage-panel button:focus-visible,.schedule-stage-panel input:focus-visible,.schedule-stage-panel select:focus-visible,.schedule-project-entry:focus-visible{outline:2px solid var(--workspace-blue,#315a7e);outline-offset:3px}
+.schedule-stage-panel button:disabled{opacity:.6;cursor:default}
+.schedule-stage-panel small,.schedule-stage-previous{display:block;color:#526a7a;font-size:12px;line-height:1.7}
+.schedule-stage-pickers{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin:18px 0 14px}
+.schedule-stage-pickers label,.schedule-stage-text{display:grid;gap:6px;min-width:0;color:#526a7a;font-size:12px}
+.schedule-stage-panel input,.schedule-stage-panel select{box-sizing:border-box;min-width:0;max-width:100%;border:1px solid #b9cbd7;background:var(--workspace-paper,#f7f5ef);color:var(--workspace-ink,#21364a);border-radius:5px;padding:8px 10px;font:inherit}
+.schedule-stage-pickers select{width:100%;font-size:14px}
+.schedule-stage-context{padding:12px 14px;border-left:2px solid var(--workspace-blue,#315a7e);background:var(--workspace-selected,#e1e8eb);white-space:pre-line;font-size:13px;overflow-wrap:anywhere}
+.schedule-stage-context:empty{display:none}
+.schedule-stage-item{padding:18px 0;border-bottom:1px solid var(--workspace-line,#dddfd7)}
+.schedule-stage-text{margin-top:10px}
+.schedule-stage-text input{width:100%;font:17px/1.6 Georgia,SimSun,serif}
+.schedule-stage-panel .flow-task-attributes{display:flex;flex-wrap:wrap;align-items:end;gap:18px;margin-top:14px}
+.schedule-stage-panel .flow-attribute-group{display:grid;gap:6px;min-width:0}
+.schedule-stage-panel .flow-attribute-label{font-size:12px;color:#526a7a}
+.schedule-stage-panel .flow-attribute-options{display:flex;padding:2px;border:1px solid #b9cbd7;background:#edf1f2;border-radius:5px}
+.schedule-stage-panel .flow-chip{border:0;background:transparent;padding:6px 9px;color:#315a7e;font-size:14px}
+.schedule-stage-panel .flow-chip[aria-pressed=true]{background:#315a7e;color:#fff}
+.schedule-stage-panel input[type=number]{width:120px;font-size:14px}
+.schedule-stage-omitted{padding:13px 0;border-bottom:1px solid var(--workspace-line,#dddfd7)}
+.schedule-stage-waiting{margin:10px 0 0;color:#735626;font-size:12px;overflow-wrap:anywhere}
+.schedule-stage-previous{margin:9px 0 0}
+.schedule-stage-save{margin-top:16px}
+.schedule-stage-save small{margin-top:4px}
+.schedule-stage-panel .schedule-stage-primary{background:#315a7e;color:#fff;border-color:#315a7e}
+.schedule-stage-new{margin-top:14px}
+#stageScheduleStatus{font-size:13px;color:#315a7e;margin:12px 0;min-height:1.4em}
+#stageScheduleStatus[role=alert]{color:#8e3e2e}
+.schedule-project-source{font-size:12px;color:#526a7a;margin:0 0 8px;overflow-wrap:anywhere}
+.schedule-project-source a{color:#315a7e;text-underline-offset:3px}
+.schedule-project-time{font-size:12px;color:#526a7a;margin-top:5px}
+.project-daily-progress{margin:14px 0;color:var(--workspace-ink,#21364a);font-size:13px}
+.project-daily-progress summary,.project-daily-progress a{color:var(--workspace-blue,#315a7e)}
+.project-daily-progress p{padding:8px 0;border-bottom:1px solid var(--workspace-line,#dddfd7)}
+@media(max-width:720px){.schedule-stage-pickers{grid-template-columns:minmax(0,1fr)}.schedule-stage-panel .flow-task-attributes{gap:12px}.schedule-stage-head{align-items:flex-start}}
+@media(max-width:430px){.schedule-stage-save .schedule-stage-primary{width:100%}.schedule-stage-panel input,.schedule-stage-panel select{font-size:16px}.schedule-stage-panel .flow-task-attributes{gap:12px}}
+@media(pointer:coarse){.schedule-stage-panel button,.schedule-project-entry{min-height:44px}}

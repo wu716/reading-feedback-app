@@ -138,6 +138,10 @@ class GoalUpdate(BaseModel):
 
 
 def task_payload(db: Session, row: ProjectTask) -> dict:
+    from app.stage_schedule_models import DailyProjectPlan
+    daily_progress = db.query(DailyTask).join(DailyProjectPlan, DailyProjectPlan.daily_task_id == DailyTask.id).filter(
+        DailyTask.user_id == row.user_id, DailyTask.project_task_id == row.id, DailyTask.deleted_at.is_(None),
+        DailyProjectPlan.user_id == row.user_id).order_by(DailyTask.task_date.desc(), DailyTask.id).all()
     prerequisites = db.query(TaskDependency).filter(TaskDependency.task_id == row.id).all()
     blockers = [
         dep.prerequisite_id for dep in prerequisites
@@ -161,6 +165,8 @@ def task_payload(db: Session, row: ProjectTask) -> dict:
         "practice": practice_service.task_payload(db, row.user_id, "task", row),
         "original_estimate_minutes": row.original_estimate_minutes,
         "estimated_minutes": row.estimated_minutes, "actual_minutes": actual,
+        "daily_progress": [{"date": d.task_date, "text": d.text, "note": d.note, "completed": bool(d.completed),
+                            "estimated_minutes": d.estimated_minutes} for d in daily_progress],
         "scheduled_dates": [str(d[0]) for d in db.query(DailyTask.task_date).filter(DailyTask.user_id == row.user_id,
             DailyTask.project_task_id == row.id, DailyTask.deleted_at.is_(None)).distinct().order_by(DailyTask.task_date).all()],
         "difference_minutes": round(actual - row.original_estimate_minutes, 2) if row.original_estimate_minutes is not None else None,
@@ -315,8 +321,9 @@ def update_task(task_id: int, body: TaskUpdate, user: User = Depends(get_current
     for key, value in changes.items(): setattr(row, key, value)
     if steps is not None: row.steps_json = json.dumps(clean_items(steps), ensure_ascii=False)
     if "title" in changes:
+        from app.stage_schedule_models import legacy_daily_filter
         db.query(DailyTask).filter(DailyTask.user_id == user.id, DailyTask.project_task_id == row.id,
-                                   DailyTask.deleted_at.is_(None)).update({"text": row.title})
+                                   DailyTask.deleted_at.is_(None), legacy_daily_filter(user.id)).update({"text": row.title}, synchronize_session=False)
         for daily in db.query(DailyTask).filter(DailyTask.user_id == user.id, DailyTask.project_task_id == row.id).all():
             sync_task_reminder(db, daily)
     db.commit()
@@ -409,7 +416,10 @@ def apply_task_completion(task_id, body, user, db):
     row.variance_reason = body.variance_reason
     linked = db.query(DailyTask).filter(DailyTask.user_id == user.id, DailyTask.project_task_id == row.id, DailyTask.deleted_at.is_(None)).all()
     from app.routers.schedule import refresh_parent_completion
+    from app.stage_schedule_models import day_plan
     for daily in linked:
+        if day_plan(db, user.id, daily.id):
+            continue
         daily.completed = body.result == "completed"
         refresh_parent_completion(db, user.id, daily)
         sync_task_reminder(db, daily)
