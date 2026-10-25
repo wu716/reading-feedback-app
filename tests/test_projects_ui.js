@@ -33,10 +33,11 @@ const schedule = {tasks:[
   {id:9,text:'已完成',completed:true,children:[],project_task_id:null},
 ]};
 function start(body) {
+  if(plan.handoff && body.kind==='work') body={...body,planned_seconds:plan.remaining_seconds};
   const row={...body,id:sessions.length+1,source:'timer',started_at:new Date().toISOString(),ended_at:null,
     planned_seconds:body.planned_seconds || body.planned_minutes*60,
     deadline_at:new Date(Date.now()+(body.planned_seconds || body.planned_minutes*60)*1000).toISOString()};
-  sessions.unshift(row);plan.paused=null;plan.remaining_seconds=null;return row;
+  sessions.unshift(row);plan.paused=null;plan.handoff=null;plan.remaining_seconds=null;return row;
 }
 const context = {
   Date:class extends Date { static now() { return simulatedNow ?? Date.now(); } },
@@ -55,6 +56,13 @@ const context = {
     else if(url.endsWith('/execution/resume')) {const old=plan.paused;data=start({...old,planned_seconds:plan.remaining_seconds});}
     else if(url.endsWith('/execution'))data=plan;
     else if(url.endsWith('/sessions/start'))data=start(body);
+    else if(url.match(/\/sessions\/\d+\/complete$/)) {
+      const row=sessions.find(s=>s.id===Number(url.split('/').at(-2)));
+      row.ended_at=new Date().toISOString();plan.handoff=row;plan.paused=null;plan.remaining_seconds=600;
+      if(row.daily_task_id){const t=schedule.tasks.find(t=>t.id===row.daily_task_id);if(t)t.completed=true;}
+      if(row.project_task_id){const t=overview.projects[0].tasks.find(t=>t.id===row.project_task_id);if(t){t.state='completed';t.can_start=false;}}
+      data=plan;
+    }
     else if(url.endsWith('/sessions/switch')) {
       const old=sessions.find(s=>s.id===body.from_session_id); old.ended_at=new Date().toISOString();
       data={ended:old,started:start(body)};
@@ -155,5 +163,16 @@ async function addStageTask(stage, title) {
  assert.equal(element('#focusFinished').hidden,true);
  ticker(); await flush();
  assert.equal(element('#focusFinished').hidden,true,'acknowledged slice does not remind twice');
- console.log('PASS stage task entry, queue rotation, and pause/resume remaining time');
+ simulatedNow=null;
+ await click('#endWork');
+ await click('#startWork');
+ await click('#completeCurrentTask');
+ assert.match(element('#decisionCaption').textContent,/等待选择期间不计时/);
+ assert.match(element('[data-next=switch]').textContent,/10分0秒/);
+ assert.equal(element('#timerDisplay').textContent,'10:00');
+ assert.equal(alarms.at(-1).id,undefined,'completion cancels the native countdown during decision');
+ await click('#startWork');
+ assert.equal(sessions[0].planned_seconds,600,'next task uses remaining budget');
+ assert.equal(alarms.at(-1).id,sessions[0].id,'native alarm follows next task with shorter deadline');
+ console.log('PASS queue, pause/resume, completion handoff and native alarm synchronization');
 })().catch(error=>{console.error(error);process.exitCode=1;});

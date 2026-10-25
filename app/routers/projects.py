@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user
 from app.database import get_db
-from app.execution_service import budget_seconds, execution_plan, settle_expired
+from app.execution_service import budget_seconds, execution_plan, settle_expired, finish_with_remainder, is_handoff
 from app.models import DailyTask, TimeLogNode, User
 from app.schedule_todos import sync_task_reminder
 from app.project_models import (
@@ -419,13 +419,7 @@ def apply_task_completion(task_id, body, user, db):
             sync_task_reminder(db, daily)
     if body.result == "completed":
         for active in practice_service.task_sessions(db, user.id, "task", row.id):
-            if active.ended_at is None:
-                active.ended_at = max(datetime.utcnow(), active.started_at + timedelta(microseconds=1))
-        plan = execution_plan(db, user.id)
-        paused = db.get(WorkSession, plan.paused_session_id) if plan.paused_session_id else None
-        if paused and paused.project_task_id == row.id:
-            plan.paused_session_id = None
-            plan.remaining_seconds = None
+            finish_with_remainder(db, active)
     unchecked = db.query(TaskChecklistItem).filter(TaskChecklistItem.task_id == row.id, TaskChecklistItem.done.is_(False)).count()
     db.flush()
     return {"task": task_payload(db, row), "unchecked_count": unchecked}
@@ -508,7 +502,8 @@ def plan_payload(db, user_id):
             "completed": t.completed, "project_task_id": t.project_task_id, "task_date": str(t.task_date),
             "readiness": readiness(db, user_id, "daily", t.id)} for t in daily_tasks], "work_minutes": plan.work_minutes,
             "break_minutes": plan.break_minutes, "remaining_seconds": plan.remaining_seconds,
-            "paused": session_payload(paused) if paused else None}
+            "paused": session_payload(paused) if paused and not is_handoff(paused) else None,
+            "handoff": session_payload(paused) if is_handoff(paused) and plan.remaining_seconds else None}
 
 
 @router.get("/execution")
@@ -545,6 +540,7 @@ def resume_execution(acknowledge_reminders: bool = False, user: User = Depends(g
     plan = execution_plan(db, user.id)
     if not plan.paused_session_id or not plan.remaining_seconds: fail("没有可恢复的时间片", 409)
     old = owned(db, WorkSession, plan.paused_session_id, user.id)
+    if is_handoff(old): fail("原任务已完成，请用剩余时间做下一项或开始休息", 409)
     body = StartSessionInput(project_task_id=old.project_task_id, daily_task_id=old.daily_task_id,
                              acknowledge_reminders=acknowledge_reminders,
                              kind=old.kind, label=old.label, planned_minutes=old.planned_minutes or 20,
@@ -716,11 +712,33 @@ def start_session(body: StartSessionInput, user: User = Depends(get_current_acti
                       kind=body.kind, source="timer", started_at=now, planned_minutes=body.planned_minutes,
                       planned_seconds=body.planned_seconds, label=body.label)
     plan = execution_plan(db, user.id)
+    previous = db.get(WorkSession, plan.paused_session_id) if plan.paused_session_id else None
+    if body.kind == "work" and is_handoff(previous) and plan.remaining_seconds:
+        row.planned_seconds = plan.remaining_seconds
     plan.paused_session_id = None
     plan.remaining_seconds = None
     practice_service.snapshot_session(db, row)
     db.add(row); db.commit(); db.refresh(row)
     return session_payload(row)
+
+
+@router.post("/sessions/{session_id}/complete")
+async def complete_session_task(session_id: int, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    db.query(User).filter(User.id == user.id).with_for_update().first()
+    row = owned(db, WorkSession, session_id, user.id)
+    settle_expired(db, user.id)
+    if row.kind != "work" or row.ended_at is not None:
+        fail("当前工作片已结束，请刷新后在任务详情中核对完成状态", 409)
+    if row.daily_task_id:
+        daily = owned(db, DailyTask, row.daily_task_id, user.id)
+        from app.routers.schedule import update_task, TaskUpdate
+        await update_task(daily.id, TaskUpdate(completed=True), user, db)
+    elif row.project_task_id:
+        apply_task_completion(row.project_task_id, CompletionInput(result="completed"), user, db)
+    else:
+        fail("当前片段没有关联任务")
+    db.commit()
+    return plan_payload(db, user.id)
 
 
 @router.post("/sessions/switch")

@@ -1,12 +1,12 @@
 {
-  "versionCode": 70,
-  "versionName": "2.0.28",
+  "versionCode": 75,
+  "versionName": "2.0.33",
   "filename": "shuran.apk",
-  "notes": "书然 2.0.28：工作片到时自动进入休息，提醒先不看手机、不查看消息，起身走动；休息结束等待主动开始下一片。到时通知采用回落拨弦铃声，补齐后台提醒与重复通知保护。",
+  "notes": "书然 2.0.33：任务在工作片中途完成后，立即保存实际投入；可用本片剩余时间处理下一项，或现在休息。等待选择不计时，刷新恢复余时，沿用回落拨弦到时提醒。",
   "require_shell": true,
   "force": true,
   "minVersionCode": 20,
   "minVersionName": "1.5.4",
-  "sha256": "f17213346b464ab06419ad430dd4d45136bcc2bf491e35c9e7cd64bdb7663cf5",
-  "size_bytes": 1987255
+  "sha256": "c09b2e90add3a0c6e223bac6757f6095bfdc93473ee68cb30eab6efd807f623f",
+  "size_bytes": 1987251
 }

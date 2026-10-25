@@ -162,6 +162,83 @@ class ProjectFlowTests(unittest.TestCase):
         self.assertEqual(self.req("POST", f"/sessions/{rest['id']}/stop", {}).status_code, 200)
         self.assertFalse(any(s["ended_at"] is None for s in self.req("GET", "/sessions").json()["items"]))
 
+    def test_completed_task_passes_only_remaining_budget_to_next_task(self):
+        _, project, stage = self.project()
+        a = self.task(project, stage, "A")
+        b = self.task(project, stage, "B")
+        with self.Session() as db:
+            now = datetime.utcnow()
+            db.add(WorkSession(user_id=1, project_task_id=a["id"], kind="work", source="manual",
+                               started_at=now-timedelta(minutes=40), ended_at=now-timedelta(minutes=20)))
+            db.commit()
+        work = self.req("POST", "/sessions/start", {"project_task_id": a["id"], "planned_minutes": 20}).json()
+        with self.Session() as db:
+            db.get(WorkSession, work["id"]).started_at = datetime.utcnow() - timedelta(minutes=10)
+            db.commit()
+        completed = self.req("POST", f"/sessions/{work['id']}/complete", {})
+        self.assertEqual(completed.status_code, 200, completed.text)
+        plan = completed.json()
+        self.assertIsNone(plan["paused"])
+        self.assertEqual(plan["handoff"]["id"], work["id"])
+        sessions = self.req("GET", "/sessions").json()["items"]
+        total = sum(s["duration_minutes"] or 0 for s in sessions if s["project_task_id"] == a["id"])
+        self.assertAlmostEqual(total, 30, delta=0.05)
+        self.assertTrue(598 <= plan["remaining_seconds"] <= 600)
+        self.assertEqual(self.req("GET", "/execution").json()["remaining_seconds"], plan["remaining_seconds"])
+        self.assertEqual(self.req("POST", "/execution/resume", {}).status_code, 409)
+        self.assertEqual(self.req("POST", f"/sessions/{work['id']}/complete", {}).status_code, 409)
+        started = self.req("POST", "/sessions/start", {"project_task_id": b["id"], "planned_minutes": 20, "planned_seconds": 10800})
+        self.assertEqual(started.status_code, 200, started.text)
+        self.assertEqual(started.json()["planned_seconds"], plan["remaining_seconds"])
+        self.assertIsNone(self.req("GET", "/execution").json()["handoff"])
+        with self.Session() as db:
+            db.get(WorkSession, started.json()["id"]).started_at = datetime.utcnow() - timedelta(seconds=601)
+            db.commit()
+        sessions = self.req("GET", "/sessions").json()["items"]
+        self.assertEqual(sum(s["kind"] == "break" for s in sessions), 1)
+        self.assertEqual(next(s for s in sessions if s["kind"] == "break")["planned_minutes"], 5)
+
+    def test_completed_task_can_discard_remainder_and_rest_now(self):
+        _, project, stage = self.project()
+        task = self.task(project, stage, "A")
+        work = self.req("POST", "/sessions/start", {"project_task_id": task["id"]}).json()
+        self.assertEqual(self.req("POST", f"/sessions/{work['id']}/complete", {}).status_code, 200)
+        rest = self.req("POST", "/sessions/start", {"kind": "break", "planned_minutes": 5})
+        self.assertEqual(rest.status_code, 200, rest.text)
+        self.assertEqual(rest.json()["planned_seconds"], 300)
+        self.assertIsNone(self.req("GET", "/execution").json()["handoff"])
+
+    def test_completion_shortcut_keeps_existing_acceptance_and_owner_guards(self):
+        _, project, stage = self.project()
+        task = self.task(project, stage, "A")
+        daily = self.req("POST", f"/tasks/{task['id']}/schedule", {"task_date": "2026-10-19"}).json()
+        started = self.req("POST", "/sessions/start", {"daily_task_id": daily["id"]}).json()
+        self.assertEqual(self.req("POST", f"/sessions/{started['id']}/complete", {}, user=2).status_code, 404)
+        guarded = self.req("POST", f"/sessions/{started['id']}/complete", {})
+        self.assertEqual(guarded.status_code, 409, guarded.text)
+        self.assertIsNone(self.req("GET", "/execution").json()["handoff"])
+        finished = self.req("POST", f"/tasks/{task['id']}/finish", {"result": "completed"})
+        self.assertEqual(finished.status_code, 200, finished.text)
+        self.assertIsNotNone(self.req("GET", "/execution").json()["handoff"])
+
+    def test_daily_completion_and_paused_completion_preserve_remaining_time(self):
+        with self.Session() as db:
+            daily = DailyTask(user_id=1, task_date=date.today(), text="独立任务", completed=False)
+            db.add(daily); db.commit(); daily_id = daily.id
+        work = self.req("POST", "/sessions/start", {"daily_task_id": daily_id}).json()
+        self.assertEqual(self.req("POST", f"/sessions/{work['id']}/complete", {}).status_code, 200)
+        self.assertIsNotNone(self.req("GET", "/execution").json()["handoff"])
+        self.req("POST", "/execution/discard-pause", {})
+        _, project, stage = self.project()
+        task = self.task(project, stage, "A")
+        started = self.req("POST", "/sessions/start", {"project_task_id": task["id"]}).json()
+        self.req("POST", f"/sessions/{started['id']}/stop", {"pause": True})
+        before = self.req("GET", "/execution").json()["remaining_seconds"]
+        self.assertEqual(self.req("POST", f"/tasks/{task['id']}/finish", {"result": "completed"}).status_code, 200)
+        plan = self.req("GET", "/execution").json()
+        self.assertEqual(plan["remaining_seconds"], before)
+        self.assertIsNotNone(plan["handoff"])
+
     def test_manual_early_stop_does_not_create_a_break(self):
         _, project, stage = self.project()
         task = self.task(project, stage, "A")

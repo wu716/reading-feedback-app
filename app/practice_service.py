@@ -90,15 +90,10 @@ def recorded_minutes(db, user_id, kind, row_id):
 
 
 def settle_daily_completion(db, user_id, row):
-    from app.execution_service import settle_expired, execution_plan
+    from app.execution_service import settle_expired, finish_with_remainder
     settle_expired(db, user_id)
     for s in task_sessions(db, user_id, "daily", row.id):
-        if not s.ended_at:
-            s.ended_at = max(datetime.utcnow(), s.started_at + timedelta(microseconds=1))
-    plan = execution_plan(db, user_id)
-    paused = db.get(WorkSession, plan.paused_session_id) if plan.paused_session_id else None
-    if paused and paused.daily_task_id == row.id:
-        plan.paused_session_id, plan.remaining_seconds = None, None
+        finish_with_remainder(db, s)
     db.flush()
 
 

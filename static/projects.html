@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="/static/css/date-picker.css?v=20261025calendar1">
   <script defer src="/static/js/date-picker.js?v=20261025calendar1"></script>
   <script defer src="/static/js/commitments.js?v=20261024commitment2"></script>
-  <script defer src="/static/js/projects.js?v=20261024focus1"></script>
+  <script defer src="/static/js/projects.js?v=20261025handoff1"></script>
   <link rel="stylesheet" href="/static/css/plan-practice.css?v=20261025scope1">
   <script defer src="/static/js/plan-practice.js?v=20261025scope1"></script>
   <script defer src="/static/js/app-tabbar.js?v=20261022hierarchy1"></script>
@@ -66,7 +66,7 @@
           <div class="duration-row"><label>工作 <input id="workMinutes" type="number" min="1" max="180" value="20"> 分</label><label>休息 <input id="breakMinutes" type="number" min="1" max="180" value="5"> 分</label></div>
           <div class="control-row" id="timerControls">
             <button type="button" id="startWork">开始队首任务</button>
-            <button type="button" id="pauseWork" class="secondary" disabled>暂停</button>
+            <button type="button" id="completeCurrentTask" class="secondary" hidden>完成当前任务</button><button type="button" id="pauseWork" class="secondary" disabled>暂停</button>
             <button type="button" id="endWork" class="secondary" disabled>结束片段</button>
             <button type="button" id="switchWork" class="secondary" disabled>挂起并做下一项</button>
           </div>

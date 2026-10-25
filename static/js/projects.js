@@ -339,11 +339,23 @@
     $('#pauseWork').disabled = !active;
     $('#endWork').disabled = !active && !paused;
     $('#endWork').textContent = active?.kind === 'break' ? '提前结束休息' : '结束片段';
+    $('#completeCurrentTask').hidden = !active || active.kind !== 'work';
+    const handoff = state.plan.handoff;
+    $('#timerControls').hidden = !!handoff;
+    $('[data-next=break]').classList.toggle('secondary', !!handoff);
     $('#switchWork').disabled = !nextTask();
     $('#actualStopWrap').hidden = !active;
     const decision = !active && !paused && !!lastWork();
     $('#timeDecision').hidden = !decision;
-    $('#decisionCaption').textContent = state.sessions[0]?.kind === 'break' ? '休息已结束，准备好后开始下一项。' : '这一片已挂起，未完成的任务保留在轮转中。';
+    const remainingLabel = `${Math.floor((state.plan.remaining_seconds || 0) / 60)}分${(state.plan.remaining_seconds || 0) % 60}秒`;
+    $('#decisionCaption').textContent = handoff ? `任务已完成，本次实际投入已保存。工作片还剩 ${remainingLabel}；等待选择期间不计时。` : state.sessions[0]?.kind === 'break' ? '休息已结束，准备好后开始下一项。' : '这一片已挂起，未完成的任务保留在轮转中。';
+    $('[data-next=switch]').textContent = handoff ? `用余下 ${remainingLabel} 做下一项` : '做下一项';
+    $('[data-next=switch]').disabled = !nextTask();
+    $('[data-next=continue]').hidden = !!handoff;
+    if (handoff) {
+      $('#startWork').textContent = '用剩余时间做下一项';
+      $('#switchWork').textContent = '用剩余时间做下一项';
+    } else $('#switchWork').textContent = '挂起并做下一项';
     $('[data-next=break]').textContent = `休息 ${state.plan.break_minutes} 分钟`;
     $('[data-next=continue]').disabled = !sessionChoice(lastWork()) || sessionChoice(lastWork()).disabled;
     $('#rotationQueue').innerHTML = state.plan.queue.map((key, index) => {
@@ -583,6 +595,11 @@
     notificationSettings();
   });
   $('#pauseWork').addEventListener('click', () => run(() => stopCurrent('已暂停；暂停期间不计任务实耗', true)));
+  $('#completeCurrentTask').addEventListener('click', () => run(async () => {
+    if (!state.active || state.active.kind !== 'work') return;
+    await post(`/sessions/${state.active.id}/complete`, {});
+    await afterChange('任务已完成，实际用时已保存；选择接着做下一项或现在休息');
+  }));
   $('#endWork').addEventListener('click', () => run(() => stopCurrent('片段已结束')));
   $('#switchWork').addEventListener('click', () => run(() => chooseNext('switch')));
   $('#resetTemplate').addEventListener('click', () => { $('#templateForm').reset(); $('#templateEditor').open = false; $('#templateEditor').hidden = true; });

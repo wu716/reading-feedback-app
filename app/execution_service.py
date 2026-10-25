@@ -1,5 +1,7 @@
 """Server-owned slice deadlines and execution preferences."""
 from datetime import datetime, timedelta
+import json
+import math
 
 from app.models import User
 from app.project_models import ExecutionPlan, WorkSession
@@ -7,6 +9,28 @@ from app.project_models import ExecutionPlan, WorkSession
 
 def budget_seconds(row):
     return row.planned_seconds or (row.planned_minutes or 20) * 60
+
+
+def is_handoff(row):
+    return bool(row and json.loads(row.practice_snapshot_json or "{}").get("execution_handoff"))
+
+
+def finish_with_remainder(db, row, now=None):
+    """Close only the performed interval; retain a completed task's unused slice budget."""
+    plan = execution_plan(db, row.user_id)
+    if row.ended_at is None:
+        end = min(now or datetime.utcnow(), row.started_at + timedelta(seconds=budget_seconds(row)))
+        row.ended_at = max(end, row.started_at + timedelta(microseconds=1))
+        remaining = max(0, budget_seconds(row) - math.ceil((row.ended_at - row.started_at).total_seconds()))
+    elif plan.paused_session_id == row.id:
+        remaining = plan.remaining_seconds or 0
+    else:
+        return
+    if row.source == "timer" and row.kind == "work" and remaining:
+        snapshot = json.loads(row.practice_snapshot_json or "{}")
+        snapshot["execution_handoff"] = True
+        row.practice_snapshot_json = json.dumps(snapshot, ensure_ascii=False)
+        plan.paused_session_id, plan.remaining_seconds = row.id, remaining
 
 
 def settle_expired(db, user_id, now=None):
