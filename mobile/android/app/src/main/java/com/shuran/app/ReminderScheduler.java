@@ -657,7 +657,7 @@ public final class ReminderScheduler {
             delivery.notificationId = 9005;
             delivery.notification = ReminderNotifications.build(context,
                     context.getString(R.string.notification_record_title), context.getString(R.string.notification_record_body),
-                    "/static/index.html?record=today#long-term");
+                    "/static/index.html?record=today#daily-feedback");
             ReminderNotifications.showPrepared(context, delivery.notificationId, delivery.notification);
             p.edit().putString(KEY_RECORD_SHOWN, today).commit();
         }

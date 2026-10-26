@@ -16,6 +16,7 @@
     ['templates', '流程库', '/static/projects.html?view=templates', 'M3 4h4v17H3z M10 4h4v17h-4z M17 4l4 16'],
     ['capture', '记', '/static/index.html#capture', 'M5 3h14v18H5z M9 8h6 M9 12h6 M9 16h4'],
     ['long-term', '长期目标', '/static/index.html#long-term', 'M5 22V3 M5 4h14l-3 5 3 5H5'],
+    ['daily-feedback', '每日反馈', '/static/index.html#daily-feedback', 'M4 4h16v16H4z M8 9h8 M8 14h6'],
     ['user-center', '我的', '/static/index.html#user-center', 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M4 22v-3a8 8 0 0 1 16 0v3'],
   ];
   const icon = path => `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>`;

@@ -544,8 +544,27 @@
         const blob = new Blob([JSON.stringify({day,settings:settingsDirty ? settingsDraft : undefined},null,2)],{type:'application/json'});
         const link=document.createElement('a'), url=URL.createObjectURL(blob); link.href=url; link.download='书然-未保存草稿-'+(day?.date || today())+'.json'; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
     }
+    window.prepareDailyFeedback = function (section) {
+        const feedback = section === 'daily-feedback';
+        const page = document.querySelector('.lt-page');
+        el(section).appendChild(page);
+        page.classList.toggle('is-daily-feedback', feedback);
+        el('ltPageTitle').textContent = feedback ? '每日反馈' : '长期目标';
+        el('ltFeedbackEntry').hidden = feedback;
+        el('ltGoalsEntry').hidden = !feedback;
+        ['dailyFeedbackIntro','dailyFeedbackJump','dailyFeedbackReport'].forEach(id => el(id).hidden = !feedback);
+        el('feedbackDaily').hidden = false;
+        document.querySelector('[data-lt-view="daily"]').textContent = feedback ? '填写反馈' : '每日记录';
+    };
     window.loadLongTerm = async function () {
         if (!el('ltDate')) return;
+        el('dailyFeedbackReport').onclick = () => {
+            period = 'day';
+            document.querySelectorAll('[data-period]').forEach(b => {const on=b.dataset.period==='day';b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
+            switchView('report');
+            el('ltReportPanel').scrollIntoView({block:'start',behavior:'smooth'});
+        };
+        document.querySelectorAll('[data-feedback-jump]').forEach(b => b.onclick = e => {e.preventDefault();el(b.dataset.feedbackJump).scrollIntoView({block:'start',behavior:'smooth'});});
         const token = localStorage.getItem('authToken');
         if (sessionToken !== token) {
             window.ShuranFeedbackDaily?.clear();
@@ -624,7 +643,7 @@
         el('ltReport').addEventListener('click',e=>{
             const b=e.target.closest('button'); if(!b)return;
             if(b.dataset.upgrade !== undefined){window.navigateTo('user-center');return;}
-            if(b.dataset.day){el('ltDate').value=b.dataset.day;switchView('daily');loadDay();document.getElementById('long-term').scrollIntoView({block:'start'});}
+            if(b.dataset.day){el('ltDate').value=b.dataset.day;switchView('daily');loadDay();document.querySelector('.lt-page').scrollIntoView({block:'start'});}
             if(b.dataset.expFilter!==undefined){
                 const detail=el('ltReportExpenses');detail.open=true;
                 detail.querySelectorAll('[data-exp-category]').forEach(row=>row.hidden=!!b.dataset.expFilter && row.dataset.expCategory!==b.dataset.expFilter);

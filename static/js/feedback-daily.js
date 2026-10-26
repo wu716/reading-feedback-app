@@ -3,7 +3,7 @@
   'use strict';
   const {esc,today,add}=ShuranFeedback;
   const states={pending:'待提交',overdue:'已到期 · 待提交',submitted:'已提交 · 待检查',accepted:'检查通过',needs_changes:'待补充',skipped:'本次已跳过'};
-  const drafts=new Map(),pairings=new Map();let currentDate,epoch=0,token,bindings=[],backlogLoaded=0;
+  const drafts=new Map(),progressDrafts=new Map(),pairings=new Map();let currentDate,epoch=0,token,bindings=[],backlogLoaded=0;
   const root=()=>document.getElementById('feedbackDaily');
   const request=async(path,options={})=>{
     const r=await fetch('/api'+path,{...options,headers:{Authorization:'Bearer '+localStorage.getItem('authToken'),...(options.body instanceof FormData?{}:{'Content-Type':'application/json'}),...options.headers}});
@@ -14,7 +14,13 @@
   const key=()=>crypto.randomUUID?.()||'submission_'+Date.now()+Math.random().toString(36).slice(2);
   const time=s=>Math.round(s/60)+' 分钟';
   const stamp=s=>new Date(s.endsWith('Z')?s:s+'Z').toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false});
-  function clear(){epoch++;drafts.clear();pairings.clear();bindings=[];token=localStorage.getItem('authToken');if(root())root().innerHTML='';}
+  function clear(){epoch++;drafts.clear();progressDrafts.clear();pairings.clear();bindings=[];token=localStorage.getItem('authToken');if(root())root().innerHTML='';}
+  function progressForms(projects) {
+    return '<section class="df-progress"><h3>当天项目与任务进展</h3><p class="fb-hint">推进、卡点与下一步按任务保存。没有投入可明确核对；提交成果与检查通过仍分别记录。</p>'+projects.map(p=>`<details class="df-project"><summary><strong>${esc(p.title)}</strong><span>${time(p.actual_seconds)} · 完成 ${p.completed_tasks.length} 项</span></summary>${(p.tasks||[]).map(t=>{
+      const d=progressDrafts.get(currentDate+':'+t.id)||t.progress||{};
+      return `<form class="df-task" data-progress-task="${t.id}" data-progress-date="${currentDate}"><h4>${esc(t.title)}</h4><label>记录状态<select name="status">${Object.entries({missing:'待核对',recorded:'有投入或进展',no_work:'已核对，今天没有投入'}).map(([v,n])=>`<option value="${v}" ${v===(d.status||'missing')?'selected':''}>${n}</option>`).join('')}</select></label>${Object.entries({advanced:'推进了什么',solved:'解决了什么问题',blocker:'卡点或欠缺条件',next_step:'下一步'}).map(([key,label])=>`<label>${label}<textarea name="${key}" maxlength="4000" rows="2">${esc(d[key]||'')}</textarea></label>`).join('')}<button type="submit" class="fb-primary">保存这项反馈</button><p role="status" class="fb-hint">${t.progress?'这一天已有保存记录，可继续修改。':''}</p></form>`;
+    }).join('')||'<p class="fb-hint">本项目没有可填写的任务；成果节点见下方。</p>'}</details>`).join('')+'</section>';
+  }
   function draft(id){if(!drafts.has(id))drafts.set(id,{client_id:key(),text:'',links:'',note:'',attachment_ids:[],attachments:[],files:[]});return drafts.get(id);}
   function versions(items) {
     return items.map(s=>`<article class="fb-version"><strong>第 ${s.version} 版 · ${states[s.status]}</strong><small>${esc(stamp(s.submitted_at))}</small>${s.content.text?`<p class="fb-content">${esc(s.content.text)}</p>`:''}${s.content.links.map(l=>`<a href="${esc(l)}" target="_blank" rel="noopener noreferrer">${esc(l)}</a>`).join('')}${(s.content.attachments||[]).map(f=>`<button type="button" class="fb-text" data-download="${f.id}" data-filename="${esc(f.filename)}">附件：${esc(f.filename)}</button>`).join('')}${s.content.note?`<p>${esc(s.content.note)}</p>`:''}${s.content.criteria_check==='needs_manual_check'?'<p class="fb-hint">字数标准待人工核对；链接与附件未自动计数。</p>':''}${s.review_note?`<p>检查记录：${esc(s.review_note)}</p>`:''}</article>`).join('');
@@ -30,12 +36,14 @@
     const chosen=Number(new URL(location.href).searchParams.get('feedback'));
     root().innerHTML=`<section class="fb-daily-projects"><div class="fb-heading"><h2>项目推进与成果反馈</h2><a href="/static/projects.html">打开项目与计划 ↗</a></div><p class="fb-hint">按节点提交成果；项目投入引用原任务区间，与下方活动时间分别呈现。</p>${projects.map(p=>`<p class="fb-project-effort"><strong>${esc(p.title)}</strong><span>${p.intervals.length?'已记录投入 '+time(p.actual_seconds):'当天尚无投入区间'} · 完成任务 ${p.completed_tasks.length} 项</span></p>`).join('')}<div data-today-nodes>${present.map(n=>card(n,n.id===chosen)).join('')||'<p class="fb-empty">这一天没有预设反馈节点。可以在项目的“计划周期”中设置；下方长期方向仍可直接填写。</p>'}</div>${pending.length?`<details class="fb-past" ${pending.some(n=>n.id===chosen)?'open':''}><summary>此前待补交 · ${pending.length} 项</summary>${pending.map(n=>card(n,n.id===chosen)).join('')}</details>`:''}${upcoming.length?`<details class="fb-upcoming"><summary>接下来 7 天 · ${upcoming.length} 个节点</summary>${upcoming.map(n=>card(n,n.id===chosen)).join('')}</details>`:''}</section><details id="readerConnection" class="fb-reader fb-reader-compact"><summary><span class="fb-reader-dot" aria-hidden="true"></span><strong>知间阅读联动</strong><span class="fb-reader-summary" data-reader-summary>正在读取状态…</span></summary><div class="fb-reader-body"><div class="fb-reader-toolbar"><button type="button" class="fb-text" data-reader-refresh>刷新状态</button></div><div data-reader-status>正在读取关联状态…</div><p class="fb-hint">同步到每一天、每一本书的阅读时长；纸书等补记保留。累计历史只作为基线，核对日期后才记作当天完整。</p><div data-pairing role="status"></div></div></details>`;
     root().insertAdjacentHTML('beforeend','<details class="fb-reader"><summary>提醒与邮件发送记录</summary><p class="fb-hint">应用内提醒会保留在铃铛中；系统通知需要设备授权，邮件按账号设置发送。</p><button type="button" class="fb-text" data-deliveries>查看最近发送情况</button><div data-deliveries-list></div></details>');
+    root().querySelector('.fb-heading').insertAdjacentHTML('afterend',progressForms(projects));
+    root().querySelectorAll('.fb-project-effort').forEach(el=>el.remove());
     if(chosen)root().querySelector(`[data-node="${chosen}"]`)?.scrollIntoView({block:'center'});
   }
   async function load(day) {
     if(!root())return;
     const auth=localStorage.getItem('authToken');
-    if(token!==auth){drafts.clear();pairings.clear();token=auth;bindings=[];root().innerHTML='';}
+    if(token!==auth){drafts.clear();progressDrafts.clear();pairings.clear();token=auth;bindings=[];root().innerHTML='';}
     const requestEpoch=++epoch;currentDate=day;
     try {
       const [nodes,projects,backlog]=await Promise.all([request(`/feedback/occurrences?start=${day}&end=${add(day,7)}`),request(`/feedback/progress?day=${day}`),request(`/feedback/backlog?before=${day}`)]);
@@ -67,6 +75,14 @@
   }
   document.addEventListener('DOMContentLoaded',()=>{
     if(!root())return;
+    root().addEventListener('input',e=>{const f=e.target.closest('[data-progress-task]');if(f)progressDrafts.set(f.dataset.progressDate+':'+f.dataset.progressTask,Object.fromEntries(new FormData(f)));});
+    root().addEventListener('change',e=>{const f=e.target.closest('[data-progress-task]');if(f)progressDrafts.set(f.dataset.progressDate+':'+f.dataset.progressTask,Object.fromEntries(new FormData(f)));});
+    root().addEventListener('submit',async e=>{
+      const f=e.target.closest('[data-progress-task]');if(!f)return;e.preventDefault();
+      if(f.dataset.busy)return;f.dataset.busy='1';const button=f.querySelector('button'),status=f.querySelector('[role=status]'),auth=localStorage.getItem('authToken');button.disabled=true;
+      try{await post(`/projects/practice/tasks/task/${f.dataset.progressTask}/progress`,{...Object.fromEntries(new FormData(f)),date:f.dataset.progressDate});if(auth!==localStorage.getItem('authToken'))return;progressDrafts.delete(f.dataset.progressDate+':'+f.dataset.progressTask);status.textContent='已保存到服务器，可在日报查看。';}
+      catch(err){status.textContent=err.message+'；填写内容保留，请重试。';}finally{button.disabled=false;delete f.dataset.busy;}
+    });
     root().addEventListener('input',e=>{const f=e.target.closest('[data-feedback-submission]');if(f&&e.target.dataset.value)draft(Number(f.dataset.feedbackSubmission))[e.target.dataset.value]=e.target.value;});
     root().addEventListener('change',e=>{if(e.target.matches('[data-files]')){const f=e.target.closest('form'),d=draft(Number(f.dataset.feedbackSubmission));d.files=[...e.target.files];f.querySelector('[data-file-list]').textContent=[...d.attachments.map(x=>x.filename),...d.files.map(x=>x.name)].join('、');}});
     root().addEventListener('submit',async e=>{
@@ -113,5 +129,6 @@
   });
   window.addEventListener('auth-check-settled',()=>{if(token!==localStorage.getItem('authToken'))clear();});
   window.addEventListener('storage',e=>{if(e.key==='authToken')clear();});
+  window.addEventListener('beforeunload',e=>{if(progressDrafts.size||[...drafts.values()].some(d=>d.text||d.links||d.note||d.files.length)){e.preventDefault();e.returnValue='';}});
   window.ShuranFeedbackDaily={load,request,clear};
 })();

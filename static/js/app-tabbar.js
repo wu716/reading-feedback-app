@@ -2,7 +2,7 @@
     const TABS = [
         { id: 'schedule', labelKey: 'nav.schedule', label: '日程', icon: '程' },
         { id: 'projects', labelKey: 'nav.projects', label: '项目', icon: '项', action: 'projects' },
-        { id: 'long-term', labelKey: 'nav.longTerm', label: '目标', icon: '目' },
+        { id: 'daily-feedback', labelKey: 'nav.dailyFeedback', label: '反馈', icon: '馈' },
         { id: 'capture', labelKey: 'nav.capture', label: '记', icon: '记' },
         { id: 'user-center', labelKey: 'nav.me', label: '我的', icon: '我' },
     ];
@@ -25,7 +25,7 @@
         if (hash === '' || hash === 'overview') return 'schedule';
         if (hash === 'capture' || hash === 'time-log' || hash === 'ideas' || hash === 'future-actions') return 'capture';
         if (hash === 'schedule') return 'schedule';
-        if (hash === 'long-term') return 'long-term';
+        if (hash === 'long-term' || hash === 'daily-feedback') return 'daily-feedback';
         return 'user-center';
     }
 

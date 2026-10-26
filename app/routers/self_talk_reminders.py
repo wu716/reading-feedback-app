@@ -247,7 +247,7 @@ def get_pending_reminders(
                 "message": message,
                 "reminder_type": log.reminder_type,
                 "triggered_at": log.triggered_at.isoformat(),
-                "action_url": feedback.get("action_url") if feedback else "/static/index.html?record=today#long-term" if is_record else "/static/index.html#overview",
+                "action_url": feedback.get("action_url") if feedback else "/static/index.html?record=today#daily-feedback" if is_record else "/static/index.html#overview",
                 "action_label": "查看报告" if log.reminder_type == "feedback_report" else "提交反馈" if feedback else "记录今天" if is_record else "查看今日",
                 "system_notification": bool(setting.browser_notification and log.notification_method != "in_app"),
                 "record_date": log.detail if is_record else None,

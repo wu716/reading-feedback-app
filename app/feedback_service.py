@@ -156,7 +156,7 @@ def check_feedback_reminders(db, user_id=None, now=None):
         # A supplementary request gets a new reminder, but ordinary polling is idempotent.
         key = f"occurrence:{row.id}:version:{s.version if s else 0}"
         enqueue(db, row.user_id, key, "提交项目反馈", f"{p.title} · {row.due_date}：{req['deliverable']}",
-            f"/static/index.html?feedback={row.id}&record={row.due_date}#long-term", row.id)
+            f"/static/index.html?feedback={row.id}&record={row.due_date}#daily-feedback", row.id)
     try:
         db.commit()
     except IntegrityError:
@@ -213,7 +213,7 @@ def snapshot_report(db, user, result, notify=False):
         names = {"day": "日报", "week": "周报", "month": "月报", "quarter": "季度报", "year": "年报"}
         enqueue(db, user.id, f"report:{user.id}:{row.period}:{anchor}", names[row.period] + "已生成",
             f"{result['start']} 至 {result['effective_end'] or result['end']}，可查看项目推进、方向明细和跨期变化。",
-            f"/static/index.html?report={row.period}&record={anchor}#long-term", reminder_type="feedback_report")
+            f"/static/index.html?report={row.period}&record={anchor}#daily-feedback", reminder_type="feedback_report")
     db.commit()
     return {"id": row.id, "revision": row.revision, "generated_at": row.generated_at.isoformat() + "Z"}
 

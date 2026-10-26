@@ -247,7 +247,7 @@
       content.querySelectorAll('.practice-cycle').forEach((card,i)=>{
         const c=cycles.items[i],rule=c.plan.feedback;
         if(c.plan.scope==='project')card.querySelectorAll('p')[1].textContent='本轮直接推进整个项目；已记录投入 '+(c.evidence.interval_count?c.evidence.actual_interval_minutes+' 分':'待核对');
-        if(c.feedback_nodes?.length)card.insertAdjacentHTML('beforeend',`<section class="fb-daily"><p>每次交付：${esc(rule.deliverable)} · ${esc(rule.deadline)} 截止</p><details><summary>${c.feedback_nodes.length} 个具体反馈日期 · 打开提交入口</summary><div class="fb-node-chips">${c.feedback_nodes.map(n=>`<a class="fb-node-chip" href="/static/index.html?feedback=${n.id}&record=${n.date}#long-term">${n.date}${n.skipped_reason?' · 已跳过':''}</a>`).join('')}</div></details></section>`);
+        if(c.feedback_nodes?.length)card.insertAdjacentHTML('beforeend',`<section class="fb-daily"><p>每次交付：${esc(rule.deliverable)} · ${esc(rule.deadline)} 截止</p><details><summary>${c.feedback_nodes.length} 个具体反馈日期 · 打开提交入口</summary><div class="fb-node-chips">${c.feedback_nodes.map(n=>`<a class="fb-node-chip" href="/static/index.html?feedback=${n.id}&record=${n.date}#daily-feedback">${n.date}${n.skipped_reason?' · 已跳过':''}</a>`).join('')}</div></details></section>`);
       });
     } else if(tab==='new-cycle') {
       const previous=cycles.items.find(c=>c.id===context.previousCycleId);

@@ -96,3 +96,15 @@
 .fb-coverage-days button{min-width:0}
 @media(max-width:700px){.fb-reader-compact{padding:0;margin-bottom:10px}.fb-reader-compact>summary{min-height:42px;padding:7px 10px}.fb-reader-compact .fb-reader-body{padding:8px 10px 10px}.fb-report-intro{margin:8px 0 14px;padding:15px}.fb-report-section{padding:15px 0}.fb-trend-card{padding:11px}.fb-project-report{padding:12px}}
 .fb-compare-row{grid-template-columns:30px minmax(0,1fr) 76px}.fb-compare-row>span:last-child{text-align:right;overflow-wrap:anywhere}.fb-book,.fb-node,.fb-project-report{overflow-wrap:anywhere}
+.lt-page:not(.is-daily-feedback) .fb-daily-projects{display:none}
+.df-jump{display:flex;gap:10px;margin:12px 0;flex-wrap:wrap}
+.df-jump a{padding:9px 13px;background:#edf1ef;border:1px solid #cdd6d7;border-radius:9px;color:#37566d;text-decoration:none;font-size:13px}
+.df-project{border:1px solid #dfe1d8;background:#fffef9;border-radius:11px;margin:10px 0;overflow:hidden}
+.df-project>summary{cursor:pointer;display:flex;justify-content:space-between;gap:10px;padding:13px;flex-wrap:wrap}
+.df-project>summary span{font-size:12px;color:#58768a}
+.df-task{padding:14px;border-top:1px solid #dfe1d8;display:grid;gap:10px}
+.df-task h4{margin:0;font-size:14px}.df-task label{display:grid;gap:5px;color:#37566d;font-size:13px}
+.df-task textarea,.df-task select{font:inherit;box-sizing:border-box;width:100%;max-width:100%;padding:9px;border:1px solid #cdd6d7;border-radius:8px;background:#fffef9;color:#263f53}
+.df-task button{justify-self:start}.df-task :focus-visible,.df-jump a:focus-visible{outline:3px solid #7895a6;outline-offset:2px}
+.df-progress h3{margin-top:8px}.is-daily-feedback #feedbackDaily{margin-top:24px}.is-daily-feedback #ltDayFields,#feedbackDaily{scroll-margin-top:90px}
+.df-task textarea{resize:vertical}.df-task button:disabled{opacity:.6;cursor:wait}.df-jump[hidden]{display:none}

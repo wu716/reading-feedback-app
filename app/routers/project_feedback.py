@@ -78,7 +78,30 @@ def occurrences(start: date, end: date, project_id: int | None = None,
 
 @router.get("/progress")
 def progress(day: date, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
-    return {"items": svc.project_progress(db, user.id, day, day)}
+    from app.project_models import Project, ProjectTask, PracticeEvent
+    items = {p["id"]: p for p in svc.project_progress(db, user.id, day, day)}
+    projects = db.query(Project).filter_by(user_id=user.id).all()
+    tasks = db.query(ProjectTask).filter_by(user_id=user.id).all()
+    import json
+    progress_by_task = {}
+    for event in db.query(PracticeEvent).filter_by(user_id=user.id, owner_kind="task", event_type="progress", record_date=day).order_by(PracticeEvent.id.desc()):
+        progress_by_task.setdefault(event.owner_id, json.loads(event.payload_json))
+    for project in projects:
+        if project.deleted_at is not None:
+            items.pop(project.id, None)
+            continue
+        own = [t for t in tasks if t.project_id == project.id and t.deleted_at is None and t.state != "completed"]
+        if not own and project.id not in items:
+            continue
+        item = items.setdefault(project.id, {"id": project.id, "title": project.title, "intervals": [], "actual_seconds": 0, "completed_tasks": []})
+        # Include completed tasks already represented by today's intervals/results.
+        ids = {t.id for t in own} | {i["task_id"] for i in item["intervals"]} | {t["id"] for t in item["completed_tasks"]} | set(progress_by_task)
+        item["tasks"] = []
+        for task in tasks:
+            if task.id not in ids or task.project_id != project.id or task.deleted_at is not None:
+                continue
+            item["tasks"].append({"id": task.id, "title": task.title, "progress": progress_by_task.get(task.id)})
+    return {"items": list(items.values())}
 
 
 @router.get("/backlog")

@@ -20,6 +20,7 @@ from app import project_models as pm, feedback_service as svc
 from app.auth import get_current_active_user, get_current_user
 from app.database import Base, get_db
 from app.models import User, SelfTalkReminderSetting, SelfTalkReminderLog, LongTermLedgerDay
+from app.stage_schedule_models import DailyProjectPlan  # register schedule links in the isolated fixture
 from app.routers import projects, long_term_details, project_feedback, reader_sync, self_talk_reminders
 from app.self_talk.reminder_service import ReminderService
 from fake_reader_source import ReaderSource
@@ -74,6 +75,25 @@ def project(c, **kw):
     r = c.post("/api/projects", json={"title": "自学研究", "outcome": "形成可用的学习方法", **kw})
     assert r.status_code == 200, r.text
     return r.json()["id"]
+
+
+def test_daily_feedback_task_progress_roundtrip_and_account_isolation(ctx):
+    c, factory, _ = ctx
+    pid = project(c, tasks=[{"title": "整理反馈入口"}])
+    response = c.get(f"/api/feedback/progress?day={DAY}")
+    assert response.status_code == 200, response.text
+    item = next(p for p in response.json()["items"] if p["id"] == pid)
+    task = item["tasks"][0]
+    assert task["progress"] is None
+    body = {"date": str(DAY), "status": "recorded", "advanced": "完成入口梳理", "blocker": "等待复核", "next_step": "核对报告"}
+    assert c.post(f'/api/projects/practice/tasks/task/{task["id"]}/progress', json=body).status_code == 200
+    saved = c.get(f"/api/feedback/progress?day={DAY}").json()["items"][0]["tasks"][0]["progress"]
+    assert saved["advanced"] == body["advanced"]
+    assert c.get(f"/api/feedback/progress?day={DAY + timedelta(days=1)}").json()["items"][0]["tasks"][0]["progress"] is None
+    assert c.get(f"/api/feedback/progress?day={DAY}", headers={"X-Test-User": "2"}).json()["items"] == []
+    report = c.get(f"/api/long-term/details/report?period=day&anchor={DAY}")
+    assert report.status_code == 200, report.text
+    assert report.json()["projects"][0]["updates"][0]["advanced"] == body["advanced"]
 
 
 def cycle(c, p, **kw):

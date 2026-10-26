@@ -174,7 +174,7 @@ def test_pending_opens_today_hides_completed_and_stale_records_and_scopes_dismis
     first = client.get("/api/reminders/pending").json()
     notice = first["notifications"][0]
     assert first["pending_count"] == 1
-    assert notice["action_url"] == "/static/index.html?record=today#long-term"
+    assert notice["action_url"] == "/static/index.html?record=today#daily-feedback"
     assert notice["system_notification"] is False
     identity["user"] = other
     assert client.post(f'/api/reminders/dismiss/{notice["log_id"]}').status_code == 404
