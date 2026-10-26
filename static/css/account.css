@@ -101,10 +101,11 @@
  .workspace-layout #user-center .me-edit {min-height:34px;margin:0 0 0 53px;padding:5px 10px;}
  .workspace-layout #user-center .me-group {padding:0;margin:0 0 8px;border:1px solid #d5dcde!important;border-radius:9px;background:rgba(248,249,246,.74);overflow:hidden;}
  .workspace-layout #user-center .me-group-title {margin:0;padding:0;font:inherit;letter-spacing:0;}
- .workspace-layout #user-center .me-group-toggle {display:flex;width:100%;min-height:52px;align-items:center;justify-content:space-between;gap:14px;padding:10px 13px;border:0;background:transparent;color:var(--workspace-ink);text-align:left;font:600 15px/1.4 "Microsoft YaHei",system-ui,sans-serif;cursor:pointer;}
- .workspace-layout #user-center .me-group-toggle::after {content:"";flex:0 0 8px;width:8px;height:8px;border-right:1.5px solid var(--workspace-blue);border-bottom:1.5px solid var(--workspace-blue);transform:rotate(45deg);transition:transform .16s ease;}
+ .workspace-layout #user-center .me-group-toggle {display:grid;grid-template-columns:minmax(0,1fr) 12px;width:100%;min-height:76px;align-items:center;gap:4px 14px;padding:12px 13px;border:0;background:transparent;color:var(--workspace-ink);text-align:left;font:600 15px/1.4 "Microsoft YaHei",system-ui,sans-serif;cursor:pointer;}
+ .workspace-layout #user-center .me-group-label {grid-column:1;grid-row:1;}
+ .workspace-layout #user-center .me-group-toggle::after {content:"";grid-column:2;grid-row:1 / span 2;width:8px;height:8px;border-right:1.5px solid var(--workspace-blue);border-bottom:1.5px solid var(--workspace-blue);transform:rotate(45deg);transition:transform .16s ease;}
  .workspace-layout #user-center .me-group-toggle[aria-expanded="true"]::after {transform:rotate(225deg);}
- .workspace-layout #user-center .me-group-summary {display:block;margin:0;padding:0 13px 12px;color:#62717c;font:400 12px/1.55 "Microsoft YaHei",system-ui,sans-serif;}
+ .workspace-layout #user-center .me-group-summary {display:block;grid-column:1;grid-row:2;margin:0;padding:0;color:#62717c;font:400 12px/1.55 "Microsoft YaHei",system-ui,sans-serif;}
  .workspace-layout #user-center .me-group-content {padding:0 13px 13px;border-top:1px solid #e1e5e3;}
  .workspace-layout #user-center .me-group.is-collapsed .me-group-content {display:none;}
  .workspace-layout #user-center .me-group-content > :first-child {margin-top:12px;}

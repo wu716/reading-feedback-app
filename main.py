@@ -56,7 +56,7 @@ _openapi_enabled = None if settings.is_production else "/openapi.json"
 app = FastAPI(
     title=settings.app_name,
     description="书然 - 个人项目、日程与时间记录",
-    version="2.0.48",
+    version="2.0.49",
     docs_url=_docs_enabled,
     redoc_url=_redoc_enabled,
     openapi_url=_openapi_enabled,
@@ -73,7 +73,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20261026dailyfeedback1"
+STATIC_UI_VERSION = "20261026megroupfix1"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",

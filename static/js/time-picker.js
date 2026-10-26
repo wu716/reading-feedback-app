@@ -76,7 +76,7 @@
                 cancel();
             }
         });
-        presets.addEventListener('click', (e) => {
+        overlay.querySelector('#tpPresets').addEventListener('click', (e) => {
             const btn = e.target.closest('.tp-preset');
             if (!btn) return;
             setWheels(btn.dataset.time);

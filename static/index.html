@@ -3457,17 +3457,17 @@
     <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261017paper1">
     <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261025someday3">
     <link rel="stylesheet" href="/static/css/workspace.css?v=20261026projectcleanup1">
-    <link rel="stylesheet" href="/static/css/account.css?v=20261026capturemyreminder1">
+    <link rel="stylesheet" href="/static/css/account.css?v=20261026megroupfix1">
     <link rel="stylesheet" href="/static/css/long-term.css?v=20261026dailyfeedback1">
 </head>
 <body>
     <script>
         (function () {
             if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-                location.replace('http://43.161.238.165:8000/?v=20261026dailyfeedback1');
+                location.replace('http://43.161.238.165:8000/?v=20261026megroupfix1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.48';
+            window.SHURAN_VERSION = '2.0.49';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -5942,8 +5942,13 @@
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'me-group-toggle';
-                button.textContent = label;
-                if (title.dataset.i18n) button.dataset.i18n = title.dataset.i18n;
+                const labelText = document.createElement('span');
+                labelText.className = 'me-group-label';
+                labelText.textContent = label;
+                if (title.dataset.i18n) labelText.dataset.i18n = title.dataset.i18n;
+                // Only leaf text is translated. Translating the heading would remove its button.
+                title.removeAttribute('data-i18n');
+                button.appendChild(labelText);
                 button.setAttribute('aria-controls', `${id}Content`);
                 const body = document.createElement('div');
                 body.className = 'me-group-content';
@@ -5951,12 +5956,11 @@
                 while (title.nextSibling) body.appendChild(title.nextSibling);
                 title.replaceChildren(button);
                 title.insertAdjacentElement('afterend', body);
-                const summary = document.createElement('p');
+                const summary = document.createElement('span');
                 summary.className = 'me-group-summary';
                 summary.dataset.summaryKey = summaryKey;
-                summary.dataset.i18n = summaryKey;
                 summary.textContent = shuranText(summaryKey);
-                title.insertAdjacentElement('afterend', summary);
+                button.appendChild(summary);
                 button.addEventListener('click', () => {
                     if (!window.matchMedia('(max-width: 768px)').matches) return;
                     const collapsed = group.classList.toggle('is-collapsed');
@@ -7039,7 +7043,7 @@
     </script>
     
     <!-- 待办提醒通知服务 -->
-    <script src="/static/js/time-picker.js?v=20261026capturemyreminder1"></script>
+    <script src="/static/js/time-picker.js?v=20261026megroupfix1"></script>
     <script src="/static/reminder_notification.js?v=20261026autosave1"></script>
     <script src="/static/js/app-tabbar.js?v=20261026dailyfeedback1"></script>
     <script src="/static/js/workspace-shell.js?v=20261026dailyfeedback1"></script>
