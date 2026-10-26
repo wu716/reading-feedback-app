@@ -55,12 +55,10 @@ public class TimeLogVolumeKeyService extends AccessibilityService {
 
     @Override
     public boolean onUnbind(android.content.Intent intent) {
-        // Ask Android to call onRebind if the service is attached again instead of
-        // treating the accessibility connection as permanently gone.
         if (controller != null) {
             controller.cancel();
         }
-        return true;
+        return super.onUnbind(intent);
     }
 
     @Override

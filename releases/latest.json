@@ -1,12 +1,12 @@
 {
-  "versionCode": 80,
-  "versionName": "2.0.38",
+  "versionCode": 86,
+  "versionName": "2.0.44",
   "filename": "shuran.apk",
-  "notes": "书然 2.0.38：以后想做新增独立的录入与查看入口，支持修改、选日期安排和撤销删除；可从项目阶段编辑当天日程；项目、阶段和任务支持删除后恢复；时刻可关联工作记录与长期目标；优化交付范围编辑和工作片余时接续。",
+  "notes": "书然 2.0.44：提醒开关和时间修改后自动保存，失败可重试；修复荣耀应用启动管理入口、登录恢复误清每日提醒设置，以及无障碍服务解绑清理。荣耀后台唤起需允许自启动、关联启动和后台活动。",
   "require_shell": true,
   "force": true,
   "minVersionCode": 20,
   "minVersionName": "1.5.4",
-  "sha256": "c3bce000cc59bbc946a1077a630a52dacafa75fdf4c715be5d3d1a89ba50193f",
-  "size_bytes": 1987255
+  "sha256": "622adaa40b4441ae03a4af2f8416daaba417d5a4cc8be7574e1690bb2b338ec5",
+  "size_bytes": 1987815
 }

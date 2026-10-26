@@ -555,6 +555,7 @@
             color: #fff;
         }
 
+        #reminderSaveRetry[hidden] { display: none !important; }
         .me-actions {
             display: flex;
             gap: 10px;
@@ -3466,7 +3467,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261017paper1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.43';
+            window.SHURAN_VERSION = '2.0.44';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -3929,7 +3930,7 @@
                         <div class="me-row me-row-static" id="autostartRow">
                             <div class="me-row-main">
                                 <div class="me-row-title" data-i18n="me.notifications.autostart">允许自启动</div>
-                                <div class="me-row-desc" data-i18n="me.notifications.autostartDesc">划掉后台后仍要响：允许书然自启动 / 关联启动</div>
+                                <div class="me-row-desc" data-i18n="me.notifications.autostartDesc">允许自启动、关联启动和后台活动；荣耀请锁定最近任务卡片，避免划掉后被强行停止</div>
                             </div>
                             <button type="button" class="me-link-btn" onclick="openAutostartSettings()" data-i18n="common.settings">去设置</button>
                         </div>
@@ -3953,7 +3954,8 @@
                         </label>
                     </div>
                     <div class="me-actions">
-                        <button type="button" class="me-btn me-btn-primary" onclick="saveReminderSettings()" data-i18n="me.reminders.save">保存提醒设置</button>
+                        <p id="reminderSaveStatus" class="me-row-desc" role="status" aria-live="polite">修改后自动保存</p>
+                        <button id="reminderSaveRetry" type="button" class="me-btn me-btn-primary" onclick="retryReminderSettings()" hidden>重试</button>
                     </div>
                 </div></section><div class="me-group" id="meVolumeTripleGroup" hidden>
                     <div class="me-group-title" data-i18n="me.capture.group">快捷记下</div>
@@ -4498,7 +4500,7 @@
     </div>
 
 
-    <script src="/static/js/i18n.js?v=20261025someday3"></script>
+    <script src="/static/js/i18n.js?v=20261026reminders1"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -5871,8 +5873,12 @@
 
         // 初始化个人中心事件监听器
         function initializeUserCenter() {
-            document.getElementById('reminderMasterSwitch').addEventListener('change', updateReminderSwitchStates);
-            document.getElementById('recordReminderSwitch').addEventListener('change', updateReminderSwitchStates);
+            for (const id of reminderControlIds) {
+                document.getElementById(id).addEventListener('change', () => {
+                    updateReminderSwitchStates();
+                    queueReminderSettingsSave();
+                });
+            }
             document.getElementById('editNameForm').addEventListener('submit', handleEditNameSubmit);
             document.getElementById('newName').addEventListener('input', validateNickname);
         }
@@ -6637,17 +6643,39 @@
         }
         
         // 加载提醒设置
+        const reminderControlIds = ['reminderMasterSwitch', 'reminderBrowserSwitch', 'reminderEmailSwitch', 'recordReminderSwitch', 'recordReminderTime'];
+        let reminderSettingsLoaded = false;
+        let reminderSaveRevision = 0;
+        let reminderSaveQueue = Promise.resolve();
+
+        function reminderSaveFeedback(message, retry = false) {
+            document.getElementById('reminderSaveStatus').textContent = message;
+            document.getElementById('reminderSaveRetry').hidden = !retry;
+        }
+
         async function loadReminderSettings() {
             const token = localStorage.getItem('authToken');
+            const revision = reminderSaveRevision;
+            if (window.reminderNotificationService?.settingsSaving) return;
+            reminderSettingsLoaded = false;
+            reminderControlIds.forEach(id => document.getElementById(id).disabled = true);
+            reminderSaveFeedback('正在读取提醒设置…');
             try {
                 const response = await fetch(`${API_BASE}/api/reminders/settings`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (!response.ok) throw new Error('获取提醒设置失败');
-                populateReminderSettings(await response.json());
+                const settings = await response.json();
+                if (token !== localStorage.getItem('authToken') || revision !== reminderSaveRevision) return;
+                reminderSettingsLoaded = true;
+                reminderControlIds.forEach(id => document.getElementById(id).disabled = false);
+                populateReminderSettings(settings);
+                reminderSaveFeedback('修改后自动保存');
             } catch (error) {
                 console.error('加载提醒设置失败:', error);
-                populateReminderSettings({ is_enabled: true, browser_notification: true, email_notification: true });
+                if (token === localStorage.getItem('authToken') && revision === reminderSaveRevision) {
+                    reminderSaveFeedback('读取失败，未更改原设置，请重试', true);
+                }
             }
         }
 
@@ -6697,28 +6725,61 @@
             document.getElementById('recordReminderTime').disabled = !enabled || !document.getElementById('recordReminderSwitch').checked;
         }
 
-        async function saveReminderSettings() {
+        function retryReminderSettings() {
+            if (!reminderSettingsLoaded) return loadReminderSettings();
+            queueReminderSettingsSave();
+        }
+
+        function queueReminderSettingsSave() {
+            if (!reminderSettingsLoaded) return;
+            const revision = ++reminderSaveRevision;
             const token = localStorage.getItem('authToken');
+            if (window.reminderNotificationService) {
+                window.reminderNotificationService.settingsSaving = true;
+                window.reminderNotificationService.settingsRevision++;
+            }
+            reminderSaveFeedback('正在保存…');
             const settings = {
                 is_enabled: document.getElementById('reminderMasterSwitch').checked,
                 browser_notification: document.getElementById('reminderBrowserSwitch').checked,
                 email_notification: document.getElementById('reminderEmailSwitch').checked,
                 record_reminder_enabled: document.getElementById('recordReminderSwitch').checked,
-                record_reminder_time: document.getElementById('recordReminderTime').value || '21:00'
+                record_reminder_time: document.getElementById('recordReminderTime').value
             };
+            reminderSaveQueue = reminderSaveQueue.catch(() => {}).then(() =>
+                saveReminderSettings(settings, token, revision));
+        }
+
+        async function saveReminderSettings(settings, token, revision) {
+            if (revision !== reminderSaveRevision || token !== localStorage.getItem('authToken')) return;
+            if (!/^\d{2}:\d{2}$/.test(settings.record_reminder_time)) {
+                reminderSaveFeedback('请选择完整的提醒时间', true);
+                return;
+            }
             try {
                 const response = await fetch(`${API_BASE}/api/reminders/settings`, {
                     method: 'POST',
+                    keepalive: true,
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(settings)
                 });
                 if (!response.ok) throw new Error('保存失败');
-                showMessage('提醒设置已保存', 'success');
-                window.reminderNotificationService?.syncNativeSchedule();
-                window.reminderNotificationService?.checkPendingReminders();
+                const saved = await response.json();
+                if (revision !== reminderSaveRevision || token !== localStorage.getItem('authToken')) return;
+                const service = window.reminderNotificationService;
+                const nativeResult = service?.applySavedSettings(saved);
+                if (nativeResult === 'error') {
+                    reminderSaveFeedback('服务器已保存，手机同步失败，请重试', true);
+                    return;
+                }
+                if (service) service.settingsSaving = false;
+                reminderSaveFeedback(nativeResult === 'ok' ? '已保存并同步手机提醒设置' :
+                    service?.isNativeApp() ? '已保存；请更新客户端以确认手机同步结果' : '已保存');
             } catch (error) {
                 console.error('保存提醒设置失败:', error);
-                showMessage('保存提醒设置失败', 'error');
+                if (revision === reminderSaveRevision && token === localStorage.getItem('authToken')) {
+                    reminderSaveFeedback('保存失败，修改尚未生效，请重试', true);
+                }
             }
         }
 
@@ -6863,7 +6924,7 @@
     
     <!-- 待办提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20260917upd4"></script>
-    <script src="/static/reminder_notification.js?v=20261026dismiss1"></script>
+    <script src="/static/reminder_notification.js?v=20261026autosave1"></script>
     <script src="/static/js/app-tabbar.js?v=20261025someday3"></script>
     <script src="/static/js/workspace-shell.js?v=20261025someday3"></script>
     <link rel="stylesheet" href="/static/css/start-conditions.css?v=20261022hierarchy1">

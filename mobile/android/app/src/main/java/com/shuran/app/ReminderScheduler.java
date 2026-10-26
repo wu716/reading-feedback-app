@@ -86,6 +86,7 @@ public final class ReminderScheduler {
     private static final long FIRE_DEBOUNCE_MS = 90_000L;
     private static final long POLL_INTERVAL_MS = 15 * 60 * 1000L;
     private static final Object LOCK = new Object();
+    private static long settingsRevision;
 
     private ReminderScheduler() {}
 
@@ -125,7 +126,7 @@ public final class ReminderScheduler {
         }
         restoreFocusTimer(context);
         boolean enabled = p.getBoolean(KEY_ENABLED, false);
-        boolean hasLocal = hasStoredTodos(p);
+        boolean hasLocal = hasStoredTodos(p) || p.getBoolean(KEY_RECORD_ENABLED, false);
         // 旧版 401/登出曾把 enabled 清掉但留下时间；升级后自动恢复，不要求当天再登录。
         if (!enabled && hasLocal && !p.getBoolean(KEY_USER_DISABLED, false)) {
             p.edit().putBoolean(KEY_ENABLED, true).apply();
@@ -139,7 +140,15 @@ public final class ReminderScheduler {
     }
 
     public static void syncSession(Context context, String token, String origin) {
-        if (token != null && !token.equals(sessionToken(context))) {
+        // A page can initialize before its persisted login has been recovered.
+        // Only explicit clearSession is a logout; an empty bridge sync is not.
+        if (token == null || token.isEmpty()) return;
+        String previous = sessionToken(context);
+        boolean sameAccount = !accountSubject(token).isEmpty()
+                && accountSubject(token).equals(accountSubject(previous))
+                && (origin == null || origin.isEmpty()
+                    || origin.replaceAll("/+$", "").equals(apiOrigin(context)));
+        if (!previous.isEmpty() && !token.equals(previous) && !sameAccount) {
             resetRecordSession(context);
         }
         SharedPreferences.Editor editor = prefs(context).edit();
@@ -148,7 +157,20 @@ public final class ReminderScheduler {
             String cleaned = origin.endsWith("/") ? origin.substring(0, origin.length() - 1) : origin;
             editor.putString(KEY_ORIGIN, cleaned);
         }
-        editor.apply();
+        editor.commit();
+    }
+
+    // Used only to isolate local preferences, never to authenticate API requests.
+    private static String accountSubject(String token) {
+        try {
+            String[] parts = token.split("\\.");
+            if (parts.length != 3) return "";
+            return new JSONObject(new String(android.util.Base64.decode(parts[1],
+                    android.util.Base64.URL_SAFE | android.util.Base64.NO_WRAP),
+                    StandardCharsets.UTF_8)).optString("sub", "");
+        } catch (Exception ignored) {
+            return "";
+        }
     }
 
     /** 保留待办闹钟；退出账号时取消个人每日记录提醒。 */
@@ -163,6 +185,13 @@ public final class ReminderScheduler {
     }
 
     public static void applySettings(Context context, JSONObject settings) {
+        synchronized (LOCK) {
+            applySettingsLocked(context, settings);
+            settingsRevision++;
+        }
+    }
+
+    private static void applySettingsLocked(Context context, JSONObject settings) {
         SharedPreferences p = prefs(context);
         boolean enabled = settings.has("enabled")
                 ? settings.optBoolean("enabled", false)
@@ -180,7 +209,7 @@ public final class ReminderScheduler {
         if (settings.has("recordTime")) editor.putString(KEY_RECORD_TIME, settings.optString("recordTime", "21:00"));
         if (settings.has("recordDate")) editor.putString(KEY_RECORD_COMPLETE,
                 settings.optBoolean("recordComplete", false) ? settings.optString("recordDate", "") : "");
-        editor.commit();
+        if (!editor.commit()) throw new IllegalStateException("Reminder settings were not persisted");
         clearLegacyDaily(context);
 
         if (!system) {
@@ -442,6 +471,8 @@ public final class ReminderScheduler {
     }
 
     private static void pollPending(Context context) throws Exception {
+        final long revision;
+        synchronized (LOCK) { revision = settingsRevision; }
         if (!prefs(context).getBoolean(KEY_SYSTEM, true)
                 || !ReminderNotifications.areEnabled(context)) {
             return;
@@ -482,7 +513,10 @@ public final class ReminderScheduler {
                 record.put("recordDate", json.optString("record_date", ""));
                 record.put("recordComplete", json.optBoolean("record_complete", false));
                 record.put("systemNotification", json.optBoolean("system_notification", true));
-                applySettings(context, record);
+                synchronized (LOCK) {
+                    if (revision != settingsRevision) return;
+                    applySettings(context, record);
+                }
             }
             JSONArray list = json.optJSONArray("notifications");
             if (list == null) {

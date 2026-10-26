@@ -22,6 +22,8 @@ class ReminderNotificationService {
         this.shownToastIds = new Set();
         this.dropdownOpen = false;
         this.uiReady = false;
+        this.settingsRevision = 0;
+        this.settingsSaving = false;
     }
 
     start() {
@@ -48,6 +50,8 @@ class ReminderNotificationService {
     }
 
     stop() {
+        this.settingsSaving = false;
+        this.settingsRevision++;
         if (this.timer) {
             clearInterval(this.timer);
             this.timer = null;
@@ -290,6 +294,7 @@ class ReminderNotificationService {
     async syncNativeSchedule() {
         if (!this.isNativeApp()) return;
         const token = this.authToken();
+        const revision = this.settingsRevision;
         this.syncNativeSession();
         if (!token) {
             return;
@@ -300,7 +305,7 @@ class ReminderNotificationService {
             });
             if (!response.ok) return;
             const settings = await response.json();
-            if (token !== this.authToken()) return;
+            if (token !== this.authToken() || revision !== this.settingsRevision || this.settingsSaving) return;
             window.ShuranNative.scheduleReminders(JSON.stringify({
                 enabled: !!settings.is_enabled,
                 dailyEnabled: false,
@@ -316,6 +321,24 @@ class ReminderNotificationService {
             this.refreshReliabilityHints();
         } catch (e) {
             console.error('同步原生提醒失败:', e);
+        }
+    }
+
+    applySavedSettings(settings) {
+        if (!this.isNativeApp()) return null;
+        try {
+            this.syncNativeSession();
+            return window.ShuranNative.scheduleReminders(JSON.stringify({
+                enabled: !!settings.is_enabled,
+                systemNotification: settings.browser_notification !== false,
+                recordEnabled: !!settings.record_reminder_enabled,
+                recordTime: settings.record_reminder_time || '21:00',
+                recordDate: settings.record_date,
+                recordComplete: !!settings.record_complete,
+            }));
+        } catch (error) {
+            console.error('同步手机提醒设置失败:', error);
+            return 'error';
         }
     }
 
@@ -738,6 +761,7 @@ class ReminderNotificationService {
 
     async checkPendingReminders() {
         const token = this.authToken();
+        const revision = this.settingsRevision;
         if (!token) return;
         this.ensureUi();
 
@@ -747,7 +771,7 @@ class ReminderNotificationService {
             });
             if (response.ok) {
                 const data = await response.json();
-                if (token !== this.authToken()) return;
+                if (token !== this.authToken() || revision !== this.settingsRevision || this.settingsSaving) return;
                 if (this.isNativeApp()) {
                     window.ShuranNative.scheduleReminders(JSON.stringify({
                         recordEnabled: !!data.record_reminder_enabled,

@@ -80,11 +80,13 @@ public class ReminderJsBridge {
     }
 
     @JavascriptInterface
-    public void scheduleReminders(String json) {
+    public String scheduleReminders(String json) {
         try {
             ReminderScheduler.applySettings(activity.getApplicationContext(), new JSONObject(json));
+            return "ok";
         } catch (Exception e) {
             Log.e(TAG, "scheduleReminders failed", e);
+            return "error";
         }
     }
 
