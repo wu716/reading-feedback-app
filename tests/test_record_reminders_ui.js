@@ -5,12 +5,26 @@ const vm = require('node:vm');
 let token = 'account-a';
 const schedules = [], dismissed = [], opened = [];
 let payload;
+const host = {appendChild: element => { host.lastToast = element; element.parentElement = host; }};
+class FakeElement {
+    constructor() { this.dataset = {}; this.children = {}; this.parentElement = null; }
+    set className(value) { this._className = value; }
+    set innerHTML(value) { this._innerHTML = value; }
+    querySelector(selector) {
+        const key = selector.match(/\[data-(\w+)\]/)?.[1];
+        return this.children[key] ||= {onclick: null};
+    }
+    remove() { this.parentElement = null; }
+}
 const context = vm.createContext({
     console, setTimeout, clearTimeout, URL,
     localStorage: {getItem: () => token},
     window: {ShuranNative: {scheduleReminders: raw => schedules.push(JSON.parse(raw)), requestPermission() {}, pollNow() {}},
         openLongTermToday: () => opened.push('today')},
-    document: {getElementById: () => null},
+    document: {
+        getElementById: id => id === 'inAppReminderToastHost' ? host : null,
+        createElement: () => new FakeElement(),
+    },
     fetch: async () => ({ok: true, json: async () => payload}),
 });
 const source = fs.readFileSync('static/reminder_notification.js', 'utf8').split('window.reminderNotificationService =')[0];
@@ -40,10 +54,22 @@ service.dismissReminder = (...args) => dismissed.push(args);
     assert.deepEqual(opened, ['today']);
     assert.deepEqual(dismissed, [[9,true]]);
     let inPage = 0, native = 0;
-    service.showInPageToast = () => inPage++;
+    const showInPageToast = service.showInPageToast.bind(service);
+    service.showInPageToast = (...args) => { inPage++; return showInPageToast(...args); };
     service.showNativeNotification = () => native++;
     service.announceNew({system_notification:false});
     assert.equal(inPage, 1); assert.equal(native, 0);
+    service.shownToastIds.clear();
+    service.showInPageToast({log_id:42,title:'提交项目反馈',message:'反馈内容'});
+    const toast = host.lastToast;
+    toast.querySelector('[data-close]').onclick();
+    assert.equal(toast.parentElement, null);
+    assert.deepEqual(dismissed.at(-1), [42,false], 'closing the toast dismisses the reminder persistently');
+    service.shownToastIds.clear();
+    service.showInPageToast({log_id:43,title:'提交项目反馈',message:'反馈内容'});
+    const laterToast = host.lastToast;
+    laterToast.querySelector('[data-later]').onclick();
+    assert.deepEqual(dismissed.at(-1), [43,false], 'choosing later dismisses the reminder persistently');
     // Responses from the previous account cannot update the current account's alarms.
     context.fetch = async () => {token = 'account-b'; return {ok:true,json:async()=>payload};};
     const before = schedules.length;

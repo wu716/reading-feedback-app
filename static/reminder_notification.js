@@ -848,8 +848,12 @@ class ReminderNotificationService {
                 <button type="button" data-later style="flex:1;background:#f0f0f0;color:#666;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;">稍后</button>
             </div>
         `;
-        el.querySelector('[data-close]').onclick = () => el.remove();
-        el.querySelector('[data-later]').onclick = () => el.remove();
+        const dismiss = () => {
+            el.remove();
+            this.dismissReminder(reminderData.log_id, false);
+        };
+        el.querySelector('[data-close]').onclick = dismiss;
+        el.querySelector('[data-later]').onclick = dismiss;
         el.querySelector('[data-act]').onclick = () => {
             el.remove();
             this.goToAction(reminderData, true);
