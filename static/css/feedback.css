@@ -73,4 +73,26 @@
 @media(min-width:1200px){.fb-trends{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:700px){.fb-fields,.fb-task-draft .fb-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.fb-daily-projects{padding:16px}.fb-trends{gap:10px}.fb-trend-card{padding:12px}.fb-node>summary{padding:12px;gap:8px;flex-wrap:wrap}.fb-node-body{padding:14px}.fb-report-intro{padding:18px}.fb-heading{align-items:flex-start}.fb-book>summary{grid-template-columns:minmax(0,1fr) auto}.fb-book-track{grid-row:2;grid-column:1/-1}.fb-book strong{grid-column:2;grid-row:1}}
 @media(max-width:420px){.fb-task-draft{padding:12px}.fb-task-draft .fb-fields{grid-template-columns:minmax(0,1fr)}.fb-plan .fb-fields{grid-template-columns:minmax(0,1fr)}.fb-range{gap:6px}.fb-range button{padding:9px 6px;font-size:.8rem;letter-spacing:0}.fb-calendar{padding:10px}.fb-weekdays span{padding:6px 8px}.fb-trends{grid-template-columns:minmax(0,1fr)}.fb-coverage-days{gap:3px}.fb-coverage-days button{font-size:.68rem;padding:7px 1px}.fb-coverage-days small{font-size:.55rem}.fb-badge{font-size:.67rem}.fb-daily-projects{padding:12px}}
+
+/* Reader linkage stays available without taking a full card from the daily ledger. */
+.fb-reader-compact{padding:0;overflow:hidden;border-radius:11px;margin:0 0 12px}
+.fb-reader-compact>summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 12px;list-style:none;cursor:pointer;font-size:13px}
+.fb-reader-compact>summary::-webkit-details-marker{display:none}
+.fb-reader-compact>summary::after{content:'管理 ＋';margin-left:auto;color:#40677e;font-size:12px}
+.fb-reader-compact[open]>summary::after{content:'收起 −'}
+.fb-reader-dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#9ba7a0}
+.fb-reader-summary{font-size:11px;color:#6e7e83;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fb-reader-body{border-top:1px solid #dce1dd;padding:10px 12px 12px}
+.fb-reader-toolbar{display:flex;justify-content:flex-end}
+.fb-reader-compact .fb-reader-body>p{font-size:12px;line-height:1.6}
+.fb-reader-compact [data-reader-status]>article{padding:8px 0;border-bottom:1px solid #dce1dd;font-size:12px}
+.fb-reader-compact.is-connected .fb-reader-dot{background:#71876d}
+.fb-reader-compact.has-sync-issue .fb-reader-dot{background:#a46d53}
+.fb-report-intro{margin:10px 0 18px;padding:17px;border-radius:12px}
+.fb-report-section{padding:18px 0}
+.fb-report-section h3{font-size:1rem;margin-bottom:10px}
+.fb-trend-card{border-radius:11px;padding:13px}
+.fb-trend-card svg{width:100%;height:auto;display:block}
+.fb-coverage-days button{min-width:0}
+@media(max-width:700px){.fb-reader-compact{padding:0;margin-bottom:10px}.fb-reader-compact>summary{min-height:42px;padding:7px 10px}.fb-reader-compact .fb-reader-body{padding:8px 10px 10px}.fb-report-intro{margin:8px 0 14px;padding:15px}.fb-report-section{padding:15px 0}.fb-trend-card{padding:11px}.fb-project-report{padding:12px}}
 .fb-compare-row{grid-template-columns:30px minmax(0,1fr) 76px}.fb-compare-row>span:last-child{text-align:right;overflow-wrap:anywhere}.fb-book,.fb-node,.fb-project-report{overflow-wrap:anywhere}

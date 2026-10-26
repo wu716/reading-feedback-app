@@ -496,10 +496,7 @@
         enhanceReport(r);
     }
     function enhanceReport(r) {
-        const root=el('ltReport'),details=document.createElement('details'),summary=document.createElement('summary');
-        details.className='fb-report-details';summary.textContent='查看方向、消费、目标与训练明细';details.append(summary);
-        while(root.firstChild)details.append(root.firstChild);
-        root.append(details);window.ShuranFeedbackReports?.render(r,root);
+        window.ShuranFeedbackReports?.render(r,el('ltReport'));
     }
     function renderFreeReport(r) {
         const total = Object.values(r.total_seconds || {}).reduce((a,b) => a + b, 0);
