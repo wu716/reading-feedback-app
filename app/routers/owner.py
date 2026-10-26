@@ -16,9 +16,10 @@ from app.audit import write_audit
 from app.auth import bump_token_version, get_current_owner
 from app.backup import build_backup_zip, latest_backup_path, run_daily_backup
 from app.database import get_db
-from app.models import AuditLog, GrantEvent, InviteCode, PaymentTransaction, RefundTransaction, User
+from app.models import AuditLog, DailyAppUsage, GrantEvent, InviteCode, PaymentTransaction, RefundTransaction, User
 from app.plans import PLANS, _today, apply_plan, plan_label, sync_subscription
 from app.rate_limit import client_ip
+from app.usage_time import BEIJING, USAGE_RETENTION_DAYS, purge_expired_usage
 
 router = APIRouter(prefix="/owner", tags=["站长"])
 
@@ -630,6 +631,90 @@ async def list_audit_logs(
             }
             for row in rows
         ]
+    }
+
+
+@router.get("/usage")
+def list_owner_usage(
+    days: int = Query(default=7, ge=7, le=30),
+    day: Optional[date] = Query(default=None),
+    db: Session = Depends(get_db),
+    _owner: User = Depends(get_current_owner),
+):
+    if days not in (7, 30):
+        raise HTTPException(status_code=422, detail="统计周期仅支持 7 天或 30 天")
+    today = datetime.now(BEIJING).date()
+    start_day = today - timedelta(days=days - 1)
+    selected_day = day or today
+    if selected_day < start_day or selected_day > today:
+        raise HTTPException(status_code=422, detail="所选日期不在当前统计周期内")
+
+    if purge_expired_usage(db, today):
+        db.commit()
+
+    conditions = (
+        DailyAppUsage.usage_date >= start_day,
+        DailyAppUsage.usage_date <= today,
+        DailyAppUsage.active_seconds > 0,
+        User.deleted_at.is_(None),
+    )
+    aggregated = (
+        db.query(
+            DailyAppUsage.usage_date,
+            func.sum(DailyAppUsage.active_seconds),
+            func.count(func.distinct(DailyAppUsage.user_id)),
+        )
+        .join(User, User.id == DailyAppUsage.user_id)
+        .filter(*conditions)
+        .group_by(DailyAppUsage.usage_date)
+        .all()
+    )
+    by_day = {
+        row[0]: {"active_seconds": int(row[1] or 0), "active_users": int(row[2] or 0)}
+        for row in aggregated
+    }
+    daily = []
+    cursor = start_day
+    while cursor <= today:
+        total = by_day.get(cursor, {"active_seconds": 0, "active_users": 0})
+        daily.append({"date": cursor.isoformat(), **total})
+        cursor += timedelta(days=1)
+
+    selected_summary = by_day.get(selected_day, {"active_seconds": 0, "active_users": 0})
+    detail_rows = (
+        db.query(DailyAppUsage, User.email, User.phone)
+        .join(User, User.id == DailyAppUsage.user_id)
+        .filter(
+            DailyAppUsage.usage_date == selected_day,
+            DailyAppUsage.active_seconds > 0,
+            User.deleted_at.is_(None),
+        )
+        .order_by(DailyAppUsage.active_seconds.desc(), User.email.asc())
+        .all()
+    )
+    return {
+        "period_days": days,
+        "timezone": "Asia/Shanghai",
+        "retention_days": USAGE_RETENTION_DAYS,
+        "start_date": start_day.isoformat(),
+        "end_date": today.isoformat(),
+        "selected_date": selected_day.isoformat(),
+        "daily": daily,
+        "selected_summary": {
+            **selected_summary,
+            "average_active_seconds": (
+                round(selected_summary["active_seconds"] / selected_summary["active_users"])
+                if selected_summary["active_users"] else 0
+            ),
+        },
+        "users": [
+            {
+                "user_id": usage.user_id,
+                "account": phone or public_email(email) or f"账号 {usage.user_id}",
+                "active_seconds": int(usage.active_seconds or 0),
+            }
+            for usage, email, phone in detail_rows
+        ],
     }
 
 

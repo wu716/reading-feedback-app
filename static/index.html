@@ -3467,7 +3467,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261017paper1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.44';
+            window.SHURAN_VERSION = '2.0.45';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -3789,6 +3789,7 @@
                 <section class="me-group" id="meDataGroup" aria-labelledby="meDataTitle">
                     <h2 class="me-group-title" id="meDataTitle" data-i18n="me.data.group">数据与帮助</h2>
                     <div class="me-export-row"><div><h3 class="me-row-title" data-i18n="me.data.exportTitle">我的数据</h3><p class="me-hint" data-i18n="me.data.exportHint">下载自己的完整历史记录，免费保留。</p></div><button type="button" class="me-btn me-btn-ghost" id="meExportBtn" onclick="downloadMyData()" data-i18n="me.data.export">导出我的数据</button></div>
+                    <p class="me-hint">使用时长统计：登录后记录你每天在书然前台有操作的累计时间；切后台、锁屏或连续 2 分钟无操作时暂停。账号、日期和累计时长仅供站长查看，保留最近 90 天。为合并同一账号多个窗口的重叠计时，会临时使用最近心跳时间，失活后清除；时长统计数据不包含页面内容、输入文字、设备来源或 IP。</p>
                     <div class="me-utility-list">
                     <button type="button" class="me-row" id="ownerEntryRow" hidden onclick="navigateTo('owner')">
                         <span class="me-row-icon" aria-hidden="true">
@@ -3998,6 +3999,32 @@
                 <p>先核对到账，再为指定账号开通并留下记录。</p>
             </div>
             <div class="owner-page">
+                <div class="me-group owner-usage-panel" id="ownerUsagePanel">
+                    <div class="me-group-title">每日使用时长</div>
+                    <p class="me-hint">按北京时间统计账号每日在书然前台有操作的累计时长；仅站长可查看。</p>
+                    <div class="owner-usage-controls">
+                        <div class="owner-usage-period" role="group" aria-label="统计周期">
+                            <button type="button" data-owner-usage-days="7" aria-pressed="true">近 7 天</button>
+                            <button type="button" data-owner-usage-days="30" aria-pressed="false">近 30 天</button>
+                        </div>
+                        <div class="owner-usage-date">
+                            <button type="button" id="ownerUsagePrev" aria-label="前一天">‹</button>
+                            <span class="owner-usage-date-label" id="ownerUsageDateLabel"></span>
+                            <button type="button" id="ownerUsageNext" aria-label="后一天">›</button>
+                        </div>
+                    </div>
+                    <div class="owner-usage-summary" aria-live="polite">
+                        <div class="owner-usage-metric"><div class="owner-usage-metric-label">当日总时长</div><div class="owner-usage-metric-value" id="ownerUsageTotal">—</div></div>
+                        <div class="owner-usage-metric"><div class="owner-usage-metric-label">有记录账号</div><div class="owner-usage-metric-value" id="ownerUsageAccounts">—</div></div>
+                        <div class="owner-usage-metric"><div class="owner-usage-metric-label">账号平均时长</div><div class="owner-usage-metric-value" id="ownerUsageAverage">—</div></div>
+                    </div>
+                    <div class="owner-usage-controls"><div><strong>每日总时长</strong><div class="me-hint">点击柱形切换下方日期明细</div></div><span class="me-hint">后台、锁屏或闲置 2 分钟后暂停</span></div>
+                    <div class="owner-usage-chart" id="ownerUsageChart" aria-label="每日总使用时长"></div>
+                    <div class="owner-usage-controls"><strong id="ownerUsageTableTitle">用户每日明细</strong><input class="owner-usage-search" id="ownerUsageSearch" type="search" placeholder="按账号筛选" aria-label="按账号筛选"></div>
+                    <div class="owner-table-wrap"><table class="owner-table"><thead><tr><th>日期（北京时间）</th><th>用户账号</th><th>活跃时长</th></tr></thead><tbody id="ownerUsageRows"></tbody></table></div>
+                    <p class="owner-usage-status" id="ownerUsageStatus" role="status"></p>
+                    <p class="owner-usage-foot">仅保存账号、日期与累计秒数，保留最近 90 个北京时间自然日；时长统计数据不包含页面内容、输入文字、设备来源或 IP。</p>
+                </div>
                 <div class="me-group">
                     <div class="me-group-title">生成邀请码</div>
                     <p class="me-hint">仅用于免费注册。四位数字，一次性，7 天有效；付费权益请在下方核对收款后开通。</p>
@@ -4499,6 +4526,13 @@
         </div>
     </div>
 
+    <div class="practice-modal me-dialog hidden" id="usageDisclosureModal" role="dialog" aria-modal="true" aria-labelledby="usageDisclosureTitle" aria-describedby="usageDisclosureText">
+        <div class="practice-container usage-disclosure-dialog">
+            <h2 id="usageDisclosureTitle">使用时长统计说明</h2>
+            <p id="usageDisclosureText">登录后，书然会统计你每天在应用前台且有操作时的累计时长。切到后台、锁屏或连续 2 分钟无操作后暂停。统计仅用于了解产品使用情况，账号、日期和累计时长仅站长可查看，保留最近 90 天。为合并同一账号多个窗口的重叠计时，会临时使用最近心跳时间，失活后清除；时长统计数据不包含你查看的页面内容、输入文字、设备来源或 IP。</p>
+            <div class="me-dialog-actions"><button type="button" class="me-dialog-button is-primary" id="usageDisclosureAcknowledge">知道了，继续使用</button></div>
+        </div>
+    </div>
 
     <script src="/static/js/i18n.js?v=20261026reminders1"></script>
     <script>
@@ -4595,6 +4629,7 @@
             }
             const openModal = document.querySelector('.practice-modal:not(.hidden)');
             if (openModal) {
+                if (openModal.id === 'usageDisclosureModal') return 'consumed';
                 openModal.classList.add('hidden');
                 return 'consumed';
             }
@@ -6359,6 +6394,7 @@
             const userBody = document.getElementById('ownerUserBody');
             if (!inviteBody || !userBody) return;
             loadOwnerSaveFolder();
+            if (typeof window.loadOwnerUsageStats === 'function') window.loadOwnerUsageStats();
             try {
                 const [codes, users, audits, payments, grants, refunds] = await Promise.all([
                     apiRequest('/owner/invite-codes'),
@@ -6818,6 +6854,7 @@
             if (event.key === 'Escape') {
                 event.preventDefault();
                 if (dialog.id === 'editNameModal') closeEditNameModal();
+                else if (dialog.id === 'usageDisclosureModal') return;
                 else closeLogoutConfirmModal();
             } else if (event.key === 'Tab') {
                 const controls = Array.from(dialog.querySelectorAll('button,input,a[href],[tabindex="0"]'))
@@ -6949,5 +6986,7 @@
     <script src="/static/js/activity-review.js?v=20261017paper1"></script>
     <script src="/static/js/ideas.js?v=20261018momenttask1"></script>
     <script src="/static/js/desktop-shell.js?v=20261022account1"></script>
+    <link rel="stylesheet" href="/static/css/usage-time.css?v=20261026usagetime1">
+    <script src="/static/js/usage-time.js?v=20261026usagetime1"></script>
 </body>
 </html>

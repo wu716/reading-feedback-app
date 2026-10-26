@@ -53,6 +53,7 @@ class User(Base):
     ebook_progress = relationship("EbookProgress", back_populates="user", cascade="all, delete-orphan")
     method_cards = relationship("MethodCard", back_populates="user", cascade="all, delete-orphan")
     used_invite_codes = relationship("InviteCode", back_populates="used_by_user")
+    usage_days = relationship("DailyAppUsage", back_populates="user", cascade="all, delete-orphan")
 
 
 class MethodCard(Base):
@@ -122,6 +123,24 @@ class ProductFeedback(Base):
     category = Column(String(30), nullable=False)
     message = Column(String(1500), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class DailyAppUsage(Base):
+    """Per-account daily active time; deliberately stores aggregates only."""
+    __tablename__ = "daily_app_usage"
+    __table_args__ = (
+        UniqueConstraint("user_id", "usage_date", name="uq_daily_app_usage_user_date"),
+        Index("ix_daily_app_usage_date", "usage_date"),
+        Index("ix_daily_app_usage_last_pulse", "last_pulse_at"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    usage_date = Column(Date, nullable=False)
+    active_seconds = Column(Integer, nullable=False, default=0, server_default="0")
+    last_pulse_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="usage_days")
 
 
 class AuthCode(Base):

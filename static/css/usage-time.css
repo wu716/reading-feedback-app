@@ -1,0 +1,39 @@
+.owner-usage-panel { position:relative; left:50%; width:min(1000px,calc(100vw - 48px)); transform:translateX(-50%); }
+.owner-usage-chart { display:flex; align-items:stretch; gap:5px; height:172px; overflow-x:auto; padding:8px 4px 0; border-bottom:1px solid #e7e1d7; }
+.owner-usage-bar-button { flex:1 0 24px; min-width:24px; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:5px; border:0; border-radius:7px 7px 0 0; background:transparent; color:#6c7776; cursor:pointer; padding:0 2px; }
+.owner-usage-bar-button:hover,.owner-usage-bar-button.is-selected { background:#edf1ef; }
+.owner-usage-bar { width:min(30px,75%); min-height:3px; border-radius:5px 5px 1px 1px; background:linear-gradient(180deg,#7893a0,#405e72); }
+.owner-usage-bar-button.is-selected .owner-usage-bar { background:linear-gradient(180deg,#b57565,#9c3b32); }
+.owner-usage-bar-total { font-size:10px; white-space:nowrap; }
+.owner-usage-bar-date { font-size:10px; height:18px; }
+.owner-usage-controls { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 16px 12px; }
+.owner-usage-period { display:flex; gap:3px; padding:3px; border:1px solid #e6e1d6; border-radius:9px; background:#f1ede4; }
+.owner-usage-period button,.owner-usage-date button { border:0; border-radius:6px; background:transparent; color:#5d5c56; padding:6px 10px; cursor:pointer; font:inherit; }
+.owner-usage-period button[aria-pressed="true"] { background:#fffdf8; color:#35546b; font-weight:700; box-shadow:0 1px 3px #00000012; }
+.owner-usage-date { display:flex; align-items:center; gap:5px; border:1px solid #e6e1d6; border-radius:8px; background:#fffdf8; }
+.owner-usage-date button { font-size:17px; padding:4px 8px; }
+.owner-usage-date button:disabled { opacity:.35; cursor:default; }
+.owner-usage-period button:focus-visible,.owner-usage-date button:focus-visible,.owner-usage-bar-button:focus-visible { outline:2px solid #35546b; outline-offset:2px; }
+.owner-usage-date-label { min-width:120px; text-align:center; color:#35546b; font-size:12px; font-weight:650; }
+.owner-usage-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding:0 16px 14px; }
+.owner-usage-metric { padding:11px 12px; border:1px solid #e8e2d8; border-radius:9px; background:#fffdf8; }
+.owner-usage-metric-label { color:#77776f; font-size:11px; }
+.owner-usage-metric-value { margin-top:3px; color:#35546b; font-size:20px; font-weight:700; line-height:1.3; }
+.owner-usage-search { width:min(220px,42vw); min-height:36px; border:1px solid #ded8cd; border-radius:8px; padding:0 10px; background:#fffefa; font:inherit; font-size:13px; }
+.owner-usage-search:focus-visible { outline:2px solid #6f8998; outline-offset:1px; }
+.owner-usage-status { padding:0 16px 10px; color:#77776f; font-size:12px; }
+.owner-usage-foot { padding:0 16px 14px; color:#77776f; font-size:11px; }
+.usage-disclosure-dialog { max-width:520px; color:#1c1b19; }
+.usage-disclosure-dialog h2 { margin:0 0 10px; color:#213e52; font-size:20px; }
+.usage-disclosure-dialog p { margin:0 0 12px; line-height:1.7; color:#5e5d56; font-size:14px; }
+.usage-disclosure-dialog .me-dialog-actions { justify-content:flex-end; margin-top:18px; }
+@media(max-width:520px) {
+  .owner-usage-controls { align-items:flex-start; flex-direction:column; }
+  .owner-usage-summary { gap:5px; padding-left:10px; padding-right:10px; }
+  .owner-usage-metric { padding:9px 7px; }
+  .owner-usage-metric-value { font-size:16px; }
+  .owner-usage-metric-label { font-size:10px; }
+  .owner-usage-search { width:100%; }
+  .owner-usage-chart { gap:2px; height:148px; }
+  .owner-usage-bar-total,.owner-usage-bar-date { font-size:9px; }
+}

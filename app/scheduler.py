@@ -9,6 +9,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.config import settings
 from app.database import SessionLocal
 from app.self_talk.reminder_service import check_record_reminders, check_todo_reminders
+from app.usage_time import clear_stale_usage_pulses, purge_expired_usage
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,20 @@ def _run_with_db(fn):
         fn(db)
     finally:
         db.close()
+
+
+def _purge_expired_usage(db):
+    deleted = purge_expired_usage(db)
+    db.commit()
+    if deleted:
+        logger.info("已清理 %s 条过期每日使用时长记录", deleted)
+
+
+def _clear_stale_usage_pulses(db):
+    cleared = clear_stale_usage_pulses(db)
+    db.commit()
+    if cleared:
+        logger.info("已清理 %s 条过期使用时长心跳", cleared)
 
 
 def create_scheduler() -> BackgroundScheduler:
@@ -48,6 +63,19 @@ def create_scheduler() -> BackgroundScheduler:
         run_daily_backup,
         CronTrigger(hour=3, minute=15),
         id="daily_backup",
+        replace_existing=True,
+    )
+
+    scheduler.add_job(
+        lambda: _run_with_db(_purge_expired_usage),
+        CronTrigger(hour=3, minute=25),
+        id="daily_app_usage_retention",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        lambda: _run_with_db(_clear_stale_usage_pulses),
+        IntervalTrigger(seconds=30),
+        id="clear_stale_app_usage_pulses",
         replace_existing=True,
     )
 

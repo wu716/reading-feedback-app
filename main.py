@@ -15,7 +15,7 @@ from app.database import ensure_schema, get_db
 from app.health import router as health_router
 from app.legacy_origin import canonical_url, is_legacy_singapore, keep_on_legacy_origin
 from app.scheduler import start_scheduler
-from app.routers import auth, today, app_download, owner, schedule, time_log, capture, projects, long_term, long_term_details, project_feedback, reader_sync
+from app.routers import auth, today, app_download, owner, schedule, time_log, capture, projects, long_term, long_term_details, project_feedback, reader_sync, usage_time
 from app.routers.self_talk_reminders import router as reminders_router
 
 # 配置日志
@@ -56,7 +56,7 @@ _openapi_enabled = None if settings.is_production else "/openapi.json"
 app = FastAPI(
     title=settings.app_name,
     description="书然 - 个人项目、日程与时间记录",
-    version="2.0.44",
+    version="2.0.45",
     docs_url=_docs_enabled,
     redoc_url=_redoc_enabled,
     openapi_url=_openapi_enabled,
@@ -73,7 +73,7 @@ app.add_middleware(
 )
 
 
-STATIC_UI_VERSION = "20261026connectionfix1"
+STATIC_UI_VERSION = "20261026usagetime1"
 NO_STORE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
@@ -141,6 +141,7 @@ app.include_router(capture.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
 app.include_router(project_feedback.router, prefix="/api")
 app.include_router(reader_sync.router, prefix="/api")
+app.include_router(usage_time.router, prefix="/api")
 app.include_router(app_download.router)
 
 
