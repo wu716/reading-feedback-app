@@ -61,7 +61,7 @@ def guard_scope(db, user_id, task, *, include_completed=False):
     """Only actual shrinking/moving is guarded. Text, day placement and rotation stay free."""
     stage = db.get(ProjectStage, task.stage_id) if task.stage_id else None
     if stage and stage.state == "current" and (include_completed or task.state not in ("completed", "cancelled")) and commitment(db, user_id, stage.id):
-        raise HTTPException(409, "这会改变已开始的当前承诺。请在项目的“调整当前承诺”中预览后果并完成30秒暂停；旧客户端请刷新。")
+        raise HTTPException(409, "阶段或完成标准会改变已确认的当前承诺。输入仍在页面中；请预览调整后果并按提示确认，也可只保存普通内容。")
 
 
 def record_scope_addition(db, user_id, task):
@@ -229,9 +229,11 @@ def preview(db, user_id, project_id, plan):
 def adjustment_payload(row):
     requires_wait = json.loads(row.impact_json).get("requires_wait", True)
     return {"id": row.id, "project_id": row.project_id, "stage_id": row.stage_id,
+        "stage_title": row.stage_title_snapshot, "stage_deleted": row.stage_id is None and row.stage_original_id is not None,
         "plan": json.loads(row.plan_json), "impact": json.loads(row.impact_json),
         "elapsed_ms": row.elapsed_ms, "remaining_seconds": max(0, (30000 - row.elapsed_ms + 999) // 1000) if requires_wait else 0,
-        "confirmed": row.confirmed_at is not None, "result": json.loads(row.result_json or "{}")}
+        "confirmed": row.confirmed_at is not None, "invalidated": row.fingerprint == "",
+        "result": json.loads(row.result_json or "{}")}
 
 
 def owned_adjustment(db, user_id, adjustment_id):
@@ -319,7 +321,7 @@ def confirm(db, row, reason):
     if not had_commitment and statement is not None:
         saved = draft(db, row.user_id, (target or current).id)
         if saved is None:
-            saved = StageCommitmentDraft(user_id=row.user_id, stage_id=(target or current).id, revision=0)
+            saved = StageCommitmentDraft(user_id=row.user_id, project_id=row.project_id, stage_id=(target or current).id, revision=0)
             db.add(saved)
         saved.statement, saved.revision, saved.updated_at = statement, saved.revision + 1, datetime.utcnow()
     new_commit = commit_stage(db, row.user_id, target or current, statement=statement) if had_commitment else None

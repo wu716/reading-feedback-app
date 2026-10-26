@@ -67,13 +67,16 @@ def get_commitment(project_id: int, user: User = Depends(get_current_active_user
     versions = db.query(StageCommitment).filter_by(user_id=user.id, project_id=project_id).order_by(StageCommitment.id).all()
     numbers = {c.id: i + 1 for i, c in enumerate(versions)}
     pending = db.query(CommitmentAdjustment).filter_by(user_id=user.id, project_id=project_id,
-        stage_id=stage.id if stage else -1, confirmed_at=None).order_by(CommitmentAdjustment.id.desc()).first()
+        stage_id=stage.id if stage else -1, confirmed_at=None).filter(CommitmentAdjustment.fingerprint != "").order_by(CommitmentAdjustment.id.desc()).first()
     return {"notice": svc.COMMITMENT_TEXT, "current_stage_id": stage.id if stage else None,
         "commitment": {"id": current.id, "version": numbers[current.id], "snapshot": json.loads(current.snapshot_json), "at": current.created_at} if current else None,
         "draft": {"statement": saved.statement, "revision": saved.revision, "updated_at": saved.updated_at} if saved else None,
         "scope": svc.stage_snapshot(db, user.id, stage) if stage else None,
         "pending": svc.adjustment_payload(pending) if pending else None,
-        "history": [{"id": c.id, "version": numbers[c.id], "stage_id": c.stage_id, "at": c.created_at, "snapshot": json.loads(c.snapshot_json)}
+        "history": [{"id": c.id, "version": numbers[c.id], "stage_id": c.stage_id,
+                     "original_stage_id": c.stage_original_id or c.stage_id,
+                     "stage_title": c.stage_title_snapshot, "stage_deleted": c.stage_id is None,
+                     "at": c.created_at, "snapshot": json.loads(c.snapshot_json)}
                     for c in reversed(versions)],
         "adjustments": [svc.adjustment_payload(a) | {"reason": a.reason} for a in db.query(CommitmentAdjustment)
                         .filter_by(user_id=user.id, project_id=project_id).order_by(CommitmentAdjustment.id.desc())]}
@@ -115,7 +118,7 @@ def save_draft(stage_id: int, body: DraftInput, user: User = Depends(get_current
     if body.revision != (saved.revision if saved else 0):
         raise HTTPException(409, "草稿已在另一页面更新，请先读取服务器草稿")
     if saved is None:
-        saved = StageCommitmentDraft(user_id=user.id, stage_id=stage.id)
+        saved = StageCommitmentDraft(user_id=user.id, project_id=stage.project_id, stage_id=stage.id)
         db.add(saved)
     saved.statement, saved.revision, saved.updated_at = body.statement, body.revision + 1, datetime.utcnow()
     db.commit()

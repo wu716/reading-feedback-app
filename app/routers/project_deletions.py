@@ -24,6 +24,7 @@ class Strict(BaseModel):
 class Preview(Strict):
     kind: Literal["project", "stage", "task"]
     target_id: int = Field(gt=0)
+    stage_tasks: Literal["delete", "keep"] = "delete"
 
 
 class Confirm(Strict):
@@ -52,7 +53,7 @@ def deleted_content(user: User = Depends(get_current_active_user), db: Session =
 
 @router.post("/preview")
 def preview(body: Preview, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
-    row = svc.preview(db, user.id, body.kind, body.target_id)
+    row = svc.preview(db, user.id, body.kind, body.target_id, stage_tasks=body.stage_tasks)
     db.commit()
     return svc.payload(db, row)
 

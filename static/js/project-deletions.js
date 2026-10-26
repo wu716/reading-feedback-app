@@ -36,18 +36,21 @@
   function blocked(){return current.impact.running.length||current.impact.affected.length;}
   function drawDelete() {
     const row=current,impact=row.impact;
-    shell(`删除${labels[row.kind]}“${row.title}”？`,'移入“已删除”，之后可以恢复。',
-      `<dl class="delete-impact"><dt>移出工作区</dt><dd>${row.kind==='project'?'整个项目、':''}${impact.stages?impact.stages+' 个阶段、':''}${impact.tasks} 项任务</dd><dt>移出待办</dt><dd>${impact.daily} 条关联未完成日程，相关轮转项一并移出</dd><dt>继续保留</dt><dd>${impact.sessions} 条历史投入（已结束 ${impact.minutes} 分钟）、已完成日程、反馈历史，以及独立目标和流程模板</dd></dl>`+
+    const keepStageTasks=row.kind==='stage'&&impact.stage_tasks==='keep';
+    const stageChoice=row.kind==='stage'?`<fieldset class="delete-stage-choice"><legend>${impact.stage_has_execution?'已有执行记录，任务与投入必须保留':'这个阶段的任务尚未执行，选择任务去向'}</legend>${impact.task_titles.map(t=>`<div>· ${esc(t.title)}</div>`).join('')||'<div>这个阶段没有任务。</div>'}${impact.stage_has_execution?'<p>删除阶段后，任务放到本项目“未分阶段”。</p>':`<label><input type="radio" name="stage-tasks" value="delete" ${keepStageTasks?'':'checked'}> 连同尚未执行的计划任务一起删除</label><label><input type="radio" name="stage-tasks" value="keep" ${keepStageTasks?'checked':''}> 保留任务，放到本项目“未分阶段”</label>`}</fieldset>`:'';
+    const confirmLabel=row.kind==='stage'?(keepStageTasks?'只删除阶段，保留任务':impact.tasks?`删除阶段和 ${impact.tasks} 项计划任务`:'删除阶段'):'确认删除';
+    shell(`删除${labels[row.kind]}“${row.title}”？`,'从工作区删除；现有删除记录可用于恢复。',
+      stageChoice+`<dl class="delete-impact"><dt>移出工作区</dt><dd>${row.kind==='project'?'整个项目、':''}${impact.stages?impact.stages+' 个阶段、':''}${keepStageTasks?0:impact.tasks} 项任务</dd><dt>移出待办</dt><dd>${keepStageTasks?0:impact.daily} 条关联未完成日程，相关轮转项一并移出</dd><dt>继续保留</dt><dd>${impact.sessions} 条历史投入（已结束 ${impact.minutes} 分钟）、已完成日程、反馈历史，以及独立目标和流程模板</dd></dl>`+
       (impact.running.length?`<div class="delete-warning"><h3>先结束正在进行的工作计时</h3><p>已发生的投入会保留；暂停等待不计入工作。</p>${impact.running.map(s=>`<p>${esc(s.title)} <button type="button" data-stop="${s.id}">结束计时并保留投入</button></p>`).join('')}</div>`:'')+
       (impact.affected.length?`<div class="delete-warning"><h3>还有其他内容依赖这里</h3><p>先在对应项目或日程中明确调整前置条件，然后回来重新预览。删除不会自动满足依赖。</p>${impact.affected.map(a=>`<p>${esc(a.title)} · ${esc(a.condition)}<br><a href="${a.kind==='daily'?'/static/index.html#schedule':`/static/projects.html?project=${a.project_id}${a.kind==='task'?'&task='+a.id:''}`}">查看${a.kind==='daily'?'日程':'所属项目与任务'}</a></p>`).join('')}</div>`:'')+
       (impact.requires_wait?`<div class="delete-warning"><h3>这会改变已确认的当前承诺</h3><p>${esc(impact.notice)}</p><p>本次删除会缩减当前范围，且不会将未完成内容算作完成。请核对交付与验收是否仍然可达。</p></div>`:'')+
       `<label class="delete-reason">${impact.requires_wait?'调整原因（必填）':'删除原因（选填）'}<input type="text" data-reason maxlength="4000" value="${esc(reason)}" placeholder="说明为什么需要删除"></label>`+
       (impact.requires_wait?`<p class="delete-wait" data-wait aria-live="polite">尚未开始30秒暂停</p><button type="button" data-wait-start ${blocked()||!reason.trim()?'disabled':''}>开始30秒暂停</button>`:'')+
-      `<p class="delete-note">恢复不会自动开始计时、加入轮转或重新启用提醒。此前单独删除的内容不会随上级恢复。</p><div class="delete-actions"><button type="button" data-close>保留${labels[row.kind]}</button><button type="button" data-repreview>重新预览</button><button type="button" class="delete-confirm" data-confirm ${blocked()||impact.requires_wait?'disabled':''}>确认删除</button></div>`);
+      `<p class="delete-note">恢复不会自动开始计时、加入轮转或重新启用提醒。此前单独删除的内容不会随上级恢复。</p><div class="delete-actions"><button type="button" data-close>保留${labels[row.kind]}</button><button type="button" data-repreview>重新预览</button><button type="button" class="delete-confirm" data-confirm ${blocked()||impact.requires_wait?'disabled':''}>${confirmLabel}</button></div>`);
   }
-  async function preview(kind,id,keepReason=false) {
+  async function preview(kind,id,keepReason=false,stageTasks='delete') {
     stopWait();if(!keepReason)reason='';restoreItem=null;
-    const version=generation,result=await api('/preview',{kind,target_id:Number(id)});
+    const version=generation,result=await api('/preview',{kind,target_id:Number(id),stage_tasks:stageTasks});
     if(version===generation){current=result;drawDelete();}
   }
   async function beat() {
@@ -79,6 +82,7 @@
       `<p class="delete-note">未恢复的日程仍留在“已删除”，可稍后处理。计时、轮转和提醒需要重新安排；已解除的外部依赖不会自动接回。</p><div class="delete-actions"><button type="button" data-back-trash>返回已删除列表</button><button type="button" data-do-restore>确认恢复</button></div>`);
   }
   function onInput(e) {
+    if(e.target.matches('[name="stage-tasks"]')){preview(current.kind,current.target_id,true,e.target.value).catch(error=>{if(dialog.open)find('[data-error]').textContent=error.message;});return;}
     if(!e.target.matches('[data-reason]'))return;
     reason=e.target.value;
     const start=find('[data-wait-start]');if(start)start.disabled=!!(blocked()||!reason.trim()||waiting);
@@ -93,7 +97,7 @@
     busy=true;b.disabled=true;
     try {
       if(b.dataset.stop){await api(`/sessions/${b.dataset.stop}/stop`,{},'');await options.onChanged?.('计时已结束，投入已保留');await preview(current.kind,current.target_id,true);}
-      else if(b.hasAttribute('data-repreview'))await preview(current.kind,current.target_id,true);
+      else if(b.hasAttribute('data-repreview'))await preview(current.kind,current.target_id,true,current.impact.stage_tasks||'delete');
       else if(b.hasAttribute('data-confirm')){await api(`/${current.id}/confirm`,{reason});dialog.close();await options.onChanged?.('已移入“已删除”，历史投入已保留');await refreshCount();}
       else if(b.hasAttribute('data-do-restore')){
         const dates=Object.fromEntries([...dialog.querySelectorAll('[data-daily-date]')].filter(n=>n.value).map(n=>[n.dataset.dailyDate,n.value]));

@@ -46,3 +46,7 @@
 .project-delete-dialog .delete-wait {font-variant-numeric:tabular-nums;color:#315a7e;margin-top:12px;}
 @media(max-width:600px){.project-select-row {flex-wrap:wrap;}.project-select-row #projectOutcome {flex:1 1 100%;}.project-delete-dialog {padding:18px;}.project-delete-dialog .delete-impact {grid-template-columns:74px minmax(0,1fr);gap:8px;}.stage-delete-actions {gap:8px;}}
 @media(pointer:coarse){.project-delete-button,.project-delete-dialog button {min-height:44px;}.project-delete-dialog input {font-size:16px;}}
+.delete-stage-choice { border:1px solid #d7e1e2; border-radius:8px; padding:12px 14px; margin:14px 0; color:#3a5664; }
+.delete-stage-choice legend { font-weight:600; padding:0 4px; }
+.delete-stage-choice label { display:block; margin:10px 0; cursor:pointer; }
+.delete-stage-choice input { accent-color:#315a74; }

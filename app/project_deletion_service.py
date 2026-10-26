@@ -11,6 +11,7 @@ from app.models import DailyTask, SelfTalkReminderLog
 from app.project_models import (
     Project, ProjectStage, ProjectTask, ProjectDeletion, TaskDependency,
     StartCondition, WorkSession, ExecutionPlan, FeedbackOccurrence, FeedbackDelivery,
+    StageCommitmentDraft, StageCommitment, CommitmentAdjustment, TaskChecklistItem,
 )
 from app.practice_service import dumps, lock_user, today
 from app.schedule_todos import sync_task_reminder
@@ -102,14 +103,59 @@ def scope(db, user_id, kind, target_id):
     return project, item, stages, tasks, daily, sessions, affected, requires_wait, running
 
 
-def preview(db, user_id, kind, target_id):
+def stage_has_execution(db, user_id, tasks, daily, sessions, stage_id=None):
+    """A written plan is not work; any durable progress is work."""
+    task_ids = [t.id for t in tasks]
+    if stage_id is not None:
+        task_ids = [row[0] for row in db.query(ProjectTask.id).filter_by(stage_id=stage_id).all()]
+    sessions_exist = bool(sessions or (task_ids and db.query(WorkSession.id).filter(WorkSession.user_id == user_id,
+        WorkSession.project_task_id.in_(task_ids), WorkSession.kind == "work").first()))
+    completed_daily = bool(task_ids and db.query(DailyTask.id).filter(DailyTask.user_id == user_id,
+        DailyTask.project_task_id.in_(task_ids),
+        DailyTask.completed.is_(True)).first())
+    task_progress = bool(task_ids and db.query(ProjectTask.id).filter(ProjectTask.user_id == user_id,
+        ProjectTask.id.in_(task_ids),
+        (ProjectTask.state != "todo") | ProjectTask.completed_at.isnot(None) |
+        ProjectTask.outcome_note.isnot(None) | ProjectTask.variance_reason.isnot(None)).first())
+    checklist_progress = bool(task_ids and db.query(TaskChecklistItem.id).filter(
+        TaskChecklistItem.user_id == user_id, TaskChecklistItem.task_id.in_(task_ids),
+        TaskChecklistItem.done.is_(True)).first())
+    return bool(sessions_exist or completed_daily or checklist_progress or task_progress)
+
+
+def preview(db, user_id, kind, target_id, *, stage_tasks="delete"):
     lock_user(db, user_id)
     settle_expired(db, user_id)
     project, item, stages, tasks, daily, sessions, affected, wait, running = scope(db, user_id, kind, target_id)
+    if kind != "stage" and stage_tasks != "delete":
+        raise HTTPException(400, "仅删除阶段时可选择保留任务")
+    if stage_tasks not in ("delete", "keep"):
+        raise HTTPException(400, "请选择任务去向")
+    has_execution = kind == "stage" and stage_has_execution(db, user_id, tasks, daily, sessions, item.id)
+    if kind == "stage" and not has_execution:
+        wait = False
+        running = []
+    if has_execution and stage_tasks == "delete":
+        stage_tasks = "keep"
+    if kind == "stage" and stage_tasks == "keep":
+        # Stage identity is removed from the workspace, while task identity survives.
+        affected = []
     content = {"project": [project.id] if kind == "project" else [], "stage": [s.id for s in stages],
-               "task": [t.id for t in tasks], "daily": [d.id for d in daily]}
+               "task": [t.id for t in tasks] if stage_tasks == "delete" else [],
+               "daily": [d.id for d in daily] if stage_tasks == "delete" else [],
+               "retained_task": [t.id for t in tasks] if kind == "stage" and stage_tasks == "keep" else [],
+               "hard_stage": kind == "stage"}
+    if kind == "stage":
+        content["stage_members"] = [row[0] for row in db.query(ProjectTask.id).filter_by(
+            user_id=user_id, project_id=project.id, stage_id=item.id).all()]
+        content["stage_snapshot"] = {"id": item.id, "user_id": item.user_id, "project_id": item.project_id,
+            "title": item.title, "position": item.position, "state": item.state,
+            "closed_reason": item.closed_reason, "created_at": item.created_at, "closed_at": item.closed_at}
     impact = {"requires_wait": wait, "notice": commitments.COMMITMENT_TEXT,
         "stages": len(stages), "tasks": len(tasks), "daily": len(daily),
+        "stage_tasks": stage_tasks if kind == "stage" else None,
+        "stage_has_execution": bool(has_execution),
+        "task_titles": [{"id": t.id, "title": t.title} for t in tasks] if kind == "stage" else [],
         "sessions": len([s for s in sessions if s.kind == "work"]),
         "minutes": round(sum((s.ended_at - s.started_at).total_seconds() / 60 for s in sessions if s.kind == "work" and s.ended_at), 1),
         "affected": affected, "running": [{"id": s.id, "title": s.label or "正在进行的工作片"} for s in running]}
@@ -157,17 +203,30 @@ def clear_execution(db, row, content):
 def confirm(db, row, reason):
     if row.confirmed_at: return payload(db, row)
     commitments.verify_unchanged(db, row)
-    _, _, _, _, _, _, affected, wait, running = scope(db, row.user_id, row.kind, row.target_id)
+    _, _, _, tasks, daily, sessions, affected, wait, running = scope(db, row.user_id, row.kind, row.target_id)
+    content = json.loads(row.scope_json)
+    if row.kind == "stage":
+        has_execution = stage_has_execution(db, row.user_id, tasks, daily, sessions, row.target_id)
+        if has_execution and content["task"]:
+            raise HTTPException(409, "这个阶段已有执行记录，请重新预览并保留任务与投入")
+        if not has_execution:
+            wait = False
+            running = []
+        if content.get("retained_task"):
+            affected = []
     if affected: raise HTTPException(409, "还有其他内容依赖这里，请先调整前置条件，再重新预览")
     if running: raise HTTPException(409, "请先结束正在进行的工作计时，保留投入后重新预览")
     if wait and (not reason.strip() or row.elapsed_ms < 30000):
         raise HTTPException(409, "请说明原因并完成后果说明的30秒前台暂停")
-    content = json.loads(row.scope_json)
     row.confirmed_at, row.reason, row.last_visible_at = datetime.utcnow(), reason.strip() or None, None
     deleted_at = row.confirmed_at.replace(tzinfo=timezone.utc)
     for kind in ("project", "stage", "task"):
         for item in db.query(MODELS[kind]).filter(MODELS[kind].user_id == row.user_id, MODELS[kind].id.in_(content[kind])):
-            item.deleted_at = deleted_at
+            if not (kind == "stage" and content.get("hard_stage")):
+                item.deleted_at = deleted_at
+    for task in db.query(ProjectTask).filter(ProjectTask.user_id == row.user_id,
+            ProjectTask.id.in_(content.get("retained_task", []))):
+        task.stage_id = None
     for daily in db.query(DailyTask).filter(DailyTask.user_id == row.user_id, DailyTask.id.in_(content["daily"])):
         daily.deleted_at = deleted_at
         sync_task_reminder(db, daily, remind_time=None)
@@ -183,6 +242,26 @@ def confirm(db, row, reason):
         logs = db.query(FeedbackDelivery.log_id).filter(FeedbackDelivery.user_id == row.user_id, FeedbackDelivery.occurrence_id.in_(ids))
         for log in db.query(SelfTalkReminderLog).filter(SelfTalkReminderLog.user_id == row.user_id, SelfTalkReminderLog.id.in_(logs)):
             log.dismissed_at = deleted_at
+    if row.kind == "stage" and content.get("hard_stage"):
+        stage = db.get(ProjectStage, row.target_id)
+        if not stage or stage.user_id != row.user_id:
+            raise HTTPException(409, "阶段已经变化，请重新预览")
+        for task in db.query(ProjectTask).filter_by(user_id=row.user_id, project_id=row.project_id, stage_id=stage.id):
+            task.stage_original_id = stage.id
+            task.stage_id = None
+        for task in db.query(ProjectTask).filter(ProjectTask.user_id == row.user_id,
+                ProjectTask.project_id == row.project_id, ProjectTask.id.in_(content.get("stage_members", []))):
+            task.stage_original_id = stage.id
+        for model in (StageCommitmentDraft, StageCommitment, CommitmentAdjustment):
+            for history in db.query(model).filter_by(user_id=row.user_id, stage_id=stage.id):
+                history.stage_original_id = stage.id
+                history.stage_title_snapshot = stage.title
+                if model is StageCommitmentDraft: history.project_id = stage.project_id
+                if model is CommitmentAdjustment and history.confirmed_at is None:
+                    history.fingerprint = ""
+                history.stage_id = None
+        db.flush()
+        db.delete(stage)
     record_event(db, row.user_id, row.kind, row.target_id, "content_deleted", before=content, reason=row.reason)
     db.flush()
     if row.kind == "task":
@@ -196,13 +275,20 @@ def confirm(db, row, reason):
 def restore(db, row, *, with_daily=False, past_date=None, stage_as_next=False, daily_ids=None, daily_dates=None):
     if not row.confirmed_at: raise HTTPException(409, "这条记录尚未执行删除")
     content = json.loads(row.scope_json)
-    target = owned(db, row.user_id, row.kind, row.target_id, deleted=True)
+    hard_stage = row.kind == "stage" and content.get("hard_stage")
+    target = db.get(ProjectStage, row.target_id) if hard_stage else owned(db, row.user_id, row.kind, row.target_id, deleted=True)
+    if hard_stage and target is not None and target.user_id != row.user_id:
+        raise HTTPException(404, "内容不存在")
     project = owned(db, row.user_id, "project", row.project_id, deleted=True)
-    if (row.kind != "project" and project.deleted_at is not None) or (row.restored_at and target.deleted_at is not None):
+    if (row.kind != "project" and project.deleted_at is not None) or (row.restored_at and target is not None and target.deleted_at is not None):
         raise HTTPException(409, "请先恢复所属项目或再次删除的内容")
     if row.kind == "task" and target.stage_id:
         stage = owned(db, row.user_id, "stage", target.stage_id, deleted=True)
         if stage.deleted_at is not None: raise HTTPException(409, "请先恢复所属阶段")
+    if row.kind == "task" and not target.stage_id and target.stage_original_id:
+        stage = db.get(ProjectStage, target.stage_original_id)
+        if stage is None or stage.user_id != row.user_id or stage.deleted_at is not None:
+            raise HTTPException(409, "请先恢复所属阶段")
     if row.restored_at and (not with_daily or not pending_daily(db, row)):
         return payload(db, row) | {"warnings": []}
     daily_rows = pending_daily(db, row) if with_daily else []
@@ -216,6 +302,29 @@ def restore(db, row, *, with_daily=False, past_date=None, stage_as_next=False, d
         raise HTTPException(400, "恢复过去的未完成日程，请先选择今天或未来的新日期")
     warnings = []
     if row.restored_at is None:
+        if hard_stage and target is None:
+            snapshot = content["stage_snapshot"]
+            state = snapshot["state"]
+            current = commitments.current_stage(db, snapshot["project_id"])
+            if state == "current" and current and current.id != snapshot["id"]:
+                if not stage_as_next:
+                    raise HTTPException(409, "已有其他当前阶段；请明确选择将原阶段恢复为下一阶段")
+                state = "next"
+                warnings.append("原当前阶段已恢复为下一阶段，未自动开始")
+            created_at = datetime.fromisoformat(snapshot["created_at"]) if snapshot.get("created_at") else None
+            closed_at = datetime.fromisoformat(snapshot["closed_at"]) if snapshot.get("closed_at") else None
+            target = ProjectStage(id=snapshot["id"], user_id=row.user_id, project_id=snapshot["project_id"],
+                title=snapshot["title"], position=snapshot["position"], state=state,
+                closed_reason=snapshot["closed_reason"], created_at=created_at, closed_at=closed_at)
+            db.add(target); db.flush()
+            for model in (StageCommitmentDraft, StageCommitment, CommitmentAdjustment):
+                for history in db.query(model).filter_by(user_id=row.user_id, stage_original_id=target.id, stage_id=None):
+                    history.stage_id = target.id
+                    if model is StageCommitmentDraft: history.project_id = target.project_id
+            for task in db.query(ProjectTask).filter(ProjectTask.user_id == row.user_id,
+                    ProjectTask.project_id == target.project_id, ProjectTask.id.in_(content.get("stage_members", [])),
+                    ProjectTask.stage_id.is_(None)):
+                task.stage_id, task.stage_original_id = target.id, None
         for stage in db.query(ProjectStage).filter(ProjectStage.user_id == row.user_id, ProjectStage.id.in_(content["stage"])):
             if not marked(stage, row): continue
             current = commitments.current_stage(db, stage.project_id)
@@ -226,6 +335,11 @@ def restore(db, row, *, with_daily=False, past_date=None, stage_as_next=False, d
         for kind in ("project", "stage", "task"):
             for item in db.query(MODELS[kind]).filter(MODELS[kind].user_id == row.user_id, MODELS[kind].id.in_(content[kind])):
                 if marked(item, row): item.deleted_at = None
+        if row.kind == "stage":
+            for task in db.query(ProjectTask).filter(ProjectTask.user_id == row.user_id,
+                    ProjectTask.id.in_(content.get("retained_task", []))):
+                if task.deleted_at is None and task.stage_id is None:
+                    task.stage_id = row.target_id
         row.restored_at = datetime.utcnow()
         db.flush()
         for task in db.query(ProjectTask).filter(ProjectTask.user_id == row.user_id, ProjectTask.id.in_(content["task"]), ProjectTask.deleted_at.is_(None)):

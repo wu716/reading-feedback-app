@@ -1,6 +1,7 @@
 import logging
 
 from sqlalchemy import create_engine, MetaData, inspect, text
+from sqlalchemy.schema import CreateTable, CreateIndex
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -88,6 +89,15 @@ def ensure_schema():
         add_column("projects", "started_at", "started_at TIMESTAMP")
         add_column("project_stages", "deleted_at", "deleted_at TIMESTAMP")
         add_column("project_tasks", "execution_role", "execution_role VARCHAR(20) NOT NULL DEFAULT 'formal'")
+        add_column("project_tasks", "stage_original_id", "stage_original_id INTEGER")
+        add_column("stage_commitment_drafts", "project_id", "project_id INTEGER REFERENCES projects(id)")
+        for table in ("stage_commitment_drafts", "stage_commitments", "commitment_adjustments"):
+            add_column(table, "stage_original_id", "stage_original_id INTEGER")
+            add_column(table, "stage_title_snapshot", "stage_title_snapshot VARCHAR(200)")
+        for table in ("stage_commitment_drafts", "stage_commitments", "commitment_adjustments"):
+            conn.execute(text(f"UPDATE {table} SET stage_original_id = stage_id WHERE stage_original_id IS NULL AND stage_id IS NOT NULL"))
+            conn.execute(text(f"UPDATE {table} SET stage_title_snapshot = (SELECT title FROM project_stages WHERE project_stages.id = {table}.stage_id) WHERE stage_title_snapshot IS NULL AND stage_id IS NOT NULL"))
+        conn.execute(text("UPDATE stage_commitment_drafts SET project_id = (SELECT project_id FROM project_stages WHERE project_stages.id = stage_commitment_drafts.stage_id) WHERE project_id IS NULL AND stage_id IS NOT NULL"))
         if "daily_tasks" in existing_tables:
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_daily_tasks_project_task_id ON daily_tasks (project_task_id)"))
             conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_daily_tasks_legacy_todo_id ON daily_tasks (legacy_todo_id)"))
@@ -108,6 +118,43 @@ def ensure_schema():
         add_column("users", "plan_expires_at", "plan_expires_at DATE")
         add_column("users", "token_version", "token_version INTEGER DEFAULT 0")
         add_column("users", "capture_kind", "capture_kind VARCHAR(20) DEFAULT 'moment'")
+
+    history_tables = ("stage_commitment_drafts", "stage_commitments", "commitment_adjustments")
+    if engine.dialect.name == "postgresql":
+        with engine.begin() as conn:
+            for table in history_tables:
+                conn.execute(text(f"ALTER TABLE {table} ALTER COLUMN stage_id DROP NOT NULL"))
+    elif engine.dialect.name == "sqlite":
+        # SQLite cannot drop NOT NULL in place. Rebuild only the three tables
+        # whose stage foreign keys must become nullable; copy every column.
+        from app import project_models  # noqa: F401 - ensure metadata is registered
+        with engine.connect() as conn:
+            conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
+            conn.commit()
+            try:
+                with conn.begin():
+                    inspector = inspect(conn)
+                    for name in history_tables:
+                        columns = {column["name"]: column for column in inspector.get_columns(name)}
+                        if not columns.get("stage_id", {}).get("nullable", True):
+                            source = Base.metadata.tables[name]
+                            migration_metadata = MetaData()
+                            for registered in Base.metadata.tables.values():
+                                registered.to_metadata(migration_metadata,
+                                    name=name + "_nullable_migration" if registered.name == name else registered.name)
+                            temp = migration_metadata.tables[name + "_nullable_migration"]
+                            conn.execute(CreateTable(temp))
+                            common = [column.name for column in source.columns if column.name in columns]
+                            names = ", ".join(common)
+                            conn.execute(text(f"INSERT INTO {temp.name} ({names}) SELECT {names} FROM {name}"))
+                            conn.execute(text(f"DROP TABLE {name}"))
+                            conn.execute(text(f"ALTER TABLE {temp.name} RENAME TO {name}"))
+                            for index in source.indexes:
+                                conn.execute(CreateIndex(index))
+                            inspector.clear_cache()
+            finally:
+                conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+                conn.commit()
 
     # Older installations may contain duplicate phone values. This legacy index
     # is best effort and intentionally separate from the project migration.

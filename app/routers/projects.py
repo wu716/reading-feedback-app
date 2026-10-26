@@ -311,7 +311,7 @@ def update_task(task_id: int, body: TaskUpdate, user: User = Depends(get_current
     steps = changes.pop("steps", None)
     if "stage_id" in changes and changes["stage_id"] != row.stage_id:
         guard_scope(db, user.id, row)
-    if "acceptance_criteria" in changes and changes["acceptance_criteria"] != row.acceptance_criteria:
+    if "acceptance_criteria" in changes and (changes["acceptance_criteria"] or "") != (row.acceptance_criteria or ""):
         guard_scope(db, user.id, row, include_completed=True)
     if "estimated_minutes" in changes:
         practice_service.note_estimate(db, user.id, "task", row, changes["estimated_minutes"], "任务内容中修订")

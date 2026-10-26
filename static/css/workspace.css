@@ -311,3 +311,6 @@ body.workspace-layout {background:var(--workspace-paper);background-image:radial
  .workspace-layout #schedule .flow-attribute-options .flow-chip {min-height:40px;}
  .workspace-layout #schedule #scheduleAddDuration {height:48px;min-height:48px;}
 }
+.workspace-layout .detail-save-conflict { margin:14px 0; padding:15px; border:1px solid #cda89e; border-radius:8px; background:#fff8f3; color:#704d43; }
+.workspace-layout .detail-save-conflict p { margin:7px 0; overflow-wrap:anywhere; }
+.workspace-layout .detail-save-conflict button { margin:5px 8px 0 0; }

@@ -107,7 +107,7 @@
       ...options, headers: {'Authorization':'Bearer ' + token, ...(options.body ? {'Content-Type':'application/json'} : {}), ...(options.headers || {})}
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : '操作失败，请稍后重试');
+    if (!response.ok) { const error=new Error(typeof data.detail === 'string' ? data.detail : '操作失败，请稍后重试'); error.status=response.status; throw error; }
     if (data.server_now) state.clockOffset = Date.parse(data.server_now) - Date.now();
     return data;
   }
@@ -438,9 +438,28 @@
         await post(`/stages/${form.dataset.stage}/activate`, {decision:body.decision, reason:body.reason || null});
         await afterChange(body.decision === 'continue' ? '继续当前阶段' : '阶段已调整');
       } else if (form.id === 'detailForm') {
-        await patch(`/tasks/${state.taskId}`, {title:body.title, stage_id:nullableNumber(body.stage_id), estimated_minutes:nullableNumber(body.estimated_minutes), familiarity:body.familiarity || null,
+        const task=currentTask();
+        const change={title:body.title, stage_id:nullableNumber(body.stage_id), estimated_minutes:nullableNumber(body.estimated_minutes), familiarity:body.familiarity || null,
           goal_reason:body.goal_reason || null, acceptance_criteria:body.acceptance_criteria || null,
-          rehearsal_note:body.rehearsal_note || null, blocker_note:body.blocker_note || null, steps:lines(body.steps)});
+          rehearsal_note:body.rehearsal_note || null, blocker_note:body.blocker_note || null, steps:lines(body.steps)};
+        try { await patch(`/tasks/${state.taskId}`, change); }
+        catch(error) {
+          if(error.status!==409||!error.message.includes('当前承诺'))throw error;
+          form.querySelector('.detail-save-conflict')?.remove();
+          const box=document.createElement('div');box.className='detail-save-conflict';box.setAttribute('role','alert');
+          const stageChanged=change.stage_id!==task.stage_id,criteriaChanged=(change.acceptance_criteria||'')!==(task.acceptance_criteria||'');
+          box.innerHTML=`<strong>这次保存涉及已确认的当前承诺</strong><p>${stageChanged?'阶段去向：'+esc(currentProject()?.stages.find(s=>s.id===task.stage_id)?.title||'未分阶段')+' → '+esc(currentProject()?.stages.find(s=>s.id===change.stage_id)?.title||'未分阶段')+'。':''}${criteriaChanged?'完成标准：'+esc(task.acceptance_criteria||'未填写')+' → '+esc(change.acceptance_criteria||'未填写')+'。':''}</p><p>输入还在页面中。请预览调整后果并确认，或只保存普通内容。</p><button type="button" data-save-ordinary>仅保存普通内容</button> <button type="button" data-open-adjust>预览承诺调整</button>`;
+          form.append(box);
+          box.querySelector('[data-open-adjust]').addEventListener('click',()=>criteriaChanged&&!stageChanged
+            ?globalThis.ShuranPractice?.openTaskScopeChange(state.projectId,task.id,change.acceptance_criteria)
+            :globalThis.ShuranPractice?.openProject(state.projectId,'commitment'));
+          box.querySelector('[data-save-ordinary]').addEventListener('click',()=>run(async()=>{
+            const ordinary={...change};delete ordinary.stage_id;delete ordinary.acceptance_criteria;
+            await patch(`/tasks/${task.id}`,ordinary);await afterChange('普通内容已保存；阶段和完成标准尚未调整');
+            const refreshed=$('#detailForm');if(refreshed){refreshed.elements.stage_id.value=String(change.stage_id??'');refreshed.elements.acceptance_criteria.value=change.acceptance_criteria||'';refreshed.elements.acceptance_criteria.closest('details')?.setAttribute('open','');}
+          }));
+          return;
+        }
         await afterChange('任务内容已保存');
       } else if (form.id === 'dependencyForm') {
         await post(`/tasks/${state.taskId}/dependencies`, {prerequisite_id:Number(body.prerequisite_id)}); await afterChange('前置关系已保存');
