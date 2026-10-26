@@ -270,35 +270,36 @@
     root.hidden = false;
     const choices = project.tasks.filter(t => t.id !== task.id).map(t => `<option value="${t.id}">${esc(t.title)}</option>`).join('');
     const prereq = task.prerequisite_ids.map(id => project.tasks.find(t => t.id === id)).filter(Boolean);
-    root.innerHTML = `<div class="detail-header"><h3>${esc(task.title)}</h3><button type="button" class="secondary" data-act="close-detail">收起</button></div>
-      <p class="task-metrics">原估计 ${task.original_estimate_minutes ?? '未填'} 分 · 当前估计 ${task.estimated_minutes ?? '未填'} 分 · 实际投入 ${task.actual_minutes} 分${task.difference_minutes == null ? '' : ` · 差额 ${task.difference_minutes > 0 ? '+' : ''}${task.difference_minutes} 分`}</p>
-      <p>${esc(task.readiness?.summary || '未配置启动条件')} · ${task.execution_role === 'preparation' ? '筹备任务：不继承项目条件' : '正式任务：继承项目条件'}</p>
+    const readRow = (label, value, emptyLabel, control) => `<div class="detail-read-row"><div><span>${label}</span><p>${value ? esc(value) : '尚未填写'}</p></div><details><summary>${value ? '修改' : `＋${emptyLabel}`}</summary>${control}</details></div>`;
+    const scheduled = (task.scheduled_dates || []).map(day => `<a href="/static/index.html?schedule_date=${day}#schedule">${day}</a>`).join(' · ');
+    root.innerHTML = `<div class="detail-header"><div><span class="detail-kicker">当前任务</span><h3>${esc(task.title)}</h3></div><button type="button" class="secondary" data-act="close-detail">收起</button></div>
+      <div class="task-metrics"><span>原估计 ${task.original_estimate_minutes ?? '未填'} 分</span><span>当前估计 ${task.estimated_minutes ?? '未填'} 分</span><span>实际投入 ${task.actual_minutes} 分</span>${task.difference_minutes == null ? '' : `<span>差额 ${task.difference_minutes > 0 ? '+' : ''}${task.difference_minutes} 分</span>`}</div>
+      <p class="detail-status">${esc(task.readiness?.summary || '未配置启动条件')} · ${task.execution_role === 'preparation' ? '筹备任务：不继承项目条件' : '正式任务：继承项目条件'}</p>
       ${dailyProgress(task)}
-      <p class="scheduled-dates">已安排：${(task.scheduled_dates || []).map(day => `<a href="/static/index.html?schedule_date=${day}#schedule">${day}</a>`).join(' · ') || '尚未安排到日程'}</p><div class="detail-actions"><button type="button" data-act="queue-task" ${task.can_start ? '' : 'disabled'}>加入时间片轮转</button><a href="/static/index.html#schedule">查看日程</a></div><form id="scheduleTaskForm"><label>安排到哪天 <input name="task_date" type="date" required></label><button type="submit">写入日程</button></form><div class="detail-actions" role="tablist" aria-label="任务操作分区"><button type="button" class="${state.detailMode === 'attributes' ? '' : 'secondary'}" data-act="detail-mode" data-mode="attributes">内容与估时</button><button type="button" class="${state.detailMode === 'conditions' ? '' : 'secondary'}" data-act="detail-mode" data-mode="conditions">开始条件与约束</button><button type="button" class="${state.detailMode === 'dependencies' ? '' : 'secondary'}" data-act="detail-mode" data-mode="dependencies">完成检查</button><button type="button" class="${state.detailMode === 'completion' ? '' : 'secondary'}" data-act="detail-mode" data-mode="completion">安排与验收</button></div>
-      <div class="detail-zone" ${state.detailMode === 'conditions' ? '' : 'hidden'}><div id="taskConditions" class="condition-workspace"></div>
-        <h4>原有任务前置关系</h4><p>${prereq.length ? prereq.map(t => `${esc(t.title)} <button type="button" class="secondary" data-act="remove-dep" data-id="${t.id}">说明原因并移除</button>`).join(' · ') : '未配置原有任务前置。其他条件见上方。'}</p>${prereq.length ? '<label>移除前置关系的原因<input id="dependencyRemovalReason" maxlength="4000" placeholder="说明为什么该前置不再适用"></label>' : ''}
-        <form id="dependencyForm"><label>必须先完成 <select name="prerequisite_id">${choices}</select></label><button type="submit" ${choices ? '' : 'disabled'}>添加前置</button></form></div>
-      <div class="detail-zone" ${state.detailMode === 'attributes' ? '' : 'hidden'}><h4>内容与估时</h4><p><button type="button" class="secondary" data-act="practice-task">标记难度、目标重要性与估时经验</button></p><form id="detailForm" class="detail-grid">
-        <label>任务 <input name="title" maxlength="500" required value="${esc(task.title)}"></label><label>阶段 <select name="stage_id">${stageOptions(project, task.stage_id)}</select></label>
-        <label>当前估计分钟 <input name="estimated_minutes" type="number" min="0" value="${task.estimated_minutes ?? ''}"></label><label>熟悉程度 <select name="familiarity"><option value="">未标记</option><option value="familiar" ${task.familiarity === 'familiar' ? 'selected' : ''}>熟悉</option><option value="unfamiliar" ${task.familiarity === 'unfamiliar' ? 'selected' : ''}>陌生</option></select></label>
-        <label class="wide">为什么对目标有用 <textarea name="goal_reason" rows="2">${esc(task.goal_reason)}</textarea></label><label class="wide">怎样算完成 <textarea name="acceptance_criteria" rows="2">${esc(task.acceptance_criteria)}</textarea></label>
-        <input type="hidden" name="rehearsal_note" value="${esc(task.rehearsal_note)}"><details class="wide"><summary>原有预演笔记</summary><p>${esc(task.rehearsal_note||'尚未记录原笔记；可使用独立预演入口。')}</p></details><label class="wide">流程步骤（每行一项） <textarea name="steps" rows="3">${esc(task.steps.join('\n'))}</textarea></label>
-        <label class="wide">难点或阻碍 <textarea name="blocker_note" rows="2">${esc(task.blocker_note)}</textarea></label><button type="submit">保存任务内容</button></form></div>
-      <div class="detail-zone" ${state.detailMode === 'dependencies' ? '' : 'hidden'}><p>普通检查项用于核对交付，不会暗中成为开始门槛。</p>
-        <h4>检查项</h4><p><button type="button" class="secondary" data-act="practice-checklist">编辑内容、顺序与不适用说明</button></p><ul>${task.checklist.map(item => `<li><label class="check"><input type="checkbox" data-act="toggle-check" data-id="${item.id}" ${item.done ? 'checked' : ''}>${item.group==='preparation'?'准备核对：':'交付核对：'}${esc(item.text)}</label>${item.not_applicable?`<small>本次不适用：${esc(item.not_applicable)}</small>`:''}</li>`).join('') || '<li>还没有检查项</li>'}</ul>
-        <form id="checklistForm"><label>新增检查项 <input name="text" maxlength="500" required></label><button type="submit">添加</button></form></div>
-      <div class="detail-zone" ${state.detailMode === 'completion' ? '' : 'hidden'}><h4>安排与验收</h4>
-
-        <p>完成时核对标准：${esc(task.acceptance_criteria || '尚未填写，可先判断实际结果。')}</p>
-        <p>结果与用时在专用反馈中一次核对，保留原估计、累计用时、来源和下次经验。</p><button type="button" data-act="practice-feedback">核对结果与实际用时</button>
-        <div class="detail-actions"><button type="button" class="secondary" data-act="save-template">保存为流程</button></div></div>`;
+      <div class="detail-command-row"><button type="button" data-act="queue-task" ${task.can_start ? '' : 'disabled'}>加入时间片轮转</button><details class="schedule-editor"><summary>${scheduled ? '调整日期' : '＋安排日期'}</summary><form id="scheduleTaskForm"><label>安排到哪天<input name="task_date" type="date" required></label><button type="submit">写入日程</button></form></details><a href="/static/index.html#schedule">查看日程</a><span class="scheduled-dates">${scheduled || '尚未安排日程'}</span></div>
+      <div class="detail-tabs" role="tablist" aria-label="任务操作分区"><button type="button" aria-selected="${state.detailMode === 'attributes'}" data-act="detail-mode" data-mode="attributes">任务内容</button><button type="button" aria-selected="${state.detailMode === 'conditions'}" data-act="detail-mode" data-mode="conditions">开始准备</button><button type="button" aria-selected="${state.detailMode === 'dependencies'}" data-act="detail-mode" data-mode="dependencies">完成检查</button><button type="button" aria-selected="${state.detailMode === 'completion'}" data-act="detail-mode" data-mode="completion">结果反馈</button></div>
+      <div class="detail-zone" data-detail-zone="attributes" ${state.detailMode === 'attributes' ? '' : 'hidden'}><form id="detailForm" class="compact-detail-form">
+        <div class="detail-property-row"><label>阶段<select name="stage_id">${stageOptions(project, task.stage_id)}</select></label><label>熟悉程度<select name="familiarity"><option value="">未标记</option><option value="familiar" ${task.familiarity === 'familiar' ? 'selected' : ''}>熟悉</option><option value="unfamiliar" ${task.familiarity === 'unfamiliar' ? 'selected' : ''}>陌生</option></select></label><button type="button" class="secondary" data-act="practice-task">难度与重要性</button></div>
+        ${readRow('任务名称', task.title, '修改任务名称', `<label>任务名称<input name="title" maxlength="500" required value="${esc(task.title)}"></label>`)}
+        ${readRow('任务目的', task.goal_reason, '补充任务目的', `<label>为什么对目标有用<textarea name="goal_reason" rows="2">${esc(task.goal_reason)}</textarea></label>`)}
+        ${readRow('完成标准', task.acceptance_criteria, '补充完成标准', `<label>怎样算完成<textarea name="acceptance_criteria" rows="2">${esc(task.acceptance_criteria)}</textarea></label>`)}
+        ${readRow('预计用时', task.estimated_minutes == null ? '' : `${task.estimated_minutes} 分钟`, '填写预计用时', `<label>当前估计分钟<input name="estimated_minutes" type="number" min="0" value="${task.estimated_minutes ?? ''}"></label>`)}
+        <input type="hidden" name="rehearsal_note" value="${esc(task.rehearsal_note)}">
+        <details class="detail-advanced"><summary>流程步骤与原有笔记</summary>
+          ${readRow('流程步骤', task.steps.join('；'), '补充流程步骤', `<label>每行一项<textarea name="steps" rows="3">${esc(task.steps.join('\n'))}</textarea></label>`)}
+          ${readRow('难点或阻碍', task.blocker_note, '补充难点或阻碍', `<label>难点或阻碍<textarea name="blocker_note" rows="2">${esc(task.blocker_note)}</textarea></label>`)}
+          <p class="detail-note">原有预演笔记：${esc(task.rehearsal_note || '尚未记录；可到“开始准备”填写。')}</p>
+        </details><button type="submit" class="detail-save">保存任务内容</button></form></div>
+      <div class="detail-zone" data-detail-zone="conditions" ${state.detailMode === 'conditions' ? '' : 'hidden'}><div class="detail-section-head"><div><h4>开始前核对</h4><p>先确认真正影响开始的条件，需要时再补充。</p></div><button type="button" data-act="practice-rehearsal">开始前预演</button></div><div id="taskConditions" class="condition-workspace"></div>
+        <details class="detail-advanced"><summary>原有任务前置关系</summary><p>${prereq.length ? prereq.map(t => `${esc(t.title)} <button type="button" class="secondary" data-act="remove-dep" data-id="${t.id}">说明原因并移除</button>`).join(' · ') : '未配置原有任务前置。其他条件见上方。'}</p>${prereq.length ? '<label>移除前置关系的原因<input id="dependencyRemovalReason" maxlength="4000" placeholder="说明为什么该前置不再适用"></label>' : ''}
+        <form id="dependencyForm"><label>必须先完成<select name="prerequisite_id">${choices}</select></label><button type="submit" ${choices ? '' : 'disabled'}>添加前置</button></form></details></div>
+      <div class="detail-zone" data-detail-zone="dependencies" ${state.detailMode === 'dependencies' ? '' : 'hidden'}><div class="detail-section-head"><div><h4>完成检查</h4><p>这些项目用于核对交付，不会暗中成为开始门槛。</p></div><button type="button" class="secondary" data-act="practice-checklist">编辑顺序与不适用说明</button></div><ul class="detail-checklist">${task.checklist.map(item => `<li><label class="check"><input type="checkbox" data-act="toggle-check" data-id="${item.id}" ${item.done ? 'checked' : ''}>${item.group==='preparation'?'准备核对：':'交付核对：'}${esc(item.text)}</label>${item.not_applicable?`<small>本次不适用：${esc(item.not_applicable)}</small>`:''}</li>`).join('') || '<li class="detail-note">还没有检查项</li>'}</ul>
+        <details class="inline-add"><summary>＋新增检查项</summary><form id="checklistForm"><label>检查项<input name="text" maxlength="500" required></label><button type="submit">添加</button></form></details></div>
+      <div class="detail-zone" data-detail-zone="completion" ${state.detailMode === 'completion' ? '' : 'hidden'}><div class="detail-section-head"><div><h4>结果与用时</h4><p>完成后一次核对实际结果、累计用时和下次经验。</p></div><button type="button" data-act="practice-feedback">记录结果与用时</button></div>
+        <div class="detail-result-summary"><span>完成标准</span><p>${esc(task.acceptance_criteria || '尚未填写，可先判断实际结果。')}</p></div>
+        <details class="inline-add"><summary>保存为可复用流程</summary><p class="detail-note">会保留这项任务的步骤和检查方式，供以后生成新任务。</p><button type="button" class="secondary" data-act="save-template">保存为流程</button></details></div>`;
     const date = $('#scheduleTaskForm [name=task_date]', root); if (date) date.value = params.get('date') || todayISO();
-    if (state.detailMode === 'conditions') globalThis.ShuranConditions?.mount($('#taskConditions', root), 'task', task.id, () => afterChange());
-    if (globalThis.ShuranPractice) {
-      const practiceEntry = document.createElement('div'); practiceEntry.className='practice-entry-row';
-      practiceEntry.innerHTML='<button type="button" data-act="practice-rehearsal">开始前预演</button><button type="button" data-act="practice-feedback">用时与结果反馈</button>';
-      root.prepend(practiceEntry);
-    }
+    globalThis.ShuranConditions?.mount($('#taskConditions', root), 'task', task.id, () => afterChange());
   }
 
   function choiceFor(key) {
@@ -497,7 +498,12 @@
       else if (action === 'practice-checklist') await globalThis.ShuranPractice?.openTask('task',state.taskId,'checklist');
       else if (action === 'queue-task') { await addQueue(`project:${state.taskId}`); globalThis.ShuranWorkspace?.show('execution'); notice('已加入轮转，准备好后开始'); }
       else if (action === 'close-detail') { state.taskId = null; renderTaskDetail(); }
-      else if (action === 'detail-mode') { state.detailMode = button.dataset.mode; renderTaskDetail(); }
+      else if (action === 'detail-mode') {
+        state.detailMode = button.dataset.mode;
+        const root = button.closest('#taskDetail');
+        root?.querySelectorAll('[data-act="detail-mode"]').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.mode === state.detailMode)));
+        root?.querySelectorAll('[data-detail-zone]').forEach(zone => { zone.hidden = zone.dataset.detailZone !== state.detailMode; });
+      }
       else if (action === 'remove-dep') {
         const input = $('#dependencyRemovalReason'), reason = input?.value.trim();
         if (!reason) {input?.focus();throw new Error('请先填写移除前置关系的原因；历史与实际投入仍保留');}
