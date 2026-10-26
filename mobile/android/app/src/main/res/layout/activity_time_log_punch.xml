@@ -2,53 +2,82 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="#F3EFE6"
+    android:background="@drawable/punch_card_background"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="18dp">
+
+    <TextView
+        android:id="@+id/timelog_punch_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/timelog_overlay_card_title"
+        android:textColor="#263F52"
+        android:textSize="19sp"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/timelog_punch_hint"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
         android:text="@string/timelog_overlay_hint"
-        android:textColor="#1C1B19"
-        android:textSize="14sp" />
+        android:textColor="#627581"
+        android:textSize="13sp"
+        android:lineSpacingExtra="2dp" />
 
     <com.shuran.app.CaptureKindBar
         android:id="@+id/capture_kind_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp" />
+        android:layout_marginTop="13dp" />
 
     <EditText
         android:id="@+id/timelog_punch_input"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/punch_input_background"
         android:hint="@string/timelog_overlay_hint"
         android:inputType="textCapSentences|textMultiLine"
         android:maxLength="500"
         android:minLines="2"
-        android:textColor="#1C1B19"
-        android:textColorHint="#8A8478" />
+        android:padding="12dp"
+        android:textColor="#263F52"
+        android:textColorHint="#84939A"
+        android:textSize="15sp" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:gravity="end"
+        android:layout_marginTop="13dp"
+        android:gravity="center_vertical|end"
         android:orientation="horizontal">
 
         <Button
             android:id="@+id/timelog_punch_later"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/timelog_overlay_later" />
+            android:background="@drawable/punch_button_secondary"
+            android:minHeight="44dp"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:text="@string/timelog_overlay_later"
+            android:textAllCaps="false"
+            android:textColor="#476274"
+            android:textSize="14sp" />
 
         <Button
             android:id="@+id/timelog_punch_save"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/timelog_overlay_save" />
+            android:layout_marginStart="8dp"
+            android:background="@drawable/punch_button_primary"
+            android:minHeight="44dp"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="@string/timelog_overlay_save"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp" />
     </LinearLayout>
 </LinearLayout>

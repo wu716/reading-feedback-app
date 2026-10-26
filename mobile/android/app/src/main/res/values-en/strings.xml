@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Shuran</string>
     <string name="app_url">http://43.161.238.165:8000/</string>
-    <string name="static_ui_version">20261022record1</string>
+    <string name="static_ui_version">20261026capturemyreminder1</string>
     <string name="notification_record_title">Record your day</string>
     <string name="notification_record_body">Take a moment to review today and update your activities, attention and spending in Long-term goals.</string>
     <string name="loading">Opening Shuran…</string>
@@ -38,6 +38,7 @@
     <string name="timelog_overlay_title">Time node</string>
     <string name="timelog_overlay_body">Floating button is on. Tap once to catch this moment; it is saved only after you write something.</string>
     <string name="timelog_overlay_hint">What are you doing?</string>
+    <string name="timelog_overlay_card_title">Capture this moment</string>
     <string name="timelog_overlay_later">Later</string>
     <string name="timelog_overlay_save">Save</string>
     <string name="timelog_overlay_saving">Saving…</string>

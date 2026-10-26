@@ -14,6 +14,8 @@
 .workspace-layout #user-center .me-settings-main,.workspace-layout #user-center .me-settings-side {min-width:0;}
 .workspace-layout #user-center .me-group {padding:22px 0 24px;margin:0;border-top:1px solid #d5dcde!important;overflow:visible;}
 .workspace-layout #user-center .me-group-title {margin:0 0 16px;padding:0;color:var(--workspace-ink);font:600 18px/1.5 Georgia,"Noto Serif SC","SimSun",serif;letter-spacing:.03em;}
+.workspace-layout #user-center .me-group-toggle {appearance:none;display:inline-flex;align-items:center;justify-content:space-between;width:auto;padding:0;border:0;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;text-align:left;cursor:default;}
+.workspace-layout #user-center .me-group-summary {display:none;}
 .workspace-layout #user-center .me-hint {padding:0;margin:5px 0 12px;color:#62717c;font:400 12px/1.8 "Microsoft YaHei",system-ui,sans-serif;}
 .workspace-layout #user-center .me-row {min-height:48px;gap:12px;padding:10px 0;color:var(--workspace-ink);border-radius:5px;}
 .workspace-layout #user-center .me-row-main {display:flex;flex-direction:column;gap:3px;}
@@ -87,6 +89,27 @@
  .workspace-layout #user-center .me-plan-table th,.workspace-layout #user-center .me-plan-table td {padding-left:7px;padding-right:7px;}
  .workspace-layout #user-center .me-account-summary {display:block;}
  .workspace-layout #user-center #meBindingStatus {margin:7px 0 0;}
+ .workspace-layout #user-center > .section-header {margin-bottom:12px;}
+ .workspace-layout #user-center > .section-header p {max-width:34em;font-size:12px;line-height:1.65;}
+ .workspace-layout #user-center .me-page {padding-bottom:24px;}
+ .workspace-layout #user-center .me-profile {gap:9px;padding:12px;margin:0 0 10px;border:1px solid #d5dcde;border-radius:9px;background:rgba(248,249,246,.68);}
+ .workspace-layout #user-center .me-avatar {flex-basis:44px;width:44px;height:44px;font-size:20px;}
+ .workspace-layout #user-center .me-profile-meta {flex:1 1 calc(100% - 58px);max-width:calc(100% - 58px);}
+ .workspace-layout #user-center .me-profile-name {font-size:17px;line-height:1.35;}
+ .workspace-layout #user-center .me-profile-email {font-size:11px;line-height:1.5;}
+ .workspace-layout #user-center .me-plan {margin-top:4px;font-size:11px;}
+ .workspace-layout #user-center .me-edit {min-height:34px;margin:0 0 0 53px;padding:5px 10px;}
+ .workspace-layout #user-center .me-group {padding:0;margin:0 0 8px;border:1px solid #d5dcde!important;border-radius:9px;background:rgba(248,249,246,.74);overflow:hidden;}
+ .workspace-layout #user-center .me-group-title {margin:0;padding:0;font:inherit;letter-spacing:0;}
+ .workspace-layout #user-center .me-group-toggle {display:flex;width:100%;min-height:52px;align-items:center;justify-content:space-between;gap:14px;padding:10px 13px;border:0;background:transparent;color:var(--workspace-ink);text-align:left;font:600 15px/1.4 "Microsoft YaHei",system-ui,sans-serif;cursor:pointer;}
+ .workspace-layout #user-center .me-group-toggle::after {content:"";flex:0 0 8px;width:8px;height:8px;border-right:1.5px solid var(--workspace-blue);border-bottom:1.5px solid var(--workspace-blue);transform:rotate(45deg);transition:transform .16s ease;}
+ .workspace-layout #user-center .me-group-toggle[aria-expanded="true"]::after {transform:rotate(225deg);}
+ .workspace-layout #user-center .me-group-summary {display:block;margin:0;padding:0 13px 12px;color:#62717c;font:400 12px/1.55 "Microsoft YaHei",system-ui,sans-serif;}
+ .workspace-layout #user-center .me-group-content {padding:0 13px 13px;border-top:1px solid #e1e5e3;}
+ .workspace-layout #user-center .me-group.is-collapsed .me-group-content {display:none;}
+ .workspace-layout #user-center .me-group-content > :first-child {margin-top:12px;}
+ .workspace-layout #user-center .me-group-content .me-benefits {margin-bottom:12px;}
+ .workspace-layout #user-center .me-group-content .me-row {min-height:44px;}
 }
 /* Existing account dialogs keep their forms and use the same restrained controls. */
 .workspace-layout .me-dialog .practice-container {width:min(420px,calc(100vw - 32px))!important;max-height:calc(100dvh - 40px);overflow:auto;background:var(--workspace-paper);border:1px solid #c6d1d6;border-radius:10px;padding:24px;box-shadow:0 16px 48px rgba(33,54,74,.15);}

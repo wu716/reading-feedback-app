@@ -20,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/app-tabbar.css?v=20261020focus1">
-    <link rel="stylesheet" href="/static/css/time-picker.css?v=20260917upd4">
+    <link rel="stylesheet" href="/static/css/time-picker.css?v=20261026capturemyreminder1">
     <link rel="stylesheet" href="/static/css/schedule-log.css?v=20261020slice1">
     <style>
         :root {
@@ -3457,17 +3457,17 @@
     <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261017paper1">
     <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261025someday3">
     <link rel="stylesheet" href="/static/css/workspace.css?v=20261026projectcleanup1">
-    <link rel="stylesheet" href="/static/css/account.css?v=20261022account1">
+    <link rel="stylesheet" href="/static/css/account.css?v=20261026capturemyreminder1">
     <link rel="stylesheet" href="/static/css/long-term.css?v=20261021download1">
 </head>
 <body>
     <script>
         (function () {
             if (/^47\.236\.122\.207(?::\d+)?$/i.test(location.host || '')) {
-                location.replace('http://43.161.238.165:8000/?v=20261017paper1');
+                location.replace('http://43.161.238.165:8000/?v=20261026capturemyreminder1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.45';
+            window.SHURAN_VERSION = '2.0.46';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -3899,7 +3899,7 @@
                         </div>
                         <div class="me-row me-row-static">
                             <div class="me-row-main"><label class="me-row-title" for="recordReminderTime" data-i18n="me.reminders.recordTime">每天提醒时间（北京时间）</label></div>
-                            <input type="time" class="me-control" id="recordReminderTime" value="21:00" aria-label="每日记录提醒时间" data-i18n-aria-label="me.reminders.recordTime" required>
+                            <input type="time" class="me-control" id="recordReminderTime" value="21:00" aria-label="每日记录提醒时间" data-i18n-aria-label="me.reminders.recordTime" data-time-variant="shuran" data-time-loop="true" data-time-presets="07:00,12:00,18:00,21:00" required>
                         </div>
                     </div>
                 <div class="me-notification-channels">
@@ -4534,7 +4534,7 @@
         </div>
     </div>
 
-    <script src="/static/js/i18n.js?v=20261026reminders1"></script>
+    <script src="/static/js/i18n.js?v=20261026capturemyreminder1"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -5908,6 +5908,7 @@
 
         // 初始化个人中心事件监听器
         function initializeUserCenter() {
+            initializeMeMobileGroups();
             for (const id of reminderControlIds) {
                 document.getElementById(id).addEventListener('change', () => {
                     updateReminderSwitchStates();
@@ -5916,6 +5917,76 @@
             }
             document.getElementById('editNameForm').addEventListener('submit', handleEditNameSubmit);
             document.getElementById('newName').addEventListener('input', validateNickname);
+        }
+
+        function initializeMeMobileGroups() {
+            const summaries = {
+                meAccountGroup: 'me.mobileSummary.account',
+                meSecurityGroup: 'me.mobileSummary.security',
+                meDataGroup: 'me.mobileSummary.data',
+                meLanguageGroup: 'me.mobileSummary.preferences',
+                meReminderGroup: 'me.mobileSummary.reminders'
+            };
+            Object.entries(summaries).forEach(([id, summaryKey]) => {
+                const group = document.getElementById(id);
+                const title = group?.querySelector('.me-group-title');
+                if (!group || !title || title.querySelector('.me-group-toggle')) return;
+                const label = title.textContent.trim();
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'me-group-toggle';
+                button.textContent = label;
+                if (title.dataset.i18n) button.dataset.i18n = title.dataset.i18n;
+                button.setAttribute('aria-controls', `${id}Content`);
+                const body = document.createElement('div');
+                body.className = 'me-group-content';
+                body.id = `${id}Content`;
+                while (title.nextSibling) body.appendChild(title.nextSibling);
+                title.replaceChildren(button);
+                title.insertAdjacentElement('afterend', body);
+                const summary = document.createElement('p');
+                summary.className = 'me-group-summary';
+                summary.dataset.summaryKey = summaryKey;
+                summary.dataset.i18n = summaryKey;
+                summary.textContent = shuranText(summaryKey);
+                title.insertAdjacentElement('afterend', summary);
+                button.addEventListener('click', () => {
+                    if (!window.matchMedia('(max-width: 768px)').matches) return;
+                    const collapsed = group.classList.toggle('is-collapsed');
+                    button.setAttribute('aria-expanded', String(!collapsed));
+                });
+                const isMobile = window.matchMedia('(max-width: 768px)').matches;
+                group.classList.toggle('is-collapsed', isMobile);
+                button.setAttribute('aria-expanded', String(!isMobile));
+                button.tabIndex = isMobile ? 0 : -1;
+            });
+            updateMeGroupSummaries();
+            window.addEventListener('shuran-language-change', updateMeGroupSummaries);
+            window.matchMedia('(max-width: 768px)').addEventListener('change', (event) => {
+                document.querySelectorAll('#user-center .me-group-toggle').forEach((button) => {
+                    const group = button.closest('.me-group');
+                    group.classList.toggle('is-collapsed', event.matches);
+                    button.setAttribute('aria-expanded', String(!event.matches));
+                    button.tabIndex = event.matches ? 0 : -1;
+                });
+            });
+        }
+
+        function updateMeGroupSummaries() {
+            document.querySelectorAll('#user-center .me-group-summary').forEach((summary) => {
+                const key = summary.dataset.summaryKey;
+                if (key === 'me.mobileSummary.reminders') {
+                    const master = document.getElementById('reminderMasterSwitch');
+                    const record = document.getElementById('recordReminderSwitch');
+                    const time = document.getElementById('recordReminderTime');
+                    const stateKey = !master?.checked ? 'me.mobileSummary.remindersOff'
+                        : !record?.checked ? 'me.mobileSummary.recordOff' : 'me.mobileSummary.remindersAt';
+                    const template = shuranText(stateKey);
+                    summary.textContent = template.replace('{time}', time?.value || '21:00');
+                } else {
+                    summary.textContent = shuranText(key);
+                }
+            });
         }
 
         // 显示个人中心弹窗（已废弃，现在使用navigateTo）
@@ -6759,6 +6830,7 @@
             document.getElementById('reminderEmailSwitch').disabled = !enabled;
             document.getElementById('recordReminderSwitch').disabled = !enabled;
             document.getElementById('recordReminderTime').disabled = !enabled || !document.getElementById('recordReminderSwitch').checked;
+            updateMeGroupSummaries();
         }
 
         function retryReminderSettings() {
@@ -6960,7 +7032,7 @@
     </script>
     
     <!-- 待办提醒通知服务 -->
-    <script src="/static/js/time-picker.js?v=20260917upd4"></script>
+    <script src="/static/js/time-picker.js?v=20261026capturemyreminder1"></script>
     <script src="/static/reminder_notification.js?v=20261026autosave1"></script>
     <script src="/static/js/app-tabbar.js?v=20261025someday3"></script>
     <script src="/static/js/workspace-shell.js?v=20261025someday3"></script>

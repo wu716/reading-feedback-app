@@ -116,6 +116,8 @@
     color: #1c1b19;
 }
 
+.tp-subtitle,.tp-selected-time,.tp-close,.tp-footer {display:none;}
+
 .tp-text-btn {
     border: none;
     background: transparent;
@@ -272,6 +274,32 @@
     display: block;
 }
 
+/* Daily record reminder: calm paper and blue treatment with a compact footer. */
+.tp-overlay.is-shuran .tp-sheet {position:relative;padding:16px 18px calc(18px + env(safe-area-inset-bottom,0px));background:#f8f7f2;border:1px solid #d7e0e2;}
+.tp-overlay.is-shuran .tp-head {grid-template-columns:1fr;padding:4px 30px 13px;}
+.tp-overlay.is-shuran .tp-head > .tp-cancel,.tp-overlay.is-shuran .tp-head > .tp-ok {display:none;}
+.tp-overlay.is-shuran .tp-title {color:#233b50;font:600 18px/1.45 "Noto Serif SC","Microsoft YaHei",serif;}
+.tp-overlay.is-shuran .tp-subtitle {display:block;}
+.tp-title-wrap {min-width:0;}
+.tp-subtitle {margin-top:3px;color:#70818a;text-align:center;font-size:12px;line-height:1.5;font-weight:400;}
+.tp-close {display:none;}
+.tp-overlay.is-shuran .tp-close {position:absolute;top:14px;right:15px;display:grid;width:34px;height:34px;place-items:center;padding:0;border:1px solid #d7e0e2;border-radius:50%;background:transparent;color:#607786;font:24px/1 sans-serif;cursor:pointer;}
+.tp-overlay.is-shuran .tp-presets {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;padding:0 0 8px;overflow:visible;}
+.tp-overlay.is-shuran .tp-preset {min-width:0;padding:8px 3px;border-color:#cbd7dc;border-radius:7px;background:#fff;color:#536a78;font-size:13px;}
+.tp-overlay.is-shuran .tp-preset.is-active {border-color:#54778c;background:#e6eef1;color:#294b61;}
+.tp-overlay.is-shuran .tp-selected-time {display:block;margin:4px 0 0;color:#274b63;text-align:center;font:600 32px/1.25 ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums;letter-spacing:.04em;}
+.tp-overlay.is-shuran .tp-wheels {height:220px;margin:0 0 10px;background:#f0f2ef;border:1px solid #dbe1de;}
+.tp-overlay.is-shuran .tp-highlight {background:#fff;border-color:#95aebb;box-shadow:0 2px 8px rgba(34,62,78,.08);}
+.tp-overlay.is-shuran .tp-colon {color:#54778c;}
+.tp-overlay.is-shuran .tp-item {color:#94a0a2;}
+.tp-overlay.is-shuran .tp-item.is-active {color:#274b63;}
+.tp-overlay.is-shuran .tp-item.is-active .tp-unit {color:#54778c;}
+.tp-overlay.is-shuran .tp-footer {display:grid;grid-template-columns:1fr 1.35fr;gap:10px;margin-top:12px;}
+.tp-overlay.is-shuran .tp-footer button {min-height:46px;padding:9px 14px;border:1px solid #bdcbd0;border-radius:7px;background:transparent;color:#476274;font:500 14px/1.4 "Microsoft YaHei",system-ui,sans-serif;cursor:pointer;}
+.tp-overlay.is-shuran .tp-footer .tp-footer-ok {border-color:#345e77;background:#345e77;color:#fff;}
+.tp-overlay.is-shuran .tp-clear {margin-top:9px;background:transparent;color:#607786;}
+.tp-col[data-tp-loop="true"] {overscroll-behavior:contain;}
+
 .input-group .tp-field-btn {
     min-width: 120px;
     border: 1px solid #ddd;
@@ -288,4 +316,10 @@
         border-radius: 16px;
         transform: translateY(8px);
     }
+}
+
+@media (max-width: 380px) {
+    .tp-overlay.is-shuran .tp-sheet {padding-right:13px;padding-left:13px;}
+    .tp-overlay.is-shuran .tp-wheels {margin-right:0;margin-left:0;}
+    .tp-overlay.is-shuran .tp-presets {gap:5px;}
 }

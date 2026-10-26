@@ -11,7 +11,7 @@
     </style>
 
     <style name="Theme.Shuran.Punch" parent="android:Theme.Material.Light.Dialog">
-        <item name="android:windowBackground">@color/punch_bg</item>
+        <item name="android:windowBackground">@drawable/punch_card_background</item>
         <item name="android:windowIsFloating">true</item>
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:windowNoTitle">true</item>

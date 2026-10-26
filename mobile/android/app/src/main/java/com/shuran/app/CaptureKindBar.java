@@ -1,7 +1,6 @@
 package com.shuran.app;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -17,10 +16,11 @@ public class CaptureKindBar extends LinearLayout {
         void onChanged(String kind, String todoWhen);
     }
 
-    private static final int ON_BG = 0xFF1C1B19;
-    private static final int ON_FG = 0xFFF3EFE6;
-    private static final int OFF_BG = 0x00000000;
-    private static final int OFF_FG = 0xFF1C1B19;
+    private static final int ON_BG = 0xFF446B83;
+    private static final int ON_FG = 0xFFFFFFFF;
+    private static final int OFF_BG = 0xFFEAF0F1;
+    private static final int OFF_FG = 0xFF405B6B;
+    private static final int TODO_ON_BG = 0xFF668578;
 
     private final Button moment;
     private final Button idea;
@@ -115,8 +115,8 @@ public class CaptureKindBar extends LinearLayout {
         button.setText(label);
         button.setAllCaps(false);
         button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        button.setMinHeight(dp(34));
-        button.setPadding(dp(4), dp(4), dp(4), dp(4));
+        button.setMinHeight(dp(42));
+        button.setPadding(dp(6), dp(5), dp(6), dp(5));
         return button;
     }
 
@@ -130,12 +130,14 @@ public class CaptureKindBar extends LinearLayout {
     private void paintChip(Button button, boolean on) {
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(dp(8));
+        button.setSelected(on);
+        boolean todoChoice = button == today || button == later;
         if (on) {
-            bg.setColor(ON_BG);
+            bg.setColor(todoChoice ? TODO_ON_BG : ON_BG);
             button.setTextColor(ON_FG);
         } else {
-            bg.setColor(Color.TRANSPARENT);
-            bg.setStroke(Math.max(1, dp(1)), OFF_FG);
+            bg.setColor(OFF_BG);
+            bg.setStroke(Math.max(1, dp(1)), 0xFFC8D4D8);
             button.setTextColor(OFF_FG);
         }
         button.setBackground(bg);
