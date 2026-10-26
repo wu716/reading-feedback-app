@@ -401,6 +401,7 @@ def finish_task(task_id: int, body: CompletionInput, user: User = Depends(get_cu
 
 
 def apply_task_completion(task_id, body, user, db):
+    db.query(User).filter(User.id == user.id).with_for_update().first()
     settle_expired(db, user.id)
     row = owned(db, ProjectTask, task_id, user.id)
     if body.result == "completed":
@@ -529,6 +530,7 @@ def get_execution(user: User = Depends(get_current_active_user), db: Session = D
 
 @router.put("/execution")
 def save_execution(body: ExecutionInput, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    db.query(User).filter(User.id == user.id).with_for_update().first()
     settle_expired(db, user.id)
     seen, queue = set(), []
     for key in body.queue:
@@ -549,6 +551,7 @@ def save_execution(body: ExecutionInput, user: User = Depends(get_current_active
 
 @router.post("/execution/resume")
 def resume_execution(acknowledge_reminders: bool = False, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    db.query(User).filter(User.id == user.id).with_for_update().first()
     settle_expired(db, user.id)
     plan = execution_plan(db, user.id)
     if not plan.paused_session_id or not plan.remaining_seconds: fail("没有可恢复的时间片", 409)
@@ -563,6 +566,7 @@ def resume_execution(acknowledge_reminders: bool = False, user: User = Depends(g
 
 @router.post("/execution/discard-pause")
 def discard_pause(user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    db.query(User).filter(User.id == user.id).with_for_update().first()
     settle_expired(db, user.id)
     plan = execution_plan(db, user.id)
     plan.paused_session_id = None
@@ -745,7 +749,7 @@ def start_session(body: StartSessionInput, user: User = Depends(get_current_acti
 
 
 @router.post("/sessions/{session_id}/complete")
-async def complete_session_task(session_id: int, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+def complete_session_task(session_id: int, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     db.query(User).filter(User.id == user.id).with_for_update().first()
     row = owned(db, WorkSession, session_id, user.id)
     settle_expired(db, user.id)
@@ -754,7 +758,7 @@ async def complete_session_task(session_id: int, user: User = Depends(get_curren
     if row.daily_task_id:
         daily = owned(db, DailyTask, row.daily_task_id, user.id)
         from app.routers.schedule import update_task, TaskUpdate
-        await update_task(daily.id, TaskUpdate(completed=True), user, db)
+        update_task(daily.id, TaskUpdate(completed=True), user, db)
     elif row.project_task_id:
         apply_task_completion(row.project_task_id, CompletionInput(result="completed"), user, db)
     else:

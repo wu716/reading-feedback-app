@@ -26,7 +26,7 @@ SETTING_FIELDS = {"is_enabled", "browser_notification", "email_notification",
 
 
 def _setting_response(setting: SelfTalkReminderSetting, db: Session) -> ReminderSettingResponse:
-    return ReminderSettingResponse(
+    response = ReminderSettingResponse(
         id=setting.id,
         user_id=setting.user_id,
         is_enabled=setting.is_enabled,
@@ -38,10 +38,12 @@ def _setting_response(setting: SelfTalkReminderSetting, db: Session) -> Reminder
         created_at=setting.created_at,
         updated_at=setting.updated_at,
     )
+    db.commit()  # record_status may settle an expired timer; release its user lock now.
+    return response
 
 
 @router.get("/settings", response_model=ReminderSettingResponse)
-async def get_reminder_settings(
+def get_reminder_settings(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -59,7 +61,7 @@ async def get_reminder_settings(
 
 
 @router.post("/settings", response_model=ReminderSettingResponse)
-async def create_reminder_settings(
+def create_reminder_settings(
     settings: ReminderSettingCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -112,7 +114,7 @@ async def create_reminder_settings(
 
 
 @router.patch("/settings", response_model=ReminderSettingResponse)
-async def update_reminder_settings(
+def update_reminder_settings(
     settings_update: ReminderSettingUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -142,7 +144,7 @@ async def update_reminder_settings(
 
 
 @router.get("/logs", response_model=ReminderLogListResponse)
-async def get_reminder_logs(
+def get_reminder_logs(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     skip: int = 0,
@@ -181,7 +183,7 @@ async def get_reminder_logs(
 
 
 @router.get("/pending")
-async def get_pending_reminders(
+def get_pending_reminders(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -200,6 +202,7 @@ async def get_pending_reminders(
         check_feedback_reminders(db, user_id=current_user.id)
         setting = ReminderService.get_or_create_setting(db, current_user.id)
         status = record_status(db, current_user.id)
+        db.commit()  # Do not hold timer/user locks through notification filtering.
         
         recent_time = datetime.now() - timedelta(days=7)
         
@@ -265,7 +268,7 @@ async def get_pending_reminders(
 
 
 @router.post("/dismiss/{log_id}")
-async def dismiss_reminder(
+def dismiss_reminder(
     log_id: int,
     action_taken: bool = False,
     current_user: User = Depends(get_current_user),

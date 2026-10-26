@@ -447,7 +447,7 @@ def day_payload(db: Session, user: User, day: date) -> DayScheduleOut:
 
 
 @router.get("", response_model=DayScheduleOut)
-async def get_day_schedule(
+def get_day_schedule(
     task_date: Optional[date] = Query(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -456,7 +456,7 @@ async def get_day_schedule(
 
 
 @router.post("/tasks", response_model=DayScheduleOut)
-async def create_task(
+def create_task(
     body: TaskCreate,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -507,7 +507,7 @@ async def create_task(
 
 
 @router.patch("/tasks/{task_id}", response_model=DayScheduleOut)
-async def update_task(
+def update_task(
     task_id: int,
     body: TaskUpdate,
     current_user: User = Depends(get_current_active_user),
@@ -608,7 +608,7 @@ async def update_task(
 
 
 @router.delete("/tasks/{task_id}", response_model=DayScheduleOut)
-async def delete_task(
+def delete_task(
     task_id: int,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -627,7 +627,7 @@ async def delete_task(
 
 
 @router.post("/reorder", response_model=DayScheduleOut)
-async def reorder_tasks(
+def reorder_tasks(
     body: ReorderBody,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -651,7 +651,7 @@ async def reorder_tasks(
 
 
 @router.post("/design", response_model=DayScheduleOut)
-async def mark_designed(
+def mark_designed(
     body: DesignBody,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -666,7 +666,7 @@ async def mark_designed(
 
 
 @router.get("/future", response_model=FutureListOut)
-async def list_future_actions(
+def list_future_actions(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -674,7 +674,7 @@ async def list_future_actions(
 
 
 @router.post("/future", response_model=FutureListOut)
-async def create_future_action(
+def create_future_action(
     body: FutureCreate,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -686,7 +686,7 @@ async def create_future_action(
 
 
 @router.patch("/future/{item_id}", response_model=FutureListOut)
-async def update_future_action(
+def update_future_action(
     item_id: int,
     body: FutureUpdate,
     current_user: User = Depends(get_current_active_user),
@@ -699,7 +699,7 @@ async def update_future_action(
 
 
 @router.delete("/future/{item_id}", response_model=FutureListOut)
-async def delete_future_action(
+def delete_future_action(
     item_id: int,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -715,7 +715,7 @@ async def delete_future_action(
 
 
 @router.post("/future/{item_id}/restore", response_model=FutureListOut)
-async def restore_future_action(
+def restore_future_action(
     item_id: int,
     body: FutureRestoreBody,
     current_user: User = Depends(get_current_active_user),
@@ -741,7 +741,7 @@ async def restore_future_action(
 
 
 @router.post("/future/{item_id}/schedule", response_model=DayScheduleOut)
-async def schedule_future_action(
+def schedule_future_action(
     item_id: int,
     body: FutureScheduleBody,
     current_user: User = Depends(get_current_active_user),

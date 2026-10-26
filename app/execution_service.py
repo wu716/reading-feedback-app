@@ -35,11 +35,19 @@ def finish_with_remainder(db, row, now=None):
 
 def settle_expired(db, user_id, now=None):
     """Settle at server deadlines, automatically resting but never starting unattended work."""
-    db.query(User).filter(User.id == user_id).with_for_update().first()
     now = now or datetime.utcnow()
-    for row in db.query(WorkSession).filter(
-        WorkSession.user_id == user_id, WorkSession.source == "timer", WorkSession.ended_at.is_(None)
-    ).all():
+    def active():
+        return db.query(WorkSession).filter(
+            WorkSession.user_id == user_id, WorkSession.source == "timer", WorkSession.ended_at.is_(None)
+        ).all()
+
+    # Ordinary reads must not hold the per-user write lock until request cleanup.
+    if not any(now >= row.started_at + timedelta(seconds=budget_seconds(row)) for row in active()):
+        db.flush()
+        return
+    db.query(User).filter(User.id == user_id).with_for_update().first()
+    # Another request may have settled the timer while this request waited.
+    for row in active():
         deadline = row.started_at + timedelta(seconds=budget_seconds(row))
         if now >= deadline:
             row.ended_at = deadline
@@ -58,6 +66,9 @@ def settle_expired(db, user_id, now=None):
 
 def execution_plan(db, user_id):
     plan = db.get(ExecutionPlan, user_id)
+    if plan is None:
+        db.query(User).filter(User.id == user_id).with_for_update().first()
+        plan = db.get(ExecutionPlan, user_id)
     if plan is None:
         plan = ExecutionPlan(user_id=user_id, queue_json="[]", work_minutes=20, break_minutes=5)
         db.add(plan)

@@ -1,5 +1,7 @@
 """Daily record delivery, opt-in migration and account-scoped reminder behavior."""
 from datetime import datetime, timedelta, timezone
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 from unittest.mock import patch
 
 import pytest
@@ -68,6 +70,50 @@ def test_defaults_and_legacy_preferences_do_not_opt_users_in(ctx):
     assert response.json()["record_reminder_time"] == "21:00"
     assert not service.check_record_reminders(db, now=due_now())
     mail.assert_not_called()
+
+
+def test_blocked_reminder_query_does_not_block_async_health(ctx, monkeypatch):
+    _, _, _, _, client, _ = ctx
+    entered, release = Event(), Event()
+
+    def slow_status(*args):
+        entered.set()
+        assert release.wait(3)
+        return {"record_date": datetime.now(service.BEIJING_TZ).date(), "record_complete": False}
+
+    monkeypatch.setattr(routes, "record_status", slow_status)
+    async def health_probe():
+        return {"ok": True}
+
+    client.app.add_api_route("/health-probe", health_probe)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        pending = pool.submit(client.get, "/api/reminders/settings")
+        assert entered.wait(2)
+        probe = pool.submit(client.get, "/health-probe")
+        try:
+            assert probe.result(timeout=1).json() == {"ok": True}
+        finally:
+            release.set()
+        assert pending.result(timeout=3).status_code == 200
+
+
+def test_settings_read_commits_expired_timer_settlement(ctx):
+    from app.project_models import WorkSession
+
+    db, user, _, _, client, _ = ctx
+    row = WorkSession(user_id=user.id, kind="work", source="timer", label="到期工作片",
+                      started_at=datetime.utcnow() - timedelta(minutes=30), planned_minutes=20)
+    db.add(row)
+    db.commit()
+    session_id = row.id
+    deadline = row.started_at + timedelta(minutes=20)
+    assert client.get("/api/reminders/settings").status_code == 200
+    db.rollback()
+    db.expire_all()
+    assert db.get(WorkSession, session_id).ended_at == deadline
+    assert db.query(WorkSession).filter_by(user_id=user.id, kind="break").count() == 1
+    assert client.get("/api/reminders/settings").status_code == 200
+    assert db.query(WorkSession).filter_by(user_id=user.id, kind="break").count() == 1
 
 
 @pytest.mark.parametrize("value", ["24:00", "21:60", "9:00", "", "21:00:00", "noon"])

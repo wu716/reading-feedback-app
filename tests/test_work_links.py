@@ -11,6 +11,7 @@ from app.project_models import WorkSession, WorkLinkSetting
 from app.routers import long_term_details as ledger
 from app.routers import work_links as links
 from app.work_link_service import sources
+from app.execution_service import settle_expired
 
 DAY = date(2026, 10, 20)
 
@@ -124,6 +125,20 @@ def test_running_source_and_expired_deadline(db):
     data=ledger.read_range(db,1,day,day)[0]
     assert ledger.aggregate([data])['total_seconds']['work']==1200
     assert db.query(WorkSession).filter_by(kind='break').count()==1
+
+
+def test_no_expired_timer_does_not_lock_user(db, monkeypatch):
+    from sqlalchemy.orm import Query
+
+    def unexpected_lock(*args, **kwargs):
+        pytest.fail('a normal read must not lock the user row')
+
+    monkeypatch.setattr(Query, 'with_for_update', unexpected_lock)
+    settle_expired(db, 1)
+    db.add(WorkSession(user_id=1,kind='work',source='timer',label='进行中',
+                       started_at=datetime.utcnow(),planned_minutes=20))
+    db.commit()
+    settle_expired(db, 1)
 
 
 def test_metadata_export_backup_and_repeatable_schema(db, monkeypatch):

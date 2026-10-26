@@ -115,7 +115,7 @@ class TodayOverviewResponse(BaseModel):
 
 
 @router.get("/todos", response_model=List[DailyTodoResponse])
-async def list_daily_todos(
+def list_daily_todos(
     todo_date: Optional[date] = Query(None, description="日期，默认今天（北京时间）"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -135,7 +135,7 @@ async def list_daily_todos(
 
 
 @router.get("/todos/scheduled", response_model=List[DailyTodoResponse])
-async def list_scheduled_todos(
+def list_scheduled_todos(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -168,7 +168,7 @@ class TodoMonthSummaryResponse(BaseModel):
 
 
 @router.get("/todos/month", response_model=TodoMonthSummaryResponse)
-async def list_month_todo_summary(
+def list_month_todo_summary(
     year: int = Query(..., ge=2000, le=2100),
     month: int = Query(..., ge=1, le=12),
     current_user: User = Depends(get_current_active_user),
@@ -207,7 +207,7 @@ async def list_month_todo_summary(
 
 
 @router.post("/todos", response_model=DailyTodoResponse, status_code=status.HTTP_201_CREATED)
-async def create_daily_todo(
+def create_daily_todo(
     body: DailyTodoCreate,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -236,7 +236,7 @@ async def create_daily_todo(
 
 
 @router.patch("/todos/{todo_id}", response_model=DailyTodoResponse)
-async def update_daily_todo(
+def update_daily_todo(
     todo_id: int,
     body: DailyTodoUpdate,
     current_user: User = Depends(get_current_active_user),
@@ -258,13 +258,13 @@ async def update_daily_todo(
     # Delegate shared mutations to the schedule rules (including project acceptance).
     from app.routers.schedule import TaskUpdate, update_task
     changes = body.model_dump(exclude_unset=True)
-    await update_task(task.id, TaskUpdate(**changes), current_user, db)
+    update_task(task.id, TaskUpdate(**changes), current_user, db)
     db.refresh(row)
     return row
 
 
 @router.delete("/todos/{todo_id}")
-async def delete_daily_todo(
+def delete_daily_todo(
     todo_id: int,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -284,7 +284,7 @@ async def delete_daily_todo(
     task = task_for_todo(db, row)
     if task is not None and task.deleted_at is None:
         from app.routers.schedule import delete_task
-        await delete_task(task.id, current_user, db)
+        delete_task(task.id, current_user, db)
         return {"message": "已删除"}
     row.deleted_at = datetime.utcnow()
     db.commit()
@@ -295,7 +295,7 @@ async def delete_daily_todo(
 
 
 @router.get("/overview", response_model=TodayOverviewResponse)
-async def get_today_overview(
+def get_today_overview(
     overview_date: Optional[date] = Query(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
