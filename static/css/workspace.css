@@ -314,3 +314,28 @@ body.workspace-layout {background:var(--workspace-paper);background-image:radial
 .workspace-layout .detail-save-conflict { margin:14px 0; padding:15px; border:1px solid #cda89e; border-radius:8px; background:#fff8f3; color:#704d43; }
 .workspace-layout .detail-save-conflict p { margin:7px 0; overflow-wrap:anywhere; }
 .workspace-layout .detail-save-conflict button { margin:5px 8px 0 0; }
+
+/* Task colors belong to the day's entry; title and state retain their own styling. */
+.workspace-layout #schedule #scheduleNewColor {grid-column:1/-1;min-width:0;width:100%;}
+.workspace-layout #schedule .flow-task[data-has-color] {position:relative;background:linear-gradient(90deg,var(--task-tint),transparent 70%);padding-left:14px;}
+.workspace-layout #schedule .flow-task[data-has-color]::before {content:"";position:absolute;left:0;top:16px;bottom:16px;width:3px;border-radius:3px;background:var(--task-color);box-shadow:0 0 0 1px #25354120;}
+.workspace-layout #schedule .schedule-color {margin-top:10px;font:13px/1.5 "Microsoft YaHei",system-ui,sans-serif;color:#315a7e;}
+.workspace-layout #schedule .schedule-color summary {cursor:pointer;min-height:36px;display:flex;align-items:center;gap:7px;width:max-content;max-width:100%;padding:5px 10px;border:1px solid #bdcbd2;border-radius:6px;background:#f2f5f5;list-style:none;}
+.workspace-layout #schedule .schedule-color summary::-webkit-details-marker {display:none;}
+.workspace-layout #schedule .schedule-color summary::after {content:'⌄';margin-left:8px;}
+.workspace-layout #schedule .schedule-color[open] summary::after {content:'⌃';}
+.workspace-layout #schedule .schedule-color-dot {width:13px;height:13px;border-radius:50%;border:1px solid #25354144;}
+.workspace-layout #schedule .schedule-color-panel {box-sizing:border-box;width:360px;max-width:100%;min-width:0;margin-top:8px;padding:12px;border:1px solid #c6d1d5;background:#f8faf9;border-radius:8px;}
+.workspace-layout #schedule .schedule-color-panel p {margin:0 0 8px;color:#62717c;font-size:12px;}
+.workspace-layout #schedule .schedule-color-swatches {display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;}
+.workspace-layout #schedule .schedule-color-panel button {cursor:pointer;font:inherit;min-height:36px;border:1px solid #bdcbd2;border-radius:6px;background:#edf2f4;color:#315a7e;padding:5px 9px;}
+.workspace-layout #schedule .schedule-color-panel .schedule-color-swatch {box-sizing:border-box;min-width:0;width:100%;height:34px;min-height:34px;padding:0;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #25354140;color:white;text-shadow:0 1px 3px #000;}
+.workspace-layout #schedule .schedule-color-swatch[aria-pressed=true] {outline:2px solid #315a7e;outline-offset:1px;}
+.workspace-layout #schedule .schedule-color-custom {display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin:14px 0 10px;}
+.workspace-layout #schedule .schedule-color-custom label {display:flex;flex-direction:column;gap:5px;color:#62717c;font-size:12px;}
+.workspace-layout #schedule .schedule-color-custom input {box-sizing:border-box;min-width:0;width:94px;height:36px;border:1px solid #bdcbd2;border-radius:5px;background:#fff;color:#253541;font:13px monospace;padding:5px;}
+.workspace-layout #schedule .schedule-color-custom input[type=color] {width:58px;cursor:pointer;}
+.workspace-layout #schedule .schedule-color-status {display:block;color:#9c3b32;margin-top:6px;overflow-wrap:anywhere;}
+.workspace-layout #schedule .schedule-color :focus-visible {outline:2px solid #315a7e;outline-offset:3px;}
+.workspace-layout #schedule .schedule-color button:hover {filter:brightness(.95);}
+.workspace-layout #schedule .schedule-color button:disabled {opacity:.5;cursor:wait;}

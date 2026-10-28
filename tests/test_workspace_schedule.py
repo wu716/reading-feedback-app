@@ -68,6 +68,59 @@ class WorkspaceScheduleTests(unittest.TestCase):
             self.assertEqual(db.query(DailyTodo).count(), 3)
             self.assertEqual(db.query(DailyTask).count(), 2)
 
+    def test_free_task_color_round_trip_is_scoped_and_clearable(self):
+        first = self.req('POST', '/schedule/tasks', {'text':'colored','task_date':self.day,'color':'#12ABef'})
+        self.assertEqual(first.status_code, 200, first.text)
+        task = first.json()['tasks'][0]
+        self.assertEqual(task['color'], '#12abef')
+        other = self.req('POST', '/schedule/tasks', {'text':'other','task_date':self.day}).json()['tasks'][-1]
+        self.assertIsNone(other['color'])
+        self.assertEqual(self.req('PATCH', f"/schedule/tasks/{task['id']}", {'color':'#fedcba'}, user=2).status_code, 404)
+        for invalid in ['red', '#123', '#zz1234', 'url(javascript:evil)', '#123456;']:
+            self.assertEqual(self.req('PATCH', f"/schedule/tasks/{task['id']}", {'color':invalid}).status_code, 422)
+        self.req('PATCH', f"/schedule/tasks/{task['id']}", {'note':'keep color'})
+        self.assertEqual(self.schedule()[0]['color'], '#12abef')
+        self.req('PATCH', f"/schedule/tasks/{task['id']}", {'color':'#000000'})
+        self.assertEqual(self.schedule()[0]['color'], '#000000')
+        self.req('PATCH', f"/schedule/tasks/{task['id']}", {'color':None})
+        self.assertIsNone(self.schedule()[0]['color'])
+        self.assertIsNone(self.schedule()[1]['color'])
+
+    def test_color_does_not_spread_to_linked_tasks_on_other_dates(self):
+        with self.Session() as db:
+            from datetime import timedelta
+            from app.project_models import Project, ProjectTask
+            project = Project(user_id=1, title='project')
+            db.add(project)
+            db.flush()
+            project_task = ProjectTask(user_id=1, project_id=project.id, title='shared')
+            db.add(project_task)
+            db.flush()
+            rows = [DailyTask(user_id=1, text='shared', task_date=date.today()+timedelta(days=n), project_task_id=project_task.id) for n in (0,1)]
+            db.add_all(rows)
+            db.commit()
+            ids = [row.id for row in rows]
+        response = self.req('PATCH', f'/schedule/tasks/{ids[0]}', {'color':'#876543'})
+        self.assertEqual(response.status_code, 200, response.text)
+        with self.Session() as db:
+            self.assertEqual(db.get(DailyTask, ids[0]).color, '#876543')
+            self.assertIsNone(db.get(DailyTask, ids[1]).color)
+
+    def test_color_migration_preserves_old_rows_and_is_repeatable(self):
+        from unittest.mock import patch
+        from sqlalchemy import text
+        from app.database import ensure_schema
+        with self.engine.begin() as conn:
+            conn.execute(text('ALTER TABLE daily_tasks DROP COLUMN color'))
+            conn.execute(text("INSERT INTO daily_tasks (user_id, task_date, text, priority, flow_order) VALUES (1, '2026-10-28', 'old task', 0, 0)"))
+        with patch('app.database.engine', self.engine):
+            ensure_schema()
+            ensure_schema()
+        with self.Session() as db:
+            task = db.query(DailyTask).one()
+            self.assertEqual(task.text, 'old task')
+            self.assertIsNone(task.color)
+
     def test_schedule_and_legacy_client_share_edit_completion_reminders_and_delete(self):
         todo = self.req("POST", "/today/todos", {"text":"old","todo_date":self.day,"remind_time":"09:10"}).json()
         task = self.schedule()[0]

@@ -16,6 +16,25 @@
     let newTaskImportance = null;
     let newTaskPriority = 0;
     let newTaskDuration = '';
+    let newTaskColor = null;
+    const taskColors = [['雾蓝','#7894a6'],['天青','#75a9bd'],['湖蓝','#4f89a0'],['墨蓝','#416580'],['薄荷绿','#79aa96'],['鼠尾草绿','#789879'],['森林绿','#527b65'],['柠檬黄','#d1bb64'],['暖琥珀','#c5954f'],['珊瑚橙','#d18b68'],['陶土红','#bb7166'],['莓果红','#a95f70'],['薰衣草紫','#a18ab7'],['柔紫','#927f9f'],['玫瑰粉','#d19aaa'],['石墨灰','#8b9295']];
+
+    function safeColor(value) {
+        return /^#[0-9a-f]{6}$/i.test(value || '') ? value.toLowerCase() : null;
+    }
+
+    function colorStyle(task) {
+        const color = safeColor(task.color);
+        return color ? ` style="--task-color:${color};--task-tint:${color}12" data-has-color` : '';
+    }
+
+    function renderColorPicker(value) {
+        const color = safeColor(value);
+        return `<details class="schedule-color"><summary>${color ? `<span class="schedule-color-dot" style="background:${color}"></span>` : ''}颜色${color ? '' : ' · 未标记'}</summary>
+            <div class="schedule-color-panel"><p>常用颜色</p><div class="schedule-color-swatches">${taskColors.map(([name,hex]) => `<button type="button" class="schedule-color-swatch" style="background:${hex}" data-color-value="${hex}" aria-label="${name}" title="${name}" aria-pressed="${color === hex}">${color === hex ? '✓' : ''}</button>`).join('')}</div>
+            <div class="schedule-color-custom"><label>自选颜色 <input type="color" value="${color || '#7894a6'}" data-color-picker aria-label="自由选择任务颜色"></label><label>色值 <input type="text" value="${color || '#7894a6'}" data-color-hex maxlength="7" aria-label="颜色十六进制色值" spellcheck="false"></label><button type="button" data-color-apply>应用</button></div>
+            <button type="button" data-color-clear>清除颜色</button><span class="schedule-color-status" role="status"></span></div></details>`;
+    }
     let splitFor = null;
     let editingId = null;
     let dragTaskId = null;
@@ -235,6 +254,13 @@
     function updateAddComposer() {
         const addRow = document.getElementById('scheduleAddRow');
         if (!addRow) return;
+        let colorEntry = document.getElementById('scheduleNewColor');
+        if (!colorEntry) {
+            colorEntry = document.createElement('div');
+            colorEntry.id = 'scheduleNewColor';
+            addRow.appendChild(colorEntry);
+        }
+        colorEntry.innerHTML = renderColorPicker(newTaskColor);
         addRow.querySelectorAll('[data-new-act="fam"]').forEach((button) => {
             const active = button.dataset.value === newTaskFamiliarity;
             button.classList.toggle('active', active);
@@ -369,12 +395,13 @@
         const source = plan ? `<div class="schedule-project-source">${escapeHtml(plan.project_title)} › ${escapeHtml(plan.stage_title)} › ${plan.source_missing ? `${escapeHtml(plan.task_title)} · 来源已移除，历史安排保留` : `<a href="/static/projects.html?task=${task.project_task_id}#taskDetail">${escapeHtml(plan.task_title)}</a> · ${plan.source_completed ? '项目任务已验收' : '修改或验收项目任务'}`}</div>` : '';
         const recorded = plan ? `<p class="schedule-project-time">今日已记录 ${task.actual_minutes} 分 · 项目累计已记录 ${plan.project_actual_minutes} 分${plan.source_estimated_minutes != null ? ' · 调入时整项预计 ' + plan.source_estimated_minutes + ' 分' : ''}（未记录不代表未投入）</p>` : '';
         return `
-            <article class="flow-task${isChild ? ' is-child' : ''}${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
+            <article class="flow-task${isChild ? ' is-child' : ''}${task.completed ? ' is-done' : ''}" data-task-id="${task.id}"${colorStyle(task)}>
                 ${source}
                 <div class="flow-task-summary">
                 <div class="flow-task-main">
                     ${renderTitle(task)}
                 </div>
+                ${renderColorPicker(task.color)}
                 </div>
                 ${renderQuickAttributes(task)}
                 ${renderTimeFeedback(task)}
@@ -401,7 +428,7 @@
                 ? `<div class="flow-parent-path">${escapeHtml(task.parent_path.join(' / '))}</div>`
                 : '';
             return `
-                <article class="flow-task flow-sortable${task.completed ? ' is-done' : ''}" data-task-id="${task.id}">
+                <article class="flow-task flow-sortable${task.completed ? ' is-done' : ''}" data-task-id="${task.id}"${colorStyle(task)}>
                     <div class="flow-sort-row">
                         <button type="button" class="flow-sort-handle" data-sort-handle aria-label="${escapeHtml(t('schedule.dragToSort', '拖动调整顺序'))}" title="${escapeHtml(t('schedule.dragToSort', '拖动调整顺序'))}">⋮⋮</button>
                         <div class="flow-sort-index">${index + 1}</div>
@@ -541,6 +568,7 @@
             method: 'POST',
             body: JSON.stringify({
                 text: value,
+                color: attributes?.color || null,
                 task_date: taskDay,
                 parent_id: parentId || null,
                 familiarity: attributes?.familiarity || null,
@@ -865,6 +893,31 @@
         const root = document.getElementById('homeSchedule') || document.getElementById('schedule');
         if (!root || root.dataset.bound) return;
         root.dataset.bound = '1';
+        root.addEventListener('input', e => {
+            const panel = e.target.closest('.schedule-color-panel');
+            if (!panel) return;
+            if (e.target.matches('[data-color-picker]')) panel.querySelector('[data-color-hex]').value = e.target.value;
+            if (e.target.matches('[data-color-hex]') && safeColor(e.target.value)) panel.querySelector('[data-color-picker]').value = e.target.value;
+        });
+        root.addEventListener('click', async e => {
+            const button = e.target.closest('[data-color-value], [data-color-apply], [data-color-clear]');
+            if (!button || button.disabled) return;
+            const picker = button.closest('.schedule-color');
+            const clear = button.hasAttribute('data-color-clear');
+            const color = clear ? null : safeColor(button.dataset.colorValue || picker.querySelector('[data-color-hex]').value.trim());
+            const status = picker.querySelector('[role="status"]');
+            if (!clear && !color) { status.textContent = '请输入 # 加六位十六进制色值，如 #36a7bf'; return; }
+            const article = button.closest('[data-task-id]');
+            if (!article) { newTaskColor = color; updateAddComposer(); return; }
+            picker.querySelectorAll('button').forEach(item => { item.disabled = true; });
+            try {
+                await patchTask(Number(article.dataset.taskId), {color});
+            } catch (err) {
+                status.textContent = err.message || '保存失败，请重试';
+            } finally {
+                picker.querySelectorAll('button').forEach(item => { item.disabled = false; });
+            }
+        });
         const requestedDay = new URLSearchParams(location.search).get('schedule_date');
         day = /^\d{4}-\d{2}-\d{2}$/.test(requestedDay || '') ? requestedDay : todayISO();
         const list = document.getElementById('scheduleList');
@@ -905,6 +958,7 @@
                     importance: newTaskImportance,
                     priority: newTaskPriority,
                     estimatedMinutes,
+                    color: newTaskColor,
                 });
                 if (input && input.value === submittedText) input.value = '';
                 const durationInput = document.getElementById('scheduleAddDuration');
@@ -914,6 +968,7 @@
                 newTaskImportance = null;
                 newTaskPriority = 0;
                 newTaskDuration = '';
+                newTaskColor = null;
                 updateAddComposer();
             } catch (e) {
                 if (typeof showMessage === 'function') showMessage(e.message, 'error');

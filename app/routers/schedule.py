@@ -5,11 +5,11 @@ import json
 import hashlib
 import hmac
 from datetime import date, datetime, time, timedelta, timezone
-from typing import List, Literal, Optional
+from typing import Annotated, List, Literal, Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -23,6 +23,7 @@ from app.stage_schedule_models import DailyProjectPlan, day_plan, legacy_daily_f
 router = APIRouter(prefix="/schedule", tags=["日程安排"])
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
 FAMILIARITY_VALUES = {"familiar", "unfamiliar"}
+TaskColor = Annotated[str, StringConstraints(pattern=r"^#[0-9a-fA-F]{6}$", to_lower=True)]
 
 
 def beijing_today() -> date:
@@ -38,6 +39,7 @@ def parse_day(value: Optional[date]) -> date:
 
 
 class TaskCreate(BaseModel):
+    color: TaskColor | None = None
     text: str = Field(..., min_length=1, max_length=500)
     task_date: Optional[date] = None
     parent_id: Optional[int] = None
@@ -66,6 +68,7 @@ class TaskCreate(BaseModel):
 
 
 class TaskUpdate(BaseModel):
+    color: TaskColor | None = None
     text: Optional[str] = Field(None, min_length=1, max_length=500)
     completed: Optional[bool] = None
     note: Optional[str] = Field(None, max_length=500)
@@ -130,6 +133,7 @@ class DesignBody(BaseModel):
 
 
 class TaskOut(BaseModel):
+    color: str | None = None
     id: int
     parent_id: Optional[int] = None
     action_id: Optional[int] = None
@@ -330,6 +334,7 @@ def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id
             actual_minutes=plan["today_recorded_minutes"] if plan else actual.get(("project", task.project_task_id) if task.project_task_id else ("daily", task.id), 0),
             readiness=(readiness_by_id or {}).get(task.id),
             text=task.text,
+            color=task.color,
             completed=bool(task.completed),
             note=task.note,
             sort_order=task.sort_order or 0,
@@ -473,6 +478,7 @@ def create_task(
         parent_id=parent_id,
         task_date=day,
         text=body.text,
+        color=body.color,
         action_id=None,
         sort_order=next_sort_order(db, current_user.id, day, parent_id),
         priority=body.priority,
@@ -516,6 +522,8 @@ def update_task(
     db.query(User).filter(User.id == current_user.id).with_for_update().first()
     task = get_task_or_404(db, current_user.id, task_id)
     scoped = day_plan(db, current_user.id, task.id)
+    if "color" in body.model_fields_set:
+        task.color = body.color
     from app import practice_service as practice
     if body.text is not None:
         task.text = body.text

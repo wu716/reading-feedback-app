@@ -471,6 +471,7 @@ class DailyTask(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     parent_id = Column(Integer, ForeignKey("daily_tasks.id", ondelete="CASCADE"), nullable=True, index=True)
     task_date = Column(Date, nullable=False, index=True)
+    color = Column(String(7), nullable=True)  # User-selected #RRGGBB for this day's entry.
     text = Column(Text, nullable=False)
     completed = Column(Boolean, default=False)
     note = Column(Text, nullable=True)
