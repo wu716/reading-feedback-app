@@ -1,0 +1,50 @@
+/* Mobile review 2026-10-28: preserve desktop layout and recording semantics. */
+@media (max-width:768px) {
+ body.workspace-layout .app-main {padding:18px 18px calc(90px + env(safe-area-inset-bottom,0px));}
+ .workspace-layout:has(.content-section.active:not(#schedule)) .workspace-mobile-tabs {display:none;}
+ .workspace-layout .workspace-mobile-tabs {margin:0;padding:6px 18px;gap:22px;}
+ .workspace-layout .section-header,.workspace-layout #schedule > .section-header,.workspace-layout .workspace-page-header {margin-bottom:16px;}
+ .workspace-layout .section-header h1,.workspace-layout .workspace-page-header h1 {font-size:24px;}
+ .workspace-layout .section-header p {margin-top:6px;font-size:14px;line-height:1.6;}
+ .workspace-layout .project-page {padding:18px 18px 90px;}
+ .workspace-layout #schedule .home-schedule-head {margin-bottom:12px;}
+ .workspace-layout #schedule .schedule-date-actions {gap:8px 14px;}
+ .workspace-layout #schedule .schedule-date-picker {display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+ .workspace-layout #schedule #scheduleDateInput {box-sizing:border-box;width:168px;min-width:168px;max-width:100%;font-size:14px;min-height:44px;padding:7px 8px;}
+ .workspace-layout #schedule .flow-add-row {margin-bottom:12px;}
+ .workspace-layout #schedule .flow-add-attributes {gap:10px 12px;padding-top:10px;}
+ .workspace-layout #schedule .flow-attribute-options .flow-chip {min-height:44px;padding:6px 9px;}
+ .workspace-layout #schedule .flow-attribute-group {gap:4px;}
+ .workspace-layout #schedule #scheduleAddDuration {height:44px;min-height:44px;}
+ .workspace-layout #capture .capture-entry-grid {gap:0;}
+ .workspace-layout #capture .capture-entry-grid > .card {padding:12px 0 16px 38px;}
+ .workspace-layout #capture .capture-entry-grid > .card::before {top:12px;font-size:24px;}
+ .workspace-layout #capture .capture-entry-grid h2 {font-size:22px;margin-bottom:4px;}
+ .workspace-layout #capture .capture-entry-grid p {font-size:14px;margin-bottom:4px;}
+ .workspace-layout #capture .capture-entry-grid :is(.btn,.btn-secondary) {min-height:44px;margin-right:12px;}
+ .workspace-layout .timer-display {font-size:64px;line-height:1.2;margin:16px 0;}
+ .workspace-layout .focus-panel {padding-top:12px;}
+ .workspace-layout .workspace-tabs {margin-top:8px;}
+ .workspace-layout .surface {margin-bottom:18px;}
+ .workspace-layout .section-head {margin:14px 0 12px;}
+ .workspace-layout .project-lifecycle {padding:12px 0;}
+ .workspace-layout #long-term .lt-date-nav input,.workspace-layout #ltDate {appearance:none;box-sizing:border-box;min-height:44px;width:168px;min-width:0;border:1px solid #b8c8d0;border-radius:6px;background:#f7f5ef;color:#21364a;padding:7px 8px;font:14px/1.5 system-ui,sans-serif;}
+ .workspace-layout #user-center #meVolumeTripleGroup {padding:16px;border:1px solid #d5dcde!important;border-radius:8px;}
+ .workspace-layout #meVolumeTripleGroup .me-row {flex-wrap:wrap;gap:8px;}
+ .workspace-layout #meVolumeTripleGroup .me-row-main {flex:1 1 240px;min-width:0;}
+ .workspace-layout #meVolumeTripleGroup .me-row-desc {line-height:1.65;}
+}
+/* The dropdown is a child of the header: raise its stacking context above the backdrop. */
+.app-header:has(.reminder-dropdown.is-open) {z-index:1300!important;}
+.reminder-dropdown {background:#f7f5ef!important;color:#21364a!important;}
+.reminder-dropdown a {color:#315a7e!important;}
+.reminder-dropdown button {border-radius:6px;}
+@media(max-width:768px) {
+ .workspace-layout .practice-entry-row button,.workspace-layout .practice-execution button {background:transparent!important;color:#315a7e!important;border:1px solid #b8c8d0!important;min-height:44px;padding:8px 12px;font-size:14px;}
+ .workspace-layout .practice-entry-row {gap:8px;}
+ .workspace-layout #daily-feedback .section-header {margin-bottom:12px;}
+}
+.reminder-dropdown .reminder-item h5 {color:#315a7e!important;}
+.reminder-dropdown .reminder-item-actions .primary {background:#315a7e!important;color:#fff!important;}
+.reminder-dropdown .reminder-item-actions .ghost {background:#e1e8eb!important;color:#315a7e!important;}
+.reminder-dropdown :focus-visible {outline:2px solid #315a7e;outline-offset:2px;}
