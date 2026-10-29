@@ -32,7 +32,6 @@
         const color = safeColor(value);
         return `<details class="schedule-color"><summary>${color ? `<span class="schedule-color-dot" style="background:${color}"></span>` : ''}颜色${color ? '' : ' · 未标记'}</summary>
             <div class="schedule-color-panel"><p>常用颜色</p><div class="schedule-color-swatches">${taskColors.map(([name,hex]) => `<button type="button" class="schedule-color-swatch" style="background:${hex}" data-color-value="${hex}" aria-label="${name}" title="${name}" aria-pressed="${color === hex}">${color === hex ? '✓' : ''}</button>`).join('')}</div>
-            <div class="schedule-color-custom"><label>自选颜色 <input type="color" value="${color || '#7894a6'}" data-color-picker aria-label="自由选择任务颜色"></label><label>色值 <input type="text" value="${color || '#7894a6'}" data-color-hex maxlength="7" aria-label="颜色十六进制色值" spellcheck="false"></label><button type="button" data-color-apply>应用</button></div>
             <button type="button" data-color-clear>清除颜色</button><span class="schedule-color-status" role="status"></span></div></details>`;
     }
     let splitFor = null;
@@ -893,20 +892,14 @@
         const root = document.getElementById('homeSchedule') || document.getElementById('schedule');
         if (!root || root.dataset.bound) return;
         root.dataset.bound = '1';
-        root.addEventListener('input', e => {
-            const panel = e.target.closest('.schedule-color-panel');
-            if (!panel) return;
-            if (e.target.matches('[data-color-picker]')) panel.querySelector('[data-color-hex]').value = e.target.value;
-            if (e.target.matches('[data-color-hex]') && safeColor(e.target.value)) panel.querySelector('[data-color-picker]').value = e.target.value;
-        });
         root.addEventListener('click', async e => {
-            const button = e.target.closest('[data-color-value], [data-color-apply], [data-color-clear]');
+            const button = e.target.closest('[data-color-value], [data-color-clear]');
             if (!button || button.disabled) return;
             const picker = button.closest('.schedule-color');
             const clear = button.hasAttribute('data-color-clear');
-            const color = clear ? null : safeColor(button.dataset.colorValue || picker.querySelector('[data-color-hex]').value.trim());
+            const color = clear ? null : safeColor(button.dataset.colorValue);
             const status = picker.querySelector('[role="status"]');
-            if (!clear && !color) { status.textContent = '请输入 # 加六位十六进制色值，如 #36a7bf'; return; }
+            if (!clear && !color) return;
             const article = button.closest('[data-task-id]');
             if (!article) { newTaskColor = color; updateAddComposer(); return; }
             picker.querySelectorAll('button').forEach(item => { item.disabled = true; });
