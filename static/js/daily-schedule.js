@@ -394,6 +394,7 @@
         const source = plan ? `<div class="schedule-project-source">${escapeHtml(plan.project_title)} › ${escapeHtml(plan.stage_title)} › ${plan.source_missing ? `${escapeHtml(plan.task_title)} · 来源已移除，历史安排保留` : `<a href="/static/projects.html?task=${task.project_task_id}#taskDetail">${escapeHtml(plan.task_title)}</a> · ${plan.source_completed ? '项目任务已验收' : '修改或验收项目任务'}`}</div>` : '';
         const recorded = plan ? `<p class="schedule-project-time">今日已记录 ${task.actual_minutes} 分 · 项目累计已记录 ${plan.project_actual_minutes} 分${plan.source_estimated_minutes != null ? ' · 调入时整项预计 ' + plan.source_estimated_minutes + ' 分' : ''}（未记录不代表未投入）</p>` : '';
         return `
+            <div class="flow-task-branch">
             <article class="flow-task${isChild ? ' is-child' : ''}${task.completed ? ' is-done' : ''}" data-task-id="${task.id}"${colorStyle(task)}>
                 ${source}
                 <div class="flow-task-summary">
@@ -415,7 +416,15 @@
                 ${renderEditActions(false, task)}
                 </div>
             </article>
-            ${(task.children || []).map((child) => renderTask(child, true)).join('')}
+            ${task.children?.length ? `
+                <section class="flow-task-children" aria-labelledby="scheduleChildren-${task.id}">
+                    <div class="flow-children-heading" id="scheduleChildren-${task.id}">
+                        <span>${escapeHtml(withCount(t('schedule.children.count', '拆分步骤 · {count} 项'), task.children.length))}</span>
+                        <span class="flow-children-parent">${escapeHtml(format(t('schedule.children.parent', '属于「{title}」'), {title:task.text}))}</span>
+                    </div>
+                    ${task.children.map((child) => renderTask(child, true)).join('')}
+                </section>` : ''}
+            </div>
         `;
     }
 
@@ -471,7 +480,10 @@
     }
 
     function renderFlowNode(task) {
-        return renderTask(task, false);
+        const source = task.parent_path?.length
+            ? `<p class="flow-task-origin">${escapeHtml(format(t('schedule.children.origin', '拆分步骤 · 属于「{title}」'), {title:task.parent_path.join(' › ')}))}</p>`
+            : '';
+        return `<div class="flow-task-node">${source}${renderTask(task, false)}</div>`;
     }
 
     function renderFlowGroups(tasks) {

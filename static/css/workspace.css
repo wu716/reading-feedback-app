@@ -335,3 +335,18 @@ body.workspace-layout {background:var(--workspace-paper);background-image:radial
 .workspace-layout #schedule .schedule-color :focus-visible {outline:2px solid #315a7e;outline-offset:3px;}
 .workspace-layout #schedule .schedule-color button:hover {filter:brightness(.95);}
 .workspace-layout #schedule .schedule-color button:disabled {opacity:.5;cursor:wait;}
+
+/* Split steps stay inside their parent's group, independently of task colors. */
+.workspace-layout #schedule .flow-task-branch,.workspace-layout #schedule .flow-task-node {min-width:0;}
+.workspace-layout #schedule #scheduleList > .flow-task-branch {padding-bottom:20px;margin-bottom:12px;border-bottom:1px solid var(--workspace-line);}
+.workspace-layout #schedule .flow-task-branch > .flow-task {border-bottom:0!important;}
+.workspace-layout #schedule .flow-task-children {min-width:0;margin:0 0 0 8px;padding:12px 20px 2px 24px;border:0;border-left:2px solid #8fa8b8;background:rgba(225,232,235,.23);}
+.workspace-layout #schedule .flow-children-heading {display:flex;flex-direction:column;gap:5px;color:var(--workspace-blue);font:400 13px/1.6 "Microsoft YaHei",system-ui,sans-serif;overflow-wrap:anywhere;}
+.workspace-layout #schedule .flow-children-parent {font-size:12px;color:#62717c;}
+.workspace-layout #schedule .flow-task-children .flow-task.is-child {margin:0;padding:14px 0 18px;border-left:0;}
+.workspace-layout #schedule .flow-task-children .flow-task[data-has-color] {padding-left:14px;}
+.workspace-layout #schedule .flow-task-children > .flow-task-branch + .flow-task-branch {border-top:1px solid #d9e1e5;}
+.workspace-layout #schedule .flow-task-origin {margin:0;font:400 12px/1.6 "Microsoft YaHei",system-ui,sans-serif;color:var(--workspace-blue);overflow-wrap:anywhere;}
+@media(max-width:600px) {
+ .workspace-layout #schedule .flow-task-children {margin-left:3px;padding:12px 8px 0 13px;}
+}
