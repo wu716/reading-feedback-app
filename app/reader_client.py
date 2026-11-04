@@ -106,6 +106,9 @@ def sync_binding(db, binding_id, user_id=None, max_pages=3):
             db.commit(); pages += 1; changed.update(result["changed_dates"])
             if not page.next_cursor:
                 complete = True; break
+        from app.reader_writing import sync_writing
+        writing = sync_writing(db, binding_id, max_pages)
+        changed.update(writing["changed_dates"])
     except (HTTPException, ValidationError) as error:
         db.rollback()
         row = db.query(ReaderBinding).filter_by(id=binding_id).first()
@@ -136,7 +139,8 @@ def sync_binding(db, binding_id, user_id=None, max_pages=3):
                     report_for_user(db, user, period, day)
                 except Exception:
                     db.rollback()  # The acknowledged source page remains safely committed.
-    return {"changed_dates": sorted(str(d) for d in changed), "pages": pages, "complete": complete}
+    return {"changed_dates": sorted(str(d) for d in changed), "pages": pages, "complete": complete,
+            "writing_complete": writing["complete"]}
 
 
 def sync_reader_accounts(db):

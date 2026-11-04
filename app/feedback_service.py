@@ -234,10 +234,10 @@ def generate_closed_reports(db):
     from app.routers.long_term_details import calendar_bounds, report_for_user
     from app.plans import PAID_PLANS, effective_plan_key
     from app.models import LongTermLedgerDay, LongTermDailyRecord
-    from app.project_models import ReaderReadingDay
+    from app.project_models import ReaderReadingDay, ReaderWritingDay
     today = datetime.now(TZ).date()
     active_ids = db.query(LongTermLedgerDay.user_id).union(db.query(Project.user_id),
-        db.query(LongTermDailyRecord.user_id), db.query(ReaderReadingDay.user_id))
+        db.query(LongTermDailyRecord.user_id), db.query(ReaderReadingDay.user_id), db.query(ReaderWritingDay.user_id))
     for user in db.query(User).filter(User.is_active == True, User.id.in_(active_ids)):
         periods = ("day", "week", "month", "quarter", "year") if effective_plan_key(user) in PAID_PLANS else ("day", "week")
         for period in periods:

@@ -37,7 +37,7 @@ from app.project_models import (
     StartCondition, ExecutionConditionEvent,
     TaskPractice, PracticeEvent, PlanningCycle, StageCommitment, StageCommitmentDraft, CommitmentAdjustment, ProjectDeletion,
     FeedbackOccurrence, FeedbackSubmission, FeedbackAttachment, FeedbackReport, FeedbackDelivery,
-    ReaderBinding, ReaderPairing, ReaderReadingDay, ReaderReceiverAccount,
+    ReaderBinding, ReaderPairing, ReaderReadingDay, ReaderReceiverAccount, ReaderWritingDay, ReaderWritingState,
 )
 
 from app.stage_schedule_models import DailyProjectPlan
@@ -168,6 +168,8 @@ def build_backup_zip(db: Session) -> bytes:
         "reader_pairings.csv": ReaderPairing,
         "reader_receiver_accounts.csv": ReaderReceiverAccount,
         "reader_reading_days.csv": ReaderReadingDay,
+        "reader_writing_days.csv": ReaderWritingDay,
+        "reader_writing_states.csv": ReaderWritingState,
         "project_stages.csv": ProjectStage,
         "project_tasks.csv": ProjectTask,
         "task_dependencies.csv": TaskDependency,

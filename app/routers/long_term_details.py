@@ -14,6 +14,7 @@ from app.models import LongTermDailyRecord, LongTermLedgerDay, LongTermNodeCateg
 from app.plans import PAID_PLANS, effective_plan_key
 from app.routers.time_log import beijing_today
 from app.reader_projection import source_days, merge as merge_reading
+from app.reader_writing import source_days as output_days, merge as merge_output
 from app.work_link_service import sources as work_sources, merge as merge_work, counted
 from app.routers.work_links import router as work_links_router
 
@@ -53,6 +54,8 @@ class Activity(StrictModel):
     work_duplicate_of: int | None = Field(default=None, gt=0, strict=True)
     reader_book_key: str | None = Field(default=None, max_length=100, pattern=r"^reader_[a-zA-Z0-9_]+$")
     reader_duplicate_of: str | None = Field(default=None, max_length=100, pattern=r"^reader_[a-zA-Z0-9_]+$")
+    reader_output_key: str | None = Field(default=None, max_length=100, pattern=r"^output_[0-9]+$")
+    reader_output_duplicate_of: str | None = Field(default=None, max_length=100, pattern=r"^output_[0-9]+$")
     reading_kind: Literal["fiction", "nonfiction", "unclassified"] = "unclassified"
     primary_topic: str = "unclassified"
     topics: list[str] = Field(default_factory=list, max_length=5)
@@ -63,6 +66,10 @@ class Activity(StrictModel):
 
     @model_validator(mode="after")
     def semantics(self):
+        if self.reader_output_key and (self.category != "writing" or self.id != self.reader_output_key or self.seconds or self.source_node_id or self.work_session_id or self.reader_book_key or self.reader_output_duplicate_of):
+            raise ValueError("同步字数只引用一个写作来源，不包含用时")
+        if self.reader_output_duplicate_of and (self.category != "writing" or self.reader_output_key):
+            raise ValueError("只将写作补记与知间字数核对")
         if self.work_session_id and (self.source_node_id or self.reader_book_key or self.work_duplicate_of or self.category == "investment" or self.id != f"work_{self.work_session_id}"):
             raise ValueError("工作片只能引用一个来源，不能重复计时或改成定投")
         if not self.work_session_id and (self.work_override_seconds is not None or self.work_basis_seconds is not None or self.work_title_override or self.work_excluded):
@@ -243,6 +250,7 @@ def read_range(db, user_id, start, end):
         LongTermNodeCategory.user_id == user_id, LongTermNodeCategory.node_id.in_([n.id for n in nodes])).all()} if nodes else {}
     by_day = {}
     imported = source_days(db, user_id, start, end)
+    outputs = output_days(db, user_id, start, end)
     work = work_sources(db, user_id, start, end)
     for node in nodes:
         by_day.setdefault(node.log_date, []).append(node)
@@ -291,9 +299,10 @@ def read_range(db, user_id, start, end):
         data.setdefault("legacy_attention", [])
         data.setdefault("category_confirmed", list(CATEGORIES) if data.get("day_confirmed") else [])
         merge_reading(data, imported.get(day, []), Activity)
+        merge_output(data, outputs.get(day, []), Activity)
         merge_work(data, work.get(day, []), Activity)
         for activity in data["activities"]:
-            if not activity.get("reader_book_key") and not activity.get("work_session_id"):
+            if not activity.get("reader_book_key") and not activity.get("work_session_id") and not activity.get("reader_output_key"):
                 activity["source_missing"] = False
             if activity.get("source_node_id"):
                 node = available.get(activity["source_node_id"])
@@ -334,9 +343,10 @@ def aggregate(days):
             group = projects[key].setdefault(a["title"] or "未填写名称", {"seconds": 0, "count": 0, "words": 0})
             group["seconds"] += seconds
             group["count"] += 1
-            group["words"] += a.get("words") or 0
+            counted_words = 0 if a.get("reader_output_duplicate_of") else (a.get("words") or 0)
+            group["words"] += counted_words
             if key == "writing":
-                words += a.get("words") or 0
+                words += counted_words
             if a.get("unplanned"):
                 unplanned += seconds
             if key == "reading":
@@ -438,6 +448,16 @@ def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get
         duplicate = activity.get("reader_duplicate_of")
         if duplicate and not any(a.get("reader_book_key") == duplicate for a in previous["activities"]):
             raise HTTPException(400, "请引用当前账号当天的知间阅读记录")
+        duplicate_output = activity.get("reader_output_duplicate_of")
+        if duplicate_output and not any(a.get("reader_output_key") == duplicate_output for a in previous["activities"]):
+            raise HTTPException(400, "请引用当前账号当天的知间输出字数")
+        if activity.get("reader_output_key"):
+            old = existing.get(activity["id"])
+            if not old or old.get("reader_output_key") != activity["reader_output_key"]:
+                raise HTTPException(400, "不能新增或修改字数来源身份")
+            activity["words"], activity["title"], activity["seconds"] = old["words"], old["title"], 0
+        elif activity["id"].startswith("output_"):
+            raise HTTPException(400, "不能将同步字数改成手动记录")
         if activity.get("reader_book_key"):
             old = existing.get(activity["id"])
             if not old or old.get("reader_book_key") != activity["reader_book_key"]:
@@ -457,7 +477,7 @@ def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get
     # A newly settled source absent from a stale client must not be lost on save.
     sent_ids = {a["id"] for a in data["activities"]}
     for old in previous["activities"]:
-        if old.get("work_session_id") and old["id"] not in sent_ids:
+        if (old.get("work_session_id") or old.get("reader_output_key")) and old["id"] not in sent_ids:
             data["activities"].append(Activity.model_validate({k: v for k, v in old.items() if k in Activity.model_fields}).model_dump())
     old_total = sum(a["seconds"] for a in previous["activities"] if counted(a))
     new_total = sum(a["seconds"] for a in data["activities"] if counted(a))
@@ -561,7 +581,7 @@ def target_progress(goal, days):
     if metric == "count":
         return len(items)
     field = "amount_cents" if metric == "cents" else metric
-    return sum(a.get(field) or 0 for a in items)
+    return sum(a.get(field) or 0 for a in items if field != "words" or not a.get("reader_output_duplicate_of"))
 
 
 def report_payload(db, user_id, period, anchor, now=None):

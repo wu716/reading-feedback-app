@@ -52,4 +52,10 @@ class ReaderSource:
                 "source_account_id": self.account, "receiver_account_id": grant["receiver_account_id"],
                 "next_cursor": None, "checkpoint": "checkpoint-"+str(self.page["high_watermark"]),
                 "coverage": "recorded_not_day_confirmed", "pending_tail": "client_memory_not_observable", **self.page}
+        if path == '/writing-days':
+            grant = self.grants[reading_token]
+            return {"schema_version": 1, "timezone": "Asia/Shanghai", "source_instance_id": self.instance,
+                "source_account_id": self.account, "receiver_account_id": grant["receiver_account_id"],
+                "authorized": False, "writing_started_at": None, "days": [], "high_watermark": 0,
+                "next_cursor": None, "checkpoint": None}
         raise AssertionError(path)

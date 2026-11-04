@@ -226,10 +226,15 @@ def sync(binding_id: int, user: User = Depends(get_current_active_user), db: Ses
 @router.get("/status")
 def status(user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     from app.reader_client import configured
+    from app.project_models import ReaderWritingState
+    writing = {s.binding_id: s for s in db.query(ReaderWritingState).join(ReaderBinding).filter(ReaderBinding.user_id == user.id)}
     return {"configured": configured(), "items": [{
         "id": r.id, "source_label": r.source_label, "source_instance_id": r.source_instance_id,
         "active": r.active, "detail_started_on": r.detail_started_on, "last_sync_at": r.last_sync_at,
         "sync_status": r.sync_status, "sync_error": r.sync_error,
+        "writing_status": writing[r.id].status if r.id in writing else "pending",
+        "writing_error": writing[r.id].error if r.id in writing else None,
+        "writing_last_sync_at": writing[r.id].last_sync_at if r.id in writing else None,
         "historical_baseline": json.loads(r.baseline_json or "[]")}
         for r in db.query(ReaderBinding).filter_by(user_id=user.id)]}
 

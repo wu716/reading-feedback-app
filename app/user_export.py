@@ -35,6 +35,7 @@ USER_TABLES = (
     project_models.FeedbackOccurrence, project_models.FeedbackSubmission, project_models.FeedbackAttachment,
     project_models.FeedbackReport, project_models.FeedbackDelivery,
     project_models.ReaderBinding, project_models.ReaderReadingDay, project_models.ReaderReceiverAccount,
+    project_models.ReaderWritingDay,
 )
 
 

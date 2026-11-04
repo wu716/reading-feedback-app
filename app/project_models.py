@@ -455,6 +455,31 @@ class ReaderReadingDay(Base):
     __table_args__ = (UniqueConstraint("binding_id", "record_date", name="uq_reader_binding_date"),)
 
 
+class ReaderWritingState(Base):
+    __tablename__ = "reader_writing_states"
+    binding_id = Column(Integer, ForeignKey("reader_bindings.id"), primary_key=True)
+    cursor = Column(Text, nullable=True)
+    high_watermark = Column(Integer, nullable=False, default=0)
+    status = Column(String(30), nullable=False, default="pending")
+    error = Column(String(300), nullable=True)
+    last_sync_at = Column(DateTime, nullable=True)
+    started_on = Column(Date, nullable=True)
+
+
+class ReaderWritingDay(Base):
+    __tablename__ = "reader_writing_days"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    binding_id = Column(Integer, ForeignKey("reader_bindings.id"), nullable=False)
+    record_date = Column(Date, nullable=False)
+    revision = Column(Integer, nullable=False)
+    words = Column(Integer, nullable=False)
+    categories_json = Column(Text, nullable=False)
+    digest = Column(String(64), nullable=False)
+    synced_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("binding_id", "record_date", name="uq_reader_writing_date"),)
+
+
 # Register additive work/moment linkage tables with existing schema creation.
 from app.work_link_models import WorkLinkSetting, WorkMomentLink, register_session_activation
 register_session_activation(WorkSession)
