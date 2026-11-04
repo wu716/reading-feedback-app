@@ -4644,10 +4644,18 @@
             return 'exit';
         };
 
-        function navigateTo(sectionId) {
+        function navigateTo(sectionId, { legacyEntry = false } = {}) {
             if (sectionId === 'overview') sectionId = 'schedule';
-            // Legacy notification and project links still enter the unified feedback workspace.
-            if (sectionId === 'long-term' && /[?&](record|feedback|report)=/.test(location.search)) sectionId = 'daily-feedback';
+            // Interpret old feedback links on entry, without overriding a user's navigation.
+            if (sectionId === 'long-term' && /[?&](record|feedback|report)=/.test(location.search)) {
+                if (legacyEntry) {
+                    sectionId = 'daily-feedback';
+                } else {
+                    const url = new URL(location.href);
+                    ['record', 'feedback', 'report'].forEach(key => url.searchParams.delete(key));
+                    history.replaceState(history.state, '', url);
+                }
+            }
             if (!document.getElementById(sectionId)) sectionId = defaultSection();
             if (sectionId === 'long-term' || sectionId === 'daily-feedback') window.prepareDailyFeedback?.(sectionId);
             document.querySelectorAll('.content-section').forEach(section => {
@@ -4715,7 +4723,7 @@
         window.addEventListener('DOMContentLoaded', async () => {
             const hash = location.hash.slice(1);
             if (hash && document.getElementById(hash)) {
-                navigateTo(hash);
+                navigateTo(hash, { legacyEntry: true });
             } else {
                 navigateTo(defaultSection());
             }

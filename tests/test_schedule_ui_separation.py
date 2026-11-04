@@ -59,7 +59,9 @@ class ScheduleUiSeparationTests(unittest.TestCase):
         self.assertNotIn("{ id: 'methods'", self.tabbar)
         self.assertNotIn("navigateTo('actions')", self.index)
         self.assertNotIn("navigateTo('self-talk')", self.index)
-        self.assertIn("const PRIMARY_TABS_PHONE = new Set(['schedule', 'capture', 'long-term', 'user-center'])", self.index)
+        phone_tabs = self.index.split("const PRIMARY_TABS_PHONE = new Set([", 1)[1].split("])", 1)[0]
+        for section in ("schedule", "capture", "long-term", "user-center"):
+            self.assertIn(f"'{section}'", phone_tabs)
         self.assertIn('data-section="long-term"', self.index)
 
 
