@@ -544,8 +544,7 @@
         } else if (mode === 'flow') {
             list.innerHTML = renderFlowGroups(executionLeaves(data.tasks));
         } else {
-            const tasks = [...data.tasks].sort((a, b) => b.id - a.id);
-            list.innerHTML = tasks.map((task) => renderTask(task, false)).join('');
+            list.innerHTML = data.tasks.map((task) => renderTask(task, false)).join('');
         }
         focusEditor();
         if (activeName && activeTask) {

@@ -37,18 +37,20 @@ if (artifacts) fs.mkdirSync(artifacts, {recursive:true});
   await page.route('http://shuran.test/**', async route => {
     const req=route.request(), url=new URL(req.url()), method=req.method();
     const reply = data => route.fulfill({contentType:'application/json',body:JSON.stringify(data)});
+    const orderedState = () => ({...state,tasks:[...state.tasks].sort((a,b)=>a.sort_order-b.sort_order||a.id-b.id)});
     if(url.pathname==='/')return route.fulfill({contentType:'text/html',body:fixture});
     const body=req.postDataJSON();
     if(method!=='GET')writes.push({path:url.pathname,method,body});
-    if(url.pathname==='/api/schedule' && method==='GET'){state.date=url.searchParams.get('task_date');return reply(state);}
+    if(url.pathname==='/api/schedule' && method==='GET'){state.date=url.searchParams.get('task_date');return reply(orderedState());}
     if(url.pathname==='/api/schedule/tasks' && method==='POST'){
       const added={...task(nextId++,body.text,body.parent_id),...body};
-      if(body.parent_id)all().find(t=>t.id===body.parent_id).children.push(added);else state.tasks.push(added);
-      return reply(state);
+      if(body.parent_id)all().find(t=>t.id===body.parent_id).children.push(added);
+      else {added.sort_order=Math.min(...state.tasks.map(t=>t.sort_order))-1;state.tasks.push(added);}
+      return reply(orderedState());
     }
     if(url.pathname==='/api/schedule/reorder'){
       for(const item of body.items)Object.assign(all().find(t=>t.id===item.id),item);
-      return reply(state);
+      return reply(orderedState());
     }
     const match=url.pathname.match(/^\/api\/schedule\/tasks\/(\d+)$/);
     if(match){
@@ -169,6 +171,11 @@ if (artifacts) fs.mkdirSync(artifacts, {recursive:true});
   await page.waitForFunction(()=>document.querySelector('#scheduleList .flow-task-text')?.textContent==='刚写的任务');
   check('新任务居上且小时分钟保存为总分钟',writes.at(-1).body.estimated_minutes===90
     &&await page.locator('#scheduleList .flow-task').first().getAttribute('data-task-id')==='12');
+  await page.evaluate(()=>window.loadDailySchedule());
+  check('刷新后新任务仍在普通清单最上方',await page.locator('#scheduleList .flow-task').first().getAttribute('data-task-id')==='12');
+  await page.locator('#scheduleFlowBtn').click();
+  check('查看流程不按新任务居上重排',await page.locator('#scheduleList .flow-task').first().getAttribute('data-task-id')!=='12');
+  await page.locator('#scheduleFlowBtn').click();
   check('完整反馈入口直接提示可记录实际结果',await row(12).locator('.flow-result-entry button').innerText()==='记录实际结果、进展与原因 →');
   await page.locator('#scheduleAddInput').fill('非法分钟');
   await page.locator('#scheduleAddMinutes').fill('61');

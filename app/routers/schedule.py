@@ -269,6 +269,11 @@ def next_sort_order(db: Session, user_id: int, day: date, parent_id: Optional[in
     return max(t.sort_order for t in siblings) + 1
 
 
+def first_sort_order(db: Session, user_id: int, day: date) -> int:
+    roots = [t.sort_order for t in visible_tasks(db, user_id, day) if t.parent_id is None]
+    return min(roots) - 1 if roots else 0
+
+
 def next_flow_order(db: Session, user_id: int, day: date) -> int:
     tasks = visible_tasks(db, user_id, day)
     if not tasks:
@@ -480,7 +485,8 @@ def create_task(
         text=body.text,
         color=body.color,
         action_id=None,
-        sort_order=next_sort_order(db, current_user.id, day, parent_id),
+        sort_order=(first_sort_order(db, current_user.id, day) if parent_id is None
+                    else next_sort_order(db, current_user.id, day, parent_id)),
         priority=body.priority,
         familiarity=body.familiarity,
         estimated_minutes=body.estimated_minutes,

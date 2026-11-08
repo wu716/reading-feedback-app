@@ -73,18 +73,33 @@ class WorkspaceScheduleTests(unittest.TestCase):
         self.assertEqual(first.status_code, 200, first.text)
         task = first.json()['tasks'][0]
         self.assertEqual(task['color'], '#12abef')
-        other = self.req('POST', '/schedule/tasks', {'text':'other','task_date':self.day}).json()['tasks'][-1]
+        other = self.req('POST', '/schedule/tasks', {'text':'other','task_date':self.day}).json()['tasks'][0]
         self.assertIsNone(other['color'])
         self.assertEqual(self.req('PATCH', f"/schedule/tasks/{task['id']}", {'color':'#fedcba'}, user=2).status_code, 404)
         for invalid in ['red', '#123', '#zz1234', 'url(javascript:evil)', '#123456;']:
             self.assertEqual(self.req('PATCH', f"/schedule/tasks/{task['id']}", {'color':invalid}).status_code, 422)
         self.req('PATCH', f"/schedule/tasks/{task['id']}", {'note':'keep color'})
-        self.assertEqual(self.schedule()[0]['color'], '#12abef')
+        self.assertEqual(next(row for row in self.schedule() if row['id'] == task['id'])['color'], '#12abef')
         self.req('PATCH', f"/schedule/tasks/{task['id']}", {'color':'#000000'})
-        self.assertEqual(self.schedule()[0]['color'], '#000000')
+        self.assertEqual(next(row for row in self.schedule() if row['id'] == task['id'])['color'], '#000000')
         self.req('PATCH', f"/schedule/tasks/{task['id']}", {'color':None})
-        self.assertIsNone(self.schedule()[0]['color'])
-        self.assertIsNone(self.schedule()[1]['color'])
+        self.assertTrue(all(row['color'] is None for row in self.schedule()))
+
+    def test_new_root_is_first_without_reordering_flow_or_children(self):
+        first = self.req('POST', '/schedule/tasks', {'text':'first','task_date':self.day}).json()['tasks'][0]
+        child = self.req('POST', '/schedule/tasks', {'text':'child','task_date':self.day,'parent_id':first['id']}).json()['tasks'][0]['children'][0]
+        second_response = self.req('POST', '/schedule/tasks', {'text':'second','task_date':self.day})
+        self.assertEqual(second_response.status_code, 200, second_response.text)
+        roots = second_response.json()['tasks']
+        self.assertEqual([row['text'] for row in roots], ['second', 'first'])
+        self.assertEqual(roots[1]['children'][0]['id'], child['id'])
+        self.assertLess(roots[0]['sort_order'], roots[1]['sort_order'])
+        self.assertGreater(roots[0]['flow_order'], roots[1]['flow_order'])
+        self.assertEqual([row['id'] for row in self.schedule()], [row['id'] for row in roots])
+        reorder = self.req('POST', '/schedule/reorder', {'task_date':self.day,'items':[
+            {'id':first['id'],'sort_order':-2}, {'id':roots[0]['id'],'sort_order':0}]})
+        self.assertEqual(reorder.status_code, 200, reorder.text)
+        self.assertEqual([row['text'] for row in self.schedule()], ['first', 'second'])
 
     def test_color_does_not_spread_to_linked_tasks_on_other_dates(self):
         with self.Session() as db:
