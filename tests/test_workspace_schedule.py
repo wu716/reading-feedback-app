@@ -13,6 +13,7 @@ from app.database import Base, get_db
 from app.models import DailyTask, DailyTodo, User
 from app.routers.projects import router as projects_router
 from app.routers.schedule import router as schedule_router
+from app.routers.editor_drafts import router as editor_drafts_router
 from app.routers.today import router as today_router
 
 
@@ -27,6 +28,7 @@ class WorkspaceScheduleTests(unittest.TestCase):
         app = FastAPI()
         for router in (projects_router, schedule_router, today_router):
             app.include_router(router, prefix="/api")
+        app.include_router(editor_drafts_router)
 
         def session():
             with self.Session() as db:
@@ -100,6 +102,36 @@ class WorkspaceScheduleTests(unittest.TestCase):
             {'id':first['id'],'sort_order':-2}, {'id':roots[0]['id'],'sort_order':0}]})
         self.assertEqual(reorder.status_code, 200, reorder.text)
         self.assertEqual([row['text'] for row in self.schedule()], ['first', 'second'])
+
+    def test_task_expectation_core_review_and_server_draft_are_account_scoped(self):
+        key=f'task-new:{self.day}'
+        draft=self.req('PUT',f'/editor-drafts/{key}',{'content':{'expected_result':'形成提纲','completion_basis':'五个问题'}})
+        self.assertEqual(draft.status_code,200,draft.text)
+        self.assertEqual(self.req('GET',f'/editor-drafts/{key}').json()['content']['expected_result'],'形成提纲')
+        self.assertEqual(self.req('GET',f'/editor-drafts/{key}',user=2).json()['content'],{})
+        import io, json, zipfile
+        from app.user_export import build_user_export_zip
+        with self.Session() as db:
+            with zipfile.ZipFile(io.BytesIO(build_user_export_zip(db,db.get(User,1)))) as archive:
+                exported=json.loads(archive.read('content_editor_drafts.json'))
+            self.assertEqual(exported[0]['draft_key'],key)
+            with zipfile.ZipFile(io.BytesIO(build_user_export_zip(db,db.get(User,2)))) as archive:
+                self.assertEqual(json.loads(archive.read('content_editor_drafts.json')),[])
+        created=self.req('POST','/schedule/tasks',{'text':'整理访谈','task_date':self.day,'expected_result':'形成提纲','completion_basis':'五个问题'})
+        self.assertEqual(created.status_code,200,created.text)
+        task=created.json()['tasks'][0]
+        self.assertEqual(task['expected_result'],'形成提纲')
+        self.assertEqual(task['completion_basis'],'五个问题')
+        self.assertFalse(task['core_selected'])
+        reviewed=self.req('PATCH',f"/schedule/tasks/{task['id']}",{'core_selected':True,'core_review_completed':False,'core_review_reason':''})
+        self.assertEqual(reviewed.status_code,200,reviewed.text)
+        row=reviewed.json()['tasks'][0]
+        self.assertTrue(row['core_selected'])
+        self.assertIs(row['core_review_completed'],False)
+        self.assertIsNone(row['core_review_reason'])
+        self.assertEqual(self.req('PATCH',f"/schedule/tasks/{task['id']}",{'core_selected':True},user=2).status_code,404)
+        self.assertEqual(self.req('DELETE',f'/editor-drafts/{key}').status_code,200)
+        self.assertEqual(self.req('GET',f'/editor-drafts/{key}').json()['content'],{})
 
     def test_color_does_not_spread_to_linked_tasks_on_other_dates(self):
         with self.Session() as db:

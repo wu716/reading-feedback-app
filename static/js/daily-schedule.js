@@ -16,6 +16,9 @@
     let newTaskImportance = null;
     let newTaskPriority = 0;
     let newTaskColor = null;
+    let newTaskExpected = '';
+    let newTaskBasis = '';
+    let composerDraftDay = null;
     const taskColors = [['雾蓝','#7894a6'],['天青','#75a9bd'],['湖蓝','#4f89a0'],['墨蓝','#416580'],['薄荷绿','#79aa96'],['鼠尾草绿','#789879'],['森林绿','#527b65'],['柠檬黄','#d1bb64'],['暖琥珀','#c5954f'],['珊瑚橙','#d18b68'],['陶土红','#bb7166'],['莓果红','#a95f70'],['薰衣草紫','#a18ab7'],['柔紫','#927f9f'],['玫瑰粉','#d19aaa'],['石墨灰','#8b9295']];
 
     function safeColor(value) {
@@ -403,6 +406,8 @@
                 ${renderColorPicker(task.color)}
                 </div>
                 ${renderQuickAttributes(task)}
+                ${(task.expected_result || task.completion_basis || task.core_selected) ? `<p class="flow-task-intent">${task.core_selected ? '<strong>今日核心任务</strong> · ' : ''}${task.expected_result ? `预期结果：${escapeHtml(task.expected_result)}` : '预期结果未填写'}${task.completion_basis ? ` · 完成依据：${escapeHtml(task.completion_basis)}` : ''}</p>` : ''}
+                <div class="flow-result-entry"><button type="button" data-act="expectation">填写或修改预期结果与完成依据 →</button></div>
                 ${renderTimeFeedback(task)}
                 ${!task.children?.length ? '<div class="flow-result-entry"><button type="button" data-act="feedback">记录实际结果、进展与原因 →</button></div>' : ''}
                 ${recorded}
@@ -535,6 +540,8 @@
         }
         window.ShuranScheduleProjects?.sync(currentDay(), data.tasks, mode);
         setHint();
+        const core=document.getElementById('scheduleCoreChoices');
+        if(core){const all=flatten(data.tasks||[],[]);core.innerHTML=all.length?`<div class="schedule-core-choices">${all.map(task=>`<label class="schedule-core-choice"><input type="checkbox" data-core-id="${task.id}" ${task.core_selected?'checked':''}>${escapeHtml(task.text)}</label>`).join('')}</div>`:'<p>先写下今天要做、想做的任务。</p>';}
         if (!(data.tasks || []).length) {
             list.innerHTML = `<p class="flow-empty">${escapeHtml(t('schedule.emptyTasks', '还没有行动'))}</p>`;
             return;
@@ -569,6 +576,17 @@
         if (serial !== loadSerial || token !== localStorage.getItem('authToken')) return;
         data = result;
         render();
+        if(composerDraftDay!==day){
+            composerDraftDay=day;
+            try{const draft=(await apiRequest(`/api/editor-drafts/${encodeURIComponent('task-new:'+day)}`)).content||{};
+                const input=document.getElementById('scheduleAddInput');
+                if(input&&!input.value&&draft.text)input.value=draft.text;
+                for(const [id,key] of [['scheduleAddHours','hours'],['scheduleAddMinutes','minutes']]){const el=document.getElementById(id);if(el&&!el.value&&draft[key])el.value=draft[key];}
+                newTaskFamiliarity=draft.familiarity||null;newTaskDifficulty=draft.difficulty||null;newTaskImportance=draft.importance||null;newTaskPriority=draft.priority||0;newTaskColor=draft.color||null;updateAddComposer();
+                newTaskExpected=draft.expected_result||'';newTaskBasis=draft.completion_basis||'';
+                const hint=document.getElementById('scheduleNewExpectationStatus');if(hint)hint.textContent=newTaskExpected||newTaskBasis?'已填写预期内容':'';
+            }catch(error){console.warn('读取任务草稿失败',error);}
+        }
     }
 
     async function addTask(text, parentId, openDesign, attributes) {
@@ -587,6 +605,8 @@
                 importance: attributes?.importance || null,
                 priority: Number.isInteger(attributes?.priority) ? attributes.priority : 0,
                 estimated_minutes: Number.isInteger(attributes?.estimatedMinutes) ? attributes.estimatedMinutes : null,
+                expected_result: parentId ? null : (attributes?.expectedResult||null),
+                completion_basis: parentId ? null : (attributes?.completionBasis||null),
             }),
         });
         if (parentId) splitDrafts.delete(`${taskDay}:${parentId}`);
@@ -971,7 +991,10 @@
                     priority: newTaskPriority,
                     estimatedMinutes,
                     color: newTaskColor,
+                    expectedResult: newTaskExpected,
+                    completionBasis: newTaskBasis,
                 });
+                await apiRequest(`/api/editor-drafts/${encodeURIComponent('task-new:'+currentDay())}`,{method:'DELETE'}).catch(()=>{});
                 if (input && input.value === submittedText) input.value = '';
                 for (const id of ['scheduleAddHours', 'scheduleAddMinutes']) {
                     const durationInput = document.getElementById(id);
@@ -982,6 +1005,8 @@
                 newTaskImportance = null;
                 newTaskPriority = 0;
                 newTaskColor = null;
+                newTaskExpected='';newTaskBasis='';
+                const expectationStatus=document.getElementById('scheduleNewExpectationStatus');if(expectationStatus)expectationStatus.textContent='';
                 updateAddComposer();
             } catch (e) {
                 if (typeof showMessage === 'function') showMessage(e.message, 'error');
@@ -1004,6 +1029,16 @@
                 newTaskPriority = parseInt(button.dataset.value, 10);
             }
             updateAddComposer();
+        });
+        document.getElementById('scheduleNewExpectation')?.addEventListener('click',async()=>{
+            const draft={text:document.getElementById('scheduleAddInput')?.value||'',hours:document.getElementById('scheduleAddHours')?.value||'',minutes:document.getElementById('scheduleAddMinutes')?.value||'',expected_result:newTaskExpected,completion_basis:newTaskBasis,familiarity:newTaskFamiliarity,difficulty:newTaskDifficulty,importance:newTaskImportance,priority:newTaskPriority,color:newTaskColor};
+            await apiRequest(`/api/editor-drafts/${encodeURIComponent('task-new:'+currentDay())}`,{method:'PUT',body:JSON.stringify({content:draft})});
+            const back=new URL(location.href);back.searchParams.set('schedule_date',currentDay());back.hash='schedule';
+            const url=new URL('/static/content-editor.html',location.origin);url.searchParams.set('type','expectation');url.searchParams.set('day',currentDay());url.searchParams.set('return',back.href);location.href=url.href;
+        });
+        document.getElementById('scheduleCoreChoices')?.addEventListener('change',async e=>{
+            if(!e.target.matches('[data-core-id]'))return;
+            const id=Number(e.target.dataset.coreId);try{await patchTask(id,{core_selected:e.target.checked});}catch(error){e.target.checked=!e.target.checked;showMessage(error.message,'error');}
         });
         document.getElementById('scheduleAddRow')?.addEventListener('keydown', (e) => {
             if (['scheduleAddInput', 'scheduleAddHours', 'scheduleAddMinutes'].includes(e.target.id) && e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
@@ -1061,6 +1096,9 @@
                     const difficulty = task.practice?.difficulty === actEl.dataset.value ? null : actEl.dataset.value;
                     await apiRequest(`/api/projects/practice/tasks/daily/${id}/attributes`, {method:'PATCH',body:JSON.stringify({difficulty})});
                     await load(currentDay());
+                } else if (act === 'expectation') {
+                    const back=new URL(location.href);back.searchParams.set('schedule_date',currentDay());back.hash='schedule';
+                    const url=new URL('/static/content-editor.html',location.origin);url.searchParams.set('type','expectation');url.searchParams.set('id',id);url.searchParams.set('day',currentDay());url.searchParams.set('return',back.href);location.href=url.href;
                 } else if (act === 'practice' || act === 'feedback' || act === 'practice-attributes') {
                     await globalThis.ShuranPractice?.openTask('daily',id,act==='feedback'?'feedback':act==='practice-attributes'?'attributes':'rehearsal');
                 } else if (act === 'delete') {

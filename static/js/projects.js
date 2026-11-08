@@ -235,7 +235,7 @@
     $('#projectLifecycle').innerHTML = project ? `<h3>项目执行状态</h3>
       <p>${esc(({preparation:'筹备中：正式任务需先检查条件并开始项目',started:'已正式开始',delivered:'已交付，待验收',accepted:'已验收'})[project.execution_state] || '历史项目：未记录正式启动，保留原有可用性')}${project.started_at ? ` · 首次正式开始 ${dtLabel(project.started_at)}` : ''}</p>
       <details><summary>变更项目状态</summary><p>当前列表是本阶段的执行承诺。严格执行有助于集中投入、完成关键工作，并检验原先的计划是否合理。后续想法先放入下一阶段，避免不断打断当前任务。</p><form id="projectStateForm"><label>操作 <select name="state"><option value="started">检查条件并正式开始／重新开始</option><option value="delivered">确认已经交付</option><option value="accepted">确认已经验收</option><option value="preparation">交付后重新筹备（保留历史）</option></select></label><label>判断依据或原因 <input name="reason" required maxlength="4000"></label><button type="submit">确认项目状态</button></form></details>` : '';
-    if (project) globalThis.ShuranConditions?.mount($('#projectConditions'), 'project', project.id, () => afterChange());
+    if (project) $('#projectConditions').innerHTML = `<button type="button" class="secondary" data-open-project-conditions="${project.id}">开始条件与执行约束 →</button>`;
     else $('#projectConditions').innerHTML = '';
     const stages=project?[...project.stages]:[];
     if(project?.tasks.some(t=>t.stage_id==null))stages.push({id:null,title:'项目任务（未分阶段）',state:'current',unassigned:true});
@@ -299,7 +299,7 @@
         <div class="detail-result-summary"><span>完成标准</span><p>${esc(task.acceptance_criteria || '尚未填写，可先判断实际结果。')}</p></div>
         <details class="inline-add"><summary>保存为可复用流程</summary><p class="detail-note">会保留这项任务的步骤和检查方式，供以后生成新任务。</p><button type="button" class="secondary" data-act="save-template">保存为流程</button></details></div>`;
     const date = $('#scheduleTaskForm [name=task_date]', root); if (date) date.value = params.get('date') || todayISO();
-    globalThis.ShuranConditions?.mount($('#taskConditions', root), 'task', task.id, () => afterChange());
+    $('#taskConditions', root).innerHTML = `<button type="button" class="secondary" data-open-task-conditions="${task.id}">开始条件与执行约束 →</button>`;
   }
 
   function choiceFor(key) {
@@ -502,6 +502,8 @@
   });
 
   document.addEventListener('click', event => {
+    const conditionEntry=event.target.closest('[data-open-project-conditions],[data-open-task-conditions]');
+    if(conditionEntry){globalThis.ShuranConditions?.open(conditionEntry.dataset.openProjectConditions?'project':'task',Number(conditionEntry.dataset.openProjectConditions||conditionEntry.dataset.openTaskConditions));return;}
     const button = event.target.closest('[data-act], [data-next]');
     if (!button) return;
     run(async () => {

@@ -224,6 +224,7 @@
             day = !force && drafts.has(date) ? clone(drafts.get(date)) : data;
             dirty = !force && drafts.has(date);
             renderDay(); el('ltDayFields').disabled = false;
+            if(document.getElementById('daily-feedback')?.classList.contains('active'))window.ShuranCoreReview?.load(day.date);
             window.ShuranFeedbackDaily?.load(day.date);
             window.ShuranWorkLinks?.history(day.date,async()=>{if(dirty){status('已导入。请保留草稿并重新读取核对，避免覆盖未保存修改。','is-dirty');return;}await loadDay(true);});
             el('ltSaveHint').textContent = dirty ? '已恢复本次会话草稿，保存前请核对。' : '修改后保存；活动、注意力和消费可以分别核对。';
@@ -561,6 +562,8 @@
         el('ltGoalsEntry').hidden = !feedback;
         ['dailyFeedbackIntro','dailyFeedbackJump','dailyFeedbackReport'].forEach(id => el(id).hidden = !feedback);
         el('feedbackDaily').hidden = false;
+        el('dailyCoreReview').hidden = !feedback;
+        el('dailyExecutionFeedback').hidden = !feedback;
         document.querySelector('[data-lt-view="daily"]').textContent = feedback ? '填写反馈' : '每日记录';
     };
     window.loadLongTerm = async function () {

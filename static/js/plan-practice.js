@@ -116,7 +116,10 @@
   function show(){ensureDialog();header('正在读取…',[]);if(!dialog.open)dialog.showModal();dirty=false;}
   function signalHidden(){if(!adjustment)return;fetch(`/api/projects/commitments/adjustments/${adjustment.id}/visible`,{method:'POST',keepalive:true,headers:{Authorization:'Bearer '+localStorage.getItem('authToken'),'Content-Type':'application/json'},body:JSON.stringify({token:lease,visible:false})}).catch(()=>{});}
   function close(){signalHidden();clearInterval(timer);timer=null;adjustment=null;dirty=false;dialog.close();const u=new URL(location.href);if(u.searchParams.has('adjustment')){u.searchParams.delete('adjustment');history.replaceState(null,'',u);}}
-  async function openTask(kind,id,section='attributes'){ensureDialog();clearInterval(timer);signalHidden();adjustment=null;context={type:'task',kind,id};tab=section;show();await run(load);}
+  async function openTask(kind,id,section='attributes'){
+    if(section==='feedback'||section==='rehearsal') {const url=new URL('/static/content-editor.html',location.origin);url.searchParams.set('type',section);url.searchParams.set('kind',kind);url.searchParams.set('id',id);const back=new URL(location.href);if(back.hash==='#schedule'){const day=document.getElementById('scheduleDateInput')?.value;if(day){back.searchParams.set('schedule_date',day);url.searchParams.set('day',day);}}url.searchParams.set('return',back.href);location.href=url.href;return;}
+    ensureDialog();clearInterval(timer);signalHidden();adjustment=null;context={type:'task',kind,id};tab=section;show();await run(load);
+  }
   async function openDay(day=dayISO(),section='review'){ensureDialog();clearInterval(timer);signalHidden();adjustment=null;context={type:'day',day};tab=section;show();await run(load);}
   async function openProject(id,section='feasibility',targetStageId=null){ensureDialog();clearInterval(timer);signalHidden();adjustment=null;context={type:'project',id,targetStageId};tab=section;show();await run(load);}
   async function openGoal(id,section='feasibility'){ensureDialog();clearInterval(timer);signalHidden();adjustment=null;context={type:'goal',id};tab=section;show();await run(load);}
@@ -197,8 +200,8 @@
       const total=leaves.reduce((sum,t)=>sum+(t.estimated_minutes||0),0),missing=leaves.filter(t=>t.estimated_minutes==null).length;
       const allocations=new Map((data.plan.allocations||[]).map(a=>[a.kind+':'+a.id,a.minutes]));
       const planned=data.plan.planned_minutes;
-      content.innerHTML=form('day-plan',area('goal','今天希望推进的目标',data.plan.goal)+input('available_minutes','当天可用分钟（不知道可留空）',data.plan.available_minutes??'','number','min="0" max="1440"')+
-        `<details><summary>安排当天投入（跨日任务分别分配）</summary>${leaves.map(t=>input('allocation-'+t.kind+'-'+t.id,t.title+' · 当天计划分钟',allocations.get(t.kind+':'+t.id)??'','number',`min="0" max="1440" data-allocation-kind="${t.kind}" data-allocation-id="${t.id}"`)).join('')}</details>`,'保存目标与当天投入')+
+      content.innerHTML=form('day-plan',area('goal','今天希望推进的目标（选填）',data.plan.goal)+input('available_minutes','当天可用分钟（选填）',data.plan.available_minutes??'','number','min="0" max="1440"')+
+        `<details><summary>安排当天投入（跨日任务分别分配，选填）</summary>${leaves.map(t=>input('allocation-'+t.kind+'-'+t.id,t.title+' · 当天计划分钟（选填）',allocations.get(t.kind+':'+t.id)??'','number',`min="0" max="1440" data-allocation-kind="${t.kind}" data-allocation-id="${t.id}"`)).join('')}</details>`,'保存目标与当天投入')+
         note(`所列任务累计估计合计 ${total} 分钟，${missing} 项未估时；跨日累计不等于今天需要全部完成。当天明确计划 ${planned==null?'未安排':planned+' 分钟'}，${leaves.filter(t=>!allocations.has(t.kind+':'+t.id)).length} 项当天投入待分配。${data.plan.available_minutes==null?'尚无可用时间依据。':planned!=null&&planned>data.plan.available_minutes?'已超过可用时间，请调整当天负荷。':`当天可用 ${data.plan.available_minutes} 分钟。`}`)+
         note(leaves.some(t=>t.difficulty==='difficult')?'请为重要且困难的部分写下下一步，并安排真实可用时段；先处理简单部分可以为它留出投入。':'目前没有标记困难部分。核对是否只安排了容易部分；未标记不表示都简单。')+
         form('review',area('goal','审视时针对的目标',data.plan.goal||data.tasks.find(t=>t.goal)?.goal||'','required')+
@@ -208,7 +211,7 @@
       const f=data.reflection||{};
       content.innerHTML=form('reflection',`<label>今天有没有做过有趣，但无助于当时目标的事？${select('answer',{yes:'有',no:'没有',uncertain:'暂不确定',later:'稍后反馈'},f.answer||'later',null)}</label>`+
         `<fieldset><legend>可引用当天已有实际活动，保留原评价</legend>${data.report.work.map(w=>`<label class="practice-inline"><input type="checkbox" name="session_ids" value="${w.session_id}" ${(f.session_ids||[]).includes(w.session_id)?'checked':''}>${esc(w.title)} · ${(w.seconds/60).toFixed(1)} 分 · 实际重要性 ${labels[w.actual_importance]||'未判断'} · ${w.interesting===true?'有趣':w.interesting===false?'不觉得有趣':'趣味未判断'}</label>`).join('')||note('当天尚无区间活动可引用。')}</fieldset>`+
-        area('activity','也可直接记录具体活动',f.activity)+input('minutes','只记得总分钟（单列说明，不重复累计）',f.minutes??'','number','min="0" max="1440"')+area('goal','当时目标',f.goal)+area('reason','原因／当时为什么这样选择？',f.reason)+area('next_step','下次打算／一个下一步',f.next_step)+note('此处引用与注意力浪费、非计划占用可以谈到同一活动，时间不相加。休息、健康、陪伴是否有益由你判断。'),'保存当天反馈');
+        area('activity','具体活动（回答“有”且未引用活动时必填）',f.activity)+input('minutes','只记得总分钟（选填；单列说明，不重复累计）',f.minutes??'','number','min="0" max="1440"')+area('goal','当时目标（选填）',f.goal)+area('reason','原因／当时为什么这样选择？（选填）',f.reason)+area('next_step','下次打算／一个下一步（选填）',f.next_step)+note('此处引用与注意力浪费、非计划占用可以谈到同一活动，时间不相加。休息、健康、陪伴是否有益由你判断。'),'保存当天反馈');
     } else content.innerHTML=reportHTML(data.report)+`<a href="/static/index.html#long-term">在现有报告入口查看日报／周报</a>`;
   }
   function renderProject(){

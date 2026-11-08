@@ -6,6 +6,18 @@
 #long-term h1{font-family:'Noto Serif SC',Georgia,serif;font-size:38px;font-weight:600;line-height:1.35;letter-spacing:.05em;margin:0}
 .lt-heading>div:first-child{min-width:0;max-width:100%}
 #long-term h1{overflow-wrap:anywhere}
+#dailyCoreReview{margin:20px 0;padding:18px 20px;background:#f2f6f8;border:1px solid #cbdbe2;border-radius:8px}
+#dailyCoreReview h2{margin:0 0 8px;color:#315a7e;font-size:18px}
+#dailyCoreReview p{color:#617987;font-size:13px;line-height:1.6}
+#dailyCoreReview .core-review-item{margin:14px 0;padding:14px;background:white;border:1px solid #d6e2e7;border-radius:7px}
+#dailyCoreReview .core-review-item h3{margin:0 0 12px;font-size:15px}
+#dailyCoreReview .core-review-item label{display:block;margin:10px 0;color:#455f6d;font-size:13px}
+#dailyCoreReview .core-review-item select,#dailyCoreReview .core-review-item textarea{display:block;width:100%;max-width:520px;margin-top:6px;padding:8px;border:1px solid #b8cbd5;border-radius:6px;background:white;color:#263d4c;font:inherit}
+#dailyCoreReview .core-review-item button{padding:8px 15px;border:0;border-radius:6px;background:#315a7e;color:white;cursor:pointer}
+#dailyExecutionFeedback{margin:20px 0;padding:18px 20px;background:#f2f6f8;border:1px solid #cbdbe2;border-radius:8px}
+#dailyExecutionFeedback h2{margin:0 0 8px;color:#315a7e;font-size:18px}
+#dailyExecutionFeedback p{color:#617987;font-size:13px;line-height:1.6}
+#dailyExecutionFeedback a{color:#315a7e}
 .lt-date-nav{display:flex;align-items:center;gap:4px;padding:6px;border:1px solid var(--lt-line);border-radius:6px;background:var(--lt-white)}
 .lt-date-nav button{border:0;background:transparent;width:32px;height:32px;color:var(--lt-ink);cursor:pointer}
 #long-term .lt-date-nav input{border:0;background:transparent;width:146px;min-width:0;padding:4px 8px;font-size:14px;color:var(--lt-ink)}

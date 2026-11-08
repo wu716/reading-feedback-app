@@ -17,7 +17,7 @@ USER_TABLES = (
     models.Ebook, models.EbookProgress, models.EbookNote,
     models.Action, models.PracticeLog, models.HabitProgram, models.HabitEvent,
     models.Subscription, models.PaymentTransaction, models.RefundTransaction, models.GrantEvent,
-    models.DailyTodo, models.DailyTask, models.DailySchedule,
+    models.DailyTodo, models.DailyTask, models.DailySchedule, models.ContentEditorDraft,
     models.FutureAction, models.Idea, models.TimeLogNode,
     models.LongTermDailyRecord, models.LongTermNodeCategory,
     models.LongTermLedgerDay, models.LongTermPreferences, models.ReadingEntry,

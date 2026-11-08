@@ -3456,9 +3456,9 @@
     </style>
     <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261017paper1">
     <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261025someday3">
-    <link rel="stylesheet" href="/static/css/workspace.css?v=20261108stage1">
+    <link rel="stylesheet" href="/static/css/workspace.css?v=20261108stage2a">
     <link rel="stylesheet" href="/static/css/account.css?v=20261026megroupfix1">
-    <link rel="stylesheet" href="/static/css/long-term.css?v=20261108stage1">
+    <link rel="stylesheet" href="/static/css/long-term.css?v=20261108stage2a">
     <link rel="stylesheet" href="/static/css/mobile-review.css?v=20261108stage1">
 </head>
 <body>
@@ -3468,7 +3468,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261026megroupfix1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.56';
+            window.SHURAN_VERSION = '2.0.57';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -3717,8 +3717,10 @@
                             <div class="flow-duration-parts"><label><input type="number" id="scheduleAddHours" min="0" max="24" step="1" inputmode="numeric" aria-label="预计小时">小时</label><label><input type="number" id="scheduleAddMinutes" min="0" max="59" step="1" inputmode="numeric" aria-label="预计分钟">分钟</label></div>
                         </div>
                     </div>
+                    <div class="flow-add-extra"><button type="button" id="scheduleNewExpectation" class="flow-ghost-btn">填写这项任务的预期结果与完成依据 →</button><span id="scheduleNewExpectationStatus"></span></div>
                 </div>
                 <div id="scheduleList" class="home-schedule-list"></div>
+                <section class="schedule-core" id="scheduleCore"><h2>选择今日核心任务</h2><p><strong>核心任务是今天必须完成的事。</strong>先写下今天想做、要做的任务，再从中选择；数量不限，之后可以调整。</p><div id="scheduleCoreChoices"></div></section>
                 <details class="schedule-review"><summary>计划与回顾</summary><button type="button" class="flow-ghost-btn" id="schedulePractice">打开当天计划与回顾</button></details>
             </div>
         </section>
@@ -4241,6 +4243,8 @@
                         <button type="button" class="lt-primary" id="ltSave">保存这一天 ↗</button>
                     </div>
                     <div id="feedbackDaily" class="fb-daily" hidden></div>
+                    <section id="dailyCoreReview" class="schedule-core" hidden><h2>核心任务回看</h2><p>核心任务是今天必须完成的事。逐项核对是否完成，原因可以留空。</p><div id="dailyCoreReviewItems"></div></section>
+                    <section id="dailyExecutionFeedback" class="schedule-core" hidden><h2>日程任务的执行反馈</h2><p>用时只是其中一项；还可以填写实际结果、进展和原因。</p><div id="dailyExecutionFeedbackItems"></div></section>
                     <button type="button" id="dailyFeedbackReport" class="lt-primary" hidden>查看这一天的日报 →</button>
                 </div>
                 <section id="ltReportPanel" hidden aria-label="统计报告">
@@ -7063,19 +7067,20 @@
     <script src="/static/js/feedback-ui.js?v=20261023feedback1"></script>
     <link rel="stylesheet" href="/static/css/date-picker.css?v=20261025calendar1">
     <script src="/static/js/date-picker.js?v=20261025calendar1"></script>
-    <script src="/static/js/feedback-daily.js?v=20261104writing1"></script>
+    <script src="/static/js/feedback-daily.js?v=20261108stage2a"></script>
     <script src="/static/js/feedback-reports.js?v=20261104writing1"></script>
-    <script src="/static/js/commitments.js?v=20261026projectcleanup1"></script>
-    <script src="/static/js/plan-practice.js?v=20261108stage1"></script>
-    <script src="/static/js/start-conditions.js?v=20261025delete3"></script>
+    <script src="/static/js/commitments.js?v=20261108stage2a"></script>
+    <script src="/static/js/plan-practice.js?v=20261108stage2a"></script>
+    <script src="/static/js/start-conditions.js?v=20261108stage2a"></script>
     <link rel="stylesheet" href="/static/css/schedule-projects.css?v=20261025stageday1">
     <script src="/static/js/schedule-projects.js?v=20261025stageday1"></script>
-    <script src="/static/js/daily-schedule.js?v=20261108scheduleorder1"></script>
+    <script src="/static/js/daily-schedule.js?v=20261108stage2a"></script>
+    <script src="/static/js/core-review.js?v=20261108stage2a"></script>
     <script src="/static/js/future-actions.js?v=20261025someday3"></script>
     <link rel="stylesheet" href="/static/css/work-links.css?v=20261025worklink1">
     <script src="/static/js/work-links.js?v=20261025worklink1"></script>
     <script src="/static/js/time-log.js?v=20261025someday2"></script>
-    <script src="/static/js/long-term.js?v=20261104writing1"></script>
+    <script src="/static/js/long-term.js?v=20261108stage2a"></script>
     <script src="/static/js/activity-review.js?v=20261017paper1"></script>
     <script src="/static/js/ideas.js?v=20261018momenttask1"></script>
     <script src="/static/js/desktop-shell.js?v=20261022account1"></script>

@@ -82,6 +82,10 @@ def ensure_schema():
         add_column("daily_tasks", "legacy_todo_id", "legacy_todo_id INTEGER REFERENCES daily_todos(id) ON DELETE SET NULL")
         for column in ("steps_json", "checklist_json", "common_problems", "acceptance_criteria"):
             add_column("daily_tasks", column, f"{column} TEXT")
+        for column in ("expected_result", "completion_basis", "core_review_reason"):
+            add_column("daily_tasks", column, f"{column} TEXT")
+        add_column("daily_tasks", "core_selected", "core_selected BOOLEAN NOT NULL DEFAULT FALSE")
+        add_column("daily_tasks", "core_review_completed", "core_review_completed BOOLEAN")
         add_column("work_sessions", "planned_seconds", "planned_seconds INTEGER")
         add_column("work_sessions", "practice_snapshot_json", "practice_snapshot_json TEXT")
         add_column("task_checklist_items", "purpose", "purpose VARCHAR(20) NOT NULL DEFAULT 'delivery'")

@@ -26,7 +26,7 @@
   async function mount(root, projectId, options={}) {
     if (!root) return;
     const bodyId=`commitment-body-${++mountNumber}`;
-    let data, editor, busy=false, conflict=false;
+    let data, editor, busy=false, conflict=false, draftTimer, draftWrite=Promise.resolve();
     const message=(text,error=false)=>{const node=root.querySelector('[data-commitment-message]');if(node){node.textContent=text;node.classList.toggle('is-error',error);}};
     function render() {
       if (!data.current_stage_id) {root.innerHTML='<p class="practice-note">项目暂时没有当前阶段。</p>';return;}
@@ -38,15 +38,25 @@
       const minutes=scope.tasks.reduce((sum,task)=>sum+(task.estimate||0),0), missing=scope.tasks.filter(task=>task.estimate==null).length;
       root.innerHTML=`<section class="commitment-panel ${expanded?'is-expanded':'is-collapsed'}" aria-label="本轮承诺"><div class="commitment-heading"><div><h3>本轮承诺 <span class="commitment-state">${confirmed?'已确认 · 版本 '+data.commitment.version:data.draft?'草稿已保存':editor.dirty?'未保存的输入':'待填写'}</span></h3><p class="commitment-summary">${esc(summary)}</p></div><button type="button" data-commitment-toggle aria-expanded="${expanded}" aria-controls="${bodyId}">${expanded?'收起':entry}</button></div><div id="${bodyId}" class="commitment-body" ${expanded?'':'hidden'}><p class="commitment-hint">先完成这一轮确定的工作，后续想法放入下一阶段。</p>`+
         (confirmed?`<p class="commitment-statement">${esc(confirmed)}</p><p class="commitment-hint">承诺文字、任务范围与完成标准已随版本保留。</p><button type="button" data-commitment-adjust>调整当前承诺</button>`:
-          `<form data-commitment-form><label>写下你对这一轮的承诺<textarea name="statement" rows="4" maxlength="2000" placeholder="例如：这一轮先整理5篇文献并完成提纲，新想到的主题先放入下一阶段。">${esc(editor.text)}</textarea></label>${data.commitment?'<p class="commitment-hint">原任务范围版本保留；确认本次文字会另存新版本，不改写历史。</p>':''}<p class="commitment-hint">${data.draft?'草稿保存于 '+esc(stamp(data.draft.updated_at)):'草稿尚未保存；保存草稿不会正式确认。'}</p><div class="commitment-actions"><button type="submit" name="decision" value="draft" class="secondary">保存草稿</button><button type="submit" name="decision" value="confirm" class="commitment-primary">确认本轮承诺</button></div></form>`)+
+          options.page ? `<form data-commitment-form><label>写下你对这一轮的承诺（确认时必填）<textarea name="statement" rows="4" maxlength="2000" placeholder="例如：这一轮先整理5篇文献并完成提纲，新想到的主题先放入下一阶段。">${esc(editor.text)}</textarea></label><p class="commitment-hint">${data.draft?'草稿保存于 '+esc(stamp(data.draft.updated_at)):'草稿尚未保存；保存草稿不会正式确认。'}</p><div class="commitment-actions"><button type="submit" name="decision" value="draft" class="secondary">保存草稿</button><button type="submit" name="decision" value="confirm" class="commitment-primary">确认本轮承诺</button></div></form>`:
+          `<button type="button" data-commitment-edit-page>进入页面填写本轮承诺 →</button>`)+
         `<p class="commitment-message" data-commitment-message role="status" aria-live="polite"></p>${conflict?'<button type="button" data-commitment-reload>读取服务器草稿</button>':''}<details class="commitment-scope"><summary>本轮任务范围 · ${scope.tasks.length} 项 · 已填预计 ${minutes} 分钟${missing?' · '+missing+' 项未估时':''}</summary><p>预期结果：${esc(scope.outcome||'未填写')}</p>${taskList(scope.tasks)}</details><p class="commitment-hint">正常切换任务、暂停和休息不需要调整承诺。</p></div></section>`+
         (options.history===false?'':history(data));
       root.querySelector('[data-commitment-toggle]')?.addEventListener('click',()=>{expanded?expandedStages.delete(data.current_stage_id):expandedStages.add(data.current_stage_id);render();if(!expanded)root.querySelector('[name=statement]')?.focus();});
-      root.querySelector('[name=statement]')?.addEventListener('input',event=>{editor.text=event.target.value;editor.dirty=true;});
-      root.querySelector('[data-commitment-adjust]')?.addEventListener('click',()=>options.onAdjust?options.onAdjust():globalThis.ShuranPractice?.openProject(projectId,'commitment'));
+      root.querySelector('[name=statement]')?.addEventListener('input',event=>{
+        editor.text=event.target.value;editor.dirty=true;
+        if(options.page){clearTimeout(draftTimer);draftTimer=setTimeout(()=>{const value=editor.text;draftWrite=draftWrite.catch(()=>{}).then(async()=>{const saved=await api(`/stages/${data.current_stage_id}/draft`,{statement:value,revision:editor.revision},'PUT');editor.revision=saved.revision;});draftWrite.catch(error=>message(error.message,true));},300);}
+      });
+      root.querySelector('[data-commitment-adjust]')?.addEventListener('click',()=>{if(options.page){globalThis.ShuranPractice?.openProject(projectId,'commitment');return;}const url=new URL('/static/content-editor.html',location.origin);url.searchParams.set('type','commitment');url.searchParams.set('id',projectId);url.searchParams.set('adjust','1');url.searchParams.set('return',location.href);location.href=url.href;});
+      root.querySelector('[data-commitment-edit-page]')?.addEventListener('click',()=>{const url=new URL('/static/content-editor.html',location.origin);url.searchParams.set('type','commitment');url.searchParams.set('id',projectId);url.searchParams.set('return',location.href);location.href=url.href;});
+      if(options.page&&!root._commitmentBackBound){root._commitmentBackBound=true;document.getElementById('editorBack')?.addEventListener('click',async event=>{
+        event.preventDefault();clearTimeout(draftTimer);
+        try{await draftWrite.catch(()=>{});if(editor.dirty&&!confirmed){const saved=await api(`/stages/${data.current_stage_id}/draft`,{statement:editor.text,revision:editor.revision},'PUT');editor.revision=saved.revision;}location.href=event.currentTarget.href;}
+        catch(error){message(error.message,true);}
+      });}
       root.querySelector('[data-commitment-reload]')?.addEventListener('click',async()=>{drafts.delete(data.current_stage_id);conflict=false;await load();});
       root.querySelector('[data-commitment-form]')?.addEventListener('submit',async event=>{
-        event.preventDefault();if(busy)return;
+        event.preventDefault();if(busy)return;clearTimeout(draftTimer);await draftWrite.catch(()=>{});
         const statement=event.target.elements.statement.value;
         const confirming=event.submitter?.value==='confirm';
         if(confirming&&!statement.trim()){message('请先写下这一轮的承诺，再确认。',true);event.target.elements.statement.focus();return;}

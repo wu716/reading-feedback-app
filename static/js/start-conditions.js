@@ -46,8 +46,8 @@
             <label>要求强度 <select name="strength">${options(strengths, c.strength)}</select></label>
             <label>检查时机 <select name="check_at">${options(timings, c.check_at)}</select></label>
             ${c.kind === 'task' || c.kind === 'project' || c.not_before ? '<p>此条件由系统判断，不能手动勾选。</p>' : `<label>确认状态 <select name="confirmation">${options(confirmations, c.confirmation)}</select></label>`}
-            <label>依据或不适用说明 <textarea name="evidence" maxlength="4000" rows="2">${esc(c.evidence)}</textarea></label>
-            <label>本次更改原因 <input name="reason" maxlength="4000" required></label>
+            <label>依据或不适用说明（未确认时选填；标记已满足或不适用时必填）<textarea name="evidence" maxlength="4000" rows="2">${esc(c.evidence)}</textarea></label>
+            <label>本次更改原因（必填）<input name="reason" maxlength="4000" required></label>
             <button type="submit">保存确认与变更</button>
           </form><button type="button" class="secondary" data-remove-condition="${c.id}">说明原因并移除条件</button>
         </details>`).join('') || `<p>${inherited.length ? '没有单独配置的任务条件；继承项目条件见上方。' : '本项尚未配置条件，可以逐步补充。'}</p>`}</div>
@@ -62,7 +62,7 @@
             <label data-field="project" hidden>所需交付状态 <select name="required_state"><option value="accepted">已验收</option><option value="delivered">已交付</option></select></label>
             <label data-field="time" hidden>允许开始时间（本机时区 ${esc(Intl.DateTimeFormat().resolvedOptions().timeZone)}；可留空，改为人工核对连续时段等条件） <input type="datetime-local" name="not_before" data-paper-date></label>
             <label data-field="manual">确认状态 <select name="confirmation">${options(confirmations, 'unknown')}</select></label>
-            <label>依据或不适用说明 <textarea name="evidence" maxlength="4000" rows="2"></textarea></label>
+            <label>依据或不适用说明（未确认时选填；标记已满足或不适用时必填）<textarea name="evidence" maxlength="4000" rows="2"></textarea></label>
             <button type="submit">保存条件</button>
           </form>
         </details>
@@ -120,14 +120,9 @@
     } catch (error) { root.textContent = error.message; }
   }
   function open(kind, id, onChange) {
-    let dialog = document.getElementById('startConditionsDialog');
-    if (!dialog) {
-      dialog = document.createElement('dialog'); dialog.id = 'startConditionsDialog'; dialog.className = 'conditions-dialog';
-      dialog.innerHTML = '<form method="dialog"><button type="submit" class="secondary">关闭</button></form><div class="conditions-body"></div>';
-      document.body.append(dialog);
-    }
-    dialog.showModal();
-    mount(dialog.querySelector('.conditions-body'), kind, id, onChange);
+    const url=new URL('/static/content-editor.html',location.origin);
+    url.searchParams.set('type','condition');url.searchParams.set('kind',kind);url.searchParams.set('id',id);url.searchParams.set('return',location.href);
+    location.href=url.href;
   }
   globalThis.ShuranConditions = {mount, open};
 })();

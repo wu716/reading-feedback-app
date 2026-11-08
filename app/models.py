@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, Date, UniqueConstraint, Index, text
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, false
 from datetime import datetime, date
 import uuid
 
@@ -488,12 +488,29 @@ class DailyTask(Base):
     checklist_json = Column(Text, nullable=True)
     common_problems = Column(Text, nullable=True)
     acceptance_criteria = Column(Text, nullable=True)
+    expected_result = Column(Text, nullable=True)
+    completion_basis = Column(Text, nullable=True)
+    core_selected = Column(Boolean, nullable=False, default=False, server_default=false())
+    core_review_completed = Column(Boolean, nullable=True)
+    core_review_reason = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", back_populates="daily_tasks")
     parent = relationship("DailyTask", remote_side=[id], backref="children")
+
+
+class ContentEditorDraft(Base):
+    """Unsubmitted editor input, isolated by account and editor identity."""
+    __tablename__ = "content_editor_drafts"
+    __table_args__ = (UniqueConstraint("user_id", "draft_key", name="uq_content_editor_draft_user_key"),)
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    draft_key = Column(String(160), nullable=False)
+    content_json = Column(Text, nullable=False, default="{}")
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
 class DailySchedule(Base):

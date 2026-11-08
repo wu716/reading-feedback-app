@@ -48,6 +48,8 @@ class TaskCreate(BaseModel):
     difficulty: Literal["simple", "difficult"] | None = None
     importance: Literal["unimportant", "ordinary", "important"] | None = None
     estimated_minutes: Optional[int] = Field(None, ge=0, le=24 * 60)
+    expected_result: str | None = Field(None, max_length=4000)
+    completion_basis: str | None = Field(None, max_length=4000)
 
     @field_validator("text")
     @classmethod
@@ -86,6 +88,12 @@ class TaskUpdate(BaseModel):
     remind_time: Optional[str] = None
     checklist_done: Optional[List[bool]] = None
     checklist_exception: Optional[str] = Field(None, max_length=4000)
+    expected_result: str | None = Field(None, max_length=4000)
+    completion_basis: str | None = Field(None, max_length=4000)
+    core_selected: bool | None = None
+    core_review_completed: bool | None = None
+    core_review_reason: str | None = Field(None, max_length=4000)
+    clear_core_review: bool = False
 
     @field_validator("text")
     @classmethod
@@ -157,6 +165,11 @@ class TaskOut(BaseModel):
     checklist: List[dict] = Field(default_factory=list)
     common_problems: Optional[str] = None
     acceptance_criteria: Optional[str] = None
+    expected_result: Optional[str] = None
+    completion_basis: Optional[str] = None
+    core_selected: bool = False
+    core_review_completed: Optional[bool] = None
+    core_review_reason: Optional[str] = None
     practice: dict | None = None
     project_day_plan: dict | None = None
 
@@ -355,6 +368,11 @@ def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id
             checklist=json.loads(task.checklist_json or "[]"),
             common_problems=task.common_problems,
             acceptance_criteria=task.acceptance_criteria,
+            expected_result=task.expected_result,
+            completion_basis=task.completion_basis,
+            core_selected=bool(task.core_selected),
+            core_review_completed=task.core_review_completed,
+            core_review_reason=task.core_review_reason,
             practice=(practice_by_id or {}).get(task.id),
             project_day_plan=plan,
         )
@@ -490,6 +508,8 @@ def create_task(
         priority=body.priority,
         familiarity=body.familiarity,
         estimated_minutes=body.estimated_minutes,
+        expected_result=body.expected_result,
+        completion_basis=body.completion_basis,
         flow_order=next_flow_order(db, current_user.id, day),
     )
     db.add(task)
@@ -565,6 +585,17 @@ def update_task(
         task.note = None
     elif body.note is not None:
         task.note = body.note or None
+    for field in ("expected_result", "completion_basis"):
+        if field in body.model_fields_set:
+            setattr(task, field, (getattr(body, field) or "").strip() or None)
+    if body.core_selected is not None:
+        task.core_selected = body.core_selected
+    if body.clear_core_review:
+        task.core_review_completed = None
+    elif "core_review_completed" in body.model_fields_set:
+        task.core_review_completed = body.core_review_completed
+    if "core_review_reason" in body.model_fields_set:
+        task.core_review_reason = (body.core_review_reason or "").strip() or None
     if body.clear_familiarity:
         task.familiarity = None
     elif body.familiarity is not None:

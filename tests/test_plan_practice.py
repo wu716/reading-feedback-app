@@ -27,7 +27,7 @@ class PlanningPracticeTests(unittest.TestCase):
     def daily(self, estimate=30, text="练习"):
         r = self.client.post('/api/schedule/tasks', json={"text": text, "task_date": "2026-10-22", "estimated_minutes": estimate})
         self.assertEqual(r.status_code, 200, r.text)
-        return r.json()['tasks'][-1]
+        return r.json()['tasks'][0]
 
     def feedback(self, kind, task_id, **changes):
         body = {"result": "completed", "actual_minutes": 45, "basis": "self_report",
@@ -63,7 +63,7 @@ class PlanningPracticeTests(unittest.TestCase):
             "difficulty":"difficult", "importance":"important", "estimated_minutes":90,
         })
         self.assertEqual(response.status_code, 200, response.text)
-        task = response.json()['tasks'][-1]
+        task = response.json()['tasks'][0]
         self.assertEqual(task['familiarity'], 'unfamiliar')
         self.assertEqual(task['estimated_minutes'], 90)
         state = task['practice']
