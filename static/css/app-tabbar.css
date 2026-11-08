@@ -18,7 +18,8 @@
     }
 
     .app-tabbar .tab-item {
-        flex: 1;
+        flex: 1 1 0;
+        min-width: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -38,7 +39,11 @@
     }
 
     .app-tabbar .tab-text {
-        white-space: nowrap;
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        line-height: 1.25;
+        text-align: center;
     }
 
     .app-tabbar .tab-icon {

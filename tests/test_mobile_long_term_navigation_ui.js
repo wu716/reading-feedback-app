@@ -54,7 +54,7 @@ let browser;
   check('进入每日反馈时长期目标仍是所属主导航',(await goal.getAttribute('class')).includes('active'));
   await page.locator('#ltGoalsEntry').click();
   check('返回长期目标保持同一表单和日期值',await section()==='long-term'&&await page.locator('#long-term .lt-page').count()===1&&await page.locator('#ltDate').inputValue()==='2026-11-03'&&await page.locator('.lt-page').count()===1);
-  for(const [width,zoom] of [[320,1],[390,1],[768,1],[390,1.5]]){
+  for(const [width,zoom] of [[320,1],[390,1],[768,1],[390,1.5],[390,2]]){
     await page.setViewportSize({width,height:844});await page.evaluate(scale=>document.documentElement.style.zoom=String(scale),zoom);
     const geometry=await goal.evaluate(el=>{const b=el.getBoundingClientRect(),t=el.querySelector('.tab-text').getBoundingClientRect();return {left:b.left,right:b.right,textLeft:t.left,textRight:t.right};});
     check(`${width}px ${zoom}倍下长期目标文字完整且页面无横向溢出`,await goal.isVisible()&&geometry.textLeft>=geometry.left&&geometry.textRight<=geometry.right+1&&!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth));

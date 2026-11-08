@@ -15,6 +15,7 @@
  .workspace-layout #schedule .flow-add-attributes {gap:10px 12px;padding-top:10px;}
  .workspace-layout #schedule .flow-attribute-options .flow-chip {min-height:44px;padding:6px 9px;}
  .workspace-layout #schedule .flow-attribute-group {gap:4px;}
+ .workspace-layout #schedule .flow-duration-parts input {min-height:44px;}
  .workspace-layout #schedule #scheduleAddDuration {height:44px;min-height:44px;}
  .workspace-layout #capture .capture-entry-grid {gap:0;}
  .workspace-layout #capture .capture-entry-grid > .card {padding:12px 0 16px 38px;}

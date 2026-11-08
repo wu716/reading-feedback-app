@@ -1,4 +1,6 @@
-.owner-usage-panel { position:relative; left:50%; width:min(1000px,calc(100vw - 48px)); transform:translateX(-50%); }
+.owner-usage-panel { position:relative; left:50%; box-sizing:border-box; width:min(1000px,calc(100vw - 260px)); min-width:0; transform:translateX(-50%); }
+@media (min-width:769px) and (max-width:1000px) { .owner-usage-panel { width:calc(100vw - 242px); } }
+@media (max-width:768px) { .owner-usage-panel { left:auto; width:100%; transform:none; } }
 .owner-usage-chart { display:flex; align-items:stretch; gap:5px; height:172px; overflow-x:auto; padding:8px 4px 0; border-bottom:1px solid #e7e1d7; }
 .owner-usage-bar-button { flex:1 0 24px; min-width:24px; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:5px; border:0; border-radius:7px 7px 0 0; background:transparent; color:#6c7776; cursor:pointer; padding:0 2px; }
 .owner-usage-bar-button:hover,.owner-usage-bar-button.is-selected { background:#edf1ef; }

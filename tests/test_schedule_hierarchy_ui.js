@@ -157,6 +157,24 @@ if (artifacts) fs.mkdirSync(artifacts, {recursive:true});
   await row(1).locator('[data-act="text"]').fill(hostile);await row(1).locator('[data-act="text"]').press('Enter');
   await page.waitForFunction(title=>document.querySelector('[data-task-id="1"] .flow-task-text')?.textContent===title,hostile);
   check('父任务文字安全显示且归属同步变化',(await group(1).locator(':scope > .flow-children-heading').innerText()).includes(hostile)&&await page.locator('#scheduleList img').count()===0&&!await page.evaluate(()=>window.hierarchyInjected));
+  check('重要性判断标准紧贴独立选项框',await page.locator('#schedule .flow-attribute-group').filter({has:page.locator('#scheduleNewImportanceLabel')}).evaluate(el=>{
+    const chips=[...el.querySelectorAll('.flow-chip')];
+    return chips.length===3&&chips.every(chip=>getComputedStyle(chip).borderLeftWidth==='1px')
+      &&el.querySelector('.flow-importance-inline')?.textContent.includes('实现自己的目标');
+  }));
+  await page.locator('#scheduleAddInput').fill('刚写的任务');
+  await page.locator('#scheduleAddHours').fill('1');
+  await page.locator('#scheduleAddMinutes').fill('30');
+  await page.locator('#scheduleAddBtn').click();
+  await page.waitForFunction(()=>document.querySelector('#scheduleList .flow-task-text')?.textContent==='刚写的任务');
+  check('新任务居上且小时分钟保存为总分钟',writes.at(-1).body.estimated_minutes===90
+    &&await page.locator('#scheduleList .flow-task').first().getAttribute('data-task-id')==='12');
+  check('完整反馈入口直接提示可记录实际结果',await row(12).locator('.flow-result-entry button').innerText()==='记录实际结果、进展与原因 →');
+  await page.locator('#scheduleAddInput').fill('非法分钟');
+  await page.locator('#scheduleAddMinutes').fill('61');
+  const writesBefore=writes.length;
+  await page.locator('#scheduleAddBtn').click();
+  check('非法分钟不会创建任务',writes.length===writesBefore&&await page.locator('#scheduleAddInput').inputValue()==='非法分钟');
   check('没有重复id',await page.locator('#schedule [id]').evaluateAll(nodes=>new Set(nodes.map(n=>n.id)).size===nodes.length));
   check('无页面运行错误',errors.length===0);
   const report={passed:checks.length,checks,layouts,errors};

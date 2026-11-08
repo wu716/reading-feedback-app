@@ -139,7 +139,7 @@
     if(context.type==='task')renderTask();else if(context.type==='day')renderDay();else renderProject();
   }
   function renderTask(){
-    header(data.title,[['attributes','内容与估时'],['rehearsal','开始前预演'],['feedback','用时反馈'],['progress','困难进展'],['checklist','检查列表'],['history','历史']]);
+    header(data.title,[['attributes','内容与估时'],['rehearsal','开始前预演'],['feedback','结果与用时反馈'],['progress','困难进展'],['checklist','检查列表'],['history','历史']]);
     const content=$('.practice-content');
     if(tab==='attributes') {
       content.innerHTML=note('判断一项任务是否重要的标准：完成这项任务，是否确实有益于达成目标？')+

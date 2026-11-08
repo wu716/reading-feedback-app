@@ -4,6 +4,8 @@
 .lt-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:24px}
 .lt-eyebrow{font-size:11px;letter-spacing:.2em;color:var(--lt-rust);margin-bottom:8px}
 #long-term h1{font-family:'Noto Serif SC',Georgia,serif;font-size:38px;font-weight:600;line-height:1.35;letter-spacing:.05em;margin:0}
+.lt-heading>div:first-child{min-width:0;max-width:100%}
+#long-term h1{overflow-wrap:anywhere}
 .lt-date-nav{display:flex;align-items:center;gap:4px;padding:6px;border:1px solid var(--lt-line);border-radius:6px;background:var(--lt-white)}
 .lt-date-nav button{border:0;background:transparent;width:32px;height:32px;color:var(--lt-ink);cursor:pointer}
 #long-term .lt-date-nav input{border:0;background:transparent;width:146px;min-width:0;padding:4px 8px;font-size:14px;color:var(--lt-ink)}

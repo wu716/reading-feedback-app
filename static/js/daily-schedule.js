@@ -15,7 +15,6 @@
     let newTaskDifficulty = null;
     let newTaskImportance = null;
     let newTaskPriority = 0;
-    let newTaskDuration = '';
     let newTaskColor = null;
     const taskColors = [['雾蓝','#7894a6'],['天青','#75a9bd'],['湖蓝','#4f89a0'],['墨蓝','#416580'],['薄荷绿','#79aa96'],['鼠尾草绿','#789879'],['森林绿','#527b65'],['柠檬黄','#d1bb64'],['暖琥珀','#c5954f'],['珊瑚橙','#d18b68'],['陶土红','#bb7166'],['莓果红','#a95f70'],['薰衣草紫','#a18ab7'],['柔紫','#927f9f'],['玫瑰粉','#d19aaa'],['石墨灰','#8b9295']];
 
@@ -405,6 +404,7 @@
                 </div>
                 ${renderQuickAttributes(task)}
                 ${renderTimeFeedback(task)}
+                ${!task.children?.length ? '<div class="flow-result-entry"><button type="button" data-act="feedback">记录实际结果、进展与原因 →</button></div>' : ''}
                 ${recorded}
                 ${renderTaskLaunch(task)}
                 ${renderSplitRow(task)}
@@ -544,7 +544,8 @@
         } else if (mode === 'flow') {
             list.innerHTML = renderFlowGroups(executionLeaves(data.tasks));
         } else {
-            list.innerHTML = data.tasks.map((task) => renderTask(task, false)).join('');
+            const tasks = [...data.tasks].sort((a, b) => b.id - a.id);
+            list.innerHTML = tasks.map((task) => renderTask(task, false)).join('');
         }
         focusEditor();
         if (activeName && activeTask) {
@@ -946,12 +947,19 @@
             const input = document.getElementById('scheduleAddInput');
             const submittedText = input?.value || '';
             if (!submittedText.trim()) { input?.focus(); return; }
-            const durationValue = newTaskDuration.trim();
-            const estimatedMinutes = durationValue ? parseDuration(durationValue) : null;
-            if (durationValue && !Number.isInteger(estimatedMinutes)) {
-                if (typeof showMessage === 'function') showMessage(t('schedule.durationInvalid', '请输入例如 30分钟、1小时或1小时30分'), 'error');
+            const hoursText = document.getElementById('scheduleAddHours')?.value.trim() || '';
+            const minutesText = document.getElementById('scheduleAddMinutes')?.value.trim() || '';
+            const hasDuration = hoursText !== '' || minutesText !== '';
+            const hours = hoursText === '' ? 0 : Number(hoursText);
+            const minutes = minutesText === '' ? 0 : Number(minutesText);
+            const validDuration = Number.isInteger(hours) && Number.isInteger(minutes)
+                && hours >= 0 && hours <= 24 && minutes >= 0 && minutes < 60
+                && hours * 60 + minutes <= 1440;
+            if (hasDuration && !validDuration) {
+                if (typeof showMessage === 'function') showMessage(t('schedule.durationPartsInvalid', '请输入 0–24 小时、0–59 分钟，合计不超过 24 小时'), 'error');
                 return;
             }
+            const estimatedMinutes = hasDuration ? hours * 60 + minutes : null;
             addingTask = true;
             const addButton = document.getElementById('scheduleAddBtn');
             const focusFromAdd = document.activeElement === addButton;
@@ -966,13 +974,14 @@
                     color: newTaskColor,
                 });
                 if (input && input.value === submittedText) input.value = '';
-                const durationInput = document.getElementById('scheduleAddDuration');
-                if (durationInput) durationInput.value = '';
+                for (const id of ['scheduleAddHours', 'scheduleAddMinutes']) {
+                    const durationInput = document.getElementById(id);
+                    if (durationInput) durationInput.value = '';
+                }
                 newTaskFamiliarity = null;
                 newTaskDifficulty = null;
                 newTaskImportance = null;
                 newTaskPriority = 0;
-                newTaskDuration = '';
                 newTaskColor = null;
                 updateAddComposer();
             } catch (e) {
@@ -998,13 +1007,10 @@
             updateAddComposer();
         });
         document.getElementById('scheduleAddRow')?.addEventListener('keydown', (e) => {
-            if (['scheduleAddInput', 'scheduleAddDuration'].includes(e.target.id) && e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
+            if (['scheduleAddInput', 'scheduleAddHours', 'scheduleAddMinutes'].includes(e.target.id) && e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) {
                 e.preventDefault();
                 document.getElementById('scheduleAddBtn')?.click();
             }
-        });
-        document.getElementById('scheduleAddDuration')?.addEventListener('input', (e) => {
-            newTaskDuration = e.target.value;
         });
         window.addEventListener('shuran-language-change', () => render());
         window.addEventListener('shuran-practice-change', () => load(currentDay()));
