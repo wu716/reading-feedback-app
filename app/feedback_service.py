@@ -132,8 +132,9 @@ def check_feedback_reminders(db, user_id=None, now=None):
     last_id = db.query(func.max(FeedbackSubmission.id)).filter(FeedbackSubmission.occurrence_id == FeedbackOccurrence.id).correlate(FeedbackOccurrence).scalar_subquery()
     last_version = db.query(func.max(FeedbackSubmission.version)).filter(FeedbackSubmission.occurrence_id == FeedbackOccurrence.id).correlate(FeedbackOccurrence).scalar_subquery()
     pending = or_(last_id.is_(None), exists().where(FeedbackSubmission.id == last_id, FeedbackSubmission.status == "needs_changes"))
-    event_key = literal("occurrence:") + cast(FeedbackOccurrence.id, String) + literal(":version:") + cast(func.coalesce(last_version, 0), String)
-    unclaimed = ~exists().where(FeedbackDelivery.event_key == event_key)
+    event_key = literal("occurrence:") + cast(FeedbackOccurrence.id, String) + literal(":version:") + cast(func.coalesce(last_version, 0), String) + literal(":due:") + cast(FeedbackOccurrence.due_date, String)
+    legacy_key = literal("occurrence:") + cast(FeedbackOccurrence.id, String) + literal(":version:") + cast(func.coalesce(last_version, 0), String)
+    unclaimed = ~exists().where(FeedbackDelivery.event_key == event_key) & ~exists().where(FeedbackDelivery.event_key == legacy_key)
     q = db.query(FeedbackOccurrence).join(Project, Project.id == FeedbackOccurrence.project_id).join(User, User.id == FeedbackOccurrence.user_id).outerjoin(
         SelfTalkReminderSetting, SelfTalkReminderSetting.user_id == User.id).filter(
         FeedbackOccurrence.due_date <= now.date(), FeedbackOccurrence.skipped_reason.is_(None),
@@ -154,7 +155,7 @@ def check_feedback_reminders(db, user_id=None, now=None):
         if now < datetime.combine(row.due_date, time.fromisoformat(row.remind_at), TZ):
             continue
         # A supplementary request gets a new reminder, but ordinary polling is idempotent.
-        key = f"occurrence:{row.id}:version:{s.version if s else 0}"
+        key = f"occurrence:{row.id}:version:{s.version if s else 0}:due:{row.due_date}"
         enqueue(db, row.user_id, key, "提交项目反馈", f"{p.title} · {row.due_date}：{req['deliverable']}",
             f"/static/index.html?feedback={row.id}&record={row.due_date}#daily-feedback", row.id)
     try:

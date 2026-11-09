@@ -84,6 +84,7 @@
         } else if(action==='repreview') {
           adjustment=await api(`/commitments/projects/${context.id}/preview`,adjustment.plan); showImpact();
         } else if(action==='new-cycle') { tab='new-cycle'; render(); }
+        else if(action==='edit-cycle-dates') { const url=new URL('/static/cycle-dates.html',location.origin);url.searchParams.set('project',String(context.id));url.searchParams.set('cycle',el.dataset.id);url.searchParams.set('return',location.href);location.href=url.href; }
         else if(action==='next-cycle') { context.previousCycleId=Number(el.dataset.id); tab='new-cycle'; render(); }
         else if(action==='review-cycle') {context.cycleId=Number(el.dataset.id);tab='review-cycle';render();}
       });
@@ -246,7 +247,7 @@
       loadAdjustableConditions(tasks);
     } else if(tab==='cycles') {
       content.innerHTML=note('建议先尝试一周，再按事实选择两周、一个月、季度或年度。可以维持、缩短或延长，无需打卡解锁。简单事项和陌生事项的探索行动仍可直接开始。')+button('new-cycle','制定一轮计划')+
-        (cycles.items.map(c=>`<article class="practice-cycle"><h3>${esc(c.expected_result)}</h3><p>${c.start_date} — ${c.end_date}</p><p>计划 ${c.evidence.planned_task_count} 项 / ${c.evidence.planned_minutes} 分 · 已记录区间 ${c.evidence.interval_count?c.evidence.actual_interval_minutes+' 分':'未记录'} · ${c.evidence.missing_estimates} 项未估时</p>${note(c.suggestions.join(' '))}${c.review?`<p>实际结果：${esc(c.review.actual_result)}</p><p>下一轮：${esc(c.review.next_changes)} · 理由：${esc(c.review.reason)}</p>${c.review.horizon_decision==='stop'?note('本轮选择停止；保留依据与结果。'):button('next-cycle','根据复盘制定下一轮',`data-id="${c.id}"`)}`:button('review-cycle','对照结果并复盘',`data-id="${c.id}"`)}</article>`).join('')||note('还没有计划周期'));
+        (cycles.items.map(c=>`<article class="practice-cycle"><h3>${esc(c.expected_result)}</h3><p>${c.start_date} — ${c.end_date}</p>${button('edit-cycle-dates','调整周期日期',`data-id="${c.id}"`)}<p>计划 ${c.evidence.planned_task_count} 项 / ${c.evidence.planned_minutes} 分 · 已记录区间 ${c.evidence.interval_count?c.evidence.actual_interval_minutes+' 分':'未记录'} · ${c.evidence.missing_estimates} 项未估时</p>${note(c.suggestions.join(' '))}${c.review?`<p>实际结果：${esc(c.review.actual_result)}</p><p>下一轮：${esc(c.review.next_changes)} · 理由：${esc(c.review.reason)}</p>${c.review.horizon_decision==='stop'?note('本轮选择停止；保留依据与结果。'):button('next-cycle','根据复盘制定下一轮',`data-id="${c.id}"`)}`:button('review-cycle','对照结果并复盘',`data-id="${c.id}"`)}</article>`).join('')||note('还没有计划周期'));
       content.querySelectorAll('.practice-cycle').forEach((card,i)=>{
         const c=cycles.items[i],rule=c.plan.feedback;
         if(c.plan.scope==='project')card.querySelectorAll('p')[1].textContent='本轮直接推进整个项目；已记录投入 '+(c.evidence.interval_count?c.evidence.actual_interval_minutes+' 分':'待核对');

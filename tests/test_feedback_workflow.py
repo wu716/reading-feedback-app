@@ -168,6 +168,42 @@ def test_calendar_materializes_real_dates_with_additions_and_skips(ctx):
         assert db.query(pm.PlanningCycle).count() == 1
 
 
+def test_cycle_dates_change_each_unsubmitted_node_and_keep_submitted_history(ctx):
+    c, factory, _ = ctx
+    p = project(c)
+    original = cycle(c, p, feedback={"frequency": "dates", "dates": [str(DAY), str(DAY + timedelta(days=2)), str(DAY + timedelta(days=4))],
+        "deliverable": "阶段成果", "reminders": True})
+    nodes = original["feedback_nodes"]
+    submitted = c.post(f'/api/feedback/occurrences/{nodes[0]["id"]}/submissions', json={"client_id": "submitted-before-change", "text": "原日期成果"})
+    assert submitted.status_code == 200, submitted.text
+    later = DAY + timedelta(days=7)
+    body = {"original_start": str(DAY), "original_end": str(DAY + timedelta(days=10)),
+        "start_date": str(DAY + timedelta(days=1)), "end_date": str(later),
+        "nodes": [{"id": nodes[1]["id"], "original_date": nodes[1]["date"], "date": nodes[1]["date"]},
+                  {"id": nodes[2]["id"], "original_date": nodes[2]["date"], "date": str(later)}]}
+    path = f'/api/projects/practice/cycles/{original["id"]}/dates'
+    assert c.put(path, headers={"X-Test-User": "2"}, json=body).status_code == 404
+    assert c.put(path, json={**body, "nodes": body["nodes"][:1]}).status_code == 409
+    with factory() as db:
+        svc.check_feedback_reminders(db, 1, datetime(2026, 10, 27, 20, 30, tzinfo=svc.TZ))
+        old_delivery = db.query(pm.FeedbackDelivery).filter_by(occurrence_id=nodes[2]["id"]).one()
+        assert old_delivery.email_status in ("pending", "disabled")
+    changed = c.put(path, json=body)
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["start_date"] == str(DAY + timedelta(days=1))
+    assert [(n["id"], n["date"], n["submitted"]) for n in changed.json()["feedback_nodes"]] == [
+        (nodes[0]["id"], nodes[0]["date"], True), (nodes[1]["id"], nodes[1]["date"], False), (nodes[2]["id"], str(later), False)]
+    assert c.put(path, json=body).status_code == 409
+    assert c.get(f'/api/feedback/occurrences/{nodes[0]["id"]}').json()["versions"][0]["content"]["text"] == "原日期成果"
+    with factory() as db:
+        events = db.query(pm.PracticeEvent).filter_by(owner_kind="cycle", owner_id=original["id"], event_type="dates_changed").all()
+        assert len(events) == 1
+        svc.check_feedback_reminders(db, 1, datetime(2026, 10, 30, 20, 30, tzinfo=svc.TZ))
+        deliveries = db.query(pm.FeedbackDelivery).filter_by(occurrence_id=nodes[2]["id"]).order_by(pm.FeedbackDelivery.id).all()
+        assert len(deliveries) == 2 and deliveries[0].email_status == "cancelled"
+        assert str(later) in deliveries[1].message
+
+
 def test_submission_versions_idempotency_private_evidence_review_and_skip(ctx):
     c, factory, files = ctx
     n = node(c, project(c))

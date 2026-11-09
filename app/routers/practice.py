@@ -478,6 +478,20 @@ class CycleReview(Strict):
     reason: str = Field(min_length=1, max_length=4000)
 
 
+class CycleDateChoice(Strict):
+    id: int
+    original_date: date
+    date: date
+
+
+class CycleDateChange(Strict):
+    original_start: date
+    original_end: date
+    start_date: date
+    end_date: date
+    nodes: list[CycleDateChoice] = Field(max_length=732)
+
+
 def cycle_data(db, user_id, cycle):
     plan = json.loads(cycle.plan_json)
     report = svc.training_report(db, user_id, cycle.start_date, cycle.end_date)
@@ -504,7 +518,12 @@ def cycle_data(db, user_id, cycle):
     if evidence["missing_estimates"]: suggestions.append("有任务未估时，当前数据不足以判断估时偏差。")
     review = json.loads(cycle.review_json) if cycle.review_json else None
     from app.project_models import FeedbackOccurrence
-    feedback_nodes = [{"id": n.id, "date": str(n.due_date), "skipped_reason": n.skipped_reason}
+    from app.project_models import FeedbackSubmission
+    submitted_ids = {s.occurrence_id for s in db.query(FeedbackSubmission.occurrence_id).filter(
+        FeedbackSubmission.user_id == user_id, FeedbackSubmission.occurrence_id.in_(
+            db.query(FeedbackOccurrence.id).filter_by(user_id=user_id, cycle_id=cycle.id))).all()}
+    feedback_nodes = [{"id": n.id, "date": str(n.due_date), "skipped_reason": n.skipped_reason,
+        "submitted": n.id in submitted_ids}
         for n in db.query(FeedbackOccurrence).filter_by(user_id=user_id, cycle_id=cycle.id).order_by(FeedbackOccurrence.due_date)]
     if review and review.get("conditions"):
         suggestions.append("你记录的条件问题是“%s”。下一轮先落实对应条件，再判断是否适合扩大范围和跨度。" % review["conditions"])
@@ -572,3 +591,57 @@ def cycle_review(cycle_id: int, body: CycleReview, user: User = Depends(get_curr
     svc.event(db, user.id, "cycle", c.id, "cycle_review", data)
     c.review_json, c.reviewed_at = svc.dumps(data), datetime.utcnow()
     db.commit(); return cycle_data(db, user.id, c)
+
+
+@router.put("/cycles/{cycle_id}/dates")
+def change_cycle_dates(cycle_id: int, body: CycleDateChange, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    from app.project_models import FeedbackOccurrence, FeedbackSubmission, FeedbackDelivery
+    from app.models import SelfTalkReminderLog
+    svc.lock_user(db, user.id)
+    cycle = db.get(PlanningCycle, cycle_id)
+    if not cycle or cycle.user_id != user.id:
+        raise HTTPException(404, "周期不存在")
+    if (cycle.start_date, cycle.end_date) != (body.original_start, body.original_end):
+        raise HTTPException(409, "周期日期已变化，请重新打开后核对")
+    if body.end_date < body.start_date or (body.end_date - body.start_date).days > 731:
+        raise HTTPException(400, "请设置两年以内、先后正确的周期日期")
+    nodes = db.query(FeedbackOccurrence).filter_by(user_id=user.id, cycle_id=cycle.id).order_by(FeedbackOccurrence.id).all()
+    submitted = {id for (id,) in db.query(FeedbackSubmission.occurrence_id).filter(
+        FeedbackSubmission.user_id == user.id, FeedbackSubmission.occurrence_id.in_([n.id for n in nodes])).distinct()}
+    editable = {n.id: n for n in nodes if n.id not in submitted and not n.skipped_reason}
+    choices = {item.id: item for item in body.nodes}
+    if len(choices) != len(body.nodes) or choices.keys() != editable.keys():
+        raise HTTPException(409, "未完成反馈节点已变化，请重新打开后逐项核对")
+    for id, node in editable.items():
+        if choices[id].original_date != node.due_date:
+            raise HTTPException(409, "反馈节点日期已变化，请重新打开后核对")
+    final_dates = [choices[n.id].date if n.id in editable else n.due_date for n in nodes]
+    if len(set(final_dates)) != len(final_dates):
+        raise HTTPException(400, "同一周期的反馈节点不能安排在同一天")
+    before = {"start_date": str(cycle.start_date), "end_date": str(cycle.end_date),
+        "nodes": [{"id": n.id, "date": str(n.due_date)} for n in nodes]}
+    cycle.start_date, cycle.end_date = body.start_date, body.end_date
+    cycle.horizon = "custom"
+    moved = []
+    for id, node in editable.items():
+        day = choices[id].date
+        if day == node.due_date:
+            continue
+        moved.append((node.due_date, day))
+        for delivery in db.query(FeedbackDelivery).filter_by(user_id=user.id, occurrence_id=id):
+            if ":superseded:" not in delivery.event_key:
+                delivery.event_key += f":superseded:{delivery.id}"
+            if delivery.email_status in ("pending", "retry"):
+                delivery.email_status = "cancelled"
+            if delivery.log_id:
+                log = db.get(SelfTalkReminderLog, delivery.log_id)
+                if log: log.action_taken = True
+        node.due_date = day
+    svc.event(db, user.id, "cycle", cycle.id, "dates_changed", {"before": before,
+        "after": {"start_date": str(body.start_date), "end_date": str(body.end_date),
+            "nodes": [{"id": n.id, "date": str(n.due_date)} for n in nodes]}})
+    db.commit()
+    from app.feedback_service import refresh_reports
+    for day in {d for pair in moved for d in pair}:
+        refresh_reports(db, user, day)
+    return cycle_data(db, user.id, cycle)
