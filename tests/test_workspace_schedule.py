@@ -1,6 +1,7 @@
 """Data contracts for the unified schedule and reusable process instances."""
 import unittest
 from datetime import date
+import pytest
 
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
@@ -88,6 +89,7 @@ class WorkspaceScheduleTests(unittest.TestCase):
         self.assertTrue(all(row['color'] is None for row in self.schedule()))
 
     def test_new_root_is_first_without_reordering_flow_or_children(self):
+        # Characterization baseline: list order and designed flow are separate user-approved behaviors.
         first = self.req('POST', '/schedule/tasks', {'text':'first','task_date':self.day}).json()['tasks'][0]
         child = self.req('POST', '/schedule/tasks', {'text':'child','task_date':self.day,'parent_id':first['id']}).json()['tasks'][0]['children'][0]
         second_response = self.req('POST', '/schedule/tasks', {'text':'second','task_date':self.day})
@@ -102,6 +104,20 @@ class WorkspaceScheduleTests(unittest.TestCase):
             {'id':first['id'],'sort_order':-2}, {'id':roots[0]['id'],'sort_order':0}]})
         self.assertEqual(reorder.status_code, 200, reorder.text)
         self.assertEqual([row['text'] for row in self.schedule()], ['first', 'second'])
+        reordered = self.schedule()
+        with self.Session() as db:
+            self.assertEqual([db.get(DailyTask, row['id']).flow_order for row in reordered],
+                             [roots[1]['flow_order'], roots[0]['flow_order']])
+        self.assertEqual(reordered[0]['children'][0]['id'], child['id'])
+
+    @pytest.mark.xfail(strict=True, reason="已有缺陷：flow_order=0 在接口序列化时回退到 sort_order")
+    def test_reorder_does_not_change_reported_zero_flow_order(self):
+        first = self.req('POST', '/schedule/tasks', {'text':'first','task_date':self.day}).json()['tasks'][0]
+        second = self.req('POST', '/schedule/tasks', {'text':'second','task_date':self.day}).json()['tasks'][0]
+        self.req('POST', '/schedule/reorder', {'task_date':self.day,'items':[
+            {'id':first['id'],'sort_order':-2}, {'id':second['id'],'sort_order':0}]})
+        returned = self.schedule()
+        self.assertEqual(next(row['flow_order'] for row in returned if row['id'] == first['id']), 0)
 
     def test_task_expectation_core_review_and_server_draft_are_account_scoped(self):
         key=f'task-new:{self.day}'
