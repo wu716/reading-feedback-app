@@ -219,7 +219,7 @@
   .lt-main-metric strong{font-size:25px}
   .lt-overview-detail{max-width:none}
   .lt-view-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:12px 0 16px;border-bottom:1px solid var(--lt-line)}
-  .lt-view-tabs button{min-height:44px;padding:8px 2px;font-size:13px;white-space:nowrap}
+  .lt-view-tabs button{min-width:0;min-height:44px;padding:8px 2px;font-size:13px;white-space:normal;overflow-wrap:anywhere;line-height:1.5}
   .lt-workspace{gap:18px}
   .lt-panel-heading{align-items:flex-start;flex-direction:column;gap:2px;margin-bottom:10px}
   .lt-panel-heading>span{font-size:11px}

@@ -1,5 +1,7 @@
 /* Mobile review 2026-10-28: preserve desktop layout and recording semantics. */
 @media (max-width:768px) {
+ /* Keep the pinned header in flow so enlarged text never starts beneath it. */
+ body.workspace-layout .app-header {position:sticky;top:0;height:auto;}
  body.workspace-layout .app-main {padding:18px 18px calc(90px + env(safe-area-inset-bottom,0px));}
  .workspace-layout:has(.content-section.active:not(#schedule)) .workspace-mobile-tabs {display:none;}
  .workspace-layout .workspace-mobile-tabs {margin:0;padding:6px 18px;gap:22px;}

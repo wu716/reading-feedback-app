@@ -3458,8 +3458,8 @@
     <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261025someday3">
     <link rel="stylesheet" href="/static/css/workspace.css?v=20261109inline1">
     <link rel="stylesheet" href="/static/css/account.css?v=20261026megroupfix1">
-    <link rel="stylesheet" href="/static/css/long-term.css?v=20261108stage2a">
-    <link rel="stylesheet" href="/static/css/mobile-review.css?v=20261108stage1">
+    <link rel="stylesheet" href="/static/css/long-term.css?v=20261109mobileheading1">
+    <link rel="stylesheet" href="/static/css/mobile-review.css?v=20261109mobileheading1">
 </head>
 <body>
     <script>
@@ -3468,7 +3468,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261026megroupfix1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.60';
+            window.SHURAN_VERSION = '2.0.61';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -4716,6 +4716,9 @@
             if (hash && document.getElementById(hash)) {
                 if (currentSectionId() !== hash) {
                     navigateTo(hash);
+                } else if (isMobileNav()) {
+                    // Finish the reset after the browser's fragment jump.
+                    window.scrollTo(0, 0);
                 }
             } else if (!hash) {
                 if (currentSectionId() !== defaultSection()) {
