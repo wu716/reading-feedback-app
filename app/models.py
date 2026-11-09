@@ -615,6 +615,22 @@ class LongTermLedgerDay(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
 
 
+class LongTermPhoto(Base):
+    """Private account-owned image linked to one dated meal or expense entry."""
+    __tablename__ = "long_term_photos"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    record_date = Column(Date, nullable=False, index=True)
+    owner_kind = Column(String(10), nullable=False)
+    owner_id = Column(String(100), nullable=False)
+    filename = Column(String(250), nullable=False)
+    storage_key = Column(String(80), nullable=False, unique=True)
+    size = Column(Integer, nullable=False)
+    content_type = Column(String(50), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class LongTermPreferences(Base):
     __tablename__ = "long_term_preferences"
 

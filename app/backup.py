@@ -27,6 +27,7 @@ from app.models import (
     LongTermDailyRecord,
     LongTermNodeCategory,
     LongTermLedgerDay,
+    LongTermPhoto,
     LongTermPreferences,
     User,
 )
@@ -183,6 +184,7 @@ def build_backup_zip(db: Session) -> bytes:
         "long_term_daily_records.csv": LongTermDailyRecord,
         "long_term_node_categories.csv": LongTermNodeCategory,
         "long_term_ledger_days.csv": LongTermLedgerDay,
+        "long_term_photos.csv": LongTermPhoto,
         "long_term_preferences.csv": LongTermPreferences,
     }.items():
         files[name] = _model_csv(db, model)

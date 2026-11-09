@@ -116,11 +116,13 @@
                 field('金额（元）','<input' + attr + 'data-field="amount" type="number" step="0.01" min="0.01" max="1000000000" inputmode="decimal" required value="' + esc(e._amount ?? yuan(e.amount_cents)) + '">') +
                 field('备注（选填）','<input' + attr + 'data-field="note" maxlength="500" value="' + esc(e.note) + '">') +
                 field('关联当天活动（选填）','<select' + attr + 'data-field="activity_id">' + options(links,e.activity_id,'不关联') + '</select>','lt-full') +
-                '</div>' + (e.group_id ? '<p class="lt-note">已拆分账目，同组总额 ¥ ' + yuan(day.expenses.filter(x => x.group_id === e.group_id).reduce((n,x) => n + x.amount_cents,0)) + '</p>' : '') +
+                '</div>' + (window.ShuranMeals?.expensePhotosHTML(e) || '') + (e.group_id ? '<p class="lt-note">已拆分账目，同组总额 ¥ ' + yuan(day.expenses.filter(x => x.group_id === e.group_id).reduce((n,x) => n + x.amount_cents,0)) + '</p>' : '') +
                 '<div class="lt-entry-actions"><button type="button" class="lt-text-button" data-split="' + e.id + '">拆成两笔</button><button type="button" class="lt-text-button" data-remove-e="' + e.id + '">移除</button></div>' +
                 (splitId === e.id ? '<div class="lt-split-form">' + field('分出金额（元）','<input id="ltSplitAmount" type="number" min="0.01" step="0.01" inputmode="decimal">') + '<p class="lt-note">剩余金额自动保留，拆分后分别选择类别。</p><button type="button" class="lt-text-button" data-split-confirm="' + e.id + '">确认拆分</button> <button type="button" class="lt-text-button" data-split-cancel="1">取消</button></div>' : '') + '</div></details>';
         }).join('') || '<p class="lt-note">记下每笔用途；没有消费时，勾选下方确认即可。</p>';
         el('ltExpenseList').querySelectorAll('[data-entry]').forEach(d => d.addEventListener('toggle', () => { d.open ? openEntries.add(d.dataset.entry) : openEntries.delete(d.dataset.entry); }));
+        window.ShuranMeals?.hydrate(el('ltExpenseList'));
+        window.ShuranMeals?.render(day);
         updateTotals();
     }
     function renderAttention() {
@@ -184,7 +186,7 @@
     }
     function newExpense() {
         const e = {id:uid(),category:'',kind:'expense',amount_cents:0,_amount:'',note:'',activity_id:null,group_id:null};
-        day.expenses.push(e); openEntries.add(e.id); touch(); renderExpenses();
+        e.photo_ids=[];day.expenses.push(e); openEntries.add(e.id); touch(); renderExpenses();
     }
     function validateControls(root) {
         const invalid = [...root.querySelectorAll('input,select,textarea')].find(x => !x.disabled && !x.checkValidity());
@@ -209,6 +211,7 @@
                 return data;
             }),
             expenses:day.expenses.map(e => { const {_amount,...data} = e; data.amount_cents = moneyCents(_amount ?? yuan(e.amount_cents)); return data; }),
+            meals:day.meals||[],
             expense_confirmed:day.expense_confirmed,day_confirmed:day.day_confirmed,category_confirmed:day.category_confirmed,
             attention_items:attention,attention_confirmed:Boolean(day.attention_confirmed || attention.length),
         };
@@ -294,6 +297,7 @@
             else e[f] = f === 'activity_id' ? target.value || null : target.value;
             el('ltExpenseList').querySelector('[data-exp-label="' + e.id + '"]').textContent = (expenseNames()[e.category] || '选择类别') + (e.kind === 'refund' ? ' · 退款' : '');
             el('ltExpenseList').querySelector('[data-exp-value="' + e.id + '"]').textContent = '¥ ' + yuan(e.amount_cents);
+            if(f==='category'){touch();renderExpenses();return;}
         } else if (target.dataset.attentionIndex !== undefined) {
             const item = day.attention_items[Number(target.dataset.attentionIndex)];
             item[target.dataset.attentionField] = target.value;
@@ -325,6 +329,8 @@
             touch(); renderActivities();
         } else if (b.dataset.removeE) {
             day.expenses = day.expenses.filter(e => e.id !== b.dataset.removeE); touch(); renderExpenses();
+            day.meals?.forEach(meal=>{if(meal.expense_id===b.dataset.removeE)meal.expense_id=null;});
+            window.ShuranMeals?.render(day);
         } else if (b.dataset.split) {
             splitId = b.dataset.split; openEntries.add(splitId); renderExpenses(); el('ltSplitAmount').focus();
         } else if (b.dataset.splitCancel) {
@@ -336,7 +342,7 @@
                 const n = moneyCents(answer);
                 if (n <= 0 || n >= e.amount_cents) throw new Error('拆分金额必须大于 0 且小于原金额。');
                 e.group_id ||= uid();
-                const other = {...e,id:uid(),amount_cents:n,_amount:yuan(n)};
+                const other = {...e,id:uid(),amount_cents:n,_amount:yuan(n),photo_ids:[]};
                 e.amount_cents -= n; e._amount = yuan(e.amount_cents);
                 day.expenses.push(other); openEntries.add(e.id); openEntries.add(other.id);
                 splitId = null; touch(); renderExpenses();
@@ -448,6 +454,7 @@
         if (r.premium_locked) {
             renderFreeReport(r);
             el('ltReport').insertAdjacentHTML('beforeend',globalThis.ShuranPractice?.reportHTML(r.practice)||'');
+            window.ShuranMeals?.renderReport(r,el('ltReport'));
             enhanceReport(r);
             return;
         }
@@ -501,6 +508,7 @@
             '<details class="lt-report-detail"><summary><span>周期内趋势</span><small>' + (['year','quarter'].includes(r.period) ? '按月' : '按日') + '</small></summary><div class="lt-table-wrap"><table class="lt-table"><thead><tr><th>日期</th><th>时间投入</th><th>注意力浪费</th><th>写作字数</th><th>消费净支出</th><th>消费核对天数</th></tr></thead><tbody>' + trend + '</tbody></table></div></details>' +
             '<section class="lt-report-section"><h2>消费记录足迹</h2><div class="lt-report-calendar">' + r.days.map(d => '<button type="button" data-day="' + d.date + '" class="' + (d.expense_confirmed ? 'is-recorded' : d.recorded ? 'is-partial' : '') + '" title="' + d.date + (d.expense_confirmed ? ' 消费已核对' : d.recorded ? '有记录，消费待核对' : '未记录') + '">' + d.date.slice(5).replace('-','/') + '</button>').join('') + '</div><p class="lt-note">深绿：消费已核对；浅褐：有记录待核对；浅灰：未记录。未来日期不计入已过天数。点击日期可补记。</p></section>';
         el('ltReport').insertAdjacentHTML('beforeend',globalThis.ShuranPractice?.reportHTML(r.practice)||'');
+        window.ShuranMeals?.renderReport(r,el('ltReport'));
         enhanceReport(r);
     }
     function enhanceReport(r) {
@@ -633,6 +641,7 @@
             el('ltDate').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); loadDay();
         });
         el('ltDayFields').addEventListener('input',e=>updateInput(e.target));
+        window.ShuranMeals?.init({getDay:()=>day,touch,renderExpenses,status});
         el('ltDayFields').addEventListener('click',e=>dayAction(e.target));
         el('ltDayFields').addEventListener('change',e=>{
             if(e.target.dataset.source && e.target.value) newActivity(e.target.value,day.nodes.find(n=>n.id===Number(e.target.dataset.source)));

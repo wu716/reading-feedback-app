@@ -6,6 +6,7 @@ import io
 import json
 import shutil
 import uuid
+import zipfile
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -202,6 +203,48 @@ def test_cycle_dates_change_each_unsubmitted_node_and_keep_submitted_history(ctx
         deliveries = db.query(pm.FeedbackDelivery).filter_by(occurrence_id=nodes[2]["id"]).order_by(pm.FeedbackDelivery.id).all()
         assert len(deliveries) == 2 and deliveries[0].email_status == "cancelled"
         assert str(later) in deliveries[1].message
+
+
+def test_meal_and_snack_photos_are_private_and_old_day_clients_preserve_them(ctx):
+    c, factory, _ = ctx
+    prefs = c.get('/api/long-term/details/preferences').json()
+    assert any(row['id'] == 'snacks' and row['name'] == '零食' for row in prefs['expense_categories'])
+    disguised = c.post(f'/api/long-term/details/photos?day={DAY}&owner_kind=meal&owner_id=meal_1',
+                       files={'file': ('not-photo.png', b'<html>not an image</html>', 'image/png')})
+    assert disguised.status_code == 400
+    png = b'\x89PNG\r\n\x1a\n' + b'synthetic-image'
+    def upload(kind, record_id):
+        response = c.post(f'/api/long-term/details/photos?day={DAY}&owner_kind={kind}&owner_id={record_id}',
+                          files={'file': ('meal.png', png, 'image/png')})
+        assert response.status_code == 200, response.text
+        return response.json()['id']
+    meal_photo, snack_photo = upload('meal', 'meal_1'), upload('expense', 'snack_1')
+    assert c.get(f'/api/long-term/details/photos/{meal_photo}').content == png
+    assert c.get(f'/api/long-term/details/photos/{meal_photo}', headers={'X-Test-User': '2'}).status_code == 404
+    body = {'revision': 0, 'activities': [], 'expenses': [{'id': 'snack_1', 'category': 'snacks', 'amount_cents': 1200,
+        'photo_ids': [snack_photo]}], 'meals': [{'id': 'meal_1', 'type': 'snack', 'text': '饼干和酸奶',
+        'expense_id': 'snack_1', 'photo_ids': [meal_photo]}], 'attention_confirmed': True}
+    wrong = json.loads(json.dumps(body)); wrong['meals'][0]['photo_ids'] = [snack_photo]
+    assert c.put(f'/api/long-term/details/day?day={DAY}', json=wrong).status_code == 400
+    saved = c.put(f'/api/long-term/details/day?day={DAY}', json=body)
+    assert saved.status_code == 200, saved.text
+    assert saved.json()['summary']['money_cents'] == 1200
+    assert saved.json()['meals'][0]['photo_ids'] == [meal_photo]
+    old_client = {k: v for k, v in body.items() if k != 'meals'}
+    old_client['revision'] = saved.json()['revision']
+    old_client['expenses'][0].pop('photo_ids')
+    again = c.put(f'/api/long-term/details/day?day={DAY}', json=old_client)
+    assert again.status_code == 200, again.text
+    assert again.json()['meals'][0]['photo_ids'] == [meal_photo]
+    assert again.json()['expenses'][0]['photo_ids'] == [snack_photo]
+    report = c.get(f'/api/long-term/details/report?period=day&anchor={DAY}').json()
+    assert report['meal_counts']['snack'] == 1 and report['expense_categories']['snacks']['net_cents'] == 1200
+    with factory() as db:
+        from app.user_export import build_user_export_zip
+        exported = zipfile.ZipFile(io.BytesIO(build_user_export_zip(db, db.get(User, 1))))
+        photos = json.loads(exported.read('long_term_photos.json'))
+        assert {row['id'] for row in photos} == {meal_photo, snack_photo}
+        assert all('storage_key' not in row for row in photos)
 
 
 def test_submission_versions_idempotency_private_evidence_review_and_skip(ctx):

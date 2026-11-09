@@ -1,16 +1,22 @@
 """Detailed private ledgers, additive legacy projection, and calendar reports."""
 import json
+import os
+import re
+import uuid
+from pathlib import Path
 from datetime import date, timedelta
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user
 from app.database import get_db
-from app.models import LongTermDailyRecord, LongTermLedgerDay, LongTermNodeCategory, LongTermPreferences, TimeLogNode, User
+from app.models import LongTermDailyRecord, LongTermLedgerDay, LongTermNodeCategory, LongTermPreferences, LongTermPhoto, TimeLogNode, User
 from app.plans import PAID_PLANS, effective_plan_key
 from app.routers.time_log import beijing_today
 from app.reader_projection import source_days, merge as merge_reading
@@ -20,6 +26,72 @@ from app.routers.work_links import router as work_links_router
 
 router = APIRouter(prefix="/long-term/details", tags=["长期目标明细"])
 router.include_router(work_links_router)
+MAX_PHOTO_BYTES = 25 * 1024 * 1024
+MAX_PHOTO_ACCOUNT_BYTES = 500 * 1024 * 1024
+PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif", "image/avif"}
+
+
+def photo_storage():
+    return (Path(os.environ.get("FEEDBACK_STORAGE_DIR", "private-feedback")) / "long-term-photos").resolve()
+
+
+@router.post("/photos")
+async def upload_photo(day: date, owner_kind: Literal["meal", "expense"], owner_id: str,
+                       file: UploadFile = File(...), user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    if not re.fullmatch(r"[a-zA-Z0-9_-]{1,100}", owner_id):
+        raise HTTPException(400, "记录编号无效")
+    content_type = (file.content_type or "").lower()
+    if content_type not in PHOTO_TYPES:
+        raise HTTPException(400, "请选择图片文件")
+    db.query(User).filter_by(id=user.id).with_for_update().first()
+    total = db.query(func.coalesce(func.sum(LongTermPhoto.size), 0)).filter_by(user_id=user.id).scalar()
+    if total >= MAX_PHOTO_ACCOUNT_BYTES:
+        raise HTTPException(413, "饮食与消费图片总量已达 500 MB")
+    base = photo_storage(); base.mkdir(parents=True, exist_ok=True)
+    key = uuid.uuid4().hex
+    target = base / key
+    size = 0
+    try:
+        with target.open("xb") as output:
+            while chunk := await file.read(1024 * 1024):
+                size += len(chunk)
+                if size > MAX_PHOTO_BYTES or total + size > MAX_PHOTO_ACCOUNT_BYTES:
+                    raise HTTPException(413, "单张图片最多 25 MB，账号图片总量最多 500 MB")
+                output.write(chunk)
+        if not size:
+            raise HTTPException(400, "不能上传空图片")
+        with target.open("rb") as stored:
+            signature = stored.read(32)
+        brand = signature[8:12] if signature[4:8] == b"ftyp" else b""
+        detected_type = ("image/jpeg" if signature.startswith(b"\xff\xd8\xff") else
+                         "image/png" if signature.startswith(b"\x89PNG\r\n\x1a\n") else
+                         "image/gif" if signature.startswith((b"GIF87a", b"GIF89a")) else
+                         "image/webp" if signature.startswith(b"RIFF") and signature[8:12] == b"WEBP" else
+                         "image/heic" if brand in (b"heic", b"heix", b"hevc", b"mif1") else
+                         "image/avif" if brand in (b"avif", b"avis") else None)
+        if not detected_type:
+            raise HTTPException(400, "图片内容无法识别，请选择照片文件")
+        name = re.sub(r"[\x00-\x1f\x7f]", "", (file.filename or "饮食图片").replace("\\", "/").split("/")[-1])[:250] or "饮食图片"
+        row = LongTermPhoto(user_id=user.id, record_date=day, owner_kind=owner_kind, owner_id=owner_id,
+                            filename=name, storage_key=key, size=size, content_type=detected_type)
+        db.add(row); db.commit()
+        return {"id": row.id, "name": name, "url": f"/api/long-term/details/photos/{row.id}"}
+    except Exception:
+        db.rollback(); target.unlink(missing_ok=True); raise
+    finally:
+        await file.close()
+
+
+@router.get("/photos/{photo_id}")
+def get_photo(photo_id: int, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    row = db.query(LongTermPhoto).filter_by(id=photo_id, user_id=user.id).first()
+    if not row:
+        raise HTTPException(404, "图片不存在")
+    target = photo_storage() / row.storage_key
+    if not target.is_file():
+        raise HTTPException(404, "图片文件暂不可用")
+    return FileResponse(target, media_type=row.content_type,
+                        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
 CATEGORIES = ("reading", "fitness", "friends", "family", "investment", "writing", "work", "relaxation")
 Category = Literal["reading", "fitness", "friends", "family", "investment", "writing", "work", "relaxation"]
 Period = Literal["day", "week", "month", "quarter", "year"]
@@ -30,7 +102,7 @@ TOPICS = {
     "health": "健康与生活", "education": "教育与成长", "other": "其他主题", "unclassified": "未分类",
 }
 DEFAULT_EXPENSES = {
-    "food": "餐饮", "transport": "交通", "housing": "居住与水电",
+    "food": "餐饮", "snacks": "零食", "transport": "交通", "housing": "居住与水电",
     "shopping": "日用购物", "learning": "学习成长", "health": "医疗健康",
     "entertainment": "娱乐休闲", "social": "社交人情", "other": "其他", "unclassified": "历史未分类",
 }
@@ -104,6 +176,15 @@ class Expense(StrictModel):
     note: str = Field(default="", max_length=500)
     activity_id: str | None = Field(default=None, max_length=100)
     group_id: str | None = Field(default=None, max_length=100)
+    photo_ids: list[int] = Field(default_factory=list, max_length=100)
+
+
+class Meal(StrictModel):
+    id: str = Field(min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9_-]+$")
+    type: Literal["breakfast", "lunch", "dinner", "snack"]
+    text: str = Field(default="", max_length=2000)
+    expense_id: str | None = Field(default=None, max_length=100)
+    photo_ids: list[int] = Field(default_factory=list, max_length=100)
 
 
 class LegacyAttention(StrictModel):
@@ -115,6 +196,7 @@ class LedgerInput(StrictModel):
     revision: int = Field(ge=0, strict=True)
     activities: list[Activity] = Field(default_factory=list, max_length=2000)
     expenses: list[Expense] = Field(default_factory=list, max_length=300)
+    meals: list[Meal] = Field(default_factory=list, max_length=100)
     expense_confirmed: bool = False
     day_confirmed: bool = False
     category_confirmed: list[Category] = Field(default_factory=list, max_length=8)
@@ -140,8 +222,13 @@ class LedgerInput(StrictModel):
         ids = [a.id for a in self.activities]
         expense_ids = [e.id for e in self.expenses]
         nodes = [a.source_node_id for a in self.activities if a.source_node_id]
-        if len(set(ids)) != len(ids) or len(set(expense_ids)) != len(expense_ids) or len(set(nodes)) != len(nodes):
+        meal_ids = [m.id for m in self.meals]
+        if len(set(ids)) != len(ids) or len(set(expense_ids)) != len(expense_ids) or len(set(meal_ids)) != len(meal_ids) or len(set(nodes)) != len(nodes):
             raise ValueError("一条活动、账目或时间日志只能计入一次")
+        if any(m.expense_id and m.expense_id not in expense_ids for m in self.meals):
+            raise ValueError("饮食只能关联当天仍存在的消费账目")
+        if any(len(set(row.photo_ids)) != len(row.photo_ids) for row in [*self.meals, *self.expenses]):
+            raise ValueError("同一条记录的照片不能重复")
         if any(e.activity_id and e.activity_id not in ids for e in self.expenses):
             raise ValueError("关联活动必须属于当天，请先解除关联再移除活动")
         names = [item.name for item in self.attention_items]
@@ -188,7 +275,7 @@ class Target(StrictModel):
 
 class PreferencesInput(StrictModel):
     revision: int = Field(ge=0, strict=True)
-    expense_categories: list[ExpenseCategory] = Field(min_length=1, max_length=40)
+    expense_categories: list[ExpenseCategory] = Field(min_length=1, max_length=41)
     goals: list[Target] = Field(default_factory=list, max_length=40)
 
     @model_validator(mode="after")
@@ -214,7 +301,11 @@ def prefs(db, user_id):
         "expense_categories": [{"id": k, "name": v, "archived": False} for k, v in DEFAULT_EXPENSES.items()],
         "goals": [],
     }
-    return {**result, "revision": row.revision if row else 0, "topics": TOPICS}
+    categories = list(result["expense_categories"])
+    if not any(c["id"] == "snacks" for c in categories):
+        food = next((i for i, c in enumerate(categories) if c["id"] == "food"), -1)
+        categories.insert(food + 1, {"id": "snacks", "name": "零食", "archived": False})
+    return {**result, "expense_categories": categories, "revision": row.revision if row else 0, "topics": TOPICS}
 
 
 def calendar_bounds(period, anchor):
@@ -262,7 +353,7 @@ def read_range(db, user_id, start, end):
         available = {n.id: n for n in source}
         legacy = old.get(day)
         data = json.loads(row.payload_json) if row else {
-            "activities": [], "expenses": [], "expense_confirmed": bool(legacy),
+            "activities": [], "expenses": [], "meals": [], "expense_confirmed": bool(legacy),
             "day_confirmed": bool(legacy), "attention_items": [],
             "attention_confirmed": bool(legacy), "legacy_attention": [],
         }
@@ -297,6 +388,9 @@ def read_range(db, user_id, start, end):
         if "attention_confirmed" not in data:
             data["attention_confirmed"] = bool(data["attention_items"]) or bool(legacy)
         data.setdefault("legacy_attention", [])
+        data.setdefault("meals", [])
+        for expense in data["expenses"]:
+            expense.setdefault("photo_ids", [])
         data.setdefault("category_confirmed", list(CATEGORIES) if data.get("day_confirmed") else [])
         merge_reading(data, imported.get(day, []), Activity)
         merge_output(data, outputs.get(day, []), Activity)
@@ -322,7 +416,7 @@ def aggregate(days):
     counts = {k: 0 for k in CATEGORIES}
     reading = {k: {"seconds": 0, "count": 0} for k in ("fiction", "nonfiction", "unclassified")}
     topics, secondary, expenses, investments, projects, attention, books = {}, {}, {}, {}, {}, {}, {}
-    activities, transactions = [], []
+    activities, transactions, meals = [], [], []
     words = unplanned = old_attention = missing = duplicates = 0
     for day in days:
         for a in day["activities"]:
@@ -372,6 +466,7 @@ def aggregate(days):
             group[f'{e["kind"]}_cents'] += e["amount_cents"]
             group["net_cents"] += e["amount_cents"] * (-1 if e["kind"] == "refund" else 1)
             group["count"] += 1
+        meals.extend({**meal, "date": day["date"]} for meal in day.get("meals", []))
         for item in day["attention_items"]:
             attention[item["name"]] = attention.get(item["name"], 0) + item["minutes"]
         for item in day["legacy_attention"]:
@@ -389,6 +484,7 @@ def aggregate(days):
         "attention_by_name": attention,
         "attention_confirmed_days": sum(d["attention_confirmed"] for d in days),
         "source_missing_count": missing, "source_duplicate_count": duplicates, "activities": activities, "expenses": transactions,
+        "meals": meals, "meal_counts": {kind: sum(m["type"] == kind for m in meals) for kind in ("breakfast", "lunch", "dinner", "snack")},
         "activity_record_count": len(activities), "expense_record_count": len(transactions),
         "recorded_days": sum(d["recorded"] for d in days),
         "expense_confirmed_days": sum(d["expense_confirmed"] for d in days),
@@ -418,6 +514,15 @@ def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get
     nodes = {n["id"]: n for n in previous["nodes"]}
     existing = {a["id"]: a for a in previous["activities"]}
     data = body.model_dump(exclude={"revision", "legacy_attention"})
+    if "meals" not in body.model_fields_set:
+        data["meals"] = previous["meals"]
+    old_expense_photos = {e["id"]: e.get("photo_ids", []) for e in previous["expenses"]}
+    for expense in data["expenses"]:
+        if not expense["photo_ids"] and expense["id"] in old_expense_photos:
+            # Old clients have no photo field. Preserve only when omitted, not explicit removal.
+            incoming = next((e for e in body.expenses if e.id == expense["id"]), None)
+            if incoming is not None and "photo_ids" not in incoming.model_fields_set:
+                expense["photo_ids"] = old_expense_photos[expense["id"]]
     if "category_confirmed" not in body.model_fields_set:
         data["category_confirmed"] = [] if previous["day_confirmed"] and not body.day_confirmed else previous["category_confirmed"]
     if body.day_confirmed:
@@ -491,6 +596,17 @@ def save_day(body: LedgerInput, day: date = Query(...), user: User = Depends(get
             raise HTTPException(400, "消费分类不存在")
         if category["archived"] and old_expenses.get(expense["id"], {}).get("category") != expense["category"]:
             raise HTTPException(400, "停用的分类不能用于新账目，请选择有效分类")
+    photo_refs = [("meal", row["id"], photo_id) for row in data["meals"] for photo_id in row["photo_ids"]] + [
+        ("expense", row["id"], photo_id) for row in data["expenses"] for photo_id in row["photo_ids"]]
+    if len({photo_id for _, _, photo_id in photo_refs}) != len(photo_refs):
+        raise HTTPException(400, "一张照片只能关联一条饮食或消费记录")
+    if photo_refs:
+        photos = {p.id: p for p in db.query(LongTermPhoto).filter(
+            LongTermPhoto.user_id == user.id, LongTermPhoto.id.in_([p for _, _, p in photo_refs])).all()}
+        if any(photo_id not in photos or photos[photo_id].record_date != day or
+               photos[photo_id].owner_kind != kind or photos[photo_id].owner_id != owner_id
+               for kind, owner_id, photo_id in photo_refs):
+            raise HTTPException(400, "照片与当前账号、日期或记录不匹配")
     # Old clients may still submit the legacy alias; allow unchanged data and deletion only.
     old_attention = {(a["name"], a["minutes"]) for a in previous["legacy_attention"]}
     if any((a.name, a.minutes) not in old_attention for a in body.legacy_attention):

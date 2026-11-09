@@ -20,7 +20,7 @@ USER_TABLES = (
     models.DailyTodo, models.DailyTask, models.DailySchedule, models.ContentEditorDraft,
     models.FutureAction, models.Idea, models.TimeLogNode,
     models.LongTermDailyRecord, models.LongTermNodeCategory,
-    models.LongTermLedgerDay, models.LongTermPreferences, models.ReadingEntry,
+    models.LongTermLedgerDay, models.LongTermPreferences, models.LongTermPhoto, models.ReadingEntry,
     models.SelfTalkPlaybackLog, models.SelfTalk, models.AIAdviceSession,
     models.SelfTalkReminderSetting, models.SelfTalkReminderLog, models.AiCallLog,
     project_models.Goal, project_models.Project, project_models.ProjectStage,
@@ -83,6 +83,6 @@ def build_user_export_zip(db: Session, user: models.User) -> bytes:
         archive.writestr("README.txt", (
             "书然个人数据导出，含本账户业务表和已删除的历史行；JSON 数值以数据库原单位保存。\n"
             "不含密码、登录验证码、管理员资料或其他账户记录。\n"
-            "原始 EPUB、音频和成果附件不在本包中；正文、笔记、转写、反馈版本和文件元数据已导出。成果原文件可在对应反馈中下载。\n"
+            "原始 EPUB、音频、成果附件和饮食照片不在本包中；正文、笔记、转写、反馈版本和文件元数据已导出。附件和饮食照片原文件可在对应记录中查看。\n"
         ).encode("utf-8"))
     return output.getvalue()
