@@ -14,7 +14,7 @@ const schedule = index.slice(index.indexOf('<section id="schedule"'), index.inde
 assert(schedule.includes('id="scheduleList"'), 'Real schedule section must be present');
 const styles = [...index.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n')
   + ['app-tabbar.css','schedule-log.css','desktop-split.css','paper-shell.css','workspace.css'].map(n => read('static/css/' + n)).join('\n');
-const fixture = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${styles}</style></head><body class="workspace-layout"><main class="app-main">${schedule}</main><script>window.apiRequest=async(url,options)=>{const r=await fetch(url,options);const data=await r.json();if(!r.ok)throw new Error(data.detail);return data;};window.showMessage=text=>{window.lastMessage=text;};</script><script>${read('static/js/i18n.js')}</script><script>${read('static/js/daily-schedule.js')}</script></body></html>`;
+const fixture = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${styles}</style></head><body class="workspace-layout"><main class="app-main">${schedule}</main><script>window.apiRequest=async(url,options)=>{const r=await fetch(url,options);const data=await r.json();if(!r.ok)throw new Error(data.detail);return data;};window.showMessage=text=>{window.lastMessage=text;};</script><script>${read('static/js/i18n.js')}</script><script>${read('static/js/schedule-inline-editor.js')}</script><script>${read('static/js/daily-schedule.js')}</script></body></html>`;
 const task = (id, text, parent_id = null) => ({id,text,parent_id,completed:false,children:[],sort_order:id,flow_order:id,practice:{},color:null,note:''});
 const initialTitle = '国家助学金申请，12:00截止';
 let browser;
@@ -179,7 +179,15 @@ if (artifacts) fs.mkdirSync(artifacts, {recursive:true});
   await page.locator('#scheduleFlowBtn').click();
   check('查看流程不按新任务居上重排',await page.locator('#scheduleList .flow-task').first().getAttribute('data-task-id')!=='12');
   await page.locator('#scheduleFlowBtn').click();
-  check('完整反馈入口直接提示可记录实际结果',await row(12).locator('.flow-result-entry [data-act="feedback"]').innerText()==='记录实际结果、进展与原因 →');
+  check('完整反馈入口直接提示可记录实际结果并就地展开',await row(12).locator('.flow-result-entry [data-act="feedback"]').innerText()==='记录实际结果、进展与原因 ↓');
+  await row(12).locator('[data-act="expectation"]').click();
+  await row(12).locator('[data-inline-kind="expectation"]').waitFor();
+  check('真实日程入口就地展开预期内容',await row(12).locator('[data-inline-kind="expectation"]').count()===1);
+  check('手机宽度就地表单没有可见横向溢出',await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  await row(12).locator('[name="expected_result"]').fill('得到整理后的提纲');
+  await row(12).locator('[data-inline-close]').click();
+  await row(12).locator('[data-inline-kind="expectation"]').waitFor({state:'detached'});
+  check('收起后留在原任务且不重载页面',await row(12).count()===1&&await row(12).locator('[data-inline-kind="expectation"]').count()===0);
   await page.locator('#scheduleAddInput').fill('非法分钟');
   await page.locator('#scheduleAddMinutes').fill('61');
   const writesBefore=writes.length;

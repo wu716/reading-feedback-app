@@ -407,9 +407,10 @@
                 </div>
                 ${renderQuickAttributes(task)}
                 ${(task.expected_result || task.completion_basis || task.core_selected) ? `<p class="flow-task-intent">${task.core_selected ? '<strong>今日核心任务</strong> · ' : ''}${task.expected_result ? `预期结果：${escapeHtml(task.expected_result)}` : '预期结果未填写'}${task.completion_basis ? ` · 完成依据：${escapeHtml(task.completion_basis)}` : ''}</p>` : ''}
-                <div class="flow-result-entry"><button type="button" data-act="expectation">填写或修改预期结果与完成依据 →</button></div>
+                <div class="flow-result-entry"><button type="button" data-act="expectation">填写或修改预期结果与完成依据 ↓</button></div>
                 ${renderTimeFeedback(task)}
-                ${!task.children?.length ? '<div class="flow-result-entry"><button type="button" data-act="feedback">记录实际结果、进展与原因 →</button></div>' : ''}
+                ${!task.children?.length ? '<div class="flow-result-entry"><button type="button" data-act="feedback">记录实际结果、进展与原因 ↓</button></div>' : ''}
+                <div class="flow-inline-editor" data-inline-panel></div>
                 ${recorded}
                 ${renderTaskLaunch(task)}
                 ${renderSplitRow(task)}
@@ -553,6 +554,7 @@
         } else {
             list.innerHTML = data.tasks.map((task) => renderTask(task, false)).join('');
         }
+        globalThis.ShuranScheduleInline?.restore(id => list.querySelector(`[data-task-id="${id}"] [data-inline-panel]`));
         focusEditor();
         if (activeName && activeTask) {
             const input = list.querySelector(`[data-task-id="${activeTask}"] [name="${activeName}"]`);
@@ -984,6 +986,8 @@
             const focusFromAdd = document.activeElement === addButton;
             addButton.disabled = true;
             try {
+                const inlineNew=globalThis.ShuranScheduleInline?.readNew(currentDay());
+                if(inlineNew){newTaskExpected=inlineNew.expected_result;newTaskBasis=inlineNew.completion_basis;}
                 await addTask(submittedText, null, false, {
                     familiarity: newTaskFamiliarity,
                     difficulty: newTaskDifficulty,
@@ -994,6 +998,7 @@
                     expectedResult: newTaskExpected,
                     completionBasis: newTaskBasis,
                 });
+                globalThis.ShuranScheduleInline?.completeNew();
                 await apiRequest(`/api/editor-drafts/${encodeURIComponent('task-new:'+currentDay())}`,{method:'DELETE'}).catch(()=>{});
                 if (input && input.value === submittedText) input.value = '';
                 for (const id of ['scheduleAddHours', 'scheduleAddMinutes']) {
@@ -1033,8 +1038,7 @@
         document.getElementById('scheduleNewExpectation')?.addEventListener('click',async()=>{
             const draft={text:document.getElementById('scheduleAddInput')?.value||'',hours:document.getElementById('scheduleAddHours')?.value||'',minutes:document.getElementById('scheduleAddMinutes')?.value||'',expected_result:newTaskExpected,completion_basis:newTaskBasis,familiarity:newTaskFamiliarity,difficulty:newTaskDifficulty,importance:newTaskImportance,priority:newTaskPriority,color:newTaskColor};
             await apiRequest(`/api/editor-drafts/${encodeURIComponent('task-new:'+currentDay())}`,{method:'PUT',body:JSON.stringify({content:draft})});
-            const back=new URL(location.href);back.searchParams.set('schedule_date',currentDay());back.hash='schedule';
-            const url=new URL('/static/content-editor.html',location.origin);url.searchParams.set('type','expectation');url.searchParams.set('day',currentDay());url.searchParams.set('return',back.href);location.href=url.href;
+            await globalThis.ShuranScheduleInline.open({kind:'expectation',id:null,day:currentDay(),root:document.getElementById('scheduleNewExpectationPanel'),task:{expected_result:newTaskExpected,completion_basis:newTaskBasis},newTask:values=>{newTaskExpected=values.expected_result;newTaskBasis=values.completion_basis;document.getElementById('scheduleNewExpectationStatus').textContent='已填写预期内容';}});
         });
         document.getElementById('scheduleCoreChoices')?.addEventListener('change',async e=>{
             if(!e.target.matches('[data-core-id]'))return;
@@ -1097,8 +1101,10 @@
                     await apiRequest(`/api/projects/practice/tasks/daily/${id}/attributes`, {method:'PATCH',body:JSON.stringify({difficulty})});
                     await load(currentDay());
                 } else if (act === 'expectation') {
-                    const back=new URL(location.href);back.searchParams.set('schedule_date',currentDay());back.hash='schedule';
-                    const url=new URL('/static/content-editor.html',location.origin);url.searchParams.set('type','expectation');url.searchParams.set('id',id);url.searchParams.set('day',currentDay());url.searchParams.set('return',back.href);location.href=url.href;
+                    const task=flatten(data.tasks||[],[]).find(item=>item.id===id);
+                    await globalThis.ShuranScheduleInline.open({kind:'expectation',id,day:currentDay(),root:article.querySelector('[data-inline-panel]'),task,onSaved:()=>load(currentDay())});
+                } else if (act === 'feedback' && actEl.closest('.flow-result-entry')) {
+                    await globalThis.ShuranScheduleInline.open({kind:'feedback',id,day:currentDay(),root:article.querySelector('[data-inline-panel]'),onSaved:()=>load(currentDay())});
                 } else if (act === 'practice' || act === 'feedback' || act === 'practice-attributes') {
                     await globalThis.ShuranPractice?.openTask('daily',id,act==='feedback'?'feedback':act==='practice-attributes'?'attributes':'rehearsal');
                 } else if (act === 'delete') {

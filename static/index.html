@@ -3456,7 +3456,7 @@
     </style>
     <link rel="stylesheet" href="/static/css/desktop-split.css?v=20261017paper1">
     <link rel="stylesheet" href="/static/css/paper-shell.css?v=20261025someday3">
-    <link rel="stylesheet" href="/static/css/workspace.css?v=20261108stage2a">
+    <link rel="stylesheet" href="/static/css/workspace.css?v=20261109inline1">
     <link rel="stylesheet" href="/static/css/account.css?v=20261026megroupfix1">
     <link rel="stylesheet" href="/static/css/long-term.css?v=20261108stage2a">
     <link rel="stylesheet" href="/static/css/mobile-review.css?v=20261108stage1">
@@ -3468,7 +3468,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261026megroupfix1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.59';
+            window.SHURAN_VERSION = '2.0.60';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -3717,7 +3717,8 @@
                             <div class="flow-duration-parts"><label><input type="number" id="scheduleAddHours" min="0" max="24" step="1" inputmode="numeric" aria-label="预计小时">小时</label><label><input type="number" id="scheduleAddMinutes" min="0" max="59" step="1" inputmode="numeric" aria-label="预计分钟">分钟</label></div>
                         </div>
                     </div>
-                    <div class="flow-add-extra"><button type="button" id="scheduleNewExpectation" class="flow-ghost-btn">填写这项任务的预期结果与完成依据 →</button><span id="scheduleNewExpectationStatus"></span></div>
+                    <div class="flow-add-extra"><button type="button" id="scheduleNewExpectation" class="flow-ghost-btn">填写这项任务的预期结果与完成依据 ↓</button><span id="scheduleNewExpectationStatus"></span></div>
+                    <div id="scheduleNewExpectationPanel" class="flow-inline-editor"></div>
                 </div>
                 <div id="scheduleList" class="home-schedule-list"></div>
                 <section class="schedule-core" id="scheduleCore"><h2>选择今日核心任务</h2><p><strong>核心任务是今天必须完成的事。</strong>先写下今天想做、要做的任务，再从中选择；数量不限，之后可以调整。</p><div id="scheduleCoreChoices"></div></section>
@@ -7075,7 +7076,8 @@
     <script src="/static/js/start-conditions.js?v=20261108stage2a"></script>
     <link rel="stylesheet" href="/static/css/schedule-projects.css?v=20261025stageday1">
     <script src="/static/js/schedule-projects.js?v=20261025stageday1"></script>
-    <script src="/static/js/daily-schedule.js?v=20261108stage2a"></script>
+    <script src="/static/js/schedule-inline-editor.js?v=20261109inline1"></script>
+    <script src="/static/js/daily-schedule.js?v=20261109inline1"></script>
     <script src="/static/js/core-review.js?v=20261108stage2a"></script>
     <script src="/static/js/future-actions.js?v=20261025someday3"></script>
     <link rel="stylesheet" href="/static/css/work-links.css?v=20261025worklink1">
