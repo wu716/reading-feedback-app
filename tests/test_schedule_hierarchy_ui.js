@@ -168,10 +168,20 @@ if (artifacts) fs.mkdirSync(artifacts, {recursive:true});
   await page.locator('#scheduleAddInput').fill('刚写的任务');
   await page.locator('#scheduleAddHours').fill('1');
   await page.locator('#scheduleAddMinutes').fill('30');
+  await page.locator('[data-new-act="fam"][data-value="unfamiliar"]').click();
+  await page.locator('[data-new-act="importance"][data-value="important"]').click();
   await page.locator('#scheduleAddBtn').click();
   await page.waitForFunction(()=>document.querySelector('#scheduleList .flow-task-text')?.textContent==='刚写的任务');
+  await page.waitForFunction(()=>!document.querySelector('#scheduleAddBtn').disabled);
   check('新任务居上且小时分钟保存为总分钟',writes.at(-1).body.estimated_minutes===90
     &&await page.locator('#scheduleList .flow-task').first().getAttribute('data-task-id')==='12');
+  check('未打开预期编辑器也能完成添加并清空输入',await page.locator('#scheduleAddInput').inputValue()===''
+    &&await page.locator('#scheduleAddHours').inputValue()===''
+    &&await page.locator('#scheduleAddMinutes').inputValue()===''
+    &&!await page.evaluate(()=>window.lastMessage));
+  check('本次属性已保存且输入区属性复位',writes.at(-1).body.familiarity==='unfamiliar'
+    &&writes.at(-1).body.importance==='important'
+    &&await page.locator('#scheduleAddRow [aria-pressed="true"]').count()===0);
   await page.evaluate(()=>window.loadDailySchedule());
   check('刷新后新任务仍在普通清单最上方',await page.locator('#scheduleList .flow-task').first().getAttribute('data-task-id')==='12');
   await page.locator('#scheduleCoreChoices [data-core-id="12"]').check();
@@ -188,6 +198,33 @@ if (artifacts) fs.mkdirSync(artifacts, {recursive:true});
   await row(12).locator('[data-inline-close]').click();
   await row(12).locator('[data-inline-kind="expectation"]').waitFor({state:'detached'});
   check('收起后留在原任务且不重载页面',await row(12).count()===1&&await row(12).locator('[data-inline-kind="expectation"]').count()===0);
+  // Adding must finish the composer lifecycle, not merely show a returned task.
+  for (const scenario of ['enter','open-new','closed-new','existing-task']) {
+    const text='添加状态 '+scenario;
+    await page.locator('#scheduleAddInput').fill(text);
+    if (scenario==='open-new'||scenario==='closed-new') {
+      await page.locator('#scheduleNewExpectation').click();
+      await page.locator('#scheduleNewExpectationPanel [name="expected_result"]').fill('完成 '+scenario);
+      if(scenario==='closed-new')await page.locator('#scheduleNewExpectationPanel [data-inline-close]').click();
+    } else if(scenario==='existing-task') {
+      await row(12).locator('[data-act="expectation"]').click();
+      await row(12).locator('[name="expected_result"]').fill('已有任务的未提交草稿');
+    }
+    const createsBefore=writes.filter(w=>w.path==='/api/schedule/tasks'&&w.method==='POST').length;
+    if(scenario==='enter')await page.locator('#scheduleAddInput').press('Enter');
+    else await page.locator('#scheduleAddBtn').click();
+    await page.waitForFunction(value=>document.querySelector('#scheduleList .flow-task-text')?.textContent===value,text);
+    await page.waitForFunction(()=>!document.querySelector('#scheduleAddBtn').disabled);
+    check(scenario+' 添加只创建一条且成功后清空输入，无错误提示',writes.filter(w=>w.path==='/api/schedule/tasks'&&w.method==='POST').length===createsBefore+1
+      &&await page.locator('#scheduleAddInput').inputValue()===''&&!await page.evaluate(()=>window.lastMessage));
+    if(scenario==='open-new'||scenario==='closed-new') {
+      check(scenario+' 预期内容随任务保存，清空新任务编辑区',writes.at(-1).body.expected_result==='完成 '+scenario
+        &&await page.locator('#scheduleNewExpectationPanel form').count()===0);
+    } else if(scenario==='existing-task') {
+      check('添加新任务保留已有任务的编辑草稿',await row(12).locator('[name="expected_result"]').inputValue()==='已有任务的未提交草稿');
+      await row(12).locator('[data-inline-close]').click();
+    }
+  }
   await page.locator('#scheduleAddInput').fill('非法分钟');
   await page.locator('#scheduleAddMinutes').fill('61');
   const writesBefore=writes.length;

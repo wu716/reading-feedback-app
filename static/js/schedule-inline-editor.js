@@ -118,7 +118,7 @@
     active.status = active.form.querySelector('[role="status"]');
   }
   function completeNew() {
-    if (active?.id != null) return;
+    if (!active || active.id != null) return;
     clearTimeout(active.timer);
     active.root.innerHTML = '';
     active = null;
