@@ -7,6 +7,18 @@
   const periods={day:'日报',week:'周报',month:'月报',quarter:'季度报',year:'年报'};
   const states={pending:'待提交',overdue:'已到期',submitted:'已提交',accepted:'检查通过',needs_changes:'待补充',skipped:'已跳过'};
   const time=s=>{const m=Math.round(s/60);return m>=60?Math.floor(m/60)+' 时 '+m%60+' 分':m+' 分';};
+  async function downloadReport(id,format,name) {
+    const response=await fetch(`/api/feedback/reports/${id}/download?format=${format}`,{headers:{Authorization:'Bearer '+localStorage.getItem('authToken')}});
+    if(!response.ok){const detail=await response.json().catch(()=>({}));throw new Error(typeof detail.detail==='string'?detail.detail:'下载失败，请重新登录或稍后重试');}
+    const blob=await response.blob(),filename=`书然-${name}.${format}`;
+    if(globalThis.ShuranNative?.saveReportExport){
+      const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=()=>reject(new Error('文件读取失败'));reader.readAsDataURL(blob);});
+      globalThis.ShuranNative.saveReportExport(filename,format==='pdf'?'application/pdf':'text/plain',base64);
+      return;
+    }
+    const url=URL.createObjectURL(blob),link=document.createElement('a');
+    link.href=url;link.download=`书然-${name}.${format}`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
   function chart(points,color,title,currency=false) {
     const values=points.map(p=>p.value),known=values.filter(v=>v!==null),max=Math.max(1,...known),w=300,h=84,scale=currency?100:60;
     let segments=[],segment=[];
@@ -31,6 +43,11 @@
     const items=[...(r.books||[])].sort((a,b)=>b.seconds-a.seconds),max=Math.max(1,...items.map(b=>b.seconds));
     return `<section class="fb-report-section"><h3>每本书的阅读投入</h3>${items.map(b=>`<details class="fb-book"><summary><span>${esc(b.title)}<small>${esc(b.source?.label||'手动补记')} · ${b.dates.length} 天</small></span><span class="fb-book-track"><i style="width:${b.seconds/max*100}%"></i></span><strong>${time(b.seconds)}</strong></summary><p class="fb-hint">${b.source?'来源：'+esc(b.source.instance_id)+' · 书籍 '+esc(b.source.book_id):'手动补记按书名汇总；同名书的同步来源保持独立。'}</p><div class="fb-date-links">${b.dates.map(d=>`<button type="button" data-day="${d}">${d}</button>`).join('')}</div></details>`).join('')||'<p class="fb-empty">本周期尚无逐书阅读记录。可手动填写书名，或关联知间接收逐日明细。</p>'}</section>`;
   }
+  function dailyTasks(r) {
+    if(r.period!=='day')return '';
+    if(!Array.isArray(r.daily_tasks))return '<section class="fb-report-section"><h3>今日任务与核心任务</h3><p class="fb-hint">这一历史报告版本未收录日程任务。</p></section>';
+    return `<section class="fb-report-section"><h3>今日任务与核心任务</h3>${r.daily_tasks.map(t=>`<article class="fb-project-report fb-task-report"><strong>${esc(t.title)}</strong><p>日程状态：${t.completed?'已完成':'未完成'}${t.core_selected?' · 今日核心任务：'+({true:'已完成',false:'未完成',null:'待核对'}[String(t.core_review_completed)]):''}</p><p>预期结果：${esc(t.expected_result||'未填写')}<br>完成依据：${esc(t.completion_basis||'未填写')}</p>${t.core_selected?`<p>回看原因：${esc(t.core_review_reason||'未填写（选填）')}</p>`:''}</article>`).join('')||'<p class="fb-hint">这一天没有已保存的日程任务。</p>'}</section>`;
+  }
   function projects(r) {
     const nodes=(r.projects||[]).flatMap(p=>p.occurrences),due=nodes.filter(n=>n.status!=='skipped'),submitted=due.filter(n=>n.latest),accepted=due.filter(n=>n.status==='accepted');
     const title=r.period==='year'?'全年项目成果目录':r.period==='quarter'?'阶段推进与里程碑':'项目推进';
@@ -44,8 +61,8 @@
   function render(r,root) {
     root.querySelector('[data-feedback-report]')?.remove();
     const section=document.createElement('div');section.dataset.feedbackReport='';section.className='fb-report';
-    section.innerHTML=`<div class="fb-report-intro"><p class="fb-eyebrow">回看投入，也看发生的变化</p><h2>${periods[r.period]} · ${r.start} — ${r.effective_end||r.end}</h2><p>当前版本 ${r.snapshot?.revision||1} · 补记后自动更新，历史版本保留。</p><button type="button" class="fb-text" data-report-versions>查看报告版本</button><div data-report-history></div></div>${projects(r)}${r.period==='day'?books(r)+evolution(r):r.period==='month'?coverage(r)+evolution(r)+books(r):r.period==='week'?evolution(r)+coverage(r)+books(r):evolution(r)+books(r)+coverage(r)}`;
-    section.querySelectorAll('.fb-project-report').forEach((node,i)=>{
+    section.innerHTML=`<div class="fb-report-intro"><p class="fb-eyebrow">回看投入，也看发生的变化</p><h2>${periods[r.period]} · ${r.start} — ${r.effective_end||r.end}</h2><p>当前版本 ${r.snapshot?.revision||1} · 补记后自动更新，历史版本保留。</p><div class="fb-report-downloads"><button type="button" class="fb-text" data-report-download="pdf" data-report-id="${r.snapshot?.id||''}">下载 PDF 阅读版</button><button type="button" class="fb-text" data-report-download="txt" data-report-id="${r.snapshot?.id||''}">下载 TXT 交给 AI</button></div><p class="fb-hint">下载的是服务器已保存的这一版；未保存的填写内容不在其中。</p><button type="button" class="fb-text" data-report-versions>查看报告版本</button><div data-report-history></div></div>${dailyTasks(r)}${projects(r)}${r.period==='day'?books(r)+evolution(r):r.period==='month'?coverage(r)+evolution(r)+books(r):r.period==='week'?evolution(r)+coverage(r)+books(r):evolution(r)+books(r)+coverage(r)}`;
+    section.querySelectorAll('.fb-project-report:not(.fb-task-report)').forEach((node,i)=>{
       const p=r.projects[i],names={preparation:'筹备',started:'开始／重新开始',delivered:'项目交付',accepted:'项目验收通过'};
       if(p.transitions?.length)node.insertAdjacentHTML('beforeend',`<ol class="fb-milestones">${p.transitions.map(t=>`<li><time>${new Date(t.date).toLocaleDateString('zh-CN',{timeZone:'Asia/Shanghai'})}</time><strong>${names[t.state]||esc(t.state)}</strong><p>${esc(t.reason)}</p></li>`).join('')}</ol>`);
       if(p.updates?.length)node.insertAdjacentHTML('beforeend',`<details open><summary>推进、卡点与下一步</summary>${p.updates.map(u=>`<p><button type="button" class="fb-text" data-day="${u.date}">${u.date}</button> · ${esc(u.title)}<br>推进：${esc(u.advanced||'待反馈')}<br>卡点：${esc(u.blocker||'未填写')}<br>下一步：${esc(u.next_step||'未填写')}</p>`).join('')}</details>`);
@@ -57,13 +74,15 @@
       if(b.dataset.trend){section.querySelectorAll('[data-trend-scope]').forEach(el=>el.hidden=el.dataset.trendScope!==b.dataset.trend);section.querySelectorAll('[data-trend]').forEach(el=>el.setAttribute('aria-pressed',String(el===b)));section.querySelector('[data-axis-inside]').hidden=b.dataset.trend!=='inside';section.querySelector('[data-axis-history]').hidden=b.dataset.trend!=='history';}
       if(b.hasAttribute('data-report-versions')){
         const list=section.querySelector('[data-report-history]');b.disabled=true;
-        try {const data=await ShuranFeedbackDaily.request(`/feedback/reports?period=${r.period}&anchor=${r.start}`);list.innerHTML=data.items.map(v=>`<button type="button" class="fb-text" data-report-version="${v.id}">版本 ${v.revision} · ${new Date(v.generated_at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}</button>`).join('');}
+        try {const data=await ShuranFeedbackDaily.request(`/feedback/reports?period=${r.period}&anchor=${r.start}`);list.innerHTML=data.items.map(v=>`<div class="fb-report-version"><span>版本 ${v.revision} · ${new Date(v.generated_at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})}</span><button type="button" class="fb-text" data-report-download="pdf" data-report-id="${v.id}" data-report-revision="${v.revision}">PDF</button><button type="button" class="fb-text" data-report-download="txt" data-report-id="${v.id}" data-report-revision="${v.revision}">TXT</button></div>`).join('');}
         catch(err){list.textContent=err.message;}finally{b.disabled=false;}
       }
-      if(b.dataset.reportVersion){
+      if(b.dataset.reportDownload){
         const list=section.querySelector('[data-report-history]');
-        try {const data=await ShuranFeedbackDaily.request('/feedback/reports/'+b.dataset.reportVersion);const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=`书然-${periods[r.period]}-${r.start}-版本${data.revision}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
+        b.disabled=true;
+        try {await downloadReport(b.dataset.reportId,b.dataset.reportDownload,`${periods[r.period]}-${r.start}-版本${b.dataset.reportRevision||r.snapshot?.revision||1}`);}
         catch(err){list.textContent=err.message;}
+        finally{b.disabled=false;}
       }
     });
     if(r.period==='day')section.querySelector('[data-trend=history]')?.click();

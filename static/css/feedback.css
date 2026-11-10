@@ -57,6 +57,7 @@
 .fb-node-body [data-file-list]{font-size:.8rem;overflow-wrap:anywhere}.fb-node-body [data-file-list] span{display:block}
 .fb-daily details>summary,.fb-report details>summary{cursor:pointer}.fb-upcoming>summary,.fb-past>summary{padding:12px 0;color:#56788c}
 .fb-report-intro{padding:24px;border-radius:15px;background:#eaf0f2;margin:20px 0 28px}.fb-report-intro h2{font-size:1.25rem;margin:4px 0 10px}.fb-report-intro p{font-size:.85rem;margin:6px 0}
+.fb-report-downloads,.fb-report-version{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.fb-report-version{padding:6px 0;border-top:1px solid #d9dedc}.fb-report-version span{margin-right:auto;font-size:.85rem}
 .fb-report-section{padding:24px 0;border-bottom:1px solid #dce1dc}.fb-report-section h3{font-size:1.1rem;margin:0 0 15px}.fb-report-section .fb-heading>span{font-size:.8rem}
 .fb-trends{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}
 .fb-trend-card{border:1px solid #dde3df;background:#fbfcf8;border-radius:12px;padding:15px;min-width:0}.fb-trend-card h4{font-size:.9rem}.fb-trend-card strong{font-size:.85rem}.fb-trend-card svg{display:block;width:100%;height:auto}

@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user
 from app.database import get_db
-from app.models import LongTermDailyRecord, LongTermLedgerDay, LongTermNodeCategory, LongTermPreferences, LongTermPhoto, TimeLogNode, User
+from app.models import DailyTask, LongTermDailyRecord, LongTermLedgerDay, LongTermNodeCategory, LongTermPreferences, LongTermPhoto, TimeLogNode, User
 from app.plans import PAID_PLANS, effective_plan_key
 from app.routers.time_log import beijing_today
 from app.reader_projection import source_days, merge as merge_reading
@@ -777,6 +777,14 @@ def report_for_user(db: Session, user: User, period: Period, anchor: date, notif
     result = report_payload(db, user.id, period, anchor)
     from app.practice_service import training_report
     result["practice"] = training_report(db, user.id, result["start"], result["end"])
+    if period == "day":
+        tasks = db.query(DailyTask).filter(DailyTask.user_id == user.id, DailyTask.task_date == anchor,
+                                           DailyTask.deleted_at.is_(None)).order_by(DailyTask.sort_order, DailyTask.id).all()
+        result["daily_tasks"] = [{"id": task.id, "title": task.text, "completed": bool(task.completed),
+                                  "expected_result": task.expected_result, "completion_basis": task.completion_basis,
+                                  "core_selected": bool(task.core_selected),
+                                  "core_review_completed": task.core_review_completed,
+                                  "core_review_reason": task.core_review_reason} for task in tasks]
     from app.feedback_service import project_progress, snapshot_report
     result["projects"] = project_progress(db, user.id, result["start"], result["effective_end"]) if result["effective_end"] else []
     result["evolution"] = {"trend": [{k: t[k] for k in ("label", "total_seconds", "counts", "category_confirmed_days", "investment_cents", "day_confirmed_days", "activity_record_count", "recorded_days")} for t in result["trend"]],

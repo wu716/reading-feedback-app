@@ -20,7 +20,7 @@ from sqlalchemy.pool import StaticPool
 from app import project_models as pm, feedback_service as svc
 from app.auth import get_current_active_user, get_current_user
 from app.database import Base, get_db
-from app.models import User, SelfTalkReminderSetting, SelfTalkReminderLog, LongTermLedgerDay
+from app.models import DailyTask, User, SelfTalkReminderSetting, SelfTalkReminderLog, LongTermLedgerDay
 from app.stage_schedule_models import DailyProjectPlan  # register schedule links in the isolated fixture
 from app.routers import projects, long_term_details, project_feedback, reader_sync, self_talk_reminders
 from app.self_talk.reminder_service import ReminderService
@@ -567,6 +567,44 @@ def test_stored_report_keeps_current_subscription_boundary(ctx):
     old = c.get(f'/api/feedback/reports/{report["snapshot"]["id"]}').json()['report']
     assert old['premium_locked'] and old['evolution'] is None
     assert old['activities'] == [] and old['comparison'] is None
+
+
+def test_saved_report_readable_downloads_respect_owner_version_and_plan(ctx):
+    c, factory, _ = ctx
+    with factory() as db:
+        db.add(DailyTask(user_id=1, task_date=DAY, text='整理材料', completed=False,
+                         expected_result='形成提纲', completion_basis='五个问题', core_selected=True,
+                         core_review_completed=None))
+        db.commit()
+    first = c.get(f'/api/long-term/details/report?period=day&anchor={DAY}').json()
+    first_id = first['snapshot']['id']
+    saved = c.put(f'/api/long-term/details/day?day={DAY}', json={
+        'revision': 0, 'day_confirmed': True, 'expense_confirmed': True,
+        'activities': [{'id': 'run', 'category': 'fitness', 'title': '散步', 'seconds': 1200}],
+        'expenses': [{'id': 'snack', 'category': 'unclassified', 'amount_cents': 1200, 'note': '零食'}],
+    })
+    assert saved.status_code == 200, saved.text
+    later = c.get(f'/api/long-term/details/report?period=day&anchor={DAY}').json()
+    new_id = later['snapshot']['id']
+    assert new_id != first_id
+    old_text = c.get(f'/api/feedback/reports/{first_id}/download?format=txt')
+    new_text = c.get(f'/api/feedback/reports/{new_id}/download?format=txt')
+    assert old_text.status_code == new_text.status_code == 200
+    assert '散步' not in old_text.text and '散步' in new_text.text
+    assert '未填写或未核对' in old_text.text
+    assert '今日核心任务：待核对' in old_text.text and '形成提纲' in old_text.text
+    assert '消费净支出：12.00 元' in new_text.text
+    assert new_text.headers['content-type'].startswith('text/plain')
+    assert c.get(f'/api/feedback/reports/{new_id}/download?format=txt', headers={'X-Test-User': '2'}).status_code == 404
+    pdf = c.get(f'/api/feedback/reports/{new_id}/download?format=pdf')
+    assert pdf.status_code == 200 and pdf.content.startswith(b'%PDF')
+    assert pdf.headers['content-type'] == 'application/pdf'
+    with factory() as db:
+        user = db.get(User, 1); user.plan, user.plan_expires_at = 'free', None; db.commit()
+    free_text = c.get(f'/api/feedback/reports/{new_id}/download?format=txt')
+    assert free_text.status_code == 200 and '活动 · 散步' in free_text.text
+    free_view = c.get(f'/api/feedback/reports/{new_id}').json()['report']
+    assert free_view['activities'] == []
 
 
 def test_repeated_reviews_keep_all_reasons_in_node_history(ctx):

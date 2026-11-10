@@ -20,6 +20,11 @@ public class ReminderJsBridge {
     }
 
     @JavascriptInterface
+    public void saveReportExport(String filename, String mimeType, String base64) {
+        activity.saveReportExport(filename, mimeType, base64);
+    }
+
+    @JavascriptInterface
     public boolean hasPermission() {
         return ReminderNotifications.areEnabled(activity);
     }

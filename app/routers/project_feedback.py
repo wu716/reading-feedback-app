@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import func, or_, exists
 from sqlalchemy.orm import Session
@@ -248,6 +248,24 @@ def saved_report(report_id: int, user: User = Depends(get_current_active_user), 
     from app.routers.long_term_details import apply_report_visibility
     apply_report_visibility(result, effective_plan_key(user) in PAID_PLANS)
     return {"report": result, "revision": row.revision, "generated_at": row.generated_at.isoformat() + "Z"}
+
+
+@router.get("/reports/{report_id}/download")
+def download_report(report_id: int, format: Literal["txt", "pdf"],
+                    user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    saved = saved_report(report_id, user=user, db=db)
+    from app.report_download import as_pdf, as_text
+    report, revision = saved["report"], saved["revision"]
+    if report["period"] == "day":
+        original = json.loads(owned(db, FeedbackReport, report_id, user.id).payload_json)
+        for key in ("activities", "expenses", "meals", "attention_by_name"):
+            report[key] = original.get(key, [] if key != "attention_by_name" else {})
+        report["personal_details_included"] = True
+    name = f"shuran-{report['period']}-{report['start']}-v{revision}.{format}"
+    body = as_pdf(report, revision) if format == "pdf" else as_text(report, revision).encode("utf-8-sig")
+    return Response(body, media_type="application/pdf" if format == "pdf" else "text/plain; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"',
+                             "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
 
 
 @router.get("/deliveries")

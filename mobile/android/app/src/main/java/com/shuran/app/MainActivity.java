@@ -13,6 +13,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.util.Base64;
+import android.widget.Toast;
 import android.view.KeyEvent;
 import android.view.View;
 import android.webkit.CookieManager;
@@ -28,6 +30,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import java.io.OutputStream;
 
 import androidx.core.content.ContextCompat;
 
@@ -35,11 +38,13 @@ public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int AUDIO_PERMISSION_REQUEST = 1002;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1003;
+    private static final int REPORT_SAVE_REQUEST = 1004;
 
     private WebView webView;
     private ProgressBar progressBar;
     private LinearLayout errorView;
     private ValueCallback<Uri[]> filePathCallback;
+    private byte[] pendingReportBytes;
     private PermissionRequest pendingPermissionRequest;
     private long lastBackHandledAt;
     private boolean notificationPermissionRequested;
@@ -448,6 +453,20 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REPORT_SAVE_REQUEST) {
+            byte[] content = pendingReportBytes;
+            pendingReportBytes = null;
+            if (resultCode == RESULT_OK && data != null && data.getData() != null && content != null) {
+                try (OutputStream out = getContentResolver().openOutputStream(data.getData())) {
+                    if (out == null) throw new IllegalStateException("保存位置不可写");
+                    out.write(content);
+                    Toast.makeText(this, "日报已保存", Toast.LENGTH_SHORT).show();
+                } catch (Exception error) {
+                    Toast.makeText(this, "日报保存失败，请重试", Toast.LENGTH_LONG).show();
+                }
+            }
+            return;
+        }
         if (requestCode == AppUpdater.REQUEST_INSTALL_UNKNOWN) {
             if (appUpdater != null) {
                 appUpdater.onInstallPermissionResult();
@@ -460,6 +479,27 @@ public class MainActivity extends Activity {
         Uri[] uris = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
         filePathCallback.onReceiveValue(uris);
         filePathCallback = null;
+    }
+
+    public void saveReportExport(String filename, String mimeType, String encoded) {
+        runOnUiThread(() -> {
+            if (pendingReportBytes != null) return;
+            if (!("application/pdf".equals(mimeType) || "text/plain".equals(mimeType))
+                    || filename == null || !filename.matches("[\\p{L}\\p{N}._-]{1,120}")) return;
+            try {
+                byte[] content = Base64.decode(encoded, Base64.DEFAULT);
+                if (content.length == 0 || content.length > 10 * 1024 * 1024) throw new IllegalArgumentException();
+                pendingReportBytes = content;
+                Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType(mimeType);
+                intent.putExtra(Intent.EXTRA_TITLE, filename);
+                startActivityForResult(intent, REPORT_SAVE_REQUEST);
+            } catch (Exception error) {
+                pendingReportBytes = null;
+                Toast.makeText(this, "无法保存日报，请重试", Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     @Override

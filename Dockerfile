@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     curl \
     ca-certificates \
+    fonts-wqy-microhei \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件
