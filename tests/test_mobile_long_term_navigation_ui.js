@@ -96,7 +96,11 @@ let browser;
   check('滚动时顶部导航继续吸顶',await page.locator('.app-header').evaluate(el=>Math.abs(el.getBoundingClientRect().top)<1));
   await page.locator('#reminderBellBtn').click();
   check('吸顶导航中的铃铛仍可展开',await page.locator('#reminderDropdown').isVisible());
-  check('消息浮层位于导航下方',await page.evaluate(()=>document.getElementById('reminderDropdown').getBoundingClientRect().top>=document.querySelector('.app-header').getBoundingClientRect().bottom));
+  check('消息浮层从顶部展开且无导航白条',await page.evaluate(()=>{
+    const dropdown=document.getElementById('reminderDropdown').getBoundingClientRect();
+    const header=document.querySelector('.app-header');
+    return dropdown.top<=12&&getComputedStyle(header).backgroundColor==='rgba(0, 0, 0, 0)';
+  }));
   await page.locator('#reminderDropdownClose').click();
   check('消息收起后恢复页面滚动',!await page.locator('#reminderDropdown').isVisible()&&await page.evaluate(()=>document.body.style.overflow===''));
   await page.evaluate(()=>scrollTo(0,0));
