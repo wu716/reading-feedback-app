@@ -3468,7 +3468,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261026megroupfix1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.63';
+            window.SHURAN_VERSION = '2.0.64';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -3905,6 +3905,14 @@
                         <div class="me-row me-row-static">
                             <div class="me-row-main"><label class="me-row-title" for="recordReminderTime" data-i18n="me.reminders.recordTime">每天提醒时间（北京时间）</label></div>
                             <input type="time" class="me-control" id="recordReminderTime" value="21:00" aria-label="每日记录提醒时间" data-i18n-aria-label="me.reminders.recordTime" data-time-variant="shuran" data-time-loop="true" data-time-presets="07:00,12:00,18:00,21:00" required>
+                        </div>
+                    </div>
+                    <div class="reminder-subsection report-reminder-settings">
+                        <h5 data-i18n="me.reminders.reportGroup">日报</h5>
+                        <p class="me-hint" data-i18n="me.reminders.reportHint">日报生成后，可单独接收系统和邮件提醒。手机系统通知中的“日报”与其他提醒分开；应用内铃铛仍汇总消息。</p>
+                        <div class="me-row me-row-static">
+                            <div class="me-row-main"><label class="me-row-title" for="reportReminderSwitch" data-i18n="me.reminders.reportEnable">日报生成提醒</label></div>
+                            <label class="me-switch"><input type="checkbox" id="reportReminderSwitch" aria-label="日报生成提醒" data-i18n-aria-label="me.reminders.reportEnable"><span class="me-switch-ui"></span></label>
                         </div>
                     </div>
                 <div class="me-notification-channels">
@@ -4546,7 +4554,7 @@
         </div>
     </div>
 
-    <script src="/static/js/i18n.js?v=20261108stage1"></script>
+    <script src="/static/js/i18n.js?v=20261112notifications1"></script>
     <script>
         // API 基础配置
         const API_BASE = window.location.origin;
@@ -6780,7 +6788,7 @@
         }
         
         // 加载提醒设置
-        const reminderControlIds = ['reminderMasterSwitch', 'reminderBrowserSwitch', 'reminderEmailSwitch', 'recordReminderSwitch', 'recordReminderTime'];
+        const reminderControlIds = ['reminderMasterSwitch', 'reminderBrowserSwitch', 'reminderEmailSwitch', 'recordReminderSwitch', 'recordReminderTime', 'reportReminderSwitch'];
         let reminderSettingsLoaded = false;
         let reminderSaveRevision = 0;
         let reminderSaveQueue = Promise.resolve();
@@ -6821,6 +6829,7 @@
             document.getElementById('reminderBrowserSwitch').checked = settings.browser_notification !== false;
             document.getElementById('reminderEmailSwitch').checked = settings.email_notification !== false;
             document.getElementById('recordReminderSwitch').checked = !!settings.record_reminder_enabled;
+            document.getElementById('reportReminderSwitch').checked = !!settings.report_reminder_enabled;
             document.getElementById('recordReminderTime').value = settings.record_reminder_time || '21:00';
             updateReminderSwitchStates();
             window.reminderNotificationService?.refreshReliabilityHints();
@@ -6859,6 +6868,7 @@
             document.getElementById('reminderBrowserSwitch').disabled = !enabled;
             document.getElementById('reminderEmailSwitch').disabled = !enabled;
             document.getElementById('recordReminderSwitch').disabled = !enabled;
+            document.getElementById('reportReminderSwitch').disabled = !enabled;
             document.getElementById('recordReminderTime').disabled = !enabled || !document.getElementById('recordReminderSwitch').checked;
             updateMeGroupSummaries();
         }
@@ -6882,6 +6892,7 @@
                 browser_notification: document.getElementById('reminderBrowserSwitch').checked,
                 email_notification: document.getElementById('reminderEmailSwitch').checked,
                 record_reminder_enabled: document.getElementById('recordReminderSwitch').checked,
+                report_reminder_enabled: document.getElementById('reportReminderSwitch').checked,
                 record_reminder_time: document.getElementById('recordReminderTime').value
             };
             reminderSaveQueue = reminderSaveQueue.catch(() => {}).then(() =>
@@ -7063,7 +7074,7 @@
     
     <!-- 待办提醒通知服务 -->
     <script src="/static/js/time-picker.js?v=20261026megroupfix1"></script>
-    <script src="/static/reminder_notification.js?v=20261026autosave1"></script>
+    <script src="/static/reminder_notification.js?v=20261112notifications1"></script>
     <script src="/static/js/app-tabbar.js?v=20261026dailyfeedback1"></script>
     <script src="/static/js/workspace-shell.js?v=20261026dailyfeedback1"></script>
     <link rel="stylesheet" href="/static/css/start-conditions.css?v=20261022hierarchy1">

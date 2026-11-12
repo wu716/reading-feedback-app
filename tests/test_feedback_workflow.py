@@ -385,6 +385,49 @@ def test_reminders_are_idempotent_stop_on_submission_and_retry_email(ctx):
         assert db.query(SelfTalkReminderLog).filter_by(reminder_type="project_feedback").one().action_taken
 
 
+def test_deleted_feedback_message_is_erased_without_recreating_the_notice(ctx):
+    c, factory, _ = ctx
+    node(c, project(c))
+    now = datetime(2026, 10, 23, 20, 30, tzinfo=svc.TZ)
+    with factory() as db:
+        svc.check_feedback_reminders(db, 1, now)
+        delivery = db.query(pm.FeedbackDelivery).one()
+        log_id = delivery.log_id
+    assert c.delete(f'/api/reminders/notifications/{log_id}', headers={'X-Test-User': '2'}).status_code == 404
+    assert c.delete(f'/api/reminders/notifications/{log_id}').status_code == 200
+    with factory() as db:
+        svc.check_feedback_reminders(db, 1, now)
+        assert db.get(SelfTalkReminderLog, log_id) is None
+        delivery = db.query(pm.FeedbackDelivery).one()
+        assert delivery.log_id is None and delivery.title == delivery.message == ''
+        assert delivery.email_status == 'cancelled'
+
+
+def test_report_alert_channel_is_independent_of_daily_record_setting(ctx):
+    _, factory, _ = ctx
+    with factory() as db:
+        setting = ReminderService.get_or_create_setting(db, 1)
+        setting.record_reminder_enabled = True
+        setting.report_reminder_enabled = False
+        svc.enqueue(db, 1, 'report-test-off', '日报已生成', '测试', '/static/index.html?report=day#daily-feedback',
+                    reminder_type='feedback_report')
+        db.flush()
+        disabled = db.query(SelfTalkReminderLog).filter_by(reminder_type='feedback_report').one()
+        assert disabled.notification_method == 'in_app'
+        setting.report_reminder_enabled = True
+        svc.enqueue(db, 1, 'report-test-on', '日报已生成', '测试', '/static/index.html?report=day#daily-feedback',
+                    reminder_type='feedback_report')
+        db.flush()
+        enabled = db.query(SelfTalkReminderLog).filter_by(reminder_type='feedback_report').order_by(SelfTalkReminderLog.id.desc()).first()
+        assert enabled.notification_method != 'in_app'
+        setting.report_reminder_enabled = False
+        svc.enqueue(db, 1, 'week-test', '周报已生成', '测试', '/static/index.html?report=week#daily-feedback',
+                    reminder_type='feedback_report')
+        db.flush()
+        weekly = db.query(SelfTalkReminderLog).order_by(SelfTalkReminderLog.id.desc()).first()
+        assert weekly.notification_method != 'in_app'
+
+
 def test_reports_have_project_progress_revisions_equal_comparison_and_gates(ctx):
     c, factory, _ = ctx
     p = project(c, tasks=[{"title": "实际工作"}])

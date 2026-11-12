@@ -23,6 +23,9 @@ public final class ReminderNotifications {
 
     /** 用户可见到点提醒。新 id：旧渠道 importance 一旦建成就改不了。 */
     public static final String CHANNEL_ID = "shuran_alarms_v2";
+    public static final String REPORT_CHANNEL_ID = "shuran_daily_report_v1";
+    private static final String REPORT_GROUP_ID = "shuran_daily_reports";
+    private static final String OTHER_GROUP_ID = "shuran_other_reminders";
     public static final String FOCUS_CHANNEL_ID = "shuran_focus_falling_pluck_v1";
     public static final String LEGACY_CHANNEL_ID = "shuran_system_reminders";
     /** 仅给投递用的前台服务，绝不能和用户通知共用，否则国产 ROM 停服务时会把通知一起撤掉。 */
@@ -101,6 +104,13 @@ public final class ReminderNotifications {
             silent.setShowBadge(false);
             manager.createNotificationChannel(silent);
         }
+        if (manager.getNotificationChannel(REPORT_CHANNEL_ID) == null) {
+            NotificationChannel report = new NotificationChannel(
+                    REPORT_CHANNEL_ID, "日报", NotificationManager.IMPORTANCE_DEFAULT);
+            report.setDescription("日报生成提醒，可单独调整声音与显示方式");
+            report.setShowBadge(true);
+            manager.createNotificationChannel(report);
+        }
 
         try {
             manager.deleteNotificationChannel(LEGACY_CHANNEL_ID);
@@ -153,6 +163,10 @@ public final class ReminderNotifications {
         showPrepared(context, notificationId, build(context, title, body, actionPath));
     }
 
+    public static void show(Context context, int notificationId, String title, String body, String actionPath, boolean report) {
+        showPrepared(context, notificationId, build(context, title, body, actionPath, false, report));
+    }
+
     public static void showPrepared(Context context, int notificationId, Notification notification) {
         if (notification == null) {
             return;
@@ -188,7 +202,7 @@ public final class ReminderNotifications {
     }
 
     public static Notification build(Context context, String title, String body, String actionPath) {
-        return build(context, title, body, actionPath, false);
+        return build(context, title, body, actionPath, false, false);
     }
 
     private static Uri focusSound(Context context) {
@@ -196,10 +210,10 @@ public final class ReminderNotifications {
     }
 
     public static Notification buildFocus(Context context, String title, String body) {
-        return build(context, title, body, "/static/projects.html#execution", true);
+        return build(context, title, body, "/static/projects.html#execution", true, false);
     }
 
-    private static Notification build(Context context, String title, String body, String actionPath, boolean focus) {
+    private static Notification build(Context context, String title, String body, String actionPath, boolean focus, boolean report) {
         ensureChannel(context);
 
         String safeTitle = title == null || title.trim().isEmpty()
@@ -233,7 +247,8 @@ public final class ReminderNotifications {
             sound = Settings.System.DEFAULT_NOTIFICATION_URI;
         }
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, focus ? FOCUS_CHANNEL_ID : CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context,
+                focus ? FOCUS_CHANNEL_ID : report ? REPORT_CHANNEL_ID : CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_notify)
                 .setContentTitle(safeTitle)
                 .setContentText(safeBody)
@@ -249,6 +264,8 @@ public final class ReminderNotifications {
                 .setSound(focus ? focusSound(context) : sound)
                 .setVibrate(new long[]{0, 400, 200, 400})
                 .setOnlyAlertOnce(false);
+
+        if (!focus) builder.setGroup(report ? REPORT_GROUP_ID : OTHER_GROUP_ID);
 
         return builder.build();
     }

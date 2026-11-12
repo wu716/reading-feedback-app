@@ -72,6 +72,33 @@ def test_defaults_and_legacy_preferences_do_not_opt_users_in(ctx):
     mail.assert_not_called()
 
 
+def test_read_and_hard_delete_are_separate_account_scoped_actions(ctx):
+    db, user, other, identity, client, _ = ctx
+    log = SelfTalkReminderLog(user_id=user.id, reminder_type='todo', detail='今天的任务')
+    db.add(log); db.commit()
+    log_id = log.id
+    assert client.post(f'/api/reminders/dismiss/{log_id}?action_taken=false').status_code == 200
+    db.refresh(log)
+    assert log.dismissed_at is not None
+    identity['user'] = other
+    assert client.delete(f'/api/reminders/notifications/{log_id}').status_code == 404
+    identity['user'] = user
+    assert client.delete(f'/api/reminders/notifications/{log_id}').json() == {'deleted': True}
+    assert db.get(SelfTalkReminderLog, log_id) is None
+    assert client.delete(f'/api/reminders/notifications/{log_id}').status_code == 404
+
+
+def test_report_alert_setting_starts_with_previous_choice_then_separates(ctx):
+    db, user, _, _, client, _ = ctx
+    setting = enable(db, user)
+    assert setting.report_reminder_enabled is None
+    assert client.get('/api/reminders/settings').json()['report_reminder_enabled'] is True
+    changed = client.patch('/api/reminders/settings', json={'report_reminder_enabled': False})
+    assert changed.status_code == 200
+    assert changed.json()['record_reminder_enabled'] is True
+    assert changed.json()['report_reminder_enabled'] is False
+
+
 def test_blocked_reminder_query_does_not_block_async_health(ctx, monkeypatch):
     _, _, _, _, client, _ = ctx
     entered, release = Event(), Event()
@@ -183,6 +210,7 @@ def test_pending_opens_today_hides_completed_and_stale_records_and_scopes_dismis
     confirm(db, user, now.date())
     reports = client.get("/api/reminders/pending").json()["notifications"]
     assert {n["reminder_type"] for n in reports} == {"feedback_report"}
+    assert all(n["daily_report"] for n in reports)
     for report in reports:
         assert client.post(f'/api/reminders/dismiss/{report["log_id"]}').status_code == 200
     assert not client.get("/api/reminders/pending").json()["notifications"]

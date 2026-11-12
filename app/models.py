@@ -767,6 +767,7 @@ class SelfTalkReminderSetting(Base):
     record_reminder_enabled = Column(Boolean, default=False)
     record_reminder_time = Column(String(8), default="21:00")
     record_reminded_on = Column(Date, nullable=True)
+    report_reminder_enabled = Column(Boolean, nullable=True)  # NULL follows the previous daily-record choice until explicitly set.
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

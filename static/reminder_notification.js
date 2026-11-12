@@ -549,7 +549,7 @@ class ReminderNotificationService {
         this.ensureBackdrop();
         document.addEventListener('click', (e) => {
             const wrap = document.getElementById('reminderBellWrap');
-            if (wrap && !wrap.contains(e.target)) this.closeDropdown();
+            if (wrap && !wrap.contains(e.target) && !e.composedPath().includes(wrap)) this.closeDropdown();
         });
         window.addEventListener('resize', () => this.positionDropdown());
         window.addEventListener('orientationchange', () => this.positionDropdown());
@@ -566,9 +566,10 @@ class ReminderNotificationService {
             .reminder-bell-wrap { position: relative; flex-shrink: 0; }
             .reminder-bell-btn { position: relative; width: 40px; height: 40px; border: none; border-radius: 0; background: transparent; color: #f3efe6; cursor: pointer; display: flex; align-items: center; justify-content: center; }
             .reminder-bell-icon { width: 22px; height: 22px; display: block; }
-            .reminder-bell-badge { position: absolute; top: 7px; right: 8px; width: 7px; height: 7px; min-width: 0; padding: 0; background: #9c3b32; color: transparent; font-size: 0; line-height: 0; border-radius: 50%; box-shadow: 0 0 0 2px #6b63c4; }
+            .reminder-bell-badge { position: absolute; top: 1px; right: 0; min-width: 17px; height: 17px; padding: 0 4px; background: #9c3b32; color: #fff; font-size: 11px; line-height: 17px; text-align: center; border-radius: 9px; box-shadow: 0 0 0 2px #fff; }
             .reminder-backdrop { display: none; position: fixed; inset: 0; background: rgba(28,27,25,0.4); z-index: 1290; }
             .reminder-backdrop.is-open { display: block; }
+            .app-header:has(.reminder-dropdown.is-open) { background: transparent !important; box-shadow: none !important; }
             .reminder-dropdown { position: absolute; top: calc(100% + 8px); right: 0; left: auto; width: 360px; max-width: calc(100vw - 24px); box-sizing: border-box; background: #fff; color: #333; border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,0.18); z-index: 1300; overflow: hidden; flex-direction: column; display: none; }
             .reminder-dropdown.is-open { display: flex !important; }
             .reminder-dropdown[hidden] { display: none !important; }
@@ -580,13 +581,17 @@ class ReminderNotificationService {
             .reminder-empty { padding: 20px; color: #999; font-size: 0.9rem; text-align: center; }
             .reminder-item { padding: 12px 14px; border-bottom: 1px solid #f3f3f3; }
             .reminder-item:last-child { border-bottom: none; }
-            .reminder-item h5 { margin: 0 0 6px; color: #667eea; font-size: 0.95rem; }
-            .reminder-item p { margin: 0 0 10px; color: #555; font-size: 0.85rem; line-height: 1.45; }
-            .reminder-item-time { color: #999; font-size: 0.75rem; margin-bottom: 8px; }
+            .reminder-item-title { display: block; margin: 0 0 6px; color: #405f72; font-size: 0.95rem; font-weight: 700; }
+            .reminder-item-message { display: block; margin: 0 0 10px; color: #555; font-size: 0.85rem; line-height: 1.45; }
+            .reminder-item-content { display: block; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; }
+            .reminder-item-content:hover .reminder-item-title,.reminder-item-content:focus-visible .reminder-item-title { text-decoration: underline; }
+            .reminder-item-content:focus-visible { outline: 2px solid #405f72; outline-offset: 3px; border-radius: 4px; }
+            .reminder-item-time { display: block; color: #7c8a91; font-size: 0.75rem; margin-bottom: 8px; }
             .reminder-item-actions { display: flex; gap: 8px; }
             .reminder-item-actions button { flex: 1; border: none; border-radius: 6px; padding: 7px 10px; cursor: pointer; font-size: 0.8rem; }
-            .reminder-item-actions .primary { background: #667eea; color: #fff; }
-            .reminder-item-actions .ghost { background: #f0f0f0; color: #666; }
+            .reminder-item-actions .primary { background: #405f72; color: #fff; }
+            .reminder-item-actions .ghost { background: #eaf0f2; color: #405f72; }
+            .reminder-item-actions .danger { background: transparent; color: #a34b43; border: 1px solid #e3c6c2; }
             .in-app-reminder-bar { display: none; margin: 0 0 16px; padding: 12px 16px; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 12px; color: #3730a3; align-items: flex-start; gap: 12px; }
             .in-app-reminder-bar.show { display: flex; }
             .in-app-reminder-bar .bar-body { flex: 1; min-width: 0; }
@@ -730,9 +735,7 @@ class ReminderNotificationService {
         dropdown.style.removeProperty('--reminder-sheet-top');
 
         if (this.isNarrowViewport()) {
-            const header = document.querySelector('.app-header');
-            const headerBottom = header ? header.getBoundingClientRect().bottom : 56;
-            const top = Math.max(8, Math.round(headerBottom + 8));
+            const top = 8;
             dropdown.style.setProperty('--reminder-sheet-top', `${top}px`);
             return;
         }
@@ -820,6 +823,7 @@ class ReminderNotificationService {
                 title: reminderData.title,
                 message: this.stripHtml(reminderData.message),
                 reminder_type: reminderData.reminder_type,
+                daily_report: reminderData.daily_report === true,
                 action_url: reminderData.action_url || '/static/index.html#overview',
                 triggered_at: reminderData.triggered_at || '',
                 record_date: reminderData.record_date,
@@ -874,7 +878,6 @@ class ReminderNotificationService {
         `;
         const dismiss = () => {
             el.remove();
-            this.dismissReminder(reminderData.log_id, false);
         };
         el.querySelector('[data-close]').onclick = dismiss;
         el.querySelector('[data-later]').onclick = dismiss;
@@ -901,14 +904,14 @@ class ReminderNotificationService {
         const n = this.pending.length;
         wrap.hidden = false;
         badge.hidden = n === 0;
-        badge.textContent = '';
+        badge.textContent = n > 99 ? '99+' : String(n);
         const btn = document.getElementById('reminderBellBtn');
         if (btn) {
             btn.setAttribute('aria-label', n > 0 ? `提醒，${n} 条未读` : '提醒');
             btn.title = n > 0 ? `提醒 · ${n}` : '提醒';
         }
         const head = document.querySelector('#reminderDropdown .reminder-dropdown-head strong');
-        if (head) head.textContent = n > 0 ? `提醒 ${n}` : '提醒';
+        if (head) head.textContent = n > 0 ? `提醒 ${n > 99 ? '99+' : n}` : '提醒';
     }
 
     renderDropdown() {
@@ -920,12 +923,14 @@ class ReminderNotificationService {
         }
         list.innerHTML = this.pending.map((n) => `
             <div class="reminder-item" data-log-id="${n.log_id}">
-                <h5>${this.escapeHtml(n.title)}</h5>
-                <div class="reminder-item-time">${this.escapeHtml(this.formatTime(n.triggered_at))}</div>
-                <p>${this.escapeHtml(this.stripHtml(n.message))}</p>
+                <button type="button" class="reminder-item-content" data-act="${n.log_id}" aria-label="阅读消息">
+                    <span class="reminder-item-title">${this.escapeHtml(n.title)}</span>
+                    <span class="reminder-item-time">${this.escapeHtml(this.formatTime(n.triggered_at))}</span>
+                    <span class="reminder-item-message">${this.escapeHtml(this.stripHtml(n.message))}</span>
+                </button>
                 <div class="reminder-item-actions">
-                    <button type="button" class="primary" data-act="${n.log_id}">${this.escapeHtml(n.action_label || '去处理')}</button>
-                    <button type="button" class="ghost" data-dismiss="${n.log_id}">知道了</button>
+                    <button type="button" class="ghost" data-dismiss="${n.log_id}">标为已读</button>
+                    <button type="button" class="danger" data-delete="${n.log_id}">删除</button>
                 </div>
             </div>
         `).join('');
@@ -937,6 +942,9 @@ class ReminderNotificationService {
         });
         list.querySelectorAll('[data-dismiss]').forEach((btn) => {
             btn.addEventListener('click', () => this.dismissReminder(Number(btn.getAttribute('data-dismiss')), false));
+        });
+        list.querySelectorAll('[data-delete]').forEach((btn) => {
+            btn.addEventListener('click', () => this.deleteNotification(Number(btn.getAttribute('data-delete'))));
         });
     }
 
@@ -954,13 +962,12 @@ class ReminderNotificationService {
         bar.hidden = false;
         bar.classList.add('show');
         bar.innerHTML = `
-            <div class="bar-body">
+            <button type="button" class="bar-body" data-act style="background:transparent;border:0;text-align:left;color:inherit;cursor:pointer;">
                 <strong>${this.escapeHtml(first.title)}${extra}</strong>
                 <p>${this.escapeHtml(this.stripHtml(first.message))}</p>
-            </div>
+            </button>
             <div class="bar-actions">
-                <button type="button" class="primary" data-act>${this.escapeHtml(first.action_label || '去处理')}</button>
-                <button type="button" class="ghost" data-dismiss>知道了</button>
+                <button type="button" class="ghost" data-dismiss>标为已读</button>
             </div>
         `;
         bar.querySelector('[data-act]').onclick = () => this.goToAction(first, true);
@@ -975,12 +982,12 @@ class ReminderNotificationService {
         return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
-    goToAction(reminderData, actionTaken) {
+    async goToAction(reminderData, actionTaken) {
         if (reminderData && reminderData.reminder_type === 'test') {
             this.closeDropdown();
             return;
         }
-        this.dismissReminder(reminderData.log_id, actionTaken);
+        await this.dismissReminder(reminderData.log_id, actionTaken);
         this.closeDropdown();
         const type = reminderData.reminder_type;
         if (type === 'daily_record' && window.openLongTermToday) {
@@ -1000,16 +1007,44 @@ class ReminderNotificationService {
 
     async dismissReminder(logId, actionTaken = false) {
         const token = this.authToken();
-        if (!token || !logId || !Number.isFinite(Number(logId))) return;
+        if (!token || !logId || !Number.isFinite(Number(logId))) return false;
+        const removed = this.pending.find((n) => n.log_id === logId);
         this.pending = this.pending.filter((n) => n.log_id !== logId);
         this.renderAll();
         try {
-            await fetch(`${this.apiBase}/reminders/dismiss/${logId}?action_taken=${actionTaken}`, {
+            const response = await fetch(`${this.apiBase}/reminders/dismiss/${logId}?action_taken=${actionTaken}`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
             });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return true;
         } catch (error) {
             console.error('标记提醒失败:', error);
+            if (token === this.authToken()) {
+                if (removed && !this.pending.some((n) => n.log_id === logId)) {
+                    this.pending = [...this.pending, removed].sort((a, b) => String(b.triggered_at).localeCompare(String(a.triggered_at)));
+                }
+                this.renderAll();
+                this.showFeedback('标记已读失败，请重试', 'error');
+            }
+            return false;
+        }
+    }
+
+    async deleteNotification(logId) {
+        const token = this.authToken();
+        if (!token || !logId || !Number.isFinite(Number(logId))) return;
+        try {
+            const response = await fetch(`${this.apiBase}/reminders/notifications/${logId}`, {
+                method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (token !== this.authToken()) return;
+            this.pending = this.pending.filter((n) => n.log_id !== logId);
+            this.renderAll();
+        } catch (error) {
+            console.error('删除消息失败:', error);
+            if (token === this.authToken()) this.showFeedback('删除消息失败，请重试', 'error');
         }
     }
 }

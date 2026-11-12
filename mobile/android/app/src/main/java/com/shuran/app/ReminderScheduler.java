@@ -6,6 +6,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
 
@@ -274,7 +275,9 @@ public final class ReminderScheduler {
         String message = stripHtml(data.optString("message", ""));
         String actionUrl = data.optString("action_url", "/static/index.html#overview");
         int notifyId = logId > 0 ? 100000 + logId : (int) (System.currentTimeMillis() % 100000);
-        ReminderNotifications.show(context, notifyId, title, message, actionUrl);
+        boolean dailyReport = data.optBoolean("daily_report", false)
+                || ("feedback_report".equals(type) && "day".equals(Uri.parse(actionUrl).getQueryParameter("report")));
+        ReminderNotifications.show(context, notifyId, title, message, actionUrl, dailyReport);
         markShown(context, logId, type);
     }
 

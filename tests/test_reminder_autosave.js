@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const ids = ['reminderMasterSwitch','reminderBrowserSwitch','reminderEmailSwitch','recordReminderSwitch','recordReminderTime'];
+const ids = ['reminderMasterSwitch','reminderBrowserSwitch','reminderEmailSwitch','recordReminderSwitch','recordReminderTime','reportReminderSwitch'];
 const elements = Object.fromEntries([...ids, 'reminderSaveStatus','reminderSaveRetry'].map(id => [id, {checked:true, value:'21:00', disabled:false}]));
 let token = 'account-a', fail = false, failLoad = false, nativeResult = 'ok';
 const writes = [], nativeWrites = [];
@@ -14,7 +14,7 @@ const context = vm.createContext({console:{error(){}},setTimeout,clearTimeout,
     fetch:async (_url, options={}) => {
         if (!options.method) {
             if (failLoad) throw Error('offline');
-            return {ok:true,json:async()=>({is_enabled:true,browser_notification:true,record_reminder_enabled:true,record_reminder_time:'21:00'})};
+            return {ok:true,json:async()=>({is_enabled:true,browser_notification:true,record_reminder_enabled:true,report_reminder_enabled:true,record_reminder_time:'21:00'})};
         }
         if (fail) throw Error('offline');
         const saved = JSON.parse(options.body); writes.push(saved);
@@ -32,6 +32,7 @@ const wait = () => new Promise(resolve=>setTimeout(resolve,420));
     await wait();
     assert.equal(writes.length,1,'rapid changes coalesce');
     assert.equal(writes[0].record_reminder_time,'18:05');
+    assert.equal(writes[0].report_reminder_enabled,true);
     assert.equal(nativeWrites[0].record_reminder_time,'18:05');
     assert.match(elements.reminderSaveStatus.textContent,/已保存并同步/);
     fail = true; elements.recordReminderTime.value='18:10'; context.queueReminderSettingsSave(); await wait();

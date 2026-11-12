@@ -13,6 +13,7 @@ class ReminderSettingBase(BaseModel):
     browser_notification: bool = True
     email_notification: bool = True
     record_reminder_enabled: bool = False
+    report_reminder_enabled: Optional[bool] = None
     record_reminder_time: ReminderTime = "21:00"
 
 
@@ -25,10 +26,12 @@ class ReminderSettingUpdate(BaseModel):
     browser_notification: Optional[bool] = None
     email_notification: Optional[bool] = None
     record_reminder_enabled: Optional[bool] = None
+    report_reminder_enabled: Optional[bool] = None
     record_reminder_time: Optional[ReminderTime] = None
 
 
 class ReminderSettingResponse(ReminderSettingBase):
+    report_reminder_enabled: bool
     id: int
     user_id: int
     created_at: datetime

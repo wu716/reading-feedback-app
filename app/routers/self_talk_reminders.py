@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 import logging
+from urllib.parse import parse_qs, urlsplit
 
 from app.database import get_db
 from app.auth import get_current_user
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/reminders", tags=["todo-reminders"])
 SETTING_FIELDS = {"is_enabled", "browser_notification", "email_notification",
-                  "record_reminder_enabled", "record_reminder_time"}
+                  "record_reminder_enabled", "record_reminder_time", "report_reminder_enabled"}
 
 
 def _setting_response(setting: SelfTalkReminderSetting, db: Session) -> ReminderSettingResponse:
@@ -33,6 +34,8 @@ def _setting_response(setting: SelfTalkReminderSetting, db: Session) -> Reminder
         browser_notification=setting.browser_notification,
         email_notification=setting.email_notification,
         record_reminder_enabled=bool(setting.record_reminder_enabled),
+        report_reminder_enabled=bool(setting.report_reminder_enabled if setting.report_reminder_enabled is not None
+                                     else setting.record_reminder_enabled),
         record_reminder_time=setting.record_reminder_time or "21:00",
         **record_status(db, setting.user_id),
         created_at=setting.created_at,
@@ -96,6 +99,7 @@ def create_reminder_settings(
                 browser_notification=settings.browser_notification,
                 email_notification=settings.email_notification,
                 record_reminder_enabled=settings.record_reminder_enabled,
+                report_reminder_enabled=settings.report_reminder_enabled,
                 record_reminder_time=settings.record_reminder_time,
             )
             db.add(setting)
@@ -217,7 +221,7 @@ def get_pending_reminders(
                 SelfTalkReminderLog.reminder_type.in_(REMINDER_TYPES)
             )
             .order_by(SelfTalkReminderLog.triggered_at.desc())
-            .limit(50)
+            .limit(100)
             .all()
         )
         
@@ -246,6 +250,8 @@ def get_pending_reminders(
                 "title": title,
                 "message": message,
                 "reminder_type": log.reminder_type,
+                "daily_report": log.reminder_type == "feedback_report" and
+                    parse_qs(urlsplit(feedback.get("action_url") or "").query).get("report") == ["day"],
                 "triggered_at": log.triggered_at.isoformat(),
                 "action_url": feedback.get("action_url") if feedback else "/static/index.html?record=today#daily-feedback" if is_record else "/static/index.html#overview",
                 "action_label": "查看报告" if log.reminder_type == "feedback_report" else "提交反馈" if feedback else "记录今天" if is_record else "查看今日",
@@ -300,4 +306,28 @@ def dismiss_reminder(
     except Exception as e:
         logger.error(f"处理提醒失败: {e}")
         raise HTTPException(status_code=500, detail="服务器内部错误")
+
+
+@router.delete("/notifications/{log_id}")
+def delete_notification(log_id: int, current_user: User = Depends(get_current_user),
+                        db: Session = Depends(get_db)):
+    """Remove the notification itself; retain only delivery keys needed to prevent replay."""
+    from app.project_models import FeedbackDelivery
+
+    log = db.query(SelfTalkReminderLog).filter(
+        SelfTalkReminderLog.id == log_id,
+        SelfTalkReminderLog.user_id == current_user.id,
+        SelfTalkReminderLog.reminder_type.in_(REMINDER_TYPES),
+    ).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="消息不存在")
+    for delivery in db.query(FeedbackDelivery).filter_by(user_id=current_user.id, log_id=log_id):
+        delivery.log_id = None
+        delivery.title = ""
+        delivery.message = ""
+        if delivery.email_status in ("pending", "retry"):
+            delivery.email_status = "cancelled"
+    db.delete(log)
+    db.commit()
+    return {"deleted": True}
 

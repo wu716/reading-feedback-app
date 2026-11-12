@@ -5,6 +5,7 @@ import logging
 import os
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
+from urllib.parse import parse_qs, urlsplit
 from sqlalchemy import or_, func, exists, cast, String, literal
 from sqlalchemy.exc import IntegrityError
 from app.models import DailyTask, SelfTalkReminderLog, User
@@ -116,7 +117,9 @@ def enqueue(db, user_id, key, title, message, action_url, occurrence_id=None, re
     setting = ReminderService.get_or_create_setting(db, user_id)
     if not setting.is_enabled:
         return
-    channels_enabled = reminder_type != "feedback_report" or bool(setting.record_reminder_enabled)
+    report_enabled = setting.report_reminder_enabled if setting.report_reminder_enabled is not None else setting.record_reminder_enabled
+    is_daily_report = reminder_type == "feedback_report" and parse_qs(urlsplit(action_url).query).get("report") == ["day"]
+    channels_enabled = not is_daily_report or bool(report_enabled)
     log = SelfTalkReminderLog(user_id=user_id, reminder_type=reminder_type,
         detail=dumps({"title": title, "message": message, "action_url": action_url, "occurrence_id": occurrence_id}),
         notification_method="in_app" if not channels_enabled else "both" if setting.email_notification else "browser" if setting.browser_notification else "in_app")
