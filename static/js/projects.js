@@ -482,7 +482,7 @@
         await afterChange('片段已更正');
       } else if (form.id === 'templateForm') {
         const payload = {title:body.title, steps:lines(body.steps), checklist:lines(body.checklist), common_problems:body.common_problems || null, acceptance_criteria:body.acceptance_criteria || null};
-        if (body.id) await put(`/templates/${body.id}`, payload); else await post('/templates', payload);
+        if (body.template_id) await put(`/templates/${body.template_id}`, payload); else await post('/templates', payload);
         form.reset(); $('#templateEditor').open = false; $('#templateEditor').hidden = true; await afterChange('流程已保存');
       } else if (form.classList.contains('template-use-form')) {
         if (body.destination === 'schedule') {
@@ -535,7 +535,7 @@
       else if (action === 'save-template') { await post(`/tasks/${state.taskId}/save-template`, {}); await afterChange('已从任务保存流程'); globalThis.ShuranWorkspace?.show('templates'); }
       else if (action === 'edit-template') {
         const template = state.templates.find(t => t.id === id), form = $('#templateForm');
-        form.elements.id.value = template.id; form.elements.title.value = template.title;
+        form.elements.template_id.value = template.id; form.elements.title.value = template.title;
         form.elements.steps.value = template.steps.join('\n'); form.elements.checklist.value = template.checklist.join('\n');
         form.elements.common_problems.value = template.common_problems || '';
         form.elements.acceptance_criteria.value = template.acceptance_criteria || '';
