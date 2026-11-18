@@ -1,0 +1,9 @@
+{
+  "active_batch": "B01",
+  "protected_paths": [
+    "app",
+    "static",
+    "mobile",
+    "main.py"
+  ]
+}
