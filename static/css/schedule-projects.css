@@ -22,7 +22,7 @@
 .schedule-stage-panel .flow-attribute-label{font-size:12px;color:#526a7a}
 .schedule-stage-panel .flow-attribute-options{display:flex;padding:2px;border:1px solid #b9cbd7;background:#edf1f2;border-radius:5px}
 .schedule-stage-panel .flow-chip{border:0;background:transparent;padding:6px 9px;color:#315a7e;font-size:14px}
-.schedule-stage-panel .flow-chip[aria-pressed=true]{background:#315a7e;color:#fff}
+#schedule #scheduleStagePanel .flow-attribute-options .flow-chip[aria-pressed=true]{background:#315a7e;color:#fff}
 .schedule-stage-panel input[type=number]{width:120px;font-size:14px}
 .schedule-stage-omitted{padding:13px 0;border-bottom:1px solid var(--workspace-line,#dddfd7)}
 .schedule-stage-waiting{margin:10px 0 0;color:#735626;font-size:12px;overflow-wrap:anywhere}
