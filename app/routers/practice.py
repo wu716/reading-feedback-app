@@ -51,6 +51,8 @@ class Rehearsal(Strict):
 
 
 class Feedback(Strict):
+    attainment: Literal["", "met", "partial", "unmet", "unknown"] | None = None
+    adjustment: str | None = Field(default=None, max_length=4000)
     result: Literal["completed", "partial", "rework"]
     actual_minutes: float | None = Field(default=None, ge=0, le=1000000)
     basis: Literal["timer_checked", "manual_checked", "self_report", "pending"]
@@ -288,6 +290,14 @@ def feedback(kind: str, row_id: int, body: Feedback, user: User = Depends(get_cu
         "unallocated_difference": round(actual - recorded, 2) if actual is not None else None,
         "comparable": bool(body.result == "completed" and body.basis != "pending" and actual is not None
                            and original is not None and original > 0 and state.estimate_origin == "before_start" and not scope_changed)}
+    previous = json.loads(prior[0].payload_json) if prior else {}
+    data["expectation_snapshot"] = previous.get("expectation_snapshot") if prior else {
+        "expected_result": getattr(row, "expected_result", None),
+        "completion_basis": getattr(row, "completion_basis", None),
+    }
+    for field in ("attainment", "adjustment"):
+        if getattr(body, field) is None:
+            data[field] = previous.get(field)
     svc.event(db, user.id, kind, row.id, "feedback", data | {"feedback_date": str(feedback_day)}, feedback_day)
     db.commit()
     return svc.task_payload(db, user.id, kind, row)

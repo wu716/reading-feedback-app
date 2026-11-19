@@ -170,6 +170,7 @@ def task_payload(db, user_id, kind, row):
         "has_children": bool(kind == "daily" and db.query(DailyTask.id).filter_by(parent_id=row.id).filter(DailyTask.deleted_at.is_(None)).first()),
         "estimated_minutes": row.estimated_minutes, "original_estimate": original,
         "estimate_origin": state.estimate_origin if state else ("legacy_unknown" if original is not None else None),
+        "expectation_snapshot": {"expected_result": getattr(row, "expected_result", None), "completion_basis": getattr(row, "completion_basis", None)},
         "recorded_minutes": recorded, "difficulty": state.difficulty if state else None,
         "interval_count": sum(s.ended_at is not None for s in task_sessions(db, user_id, kind, row.id)),
         "reduce_prompts": next((json.loads(e.payload_json).get("reduce_prompts", False) for e in history if e.event_type == "progress"), False),

@@ -43,6 +43,38 @@ class PlanningPracticeTests(unittest.TestCase):
     def report(self, start="2026-10-22", end="2026-10-22"):
         with self.Session() as db: return training_report(db,1,start,end)
 
+
+    def test_feedback_preserves_expectation_and_review_when_only_time_changes(self):
+        t = self.daily()
+        task_id = t['id']
+        def expectation(text):
+            response = self.client.patch(f'/api/schedule/tasks/{task_id}',
+                json={"expected_result": text, "completion_basis": "核对数据"})
+            self.assertEqual(response.status_code, 200, response.text)
+        expectation("当初的预期")
+        response = self.feedback('daily', task_id, attainment="partial", adjustment="先核对")
+        self.assertEqual(response.status_code, 200, response.text)
+        original = response.json()['feedback']['expectation_snapshot']
+        expectation("新的预期")
+        response = self.feedback('daily', task_id, actual_minutes=50)
+        self.assertEqual(response.status_code, 200, response.text)
+        result = response.json()['feedback']
+        self.assertEqual(result['expectation_snapshot'], original)
+        self.assertEqual(result['attainment'], "partial")
+        self.assertEqual(result['adjustment'], "先核对")
+        with self.Session() as db:
+            self.assertEqual(db.query(WorkSession).count(), 0)
+        with self.Session() as db:
+            for event in db.query(PracticeEvent).filter_by(event_type="feedback").all():
+                payload = json.loads(event.payload_json)
+                payload.pop("expectation_snapshot", None)
+                event.payload_json = json.dumps(payload)
+            db.commit()
+        response = self.feedback('daily', task_id, actual_minutes=55)
+        self.assertIsNone(response.json()['feedback']['expectation_snapshot'])
+        bad = self.feedback('daily', task_id, attainment="invalid")
+        self.assertEqual(bad.status_code, 422)
+
     def test_estimate_feedback_no_fake_interval_and_first_estimate_preserved(self):
         t=self.daily()
         r=self.req('POST',f"/practice/tasks/daily/{t['id']}/estimate",{"minutes":60,"reason":"新发现步骤"})

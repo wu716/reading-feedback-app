@@ -354,7 +354,7 @@
 
     function timeFeedbackBody(prior, actual, result, basis = 'self_report') {
         const body = {actual_minutes:actual, result, basis};
-        ['reason','next_estimate','outcome','scope_changed','checklist_exception','feedback_date'].forEach(key => {
+        ['attainment','adjustment','reason','next_estimate','outcome','scope_changed','checklist_exception','feedback_date'].forEach(key => {
             if (prior?.[key] != null) body[key] = prior[key];
         });
         return body;
