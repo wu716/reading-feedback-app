@@ -1,0 +1,37 @@
+.workspace-layout #schedule .schedule-core{background:#f2f6f8;padding:22px 24px;border:1px solid #cbdbe2;border-radius:8px}
+.b03-capacity{margin-top:20px}.b03-capacity label{color:#385466}.b03-capacity input{width:85px;border:0;border-bottom:1px solid #7093a7;background:transparent;padding:5px}
+#b03Load{padding:12px 0;line-height:1.7}#b03Load.overload{background:#f3e8d8;color:#765129;padding:12px;border-left:3px solid #af8551}
+.b03-time{display:flex;align-items:center;flex-wrap:wrap;gap:12px 18px;padding:12px 0;color:#385466;font-size:14px;width:100%}
+.b03-time small{color:#6e7f87}.b03-time label{display:inline-flex;align-items:center;gap:7px}
+#schedule .b03-time button[data-time]{border:0;border-bottom:1px solid #7093a7;border-radius:0;background:transparent;padding:3px 8px;min-width:72px;color:#315a7e;cursor:pointer;font:inherit}
+.b03-time button[data-time]:focus-visible{outline:2px solid #7093a7;outline-offset:3px}
+.b03-time button[data-clear-time]{border:0;background:transparent;color:#315a7e;cursor:pointer;text-decoration:underline;padding:6px}
+
+.b03-clock{width:min(390px,calc(100vw - 48px));padding:24px;background:#f7f5ef;border:1px solid #c5cfcf;border-radius:5px;color:#21364a;box-shadow:0 14px 55px rgba(33,54,74,.18)}
+.b03-clock::backdrop{background:rgba(33,54,74,.2)}
+.b03-clock-head{display:flex;justify-content:space-between;align-items:center;font:19px/1.5 Georgia,'Songti SC',serif;padding-bottom:14px;border-bottom:1px solid #dddfd7}
+.b03-clock button{font:14px/1.5 'Microsoft YaHei',sans-serif;color:#315a7e;background:transparent;border:0;cursor:pointer}
+.b03-clock-head button{font-size:24px}
+.b03-clock-input{display:flex;gap:18px;justify-content:center;align-items:center;margin:22px 0;color:#71818b}
+.b03-clock-input label{display:grid;text-align:center;gap:7px}
+.b03-clock-input input{width:75px;background:transparent;border:0;border-bottom:1px solid #9aadb8;text-align:center;font:36px/1.4 Georgia,serif;color:#21364a;border-radius:0}
+.b03-clock-input small{font-size:12px}.b03-clock-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.b03-clock-grid button{padding:8px 0;border-radius:3px}.b03-clock button[aria-pressed=true]{background:#315a7e;color:#fff}
+.b03-clock-minutes{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:14px 0;padding-top:12px;border-top:1px solid #dddfd7}
+.b03-clock-minutes button{padding:6px}.b03-clock footer{display:flex;gap:15px;align-items:center;border-top:1px solid #dddfd7;padding-top:14px}
+.b03-clock footer button:first-child{margin-right:auto}.b03-clock footer button[value=save]{background:#315a7e;color:white;padding:7px 22px;border-radius:3px}
+.b03-clock button:focus-visible,.b03-clock input:focus-visible{outline:2px solid #7093a7;outline-offset:2px}
+
+dialog.b03-clock{position:fixed;inset:0;margin:auto;max-height:calc(100dvh - 40px);overflow:auto;box-sizing:border-box}
+
+/* Equal-width task rows, scoped to the core-task selector. */
+.workspace-layout #schedule #scheduleCoreChoices.schedule-core-choices{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%;box-sizing:border-box;border:0}
+.workspace-layout #schedule #scheduleCoreChoices .schedule-core-choice{display:flex;align-items:flex-start;flex:0 0 auto;align-self:stretch;width:100%;max-width:none;min-width:0;box-sizing:border-box;margin:0;padding:14px 16px;border:1px solid #cbdbe2;border-radius:5px;background:#f2f6f8;gap:12px;white-space:normal;overflow-wrap:anywhere;line-height:1.65;box-shadow:none}
+.workspace-layout #schedule #scheduleCoreChoices .schedule-core-choice:has(input:checked){padding:14px 16px;background:#e0ebf0;border-color:#7093a7;box-shadow:inset 3px 0 #7093a7}
+.workspace-layout #schedule #scheduleCoreChoices .schedule-core-choice input{flex:0 0 18px;width:18px;height:18px;margin:3px 0 0;accent-color:#315a7e}
+
+
+.workspace-layout #schedule .b03-capacity input{font:inherit;color:inherit;max-width:85px;box-sizing:border-box}
+#schedule .b03-time button[data-clear-time]{font:inherit}
+#schedule .schedule-core-choice:hover{border-color:#7093a7}
+#schedule .schedule-core-choice:focus-within{outline:2px solid #7093a7;outline-offset:2px}

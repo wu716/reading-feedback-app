@@ -331,6 +331,22 @@ def day_practice(day: date, user: User = Depends(get_current_active_user), db: S
             "report": svc.training_report(db, user.id, day, day)}
 
 
+class DayCapacity(Strict):
+    available_minutes: int | None = Field(..., ge=0, le=1440)
+
+
+@router.patch("/day/{day}/capacity")
+def day_capacity(day: date, body: DayCapacity, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    # One canonical plan. Updating capacity must not erase goal or allocations.
+    svc.lock_user(db, user.id)
+    history = svc.events(db, user.id, "day", day.toordinal(), "day_plan")
+    plan = json.loads(history[0].payload_json) if history else {"goal": "", "allocations": []}
+    plan["available_minutes"] = body.available_minutes
+    svc.event(db, user.id, "day", day.toordinal(), "day_plan", plan, day)
+    db.commit()
+    return {"saved": True}
+
+
 @router.post("/day/{day}/plan")
 def day_plan(day: date, body: DayPlan, user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
     svc.lock_user(db, user.id)

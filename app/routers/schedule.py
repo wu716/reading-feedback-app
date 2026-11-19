@@ -40,6 +40,9 @@ def parse_day(value: Optional[date]) -> date:
 
 class TaskCreate(BaseModel):
     color: TaskColor | None = None
+    deadline_time: str | None = Field(None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    window_start: str | None = Field(None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    window_end: str | None = Field(None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
     text: str = Field(..., min_length=1, max_length=500)
     task_date: Optional[date] = None
     parent_id: Optional[int] = None
@@ -71,6 +74,9 @@ class TaskCreate(BaseModel):
 
 class TaskUpdate(BaseModel):
     color: TaskColor | None = None
+    deadline_time: str | None = Field(None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    window_start: str | None = Field(None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    window_end: str | None = Field(None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
     text: Optional[str] = Field(None, min_length=1, max_length=500)
     completed: Optional[bool] = None
     note: Optional[str] = Field(None, max_length=500)
@@ -141,6 +147,9 @@ class DesignBody(BaseModel):
 
 
 class TaskOut(BaseModel):
+    deadline_time: str | None = None
+    window_start: str | None = None
+    window_end: str | None = None
     color: str | None = None
     id: int
     parent_id: Optional[int] = None
@@ -177,6 +186,7 @@ class TaskOut(BaseModel):
 
 
 class DayScheduleOut(BaseModel):
+    core_load: dict = Field(default_factory=dict)
     date: date
     designed_at: Optional[datetime] = None
     tasks: List[TaskOut]
@@ -334,6 +344,53 @@ def refresh_parent_completion(db: Session, user_id: int, task: DailyTask) -> Non
         parent = parent.parent
 
 
+def core_load(db: Session, user_id: int, day: date, tasks: list[DailyTask]) -> dict:
+    """Selected containers cover their executable leaves once; use day allocations."""
+    from app import practice_service as practice
+    history = practice.events(db, user_id, "day", day.toordinal(), "day_plan")
+    plan = json.loads(history[0].payload_json) if history else {}
+    allocated = {(a["kind"], a["id"]): a["minutes"] for a in plan.get("allocations", [])}
+    by_parent = defaultdict(list)
+    for task in tasks:
+        by_parent[task.parent_id].append(task)
+    visible = {task.id for task in tasks}
+    leaves = []
+    def visit(task, selected=False):
+        selected = selected or bool(task.core_selected)
+        children = by_parent.get(task.id, [])
+        if children:
+            for child in children:
+                visit(child, selected)
+        elif selected:
+            leaves.append(task)
+    for task in tasks:
+        if task.parent_id not in visible:
+            visit(task)
+    total, missing, seen = 0, 0, set()
+    for task in leaves:
+        try:
+            kind, row = practice.owner(db, user_id, "daily", task.id)
+        except HTTPException:
+            missing += 1
+            continue
+        identity = kind, row.id
+        if identity in seen:
+            continue
+        seen.add(identity)
+        minutes = allocated.get(identity)
+        if minutes is None and kind == "daily":
+            minutes = task.estimated_minutes
+        if minutes is None:
+            missing += 1
+        else:
+            total += minutes
+    available = plan.get("available_minutes")
+    return {"selected_count": sum(bool(t.core_selected) for t in tasks),
+            "leaf_count": len(seen), "known_minutes": total, "unknown_count": missing,
+            "available_minutes": available,
+            "overload_minutes": max(0, total - available) if available is not None else None}
+
+
 def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id=None, reminders=None, practice_by_id=None, plans=None) -> List[TaskOut]:
     linked, actual = linked or {}, actual or {}
     by_parent = defaultdict(list)
@@ -352,6 +409,7 @@ def build_tree(tasks: List[DailyTask], linked=None, actual=None, readiness_by_id
             actual_minutes=plan["today_recorded_minutes"] if plan else actual.get(("project", task.project_task_id) if task.project_task_id else ("daily", task.id), 0),
             readiness=(readiness_by_id or {}).get(task.id),
             text=task.text,
+            deadline_time=task.deadline_time, window_start=task.window_start, window_end=task.window_end,
             color=task.color,
             completed=bool(task.completed),
             note=task.note,
@@ -463,6 +521,7 @@ def day_payload(db: Session, user: User, day: date) -> DayScheduleOut:
     )
     return DayScheduleOut(
         date=day,
+        core_load=core_load(db, user.id, day, tasks),
         designed_at=schedule.designed_at if schedule else None,
         tasks=build_tree(tasks, linked, actual, {t.id: readiness(db, user.id, "daily", t.id) for t in tasks},
             dict(db.query(DailyTodo.id, DailyTodo.remind_time).filter(DailyTodo.user_id == user.id,
@@ -501,6 +560,7 @@ def create_task(
         parent_id=parent_id,
         task_date=day,
         text=body.text,
+        deadline_time=body.deadline_time, window_start=body.window_start, window_end=body.window_end,
         color=body.color,
         action_id=None,
         sort_order=(first_sort_order(db, current_user.id, day) if parent_id is None
@@ -585,6 +645,9 @@ def update_task(
         task.note = None
     elif body.note is not None:
         task.note = body.note or None
+    for field in ("deadline_time", "window_start", "window_end"):
+        if field in body.model_fields_set:
+            setattr(task, field, getattr(body, field))
     for field in ("expected_result", "completion_basis"):
         if field in body.model_fields_set:
             setattr(task, field, (getattr(body, field) or "").strip() or None)

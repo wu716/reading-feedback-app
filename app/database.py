@@ -84,6 +84,8 @@ def ensure_schema():
             add_column("daily_tasks", column, f"{column} TEXT")
         for column in ("expected_result", "completion_basis", "core_review_reason"):
             add_column("daily_tasks", column, f"{column} TEXT")
+        for column in ("deadline_time", "window_start", "window_end"):
+            add_column("daily_tasks", column, f"{column} VARCHAR(5)")
         add_column("daily_tasks", "core_selected", "core_selected BOOLEAN NOT NULL DEFAULT FALSE")
         add_column("daily_tasks", "core_review_completed", "core_review_completed BOOLEAN")
         add_column("work_sessions", "planned_seconds", "planned_seconds INTEGER")

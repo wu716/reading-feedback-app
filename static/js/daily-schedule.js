@@ -19,6 +19,16 @@
     let newTaskExpected = '';
     let newTaskBasis = '';
     let composerDraftDay = null;
+    let newTaskTiming = {};
+    const planning = () => window.ShuranSchedulePlanning;
+    function renderNewTiming() {
+        const root=document.getElementById('scheduleNewTiming');
+        if(root && planning()) root.innerHTML=planning().controls(newTaskTiming);
+    }
+    async function saveComposerDraft() {
+        const content={text:document.getElementById('scheduleAddInput')?.value||'',hours:document.getElementById('scheduleAddHours')?.value||'',minutes:document.getElementById('scheduleAddMinutes')?.value||'',expected_result:newTaskExpected,completion_basis:newTaskBasis,familiarity:newTaskFamiliarity,difficulty:newTaskDifficulty,importance:newTaskImportance,priority:newTaskPriority,color:newTaskColor,timing:newTaskTiming};
+        await apiRequest(`/api/editor-drafts/${encodeURIComponent('task-new:'+currentDay())}`,{method:'PUT',body:JSON.stringify({content})});
+    }
     const taskColors = [['雾蓝','#7894a6'],['天青','#75a9bd'],['湖蓝','#4f89a0'],['墨蓝','#416580'],['薄荷绿','#79aa96'],['鼠尾草绿','#789879'],['森林绿','#527b65'],['柠檬黄','#d1bb64'],['暖琥珀','#c5954f'],['珊瑚橙','#d18b68'],['陶土红','#bb7166'],['莓果红','#a95f70'],['薰衣草紫','#a18ab7'],['柔紫','#927f9f'],['玫瑰粉','#d19aaa'],['石墨灰','#8b9295']];
 
     function safeColor(value) {
@@ -94,17 +104,18 @@
         return acc;
     }
 
-    function executionLeaves(tasks, parents, acc) {
+    function executionLeaves(tasks, parents, acc, constraints = []) {
         const path = parents || [];
         const output = acc || [];
         (tasks || []).forEach((task) => {
             const children = task.children || [];
             if (children.length) {
-                executionLeaves(children, path.concat(task.text || ''), output);
+                executionLeaves(children, path.concat(task.text || ''), output, constraints.concat(task));
                 return;
             }
             output.push(Object.assign({}, task, {
                 parent_path: path.filter(Boolean),
+                parent_constraints: constraints,
             }));
         });
         return output.sort((a, b) => (
@@ -408,6 +419,7 @@
                 ${renderQuickAttributes(task)}
                 ${(task.expected_result || task.completion_basis || task.core_selected) ? `<p class="flow-task-intent">${task.core_selected ? '<strong>今日核心任务</strong> · ' : ''}${task.expected_result ? `预期结果：${escapeHtml(task.expected_result)}` : '预期结果未填写'}${task.completion_basis ? ` · 完成依据：${escapeHtml(task.completion_basis)}` : ''}</p>` : ''}
                 <div class="flow-result-entry"><button type="button" data-act="expectation">填写或修改预期结果与完成依据 ↓</button></div>
+                ${planning()?.controls(task) || ''}
                 ${renderTimeFeedback(task)}
                 ${!task.children?.length ? '<div class="flow-result-entry"><button type="button" data-act="feedback">记录实际结果、进展与原因 ↓</button></div>' : ''}
                 <div class="flow-inline-editor" data-inline-panel></div>
@@ -449,6 +461,7 @@
                         <div class="flow-sort-copy">
                             <div class="flow-task-main"><div class="flow-task-text flow-task-text-static">${escapeHtml(task.text)}</div></div>
                             ${path}
+                            ${renderConstraintSummary(task)}
                         </div>
                     </div>
                     <div class="flow-task-meta flow-sort-controls">
@@ -485,11 +498,20 @@
         return groups;
     }
 
+    function renderConstraintSummary(task, includeOwn = true) {
+        const entries=[...(task.parent_constraints||[]), ...(includeOwn?[task]:[])];
+        const text=entries.map(item=>{
+            const detail=planning()?.summary(item);
+            return detail ? `${item.id!==task.id ? '所属任务「'+item.text+'」：' : ''}${detail}` : '';
+        }).filter(Boolean).join(' · ');
+        return text ? `<p class="schedule-time-summary">${escapeHtml(text)}</p>` : '';
+    }
+
     function renderFlowNode(task) {
         const source = task.parent_path?.length
             ? `<p class="flow-task-origin">${escapeHtml(format(t('schedule.children.origin', '拆分步骤 · 属于「{title}」'), {title:task.parent_path.join(' › ')}))}</p>`
             : '';
-        return `<div class="flow-task-node">${source}${renderTask(task, false)}</div>`;
+        return `<div class="flow-task-node">${source}${renderConstraintSummary(task, false)}${renderTask(task, false)}</div>`;
     }
 
     function renderFlowGroups(tasks) {
@@ -542,7 +564,11 @@
         window.ShuranScheduleProjects?.sync(currentDay(), data.tasks, mode);
         setHint();
         const core=document.getElementById('scheduleCoreChoices');
-        if(core){const all=flatten(data.tasks||[],[]);core.innerHTML=all.length?`<div class="schedule-core-choices">${all.map(task=>`<label class="schedule-core-choice"><input type="checkbox" data-core-id="${task.id}" ${task.core_selected?'checked':''}>${escapeHtml(task.text)}</label>`).join('')}</div>`:'<p>先写下今天要做、想做的任务。</p>';}
+        if(core){const all=flatten(data.tasks||[],[]);core.classList.add('schedule-core-choices');core.innerHTML=all.length?all.map(task=>`<label class="schedule-core-choice"><input type="checkbox" data-core-id="${task.id}" ${task.core_selected?'checked':''}><span>${escapeHtml(task.text)}</span></label>`).join(''):'<p>先写下今天要做、想做的任务。</p>';}
+        const capacity=document.getElementById('b03Available'), loadStatus=document.getElementById('b03Load');
+        if(capacity && document.activeElement!==capacity) capacity.value=data.core_load?.available_minutes ?? '';
+        if(loadStatus && planning()){loadStatus.textContent=planning().loadText(data.core_load||{});loadStatus.classList.toggle('overload',(data.core_load?.overload_minutes||0)>0);}
+        renderNewTiming();
         if (!(data.tasks || []).length) {
             list.innerHTML = `<p class="flow-empty">${escapeHtml(t('schedule.emptyTasks', '还没有行动'))}</p>`;
             return;
@@ -574,17 +600,21 @@
         day = nextDay || currentDay();
         window.ShuranScheduleProjects?.sync(day, data.tasks, mode);
         editingId = null;
-        const result = await api(`?task_date=${encodeURIComponent(day)}`);
+        const requestedDay = day;
+        const result = await api(`?task_date=${encodeURIComponent(requestedDay)}`);
         if (serial !== loadSerial || token !== localStorage.getItem('authToken')) return;
         data = result;
         render();
         if(composerDraftDay!==day){
             composerDraftDay=day;
-            try{const draft=(await apiRequest(`/api/editor-drafts/${encodeURIComponent('task-new:'+day)}`)).content||{};
+            newTaskTiming={};renderNewTiming();
+            try{const draft=(await apiRequest(`/api/editor-drafts/${encodeURIComponent('task-new:'+requestedDay)}`)).content||{};
+                if(serial!==loadSerial || day!==requestedDay || token!==localStorage.getItem('authToken'))return;
                 const input=document.getElementById('scheduleAddInput');
                 if(input&&!input.value&&draft.text)input.value=draft.text;
                 for(const [id,key] of [['scheduleAddHours','hours'],['scheduleAddMinutes','minutes']]){const el=document.getElementById(id);if(el&&!el.value&&draft[key])el.value=draft[key];}
                 newTaskFamiliarity=draft.familiarity||null;newTaskDifficulty=draft.difficulty||null;newTaskImportance=draft.importance||null;newTaskPriority=draft.priority||0;newTaskColor=draft.color||null;updateAddComposer();
+                newTaskTiming=Object.fromEntries(['deadline_time','window_start','window_end'].map(key=>[key,/^([01]\d|2[0-3]):[0-5]\d$/.test(draft.timing?.[key]||'')?draft.timing[key]:null]));renderNewTiming();
                 newTaskExpected=draft.expected_result||'';newTaskBasis=draft.completion_basis||'';
                 const hint=document.getElementById('scheduleNewExpectationStatus');if(hint)hint.textContent=newTaskExpected||newTaskBasis?'已填写预期内容':'';
             }catch(error){console.warn('读取任务草稿失败',error);}
@@ -595,7 +625,8 @@
         const value = (text || '').trim();
         if (!value) return;
         const taskDay = currentDay();
-        data = await api('/tasks', {
+        const token=localStorage.getItem('authToken');
+        const result = await api('/tasks', {
             method: 'POST',
             body: JSON.stringify({
                 text: value,
@@ -609,8 +640,11 @@
                 estimated_minutes: Number.isInteger(attributes?.estimatedMinutes) ? attributes.estimatedMinutes : null,
                 expected_result: parentId ? null : (attributes?.expectedResult||null),
                 completion_basis: parentId ? null : (attributes?.completionBasis||null),
+                ...(parentId ? {} : newTaskTiming),
             }),
         });
+        if(taskDay!==currentDay() || token!==localStorage.getItem('authToken'))return false;
+        data=result;
         if (parentId) splitDrafts.delete(`${taskDay}:${parentId}`);
         splitFor = null;
         if (openDesign) {
@@ -623,10 +657,13 @@
     }
 
     async function patchTask(id, body) {
-        data = await api(`/tasks/${id}`, {
+        const requestedDay=currentDay(), token=localStorage.getItem('authToken');
+        const result = await api(`/tasks/${id}`, {
             method: 'PATCH',
             body: JSON.stringify(body),
         });
+        if(requestedDay!==currentDay() || token!==localStorage.getItem('authToken') || result.date!==requestedDay)return;
+        data=result;
         render();
         if ('remind_time' in body || body.completed != null) window.reminderNotificationService?.syncNativeTodos();
         if (body.completed != null && typeof window.loadHabitFocus === 'function') {
@@ -967,6 +1004,7 @@
             if (addingTask) return;
             const input = document.getElementById('scheduleAddInput');
             const submittedText = input?.value || '';
+            const submittedDay=currentDay(), submittedToken=localStorage.getItem('authToken');
             if (!submittedText.trim()) { input?.focus(); return; }
             const hoursText = document.getElementById('scheduleAddHours')?.value.trim() || '';
             const minutesText = document.getElementById('scheduleAddMinutes')?.value.trim() || '';
@@ -988,7 +1026,7 @@
             try {
                 const inlineNew=globalThis.ShuranScheduleInline?.readNew(currentDay());
                 if(inlineNew){newTaskExpected=inlineNew.expected_result;newTaskBasis=inlineNew.completion_basis;}
-                await addTask(submittedText, null, false, {
+                const created = await addTask(submittedText, null, false, {
                     familiarity: newTaskFamiliarity,
                     difficulty: newTaskDifficulty,
                     importance: newTaskImportance,
@@ -998,8 +1036,10 @@
                     expectedResult: newTaskExpected,
                     completionBasis: newTaskBasis,
                 });
+                if(submittedToken!==localStorage.getItem('authToken'))return;
+                await apiRequest(`/api/editor-drafts/${encodeURIComponent('task-new:'+submittedDay)}`,{method:'DELETE'}).catch(()=>{});
+                if(created===false || submittedDay!==currentDay() || submittedToken!==localStorage.getItem('authToken'))return;
                 globalThis.ShuranScheduleInline?.completeNew();
-                await apiRequest(`/api/editor-drafts/${encodeURIComponent('task-new:'+currentDay())}`,{method:'DELETE'}).catch(()=>{});
                 if (input && input.value === submittedText) input.value = '';
                 for (const id of ['scheduleAddHours', 'scheduleAddMinutes']) {
                     const durationInput = document.getElementById(id);
@@ -1010,7 +1050,7 @@
                 newTaskImportance = null;
                 newTaskPriority = 0;
                 newTaskColor = null;
-                newTaskExpected='';newTaskBasis='';
+                newTaskExpected='';newTaskBasis='';newTaskTiming={};renderNewTiming();
                 const expectationStatus=document.getElementById('scheduleNewExpectationStatus');if(expectationStatus)expectationStatus.textContent='';
                 updateAddComposer();
             } catch (e) {
@@ -1036,9 +1076,38 @@
             updateAddComposer();
         });
         document.getElementById('scheduleNewExpectation')?.addEventListener('click',async()=>{
-            const draft={text:document.getElementById('scheduleAddInput')?.value||'',hours:document.getElementById('scheduleAddHours')?.value||'',minutes:document.getElementById('scheduleAddMinutes')?.value||'',expected_result:newTaskExpected,completion_basis:newTaskBasis,familiarity:newTaskFamiliarity,difficulty:newTaskDifficulty,importance:newTaskImportance,priority:newTaskPriority,color:newTaskColor};
-            await apiRequest(`/api/editor-drafts/${encodeURIComponent('task-new:'+currentDay())}`,{method:'PUT',body:JSON.stringify({content:draft})});
+            await saveComposerDraft();
             await globalThis.ShuranScheduleInline.open({kind:'expectation',id:null,day:currentDay(),root:document.getElementById('scheduleNewExpectationPanel'),task:{expected_result:newTaskExpected,completion_basis:newTaskBasis},newTask:values=>{newTaskExpected=values.expected_result;newTaskBasis=values.completion_basis;document.getElementById('scheduleNewExpectationStatus').textContent='已填写预期内容';}});
+        });
+        document.getElementById('b03Available')?.addEventListener('change',async event=>{
+            const input=event.target, value=input.value.trim();
+            if(value!=='' && (!Number.isInteger(Number(value)) || Number(value)<0 || Number(value)>1440)){showMessage('可用时间须为0—1440分钟。','error');return;}
+            const selectedDay=currentDay();
+            input.disabled=true;
+            try{
+                await apiRequest(`/api/projects/practice/day/${selectedDay}/capacity`,{method:'PATCH',body:JSON.stringify({available_minutes:value===''?null:Number(value)})});
+                if(currentDay()===selectedDay)await load(selectedDay);
+            }catch(error){showMessage(error.message,'error');}finally{input.disabled=false;}
+        });
+        document.getElementById('schedule')?.addEventListener('click',async event=>{
+            const button=event.target.closest('.b03-time [data-time], .b03-time [data-clear-time]');
+            if(!button || !planning())return;
+            const taskId=Number(button.closest('[data-task-id]')?.dataset.taskId)||null;
+            const selectedDay=currentDay();
+            const task=taskId ? flatten(data.tasks||[],[]).find(t=>t.id===taskId) : newTaskTiming;
+            if(!task)return;
+            let patch;
+            if(button.hasAttribute('data-clear-time'))patch={deadline_time:null,window_start:null,window_end:null};
+            else {
+                const field=button.dataset.time;
+                const value=await planning().pick({value:task[field]||'09:00',title:button.getAttribute('aria-label')});
+                if(value===null || selectedDay!==currentDay())return;
+                patch={[field]:value||null};
+            }
+            try{
+                if(taskId)await patchTask(taskId,patch);
+                else{Object.assign(newTaskTiming,patch);renderNewTiming();await saveComposerDraft();}
+            }catch(error){showMessage(error.message,'error');}
         });
         document.getElementById('scheduleCoreChoices')?.addEventListener('change',async e=>{
             if(!e.target.matches('[data-core-id]'))return;

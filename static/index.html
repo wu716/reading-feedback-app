@@ -3468,7 +3468,7 @@
                 location.replace('http://43.161.238.165:8000/?v=20261026megroupfix1');
                 return;
             }
-            window.SHURAN_VERSION = '2.0.68';
+            window.SHURAN_VERSION = '2.0.69';
             window.SHURAN_MIN_SHELL_CODE = 24;
             window.SHURAN_MIN_SHELL_NAME = '1.5.12';
             function versionLess(current, latest) {
@@ -3718,10 +3718,11 @@
                         </div>
                     </div>
                     <div class="flow-add-extra"><button type="button" id="scheduleNewExpectation" class="flow-ghost-btn">填写这项任务的预期结果与完成依据 ↓</button><span id="scheduleNewExpectationStatus"></span></div>
+                    <div id="scheduleNewTiming"></div>
                     <div id="scheduleNewExpectationPanel" class="flow-inline-editor"></div>
                 </div>
                 <div id="scheduleList" class="home-schedule-list"></div>
-                <section class="schedule-core" id="scheduleCore"><h2>选择今日核心任务</h2><p><strong>核心任务是今天必须完成的事。</strong>先写下今天想做、要做的任务，再从中选择；数量不限，之后可以调整。</p><div id="scheduleCoreChoices"></div></section>
+                <section class="schedule-core" id="scheduleCore"><h2>选择今日核心任务</h2><p>从今天的任务里，选出今天必须完成的事。</p><div id="scheduleCoreChoices"></div><div class="b03-capacity"><label>今天可用 <input id="b03Available" type="number" min="0" max="1440" step="1" placeholder="填写"> 分钟</label><p id="b03Load" role="status"></p></div></section>
                 <details class="schedule-review"><summary>计划与回顾</summary><button type="button" class="flow-ghost-btn" id="schedulePractice">打开当天计划与回顾</button></details>
             </div>
         </section>
@@ -7090,8 +7091,10 @@
     <script src="/static/js/start-conditions.js?v=20261108stage2a"></script>
     <link rel="stylesheet" href="/static/css/schedule-projects.css?v=20261118stageattr1">
     <script src="/static/js/schedule-projects.js?v=20261025stageday1"></script>
-    <script src="/static/js/schedule-inline-editor.js?v=20261119projectcorrection1"></script>
-    <script src="/static/js/daily-schedule.js?v=20261119projectcorrection1"></script>
+    <script src="/static/js/schedule-inline-editor.js?v=20261120planning1"></script>
+    <link rel="stylesheet" href="/static/css/schedule-planning.css?v=20261120planning1">
+    <script src="/static/js/schedule-planning.js?v=20261120planning1"></script>
+    <script src="/static/js/daily-schedule.js?v=20261120planning1"></script>
     <script src="/static/js/core-review.js?v=20261108stage2a"></script>
     <script src="/static/js/future-actions.js?v=20261025someday3"></script>
     <link rel="stylesheet" href="/static/css/work-links.css?v=20261025worklink1">
