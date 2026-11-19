@@ -219,7 +219,7 @@
         if ((task.children || []).length) return '';
         const date = encodeURIComponent(currentDay());
         const project = task.project_id ? `<a href="/static/projects.html?task=${task.project_task_id}#taskDetail">${escapeHtml(task.project_title || '所属项目')}</a>` : `<a href="/static/projects.html?daily=${task.id}&date=${date}">纳入项目</a>`;
-        return `<div class="flow-detail-group"><h3>归属与开始</h3><div class="flow-project-links">${project}<button type="button" data-act="conditions">开始条件与约束</button><button type="button" data-act="reminder">${task.remind_time ? '提醒 ' + escapeHtml(task.remind_time) : '设置提醒'}</button>${task.priority ? `<span>旧优先级：${escapeHtml(priorityLabel(task.priority))}</span>` : ''}</div></div>`;
+        return `<div class="flow-detail-group"><h3>归属与开始</h3><div class="flow-project-links">${project}${task.project_id ? `<a href="/static/projects.html?task=${task.project_task_id}&correct=1#taskDetail">更正所属项目</a>` : ""}<button type="button" data-act="conditions">开始条件与约束</button><button type="button" data-act="reminder">${task.remind_time ? '提醒 ' + escapeHtml(task.remind_time) : '设置提醒'}</button>${task.priority ? `<span>旧优先级：${escapeHtml(priorityLabel(task.priority))}</span>` : ''}</div></div>`;
     }
 
     function renderTaskLaunch(task) {

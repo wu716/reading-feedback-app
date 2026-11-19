@@ -229,6 +229,10 @@
     const projects = state.overview.projects;
     $('#projectSelect').innerHTML = projects.length ? projects.map(p => `<option value="${p.id}" ${p.id === state.projectId ? 'selected' : ''}>${esc(p.title)}</option>`).join('') : '<option value="">还没有项目</option>';
     const project = currentProject(); $('#projectOutcome').textContent = project?.outcome || '';
+    let effort=document.getElementById('projectEffort');
+    if(!effort){effort=document.createElement('section');effort.id='projectEffort';$('#projectOutcome').after(effort);}
+    const opened=effort.querySelector('details')?.open;
+    effort.innerHTML=project?'<h3>累计已记录投入 '+Math.round((project.effort?.seconds||0)/60)+' 分钟</h3><details '+(opened?'open':'')+'><summary>查看投入明细</summary>'+(project.effort?.intervals||[]).map(r=>'<p>'+esc(r.title)+' · '+dtLabel(r.started_at)+' — '+dtLabel(r.ended_at)+' · '+Math.round(r.seconds/60)+' 分钟</p>').join('')+'</details>':'';
     const deleteButton = $('#deleteProject');
     if (deleteButton) { deleteButton.disabled = !project; deleteButton.setAttribute?.('data-project-delete', `project:${project?.id || ''}`); }
     globalThis.ShuranDeletion?.refreshCount();
@@ -298,6 +302,30 @@
       <div class="detail-zone" data-detail-zone="completion" ${state.detailMode === 'completion' ? '' : 'hidden'}><div class="detail-section-head"><div><h4>结果与用时</h4><p>完成后一次核对实际结果、累计用时和下次经验。</p></div><button type="button" data-act="practice-feedback">记录结果与用时</button></div>
         <div class="detail-result-summary"><span>完成标准</span><p>${esc(task.acceptance_criteria || '尚未填写，可先判断实际结果。')}</p></div>
         <details class="inline-add"><summary>保存为可复用流程</summary><p class="detail-note">会保留这项任务的步骤和检查方式，供以后生成新任务。</p><button type="button" class="secondary" data-act="save-template">保存为流程</button></details></div>`;
+    const correction=document.createElement('section');
+    correction.innerHTML='<details '+(params.has('correct')?'open':'')+'><summary>更正所属项目</summary><form data-project-correction><label>正确的项目<select name="project_id">'+state.overview.projects.filter(p=>p.id!==project.id).map(p=>'<option value="'+p.id+'">'+esc(p.title)+'</option>').join('')+'</select></label><label>更正原因<textarea name="reason" required maxlength="4000"></textarea></label><button type="submit">核对更正影响</button><div data-correction-impact></div><p role="status"></p></form></details>';
+    root.append(correction);
+    if(task.project_corrections?.length){
+      const history=document.createElement('details');
+      history.innerHTML='<summary>所属项目更正记录</summary>'+task.project_corrections.map(item=>'<p>'+esc(item.before.project_title)+' → '+esc(item.after.project_title)+' · '+dtLabel(item.at)+'<br>'+esc(item.reason)+'</p>').join('');
+      correction.append(history);
+    }
+    const form=correction.querySelector('form');
+    const draftKey='project-correction:'+localStorage.getItem('authToken')+':'+task.id;
+    form.elements.reason.value=sessionStorage.getItem(draftKey)||'';
+    form.elements.reason.oninput=()=>sessionStorage.setItem(draftKey,form.elements.reason.value);
+    form.onsubmit=async event=>{
+      event.preventDefault();
+      const message=form.querySelector('[role=status]');
+      const body={project_id:Number(form.elements.project_id.value),reason:form.elements.reason.value};
+      try{
+        const preview=await post('/tasks/'+task.id+'/project-correction/preview',body);
+        const area=form.querySelector('[data-correction-impact]');
+        area.innerHTML='<p>'+esc(preview.source_title)+' → '+esc(preview.target_title)+'；关联日程 '+preview.daily_ids.length+' 条，投入 '+Math.round(preview.seconds/60)+' 分钟，区间 '+preview.intervals.length+' 条。</p><p>日期、时长、任务状态和反馈保留。双方已有承诺保留旧版，并为纠错后的范围记录新版。更正后沿用目标项目的开始条件：'+esc(preview.target_conditions.summary)+'</p><button type="button" data-confirm-correction>确认更正</button><button type="button" data-cancel-correction>取消</button>';
+        area.querySelector('[data-cancel-correction]').onclick=()=>area.replaceChildren();
+        area.querySelector('[data-confirm-correction]').onclick=()=>run(async()=>{await post('/tasks/'+task.id+'/project-correction',{...body,fingerprint:preview.fingerprint});sessionStorage.removeItem(draftKey);state.projectId=body.project_id;await afterChange('所属项目已更正，原记录已保留');});
+      }catch(error){message.textContent=error.message;}
+    };
     const date = $('#scheduleTaskForm [name=task_date]', root); if (date) date.value = params.get('date') || todayISO();
     $('#taskConditions', root).innerHTML = `<button type="button" class="secondary" data-open-task-conditions="${task.id}">开始条件与执行约束 →</button>`;
   }

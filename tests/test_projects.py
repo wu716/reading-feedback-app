@@ -65,6 +65,70 @@ class ProjectFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()
 
+
+    def test_project_effort_counts_unique_completed_work_including_removed_tasks(self):
+        _, project, stage = self.project()
+        task = self.task(project, stage, "投入测试")
+        with self.Session() as db:
+            daily = DailyTask(user_id=1,task_date=date(2026,11,18),text="当天",project_task_id=task['id'])
+            db.add(daily)
+            db.flush()
+            db.add_all([
+                WorkSession(user_id=1,project_task_id=task['id'],daily_task_id=daily.id,kind="work",source="timer",started_at=datetime(2026,11,18,23,50),ended_at=datetime(2026,11,19,0,10)),
+                WorkSession(user_id=1,daily_task_id=daily.id,kind="work",source="manual",started_at=datetime(2026,11,19,1),ended_at=datetime(2026,11,19,1,15)),
+                WorkSession(user_id=1,project_task_id=task['id'],kind="break",source="timer",started_at=datetime(2026,11,19,2),ended_at=datetime(2026,11,19,2,5)),
+                WorkSession(user_id=1,project_task_id=task['id'],kind="work",source="timer",started_at=datetime(2099,11,19,3)),
+            ])
+            db.get(ProjectTask,task['id']).deleted_at=datetime(2026,11,19,4)
+            db.commit()
+        overview=self.req('GET','/overview').json()['projects'][0]
+        self.assertEqual(overview['effort']['seconds'],2100)
+        self.assertEqual(len(overview['effort']['intervals']),2)
+
+    def test_correction_rejects_inherited_condition_cycle_without_moving(self):
+        _, first, stage = self.project()
+        _, second, _ = self.project()
+        task = self.task(first, stage, "等待条件")
+        condition = self.req('POST', f"/conditions/project/{second['id']}",
+            {"title":"等待该任务", "kind":"task", "target_id":task['id'], "required_state":"completed"})
+        self.assertEqual(condition.status_code,200,condition.text)
+        body = {"project_id":second['id'], "reason":"错归"}
+        path = f"/tasks/{task['id']}/project-correction"
+        preview = self.req('POST',path+'/preview',body)
+        self.assertEqual(preview.status_code,200,preview.text)
+        response = self.req('POST',path,{**body,"fingerprint":preview.json()['fingerprint']})
+        self.assertEqual(response.status_code,400,response.text)
+        with self.Session() as db:
+            self.assertEqual(db.get(ProjectTask,task['id']).project_id,first['id'])
+
+    def test_project_correction_preserves_intervals_and_totals(self):
+        _, first, stage=self.project()
+        _, second, _=self.project()
+        task=self.task(first,stage,'核对报告')
+        with self.Session() as db:
+            db.add(WorkSession(user_id=1,project_task_id=task['id'],kind='work',source='manual',started_at=datetime(2026,11,18,12),ended_at=datetime(2026,11,18,12,30)))
+            db.commit()
+        body={"project_id":second['id'],"reason":"误选项目"}
+        path=f"/tasks/{task['id']}/project-correction"
+        preview=self.req('POST',path+'/preview',body)
+        self.assertEqual(preview.status_code,200,preview.text)
+        self.assertEqual(preview.json()['seconds'],1800)
+        denied=self.req('POST',path,{**body,"fingerprint":"wrong"})
+        self.assertEqual(denied.status_code,409)
+        changed=self.req('POST',path,{**body,"fingerprint":preview.json()['fingerprint']})
+        self.assertEqual(changed.status_code,200,changed.text)
+        repeated=self.req('POST',path,body)
+        self.assertEqual(repeated.status_code,200,repeated.text)
+        overview=self.req('GET','/overview').json()
+        totals={p['id']:p['effort']['seconds'] for p in overview['projects']}
+        self.assertEqual(totals[first['id']],0)
+        self.assertEqual(totals[second['id']],1800)
+        self.assertEqual(self.req('POST',path+'/preview',body,user=2).status_code,404)
+        with self.Session() as db:
+            row=db.query(WorkSession).one()
+            self.assertEqual(row.started_at,datetime(2026,11,18,12))
+            self.assertEqual(row.ended_at,datetime(2026,11,18,12,30))
+
     def test_dependencies_block_and_reject_cycles_and_other_users(self):
         goal, project, stage = self.project()
         a = self.task(project, stage, "A")

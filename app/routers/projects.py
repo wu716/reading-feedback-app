@@ -17,7 +17,7 @@ from app.models import DailyTask, TimeLogNode, User
 from app.schedule_todos import sync_task_reminder
 from app.project_models import (
     Goal, ProcessTemplate, Project, ProjectStage, ProjectTask, TaskChecklistItem,
-    TaskDependency, TimeActivityAssessment, WorkSession,
+    TaskDependency, TimeActivityAssessment, WorkSession, ExecutionConditionEvent,
 )
 from app.start_conditions import readiness, record_event, require_ready, validate_dependency_graph
 from app.routers.start_conditions import router as conditions_router
@@ -177,12 +177,32 @@ def task_payload(db: Session, row: ProjectTask) -> dict:
         "steps": json.loads(row.steps_json or "[]"),
         "outcome_note": row.outcome_note, "variance_reason": row.variance_reason,
         "prerequisite_ids": [dep.prerequisite_id for dep in prerequisites],
+        "project_corrections": [{"reason":e.reason,"at":stamp(e.created_at),
+            "before":json.loads(e.before_json),"after":json.loads(e.after_json)}
+            for e in db.query(ExecutionConditionEvent).filter_by(user_id=row.user_id,owner_kind="task",owner_id=row.id,action="project_corrected").order_by(ExecutionConditionEvent.id.desc()).all()],
         "dependencies": [{"id": dep.id, "prerequisite_id": dep.prerequisite_id} for dep in prerequisites],
         "blocked_by": blockers, "can_start": ready["can_start"],
         "checklist": [{"id": c.id, "text": c.text, "done": c.done, "group": c.purpose,
                        "not_applicable": c.not_applicable_reason} for c in checks],
     }
 
+
+
+
+def project_effort(db, user_id, project_id):
+    task_ids = [t[0] for t in db.query(ProjectTask.id).filter_by(user_id=user_id, project_id=project_id)]
+    daily_ids = [d[0] for d in db.query(DailyTask.id).filter(DailyTask.user_id == user_id, DailyTask.project_task_id.in_(task_ids))]
+    rows = db.query(WorkSession).filter(WorkSession.user_id == user_id,
+        WorkSession.kind == "work", WorkSession.ended_at.isnot(None),
+        or_(WorkSession.project_task_id.in_(task_ids),
+            and_(WorkSession.project_task_id.is_(None), WorkSession.daily_task_id.in_(daily_ids)))).order_by(WorkSession.started_at, WorkSession.id).all()
+    names = {t.id:t.title for t in db.query(ProjectTask).filter(ProjectTask.id.in_(task_ids))}
+    daily_tasks = {d.id:d.project_task_id for d in db.query(DailyTask).filter(DailyTask.id.in_(daily_ids))}
+    intervals = [{"id":r.id,"task_id":r.project_task_id or daily_tasks.get(r.daily_task_id),
+        "title":names.get(r.project_task_id or daily_tasks.get(r.daily_task_id), r.label or "任务"),
+        "started_at":stamp(r.started_at),"ended_at":stamp(r.ended_at),"source":r.source,
+        "seconds":max(0, int((r.ended_at-r.started_at).total_seconds()))} for r in rows]
+    return {"seconds":sum(r["seconds"] for r in intervals),"intervals":intervals}
 
 @router.get("/overview")
 def overview(user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
@@ -200,6 +220,7 @@ def overview(user: User = Depends(get_current_active_user), db: Session = Depend
             "readiness": readiness(db, user.id, "project", p.id),
             "stages": [{"id": s.id, "title": s.title, "state": s.state, "position": s.position, "closed_reason": s.closed_reason} for s in stages],
             "tasks": [task_payload(db, t) for t in tasks],
+            "effort": project_effort(db, user.id, p.id),
         })
     return {"goals": [{"id": g.id, "title": g.title, "horizon_end": g.horizon_end, "status": g.status} for g in goals], "projects": result}
 
@@ -614,6 +635,72 @@ def promote_daily(daily_id: int, body: DailyProjectInput, user: User = Depends(g
                                 WorkSession.project_task_id.is_(None)).update({"project_task_id": task.id})
     db.commit()
     return task_payload(db, task)
+
+
+
+
+class ProjectCorrectionInput(BaseModel):
+    project_id: int
+    reason: str = Field(min_length=1, max_length=4000)
+    fingerprint: str | None = None
+
+
+def correction_preview(db, user, task, target_id):
+    import hashlib
+    target = owned(db, Project, target_id, user.id)
+    require_open_project(target)
+    if target.id == task.project_id:
+        return {"already_correct":True,"task_id":task.id,"target_id":target.id}
+    edges = db.query(TaskDependency).filter(or_(TaskDependency.task_id==task.id, TaskDependency.prerequisite_id==task.id)).all()
+    if edges:
+        fail("此任务存在前置关系，请先在项目内核对并调整依赖后再更正所属项目",409)
+    sessions = practice_service.task_sessions(db,user.id,"task",task.id)
+    if any(r.ended_at is None for r in sessions):
+        fail("请先结束该任务正在进行的工作片，再更正所属项目",409)
+    stage = db.query(ProjectStage).filter_by(project_id=target.id,user_id=user.id,state="current").filter(ProjectStage.deleted_at.is_(None)).first()
+    daily = db.query(DailyTask).filter_by(user_id=user.id,project_task_id=task.id).order_by(DailyTask.id).all()
+    source = owned(db,Project,task.project_id,user.id)
+    from app.commitment_service import commitment
+    source_commitment = commitment(db,user.id,task.stage_id) if task.stage_id else None
+    target_commitment = commitment(db,user.id,stage.id) if stage else None
+    detail={"source_commitment_id":source_commitment.id if source_commitment else None,
+        "target_commitment_id":target_commitment.id if target_commitment else None,
+        "source_stage_id":task.stage_id,"task_id":task.id,"title":task.title,"source_id":source.id,"source_title":source.title,
+        "target_id":target.id,"target_title":target.title,"target_stage_id":stage.id if stage else None,
+        "daily_ids":[d.id for d in daily],"seconds":sum(max(0,int((r.ended_at-r.started_at).total_seconds())) for r in sessions),
+        "intervals":[{"id":r.id,"started_at":stamp(r.started_at),"ended_at":stamp(r.ended_at)} for r in sessions],
+        "target_conditions":readiness(db,user.id,"project",target.id),"state":task.state}
+    detail["fingerprint"]=hashlib.sha256(json.dumps(detail,sort_keys=True,default=str).encode()).hexdigest()
+    return detail
+
+
+@router.post("/tasks/{task_id}/project-correction/preview")
+def preview_project_correction(task_id:int,body:ProjectCorrectionInput,user:User=Depends(get_current_active_user),db:Session=Depends(get_db)):
+    return correction_preview(db,user,owned(db,ProjectTask,task_id,user.id),body.project_id)
+
+
+@router.post("/tasks/{task_id}/project-correction")
+def correct_project(task_id:int,body:ProjectCorrectionInput,user:User=Depends(get_current_active_user),db:Session=Depends(get_db)):
+    if not body.reason.strip(): fail("请填写更正原因")
+    db.query(User).filter_by(id=user.id).with_for_update().first()
+    task=owned(db,ProjectTask,task_id,user.id)
+    preview=correction_preview(db,user,task,body.project_id)
+    if preview.get("already_correct"):return {"task":task_payload(db,task),"already_correct":True}
+    if body.fingerprint!=preview["fingerprint"]:fail("关联记录已变化，请重新核对更正影响",409)
+    before={"project_id":task.project_id,"project_title":preview["source_title"],"stage_id":task.stage_id}
+    old_stage_id=task.stage_id
+    task.project_id=body.project_id
+    task.stage_id=preview["target_stage_id"]
+    record_event(db,user.id,"task",task.id,"project_corrected",before,{"project_id":task.project_id,"project_title":preview["target_title"],"stage_id":task.stage_id},body.reason.strip())
+    db.flush()
+    validate_dependency_graph(db,user.id)
+    from app.commitment_service import commit_stage, commitment
+    for stage_id in {old_stage_id, task.stage_id} - {None}:
+        stage = db.get(ProjectStage, stage_id)
+        if stage and stage.state == "current" and commitment(db,user.id,stage.id):
+            commit_stage(db,user.id,stage)
+    db.commit()
+    return {"task":task_payload(db,task)}
 
 
 class TemplateInput(BaseModel):
