@@ -89,3 +89,16 @@ curl -fsS http://127.0.0.1:8000/health
 - 不提交 `docs/ops/未来规划与待办.md` 和 `docs/ops/快速唤起记-硬件与商店入口.md`。
 - 不回滚、不覆盖、不提交与当前任务无关的本地改动。
 - 不对 `main`/`master` 强制推送，不执行 `git reset --hard`。
+
+
+## 产品开发审核台与 Codex CLI 接入（2026-11-23）
+
+审核台：https://product-flow-audit-20261123.lyu-ran.chatgpt.site
+项目 ID：shuran。
+
+- 启动任务先检查是否能调用审核台 MCP 工具 `get_workflow`。若不能连接，暂停正式业务代码修改，说明连接阻塞；不要在无记录状态下继续。
+- 由 Codex 调用 `get_workflow`、`create_batch`、`capture_feedback`、`create_requirement` 和 `update_requirement` 完成批次、原始反馈、逐项需求、只读调查、示例、影响分析、保护范围和测试基线的记录。不要求用户重复手工录入。
+- 每项需求必须有对应可操作示例，至少交代原样保留／具体改动、进入、返回、未保存内容处理。独立审核插件实际执行后，才可用 `record_plugin_review` 登记真实报告；开发 Codex 不得把自评记作插件审核。
+- 插件审核通过后，暂停并请用户在审核台逐项审阅、明确批准。插件通过、口头“知道了”或旧的笼统“审核通过”不代替网站中的逐项批准。需求或示例改变后旧批准失效。此条适用于低风险业务改动，优先于本文件较早的审批例外。
+- 正式业务代码修改前，针对每项需求调用 `check_before_development`，仅在返回 `allowed=true` 时继续。任何工具不可用、未确认内容影响实现、保护范围或测试基线缺失时暂停。修改后调用 `record_development`、`record_verification` 写入真实提交与测试证据；最终验收仍由用户在网站完成。
+- 本规则是 Codex 工作约束；网站不能技术性拦截直接运行的 git 或编辑命令。不能虚称自动强制。保留本项目已有的部署安全边界。
